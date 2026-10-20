@@ -36,8 +36,9 @@ const intro = {
       _il.lookAt(_ia.set(0, 0, 0), dir, up); camera.quaternion.setFromRotationMatrix(_il);
       if (this.at) { const k = 1 - ez, W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }
       veil.material.opacity = 1 - sstep(this.t, .3, .9); veil.scale.setScalar(camera.position.distanceTo(player.pos) + .45);
-      emitGlow = quint(sstep(this.t, .72, 1));   // the engine lights during the last of the swing
-      if (this.t >= .76 && !this.hud) { this.hud = true; document.body.classList.remove('intro'); flickIn((1 - this.t) * (reduceMotion ? 2.5 : this.dur)) }   // and the instruments flicker in, all landing as the camera does
+      const dur = reduceMotion ? 2.5 : this.dur, on = 1 - 1 / dur;   // engine and instruments are fully on a second before the camera lands
+      emitGlow = quint(sstep(this.t, on - .26, on));   // the engine lights during the last of the swing
+      if (this.t >= on - .22 && !this.hud) { this.hud = true; document.body.classList.remove('intro'); flickIn(Math.max(.3, (on - this.t) * dur)) }   // and the instruments flicker in, all landed by then
       if (this.t >= 1) this.finish();   // the moment the camera arrives: engine on, instruments flicker in, yours to fly
     }
     camera.updateMatrixWorld();
