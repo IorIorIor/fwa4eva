@@ -11,7 +11,15 @@ const IDB = {
   clear(st) { return this.req(st, 'readwrite', o => o.clear()) },
 };
 await IDB.open();
-const IMPORTED = await IDB.get('kv', 'records');
+// the real archive: a list of every winner plus one image per winner, kept in its own repo (IorIorIor/fwa4eva-data) and
+// served by GitHub Pages. ?data=<base url> points elsewhere. The list comes up front; images only when you get near a star.
+const DATA_BASE = (QS.get('data') || 'https://ioriorior.github.io/fwa4eva-data/').replace(/\/?$/, '/');
+const LOCAL_IMPORT = await IDB.get('kv', 'records');
+const REMOTE = Array.isArray(LOCAL_IMPORT) && LOCAL_IMPORT.length ? null : await (async () => {
+  try { const ac = new AbortController(), to = setTimeout(() => ac.abort(), 8000), r = await fetch(DATA_BASE + 'archive.json', { signal: ac.signal }); clearTimeout(to); if (!r.ok) return null; const rows = normalizeRows(await r.json()); return rows.length ? rows : null } catch (e) { return null }
+})();
+const IMPORTED = REMOTE || LOCAL_IMPORT;
+const shotURL = d => REMOTE && d.shot ? `${DATA_BASE}shots/${d.shot.slice(0, 4)}/${encodeURIComponent(d.shot)}.webp` : null;
 let SHOT_KEYS = new Set(((await IDB.keys('shots')) || []).map(String));
 
 function normalizeRows(rows) {
@@ -26,7 +34,7 @@ function normalizeRows(rows) {
     out.push({
       date: new Date(t).toISOString().slice(0, 10), title: String(g('title', 'name', 'site', 'project') || 'Untitled').slice(0, 120), agency: String(g('agency', 'studio', 'credits', 'author', 'by') || 'Unknown').slice(0, 80),
       country: String(g('country', 'location') || '—').slice(0, 40), category: String(g('category', 'categories', 'type', 'tag') || 'Uncategorised').split(/[,;|]/)[0].trim().slice(0, 40) || 'Uncategorised',
-      tech, award: awardOf(g('award', 'level', 'honour', 'honor')), score: parseFloat(g('score', 'jury', 'juryscore', 'rating')) || 8, url: /^https?:\/\//i.test(url) ? url : '', shot: stem(g('screenshot', 'image', 'thumbnail', 'shot'))
+      tech, award: awardOf(g('award', 'level', 'honour', 'honor')), score: (v => v > 10 ? v / 10 : v)(parseFloat(g('score', 'jury', 'juryscore', 'rating', 'points')) || 8), url: /^https?:\/\//i.test(url) ? url : '', shot: stem(g('screenshot', 'image', 'thumbnail', 'shot'))
     });
   }
   out.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0); return out;
@@ -74,7 +82,7 @@ let D = [];
 const USING_IMPORT = Array.isArray(IMPORTED) && IMPORTED.length > 0;
 if (USING_IMPORT) {
   D = IMPORTED.map((r, i) => ({ ...r, i, t: Date.parse(r.date + 'T00:00:00Z'), year: +r.date.slice(0, 4) }));
-  let h = .07; D.forEach(d => {
+  let h = .07; CATS.length = CAT_COL.length = 0; D.forEach(d => {   // only the categories the archive really has
     if (!CATS.includes(d.category)) { CATS.push(d.category); CAT_COL.push(`hsl(${Math.round((h += .137) % 1 * 360)},75%,68%)`) }
     d.tech.forEach(t => { if (!TECHS.includes(t)) { TECHS.push(t); TECH_COL[t] = `hsl(${Math.round((h += .137) % 1 * 360)},70%,66%)` } })
   });

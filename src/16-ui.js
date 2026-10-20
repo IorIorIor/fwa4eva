@@ -173,6 +173,11 @@ function shot(d) {
     img.onload = () => { const c = tex.image, g = c.getContext('2d'), W = c.width, H = c.height, k = Math.max(W / img.width, H / img.height), w = img.width * k, h = img.height * k; g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.drawImage(img, (W - w) / 2, (H - h) / 2, w, h); g.strokeStyle = CAT_COL[CATS.indexOf(d.category)]; g.lineWidth = 5; g.strokeRect(2.5, 2.5, W - 5, H - 5); tex.needsUpdate = true; tex.avgCol = avgColor(c); URL.revokeObjectURL(u) };
     img.onerror = () => URL.revokeObjectURL(u); img.src = u
   });
+  else if (shotURL(d)) {   // fetched only now, when you're near enough to see it; the placeholder shows until it lands
+    const img = new Image(); img.crossOrigin = 'anonymous'; img.decoding = 'async';
+    img.onload = () => { if (texCache.get(d.i) !== tex) return; const c = tex.image, g = c.getContext('2d'), W = c.width, H = c.height, k = Math.max(W / img.width, H / img.height), w = img.width * k, h = img.height * k; g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.drawImage(img, (W - w) / 2, (H - h) / 2, w, h); tex.needsUpdate = true; tex.avgCol = avgColor(c); if (cardI === d.i) drawCardImg(d.i) };
+    img.src = shotURL(d);
+  }
   texCache.set(d.i, tex);
   if (texCache.size > 32) { const k = texCache.keys().next().value; texCache.get(k).dispose(); texCache.delete(k) }
   return tex;
@@ -217,7 +222,7 @@ const AWARD_LONG = { SOTD: 'FWA of the Day', SOTM: 'FWA of the Month', FOTY: 'FW
 const tipMore = i => {
   const d = D[i], row = (k, v, cls = '') => `<div class="${cls}"><dt>${k}</dt><dd>${v}</dd></div>`;
   return `<div class="tx"><div class="ti"><canvas class="tshot" width="480" height="300"></canvas><dl>` + row('Award', AWARD_LONG[d.award]) + row('Points', Math.round(d.score * 10)) + row('Agency', esc(d.agency)) + row('Category', esc(d.category)) +
-    row('Built with', esc(d.tech.join(', '))) + row('Country', esc(d.country)) + row('Star', esc(KINDS[KIND[i]][0]), 'w') + (chainPos.has(i) ? (p => row('Path', `${p.n + 1} of ${p.len}`))(chainPos.get(i)) : '') +
+    (d.tech.join() === 'Unknown' ? '' : row('Built with', esc(d.tech.join(', ')))) + (d.country === '—' ? '' : row('Country', esc(d.country))) + row('Star', esc(KINDS[KIND[i]][0]), 'w') + (chainPos.has(i) ? (p => row('Path', `${p.n + 1} of ${p.len}`))(chainPos.get(i)) : '') +
     `</dl>${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">Launch project →</a>` : ''}</div></div>`;
 };
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -286,7 +291,7 @@ const gauge = (() => {
 })();
 
 /* your own archive: a JSON/CSV export and screenshots, kept in this browser */
-$('srcNote').textContent = USING_IMPORT ? `Your imported archive: ${N.toLocaleString('en')} winners, ${SHOT_KEYS.size.toLocaleString('en')} screenshots.` : 'Sample data shaped like FWA\'s archive; titles and screenshots are placeholders.';
+$('srcNote').textContent = REMOTE ? `The FWA archive: ${N.toLocaleString('en')} winners so far.` : USING_IMPORT ? `Your imported archive: ${N.toLocaleString('en')} winners, ${SHOT_KEYS.size.toLocaleString('en')} screenshots.` : 'Sample data shaped like FWA\'s archive; titles and screenshots are placeholders.';
 $('dClear').hidden = !USING_IMPORT && !SHOT_KEYS.size;
 const dStat = (msg, err) => { const e = $('dStat'); e.textContent = msg; e.classList.toggle('err', !!err) };
 async function importData(file) {
