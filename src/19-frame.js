@@ -258,7 +258,8 @@ function tick(now) {
   ring2.rotation.y += dt * .05; beacons.forEach((b, k) => { b.material.emissiveIntensity = (Math.sin(now * .003 + k * 1.7) > .6) ? 2 : .2 });
   if (fly && booted) {
     updatePlayer(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat);
-    const fl = avatar.userData.flame; fl.material.opacity += ((thrusting ? .85 : 0) - fl.material.opacity) * Math.min(1, dt * 10); fl.scale.z = .6 + .4 * Math.sin(now * .04) + (thrusting ? .6 + player.cruise * 1.5 : 0);
+    const fl = avatar.userData.flame; fl.material.opacity += ((thrusting ? .85 : 0) - fl.material.opacity) * Math.min(1, dt * 10); { const fz = .6 + .4 * Math.sin(now * .04) + (thrusting ? .6 + player.cruise * 1.5 : 0); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
+    ;
     fl.material.color.copy(trailColour(1, 1, _flc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0).lerp(_amber, gasOn && !boosting ? 1 : 0));   // the flame takes the trail's colour
   } else if (booted) { nearest(camera.position) }   // on the map, the winners right around you become suns as you zoom in
   if (!intro.active) updateCamera(dt); else intro.update(dt);

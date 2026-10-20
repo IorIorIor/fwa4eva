@@ -88,8 +88,9 @@ function makeAvatar() {
   g.add(body);
   const [tx, tz] = ARROW.tail, tail = new V3(tx, 0, tz + HOLE.z).applyEuler(new THREE.Euler(ARROW_TILT, 0, 0)); g.userData.tail = tail;   // the mouth of the hole
   const hole = holeMesh(); hole.position.copy(tail).add(new V3(0, 0, .004)); g.add(hole); g.userData.hole = hole.u;
-  const fg = new THREE.ConeGeometry(.55, 3, 12, 1, true); fg.rotateX(Math.PI / 2); fg.translate(tail.x, tail.y, tail.z + 1.5);
-  const flame = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ color: 0xffb547, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); g.add(flame); g.userData.flame = flame;
+  // the exhaust: a soft, blurred ball of light just behind the hole (no cone)
+  const flame = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: 0xffb547, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  flame.position.set(tail.x, tail.y, tail.z + .35); flame.scale.set(1.5, 1.5, 1); g.add(flame); g.userData.flame = flame;
   // the trail emitter: a soft light in the back of the stem, faint at rest and bright while you thrust
   const em = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); em.position.set(tail.x, tail.y, tail.z + .05); em.scale.setScalar(HOLE.r * 3.2); g.add(em); g.userData.emit = em;
   const nav = c => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2 }), dot = (c, p) => { const b = new THREE.Mesh(new THREE.BoxGeometry(.32, .32, .32), nav(c)); b.position.copy(p); g.add(b); return b };

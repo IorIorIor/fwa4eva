@@ -65,7 +65,8 @@ function updatePeers(dt) {
   for (const v of Net.peers.values()) {
     _pd.copy(v.tgt).addScaledVector(v.vel, Math.min(1, (now - v.at) / 1000)); v.cur.lerp(_pd, 1 - Math.exp(-9 * dt));
     v.g.position.copy(v.cur); v.g.quaternion.slerp(v.q, 1 - Math.exp(-10 * dt)); v.g.visible = fly;
-    const fl = v.g.userData.flame; fl.material.opacity += ((v.th ? .85 : 0) - fl.material.opacity) * Math.min(1, dt * 10); const ho = v.g.userData.hole; ho.on.value += ((v.th ? 1.1 : .45) - ho.on.value) * Math.min(1, dt * 6); fl.scale.z = .8 + .4 * Math.sin(now * .04);
+    const fl = v.g.userData.flame; fl.material.opacity += ((v.th ? .85 : 0) - fl.material.opacity) * Math.min(1, dt * 10); const ho = v.g.userData.hole; ho.on.value += ((v.th ? 1.1 : .45) - ho.on.value) * Math.min(1, dt * 6); { const fz = .8 + .4 * Math.sin(now * .04); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
+    ;
     v.dot.visible = !fly; if (!fly) { v.dot.position.copy(v.cur); v.dot.scale.setScalar(.022) }
     // trail: a point every little stretch while they thrust; it drains away when they let go
     const sp = v.vel.length(), step = Math.max(.4, sp * .025);
