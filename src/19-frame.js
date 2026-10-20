@@ -57,8 +57,8 @@ function updateTimeRings(dt) {
     const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.ringFar ?? .55); ringFarK = sstep(out, F, F * 1.6);
     const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = fr ? 1 : ringFarK; mapLvl[1] = fr ? inside : 0; mapLvl[2] = fr ? 1 : 0; mapStars = 0;
   }
-  const show = map || fr || ringFarK > .005; timeRings.mesh.visible = show && L.ruler + L.eraRings + L.ringYear > 0; ruler.visible = timeRings.mesh.visible && !SPIRAL;   // the spiral carries its own dates
-  if (spiralLine) { spiralLine.visible = show; spiralLine.u.a.value = .3 * mapLvl[0] * (map ? 1 : .8) }
+  const show = map || fr || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0;   // with the single spiral, the spiral itself is the timeline ruler.visible = timeRings.mesh.visible && !SPIRAL;   // the spiral carries its own dates
+  if (spiralLine) { spiralLine.visible = show; spiralLine.u.a.value = (map ? .55 : .5 * ringFarK + (fr ? .35 : 0)) * Math.max(.3, Math.min(2, L.eraRings || 1)) }
   u.era.value = .3 * L.eraRings * mapLvl[0] * (map ? 1.3 : 1); u.yr.value = .13 * L.ringYear * mapLvl[1] * (map ? 1.4 : 1); u.mo.value = .1 * L.ringMonth * mapLvl[2] * (map ? 1.3 : 1);
   u.moR.value = map ? orbit.dist * 1.4 : L.monthRange; u.armOnly.value = SPIRAL ? 1 : L.ringArms; u.y0.value = S.y0; u.y1.value = S.y1;
   u.hiA.value += ((map && (ringHov || ringLab) ? 1 : 0) - u.hiA.value) * Math.min(1, dt * (ringHov || ringLab ? 14 : 3));
@@ -354,4 +354,5 @@ function tick(now) {
   updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { pipeline.render(); shipRenderer.render(shipScene, camera) } perf.ms = performance.now() - t0;
 }
 let loopErrs = 0;
-function loop(now) { requestAnimationFrame(loop); try { tick(now) } catch (e) { if (loopErrs++ < 5) console.error(e) } }   // one bad frame never stops the sky
+function loop(now) { requestAnimationFrame(loop); if (!booted && !introActive) { last = now; return }   // nothing to draw behind the splash: leave the GPU to the loading
+  try { tick(now) } catch (e) { if (loopErrs++ < 5) console.error(e) } }   // one bad frame never stops the sky

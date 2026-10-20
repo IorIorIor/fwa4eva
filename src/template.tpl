@@ -18,10 +18,13 @@
 (() => { const r = (a, b) => a + Math.random() * (b - a); let t = r(.15, .35);
   document.querySelectorAll('#intro .flk').forEach(e => { const go = !!e.closest('.go'); e.style.setProperty('--fk', 'flk' + (1 + (Math.random() * 3 | 0))); e.style.setProperty('--fd', r(.55, 1.2).toFixed(2) + 's'); e.style.setProperty('--fdl', (go ? r(0, .35) : (t += r(.1, .45))).toFixed(2) + 's') }) })();
 </script>
-<script>/* the ring round Start shows the loading as it happens; when it closes, Start appears inside it */
-(() => { const c = document.getElementById('introBar'); let v0 = 0;
-  window.__introProgress = v => { v = Math.max(v0, Math.min(1, v)); v0 = v; c.style.strokeDashoffset = 1 - v; if (v >= 1) setTimeout(() => document.body.classList.add('ready'), 600) };
-  requestAnimationFrame(() => window.__introProgress(.04)) })();
+<script>/* the instruments stay hidden until the opening hands over. The ring round Start shows the loading, but only once the
+   splash has flickered on: progress that arrives earlier waits, then the ring draws it; when it closes, Start appears */
+document.body.classList.add('intro');
+(() => { const c = document.getElementById('introBar'), t0 = performance.now() + 1700; let v0 = 0, shown = -1;
+  const draw = () => { if (performance.now() < t0) return setTimeout(draw, t0 - performance.now()); if (v0 === shown) return; shown = v0; c.style.strokeDashoffset = 1 - v0; if (v0 >= 1) setTimeout(() => document.body.classList.add('ready'), 600) };
+  window.__introProgress = v => { v0 = Math.max(v0, Math.min(1, v)); draw() };
+  window.__introProgress(.04) })();
 </script>
 <div id="skipHint" aria-hidden="true">Esc to skip</div>
 <script type="module">

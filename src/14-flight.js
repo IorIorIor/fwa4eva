@@ -200,6 +200,7 @@ function updateCamera(dt) {
       if (fz.lengthSq() < 1e-4) fz.set(0, 1, 0).applyQuaternion(o.q).projectOnPlane(GAL_UP); r.normalize(); fz.normalize();
       orbit.target.addScaledVector(r, mx * orbit.dist * .6 * dt).addScaledVector(fz, mz * orbit.dist * .6 * dt); if (zq) orbit.dist = Math.max(MAP_MIN, Math.min(4e7, orbit.dist * Math.exp(zq * 1.2 * dt)))
     }
+    if (orbit.ang !== LOOK.mapAngle) { if (orbit.ang != null && !tween) { const want = orbit.phi > Math.PI / 2 ? Math.PI - mapPhi() : mapPhi(); orbit.phi += (want - orbit.phi) * Math.min(1, dt * 6); if (Math.abs(want - orbit.phi) < 1e-3) orbit.ang = LOOK.mapAngle } else if (orbit.ang == null) orbit.ang = LOOK.mapAngle }   // the angle slider tilts the map live
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur); const e = ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tween.tp, tween.c, e); else camera.position.lerpVectors(tween.fp, tween.tp, e); camera.quaternion.copy(tween.fq).slerp(tween.tq, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }
     else { const o = orbitPose(); camera.position.copy(o.p); camera.quaternion.copy(o.q) }
     if (Math.abs(camera.fov - L.fov) > .01) { camera.fov = L.fov; camera.updateProjectionMatrix() }

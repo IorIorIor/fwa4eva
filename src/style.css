@@ -331,3 +331,4 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 /* other pilots: just a tiny white square and the distance beside it */
 .pm{gap:5px;margin:-2px 0 0 -2px;font-size:9px;color:rgba(255,255,255,.75)}
 .pm i,.pm.edge i{width:4px;height:4px;border:0;background:#fff;box-shadow:none}
+#intro .ring circle{transition:stroke-dashoffset .8s cubic-bezier(.3,.1,.2,1)}

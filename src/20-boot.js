@@ -66,8 +66,10 @@ if (coarse) $('skipHint').hidden = true;   // touch: the opening just plays
   const warm = new THREE.Group(); scene.add(warm); camera.updateMatrixWorld();
   Object.entries(EXO_KINDS).forEach(([k, K], j) => { const b = K.build(K.P, EXO_SHARED[k] ??= {}); b.obj.scale.setScalar(.02); b.obj.position.set((j - 4) * 60, 0, -900).applyQuaternion(camera.quaternion).add(camera.position); warm.add(b.obj) });
   bodies.mesh.count = 1; bodies.mesh.setMatrixAt(0, new THREE.Matrix4().compose(new V3(0, 0, -900).applyQuaternion(camera.quaternion).add(camera.position), new Q4(), new V3(10, 10, 10)));
-  const bar = $('introBar'), steps = 3;
-  for (let s = 0; s < steps; s++) { pipeline.render(); loadProg(.6 + .38 * (s + 1) / steps); if (!window.__introProgress) bar.style.strokeDashoffset = 1 - (s + 1) / steps; await new Promise(r => setTimeout(r, 30)) }
+  // compile every scene's shaders in parallel and off the main thread where the browser allows, ticking the ring as each lands
+  const jobs = [[renderer, scene], [renderer, softScene], [renderer, hazeScene], [renderer, volScene], [renderer, trailScene], [shipRenderer, shipScene]]; let done = 0;
+  try { await Promise.all(jobs.map(([r, sc]) => r.compileAsync(sc, camera).catch(() => { }).then(() => loadProg(.6 + .3 * ++done / jobs.length)))) } catch (e) { }
+  pipeline.render(); loadProg(.95); await new Promise(r => setTimeout(r, 0)); pipeline.render();   // the post chain on top
   scene.remove(warm); bodies.mesh.count = 0;
 }
 function begin(withSound, e) {
@@ -80,7 +82,7 @@ function begin(withSound, e) {
   if (!TEST) { intro.start(); const skip = e => { if (e.key !== 'Escape' && e.key !== ' ') return; intro.finish(); removeEventListener('keydown', skip) }; setTimeout(() => addEventListener('keydown', skip), 400) }   // clicks never skip it; Esc or Space does
   else handOver();
 }
-if (TEST) { $('intro').hidden = true; LOOK.adaptive = 0; handOver() }
+if (TEST) { $('intro').hidden = true; document.body.classList.remove('intro'); LOOK.adaptive = 0; handOver() }
 else {
   const enter = $('enter'); if (window.__introProgress) window.__introProgress(1); else document.body.classList.add('ready');   // the ring opens Start when it closes
   enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); begin(false, e) };

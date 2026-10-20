@@ -6,7 +6,9 @@
      scene      everything crisp at full resolution, laid over the other three, then bloom and the grade */
 const canvas = $('gl');
 const renderer = new THREE.WebGPURenderer({ canvas, antialias: false, forceWebGL: QS.has('webgl'), powerPreference: 'high-performance' });   // MSAA lives on the 3D pass only, not the full-screen post quad
-await renderer.init();
+const shipCanvas = document.createElement('canvas'); shipCanvas.id = 'shipLayer'; shipCanvas.setAttribute('aria-hidden', 'true'); canvas.after(shipCanvas);
+const shipRenderer = new THREE.WebGPURenderer({ canvas: shipCanvas, antialias: true, alpha: true, forceWebGL: QS.has('webgl') });
+await Promise.all([renderer.init(), shipRenderer.init()]);   // both GPU contexts start up at once
 renderer.highPrecision = true;   // model-view matrices in 64-bit on the CPU: the ship stays rock steady a million units from home
 const GPU = renderer.backend.isWebGPUBackend === true;
 let DPR = Math.min(LOOK.maxDpr, devicePixelRatio || 1);
@@ -19,9 +21,7 @@ scene.add(new THREE.HemisphereLight(0xb8b0ff, 0x1a1430, 1.1 * Math.PI));   // th
 const sunLight = new THREE.DirectionalLight(0xffffff, .8 * Math.PI); sunLight.position.set(.62, .48, .36); scene.add(sunLight);
 const rimLight = new THREE.DirectionalLight(0x8fa6ff, .9 * Math.PI); rimLight.position.set(-.62, -.3, -.5); scene.add(rimLight);   // cool back light so silhouettes read
 // the ship flies on its own layer: a second, transparent canvas above the instruments, so the pointer is never covered by them
-const shipCanvas = document.createElement('canvas'); shipCanvas.id = 'shipLayer'; shipCanvas.setAttribute('aria-hidden', 'true'); canvas.after(shipCanvas);
-const shipRenderer = new THREE.WebGPURenderer({ canvas: shipCanvas, antialias: true, alpha: true, forceWebGL: QS.has('webgl') });
-await shipRenderer.init(); shipRenderer.highPrecision = true; shipRenderer.setPixelRatio(DPR); shipRenderer.setClearColor(0x000000, 0);
+shipRenderer.highPrecision = true; shipRenderer.setPixelRatio(DPR); shipRenderer.setClearColor(0x000000, 0);
 // trails are drawn on their own and added after the colour grade, so a monochrome look never bleaches a pilot's colour
 const trailScene = new THREE.Scene(); trailScene.background = new THREE.Color(0, 0, 0);
 loadProg(.3);

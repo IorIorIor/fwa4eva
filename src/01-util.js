@@ -28,5 +28,6 @@ function radialTex(size, stops) { return canvasTex(size, size, (g, s) => { const
 function liveText(el) { let v = null; return s => { if (s !== v) { v = s; el.textContent = s } } }
 
 // loading progress for the ring round Start (0…1), reported as each stage of the page comes up
-const loadProg = v => { try { window.__introProgress && window.__introProgress(v) } catch (e) { } };
+const loadProg = v => { if (v >= .95 && window.__loadMarks) setTimeout(() => console.info('[FWA load] ms at each step:', JSON.stringify(window.__loadMarks)), 0);
+   try { (window.__loadMarks ??= []).push([v, Math.round(performance.now())]); window.__introProgress && window.__introProgress(v) } catch (e) { } };
 loadProg(.08);
