@@ -36,6 +36,32 @@ const corePuffs = (() => {
   }
   const m = softPoints(p, { cols: c, size: .03, op: .03, order: 1 }); m.position.copy(GC); m.quaternion.copy(GQ); return m;
 })();
+// the same puffs (and the bulge's), raymarched instead: a glowing, self-shadowing cloud with the same shape, its grain from noise
+const puffVol = (() => {
+  const u = { cam: uniform(new V3()), E: uniform(1), sB: uniform(1), kB: uniform(0), R: uniform(1), H: uniform(1), kC: uniform(0), f: uniform(1), grain: uniform(.7), dust: uniform(.6), steps: uniform(32), bh: uniform(BH.sh * 2) };
+  const m = skyMat({ blend: 'premul', side: THREE.BackSide, depthTest: false });
+  m.fragmentNode = Fn(() => {
+    const ro = u.cam, rd = normalize(positionGeometry.sub(u.cam)).toVar();
+    const b = dot(ro, rd), c = dot(ro, ro).sub(1), disc = b.mul(b).sub(c); Discard(disc.lessThan(0));
+    const sq = sqrt(disc), t0 = max(0, b.negate().sub(sq)), t1 = b.negate().add(sq); Discard(t1.lessThanEqual(t0));
+    const ds = t1.sub(t0).div(u.steps).toVar(), t = t0.add(ds.mul(ign(screenUV.mul(U.res)))).toVar(), dw = ds.mul(u.E);
+    const col = vec3(0).toVar(), T = float(1).toVar();
+    Loop(64, ({ i }) => {
+      If(float(i).greaterThanEqual(u.steps).or(T.lessThan(.02)), () => { Break() });
+      const x = ro.add(rd.mul(t)).mul(u.E).toVar(); t.addAssign(ds);   // galaxy frame, world units from the core
+      const r = length(x.xz), qb = vec3(x.x, x.y.div(.55), x.z).div(u.sB), qc = vec3(x.x, x.y.div(u.H.mul(.7).max(.01)), x.z).div(u.R.mul(.2));
+      const hD = u.R.mul(exp(r.div(u.R.mul(.35)).pow(2).negate()).mul(.07).add(.02)).mul(u.H).max(1);
+      const bul = exp(dot(qb, qb).mul(-.5)).mul(u.kB).div(u.sB);
+      const cor = exp(dot(qc, qc).mul(-.5)).mul(.45).add(exp(r.div(u.R.mul(.32)).negate()).mul(exp(x.y.div(hD).pow(2).mul(-.5))).mul(.55)).mul(u.kC).div(u.R);
+      const gr = mix(1, fbm5(x.mul(u.f)).mul(2.2).sub(.35).max(0), u.grain), clr = smoothstep(u.bh, u.bh.mul(2), length(x));
+      const d = bul.add(cor).mul(gr).mul(clr).mul(dw);
+      col.addAssign(T.mul(mix(vec3(1, .8, .58), vec3(1, .93, .82), gr.min(1))).mul(d)); T.mulAssign(exp(d.mul(u.dust).negate()));
+    });
+    return vec4(col, T.oneMinus());
+  })();
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 24), m); mesh.position.copy(GC); mesh.quaternion.copy(GQ); mesh.frustumCulled = false; mesh.renderOrder = 2; mesh.visible = false; softScene.add(mesh);
+  return { mesh, u };
+})();
 const scenePass = pass(scene, camera, { samples: 4 });
 const sceneTex = scenePass.getTextureNode();
 const bloomPass = bloom(sceneTex.min(1), .45, .4, .72);
