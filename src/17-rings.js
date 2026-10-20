@@ -18,11 +18,14 @@ function collect(i) {
   const el = $('gotPill'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); rings.show();
   const nk = CURSORS.findIndex((c, k) => k > 0 && SHIP_UNLOCK(k) === gotN); if (nk > 0) { el.dataset.new = `New ship: ${CURSORS[nk].name}`; el.classList.add('unlock'); setTimeout(() => el.classList.remove('unlock'), 4000) }   // a new pointer unlocked
 }
+// the mode switch: the ring button by the sound button (or R) turns the game on and off
+function setRings(on) { LOOK.rings = on ? 1 : 0; saveLook(); $('gbtn').setAttribute('aria-pressed', !!on); $('gbtn').title = on ? 'Rings game on (R)' : 'Rings game off (R)'; rings.show(); const c = document.querySelector('#lk-rings'); if (c) c.checked = !!on }
+$('gbtn').onclick = () => setRings(!LOOK.rings);
 { const k = +store.get('sotd-ship-k') || 0; if (k > 0 && gotN >= SHIP_UNLOCK(k)) setShip(k) }   // the pointer you flew last time
 const rings = (() => {
   const el = $('gotPill');
   const show = () => { el.hidden = !LOOK.rings || S.mode !== 'fly'; el.innerHTML = `<b>${gotN.toLocaleString('en')}</b> / ${N.toLocaleString('en')} collected` };
-  show();
+  show(); $('gbtn').setAttribute('aria-pressed', !!LOOK.rings);
   return {
     show,
     update(dt) {

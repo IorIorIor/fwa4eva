@@ -35,6 +35,7 @@ button{cursor:pointer}
 #logo:hover{opacity:1}
 #logo svg{display:block;height:22px;width:auto;overflow:visible}
 #sbtn[aria-pressed="false"]{color:var(--dim)}
+#gbtn[aria-pressed="true"]{background:#fff;color:#000}   /* the rings game is on */
 #lbtn[aria-expanded="true"]{border-color:var(--flare);color:var(--flare)}
 #lookPanel .lh{font-family:var(--display);font-weight:400;font-size:26px;line-height:1;text-transform:uppercase}
 .lsave{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line)}

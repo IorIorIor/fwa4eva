@@ -99,6 +99,7 @@ addEventListener('keydown', e => {
   if (k === 'm') setMode(S.mode === 'fly' ? 'map' : 'fly');
   if (k === 'h') goHome();
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
+  if (k === 'r' && !e.repeat) setRings(!LOOK.rings);   // R: rings game on/off
   if (k === 'escape' && tour.on) stopTour();
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }
   if (k === '/') { e.preventDefault(); keys[k] = false; rmenu.sub('search') }   // / searches
