@@ -101,7 +101,7 @@ const nav = (() => {
     hits.sort((a, b) => (D[b].title.toLowerCase().startsWith(words[0]) - D[a].title.toLowerCase().startsWith(words[0])) || D[b].score - D[a].score); hits.length = Math.min(hits.length, 8);
     res.hidden = !hits.length; res.innerHTML = hits.map((i, k) => `<button type="button" data-i="${i}" class="${k ? '' : 'on'}"><span>${esc(D[i].title)}</span><small>${esc(D[i].agency || '')} · ${fmtDay(W_DAY[i])}</small></button>`).join('');
   }
-  const choose = i => { if (i == null || i < 0) return; show(W_DAY[i], i); flyTo(i); q.value = ''; res.hidden = true; q.blur() };
+  const choose = i => { if (i == null || i < 0) return; show(W_DAY[i], i); flyTo(i); q.value = ''; res.hidden = true; q.blur(); window.__navPicked?.() };
   q.oninput = find;
   q.onkeydown = e => {
     e.stopPropagation();
@@ -121,7 +121,7 @@ const nav = (() => {
   addEventListener('resize', draw);
   hist(); show(cur); window.__navHist = () => { hist(); draw() };
   return {
-    get pick() { return pick }, show, hist,
+    get pick() { return pick }, show, hist, tick: tickSound, find,
     update(dt) {   // once the scrubbing rests, the ship locks onto that day's winner
       if (idle > 0 && (idle -= dt) <= 0) { tl.classList.remove('live'); if (pick >= 0 && pick !== lockI && booted) focus(pick) }
       if (!dn && !tl.matches(':hover') && idle <= 0 && lockI >= 0 && lockI !== pick) show(W_DAY[lockI], lockI);   // and it follows your lock

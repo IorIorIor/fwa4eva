@@ -15,7 +15,7 @@ let lockErrs = 0, lastUnlock = 0; const lockErr = () => { lockErrs++; if (perfor
 document.addEventListener('pointerlockerror', lockErr);
 document.addEventListener('pointerlockchange', () => { if (locked()) { lockErrs = 0; lockFailed = false; updateLockUI() } else { lastUnlock = performance.now(); for (const k in keys) keys[k] = false } });
 function requestLock() { if (!canvas.requestPointerLock) { lockErr(); return } try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(lockErr) } catch (e) { lockErr() } }
-document.addEventListener('mousemove', e => { if (!locked() || S.mode !== 'fly' || introActive) return; rotateRig(-e.movementX * SENS * LOOK.sens, -e.movementY * SENS * LOOK.sens) });
+document.addEventListener('mousemove', e => { if (rmenu.open) { rmenu.move(e); return } if (!locked() || S.mode !== 'fly' || introActive) return; rotateRig(-e.movementX * SENS * LOOK.sens, -e.movementY * SENS * LOOK.sens) });
 // pointer events: map orbit, touch look, click/tap to focus
 const ptrs = new Map();
 canvas.addEventListener('pointerdown', e => {
@@ -46,10 +46,12 @@ const endPtr = e => {
   if (down && !dragged && e.type === 'pointerup' && booted) {
     const unlock = () => { lockI = -1; if (auto && auto.i >= 0) auto = null };
     const hov = (x, y) => coarse || down.touch ? pick(x, y) : hovPick;   // with a mouse, only the star whose tooltip is showing; touch has no hover, so a tap picks
-    if (S.mode === 'fly' && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it
-    else if (S.mode === 'fly' && lockI >= 0) { const i = locked() ? hov(innerWidth / 2, innerHeight / 2) : hov(e.clientX, e.clientY); if (i >= 0 && i !== lockI) focus(i); else unlock() }   // while locked, any click lets go
-    else if (S.mode === 'map') { const h = mapHover(e.clientX, e.clientY), i = coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (h.ring) ringZoom(h.ring) }   // map: a star once you're close, else the ring under the cursor
-    else { const i = locked() ? hov(innerWidth / 2, innerHeight / 2) : hov(e.clientX, e.clientY); if (i >= 0) focus(i); else unlock() }
+    const fly = S.mode === 'fly', cx = locked() ? innerWidth / 2 : e.clientX, cy = locked() ? innerHeight / 2 : e.clientY;
+    if (rmenu.open) rmenu.choose();   // the radial menu takes the click (outside it: closes)
+    else if (rmenu.panel) { rmenu.close(); if (fly && !down.touch && !locked() && !lockFailed) requestLock() }
+    else if (fly && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it (or just take the pointer back)
+    else if (fly) { const i = hov(cx, cy); if (i >= 0 && i !== lockI) focus(i); else if (i >= 0) unlock(); else if (magI < 0) rmenu.show(cx, cy) }   // a star: lock on (again: let go); nothing in reach: the menu
+    else { const h = mapHover(e.clientX, e.clientY), i = coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (h.ring) ringZoom(h.ring); else rmenu.show(e.clientX, e.clientY) }   // map: a star once you're close, else the ring under the cursor, else the menu
   }
   if (!ptrs.size) down = null;
 };
@@ -98,7 +100,8 @@ addEventListener('keydown', e => {
   if (k === 'h') goHome();
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
   if (k === 'escape' && tour.on) stopTour();
-  if (k === '/') { e.preventDefault(); keys[k] = false; $('navQ').focus() }   // / searches
+  if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }
+  if (k === '/') { e.preventDefault(); keys[k] = false; rmenu.sub('search') }   // / searches
   if ((k === 'arrowleft' || k === 'arrowright') && lockI >= 0 && S.mode === 'fly') { keys[k] = false; e.preventDefault(); if (!e.repeat) navStep(k === 'arrowright' ? 1 : -1, undefined, 'turn') }   // locked on: ← → step to the previous / next winner
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
