@@ -55,7 +55,7 @@ function updateTimeRings(dt) {
   } else {
     // far enough out (above the disk or past its rim) the timeline comes into view: the five-year marks, and the spiral itself
     const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.ringFar ?? .55); ringFarK = sstep(out, F, F * 1.6);
-    const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = fr ? 1 : ringFarK; mapLvl[1] = fr ? inside : 0; mapLvl[2] = fr ? 1 : 0; mapStars = 0;
+    const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = fr ? 1 : ringFarK; mapLvl[1] = fr ? inside : 0; mapLvl[2] = 0; mapStars = 0;
   }
   const show = map || fr || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0;   // with the single spiral, the spiral itself is the timeline ruler.visible = timeRings.mesh.visible && !SPIRAL;   // the spiral carries its own dates
   if (spiralLine) { spiralLine.visible = show; spiralLine.u.a.value = (map ? .55 : .5 * ringFarK + (fr ? .35 : 0)) * Math.max(.3, Math.min(2, L.eraRings || 1)) }
