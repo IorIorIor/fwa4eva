@@ -49,7 +49,7 @@ function setMode(m) {
 }
 function focus(i) {
   if (i < 0) return; S.sel = i; const p = starPos(i);
-  if (S.mode === 'fly') { lockI = i; auto = null }   // lock only turns the ship toward it; W takes you there
+  if (S.mode === 'fly') { if (lockI !== i) buzz(14); lockI = i; auto = null }   // lock only turns the ship toward it; W takes you there
   else { S.mapPick = i; orbit.target.copy(p); orbit.dist = CR[i] * 14; const o = orbitPose(); tweenCam(o.p, o.q, 1.8) }
 }
 function goHome() {
@@ -86,7 +86,7 @@ function updatePlayer(dt) {
   // boost: Shift or Space. A short tank that drains while boosting and refills when you don't.
   const wantB = (keys.shift || keys[' '] || touchBoost) && !auto;
   if (wantB && boostE > 0) { if (!boosting) { camRelV.add(_sd.set(0, .15, 2.2)); boostWhoosh() } boosting = true; boostE = Math.max(0, boostE - dt / Math.max(.5, L.boostTime)) }
-  else { boosting = false; boostE = Math.min(1, boostE + dt / Math.max(.5, L.boostRecharge)) }
+  else { if (boosting && boostE <= 0) buzz([22, 50, 22]); boosting = false; boostE = Math.min(1, boostE + dt / Math.max(.5, L.boostRecharge)) }
   gasOn = fw > 0; const pedal = gasOn || boosting;
   // the nose turns toward its target keeping the ship's own roll (so A/D rolls stick)
   const shipUp = _su.set(0, 1, 0).applyQuaternion(p.base), aimQ = d => lookAtQ(d, Math.abs(shipUp.dot(d)) > .995 ? _su2.set(0, 1, 0).applyQuaternion(rig.q) : shipUp, _hq);

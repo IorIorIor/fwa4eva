@@ -144,9 +144,11 @@ body.panel-open #gauge{display:none}
 body.idle #thrust,body.idle #boost{opacity:.2}
 body.idle #speed,body.idle #gauge,body.idle #labels,body.idle #brand,body.idle #topbar,body.idle #logo{opacity:0}
 body.idle #cross{opacity:.18}
-#speed{left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);pointer-events:none;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums;white-space:nowrap;text-shadow:0 0 6px var(--void)}
+#speed{left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);pointer-events:none;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums;white-space:nowrap;text-shadow:0 0 6px var(--void);display:flex;flex-direction:column;align-items:center;gap:6px}
+#speed b{font-weight:400}
+#speed>i{display:block;width:120px;height:1px;background:rgba(255,255,255,.16)}
+#speed>i>i{display:block;height:100%;background:rgba(255,255,255,.75);transform-origin:left;transform:scaleX(0);transition:transform .25s linear}
 body.map #speed{display:none}
-#lock{left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);pointer-events:none;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 14px;white-space:nowrap}
 #cross{left:50%;top:50%;width:180px;height:180px;margin:-90px 0 0 -90px;pointer-events:none;overflow:visible;filter:drop-shadow(0 0 3px rgba(6,5,13,.9))}
 #cross .ring{fill:none;stroke:var(--ink);stroke-width:1.4;opacity:.85;transform-box:fill-box;transform-origin:center;transition:transform .18s,stroke .18s,opacity .18s}
 #cross.on .ring,#cross.mag .ring{stroke:var(--flare);opacity:1}
@@ -305,7 +307,7 @@ body.intro #skipHint{opacity:1;transition-delay:1.6s}
 .ico{width:18px;height:18px}
 .btn{border-radius:0;padding:6px 10px;border-color:rgba(255,255,255,.35)}
 #brand{gap:6px}
-#lock,#thrust,.chips button,.presets button{border-radius:0}
+#thrust,.chips button,.presets button{border-radius:0}
 
 /* loading: the ring round Start draws itself as the shaders compile, then the white button fades in inside it */
 #intro .go{position:relative;width:106px;height:106px;display:grid;place-items:center;margin-top:6px;visibility:visible;pointer-events:none;animation:none}
@@ -313,11 +315,16 @@ body.intro #skipHint{opacity:1;transition-delay:1.6s}
 #intro .ring circle{fill:none;stroke:#fff;stroke-width:1;vector-effect:non-scaling-stroke;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .4s ease}
 #intro .go #enter{width:94px;height:94px;opacity:0;transform:scale(.92);transition:opacity .7s ease .25s,transform .7s cubic-bezier(.2,.9,.25,1.2) .25s,box-shadow .25s}
 body.ready #intro .go{pointer-events:auto}
+#introN{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;pointer-events:none;font-family:var(--mono);color:#fff;font-variant-numeric:tabular-nums;transition:opacity .35s ease}
+#introN b{font-weight:400;font-size:15px;letter-spacing:.06em}
+#introN span{font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+body.ready #introN{opacity:0}
+#introLoaded{position:absolute;left:0;right:0;top:calc(100% + 16px);text-align:center;white-space:nowrap;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);opacity:0;transition:opacity .7s ease .4s}
+body.ready #introLoaded{opacity:1}
 body.ready #intro .go #enter{opacity:1;transform:scale(1)}
 body.ready #intro .go #enter:hover{transform:scale(1.05)}
 #enterQuiet{position:absolute;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);opacity:0;pointer-events:none;transition:opacity .7s ease .5s}
 body.ready #enterQuiet{opacity:1;pointer-events:auto}
-#lock{display:none !important}
 #skipHint{display:none !important}
 #intro .ring circle{transition:none}
 

@@ -212,7 +212,7 @@ function placeholderShot(d) {
 
 /* the winner you're beside: the tooltip opens up into its full record (screenshot, award, points, agency…) */
 function drawCardImg(i) { const c = tip.querySelector('canvas.tshot'), t = shot(D[i]); if (c && t && t.image) c.getContext('2d').drawImage(t.image, 0, 0, c.width, c.height) }
-function showCard(i, force) { if (i === cardI && !force) return; cardI = i; Net.self.near = i >= 0 ? D[i].date : null; if (force) tipFor = '' }
+function showCard(i, force) { if (i === cardI && !force) return; if (i >= 0 && !force) buzz(10); cardI = i; Net.self.near = i >= 0 ? D[i].date : null; if (force) tipFor = '' }
 const AWARD_LONG = { SOTD: 'FWA of the Day', SOTM: 'FWA of the Month', FOTY: 'FWA of the Year' };
 const tipMore = i => {
   const d = D[i], row = (k, v, cls = '') => `<div class="${cls}"><dt>${k}</dt><dd>${v}</dd></div>`;
@@ -268,13 +268,14 @@ const gauge = (() => {
   const el = $('gauge'), row = (k, inner, cls) => `<div class="row ${cls}"><span>${k}</span>${inner}</div>`;
   el.innerHTML = row('Cruise', '<i class="bar"><i data-v="cruise"></i></i>', 'f') + row('Sector', '<b data-v="sector"></b>', 'f') + row('Time', '<b data-v="time"></b>', 'f t') + `<div class="row f"><span data-v="lockK"></span><b data-v="lockV"></b></div>` +
     row('Eras', `<b>${NERA}</b>`, 'm') + row('Sites', '<b data-v="sites"></b>', 'm') + row('Constellations', '<b data-v="cons"></b>', 'm');
-  const q = k => el.querySelector(`[data-v="${k}"]`), T = {}; T.speed = liveText($('speed')); ['sector', 'time', 'lockK', 'lockV', 'sites', 'cons'].forEach(k => T[k] = liveText(q(k)));
+  const q = k => el.querySelector(`[data-v="${k}"]`), T = {}; T.speed = liveText($('speed').firstChild); const spBar = $('speed').querySelector('i i'); let spW = ''; ['sector', 'time', 'lockK', 'lockV', 'sites', 'cons'].forEach(k => T[k] = liveText(q(k)));
   const bar = q('cruise'), timeRow = el.querySelector('.row.t'); let bw = '', tShow = null, mode = '';
   const setMode = m => { if (mode === m) return; mode = m; el.querySelectorAll('.row').forEach(r => r.hidden = !r.classList.contains(m === 'fly' ? 'f' : 'm')); tShow = null };
   return {
     fly() {
       setMode('fly');
       T.speed(beta > .01 ? beta.toFixed(2) + ' c' : fmtSpd(player.vel.length()));
+      { const w = Math.min(1, Math.log10(1 + player.vel.length()) / Math.log10(1 + LIGHT)).toFixed(3); if (w !== spW) { spW = w; spBar.style.transform = `scaleX(${w})` } }   // log scale: standing still to light speed
       const w = (player.cruise * 100).toFixed(0) + '%'; if (w !== bw) { bw = w; bar.style.width = w }
       T.sector(regionName(region) + (nearI >= 0 && nearCD < 60000 ? ' · ' + D[nearI].year : ''));
       const ts = tdil < .97; if (ts !== tShow) { tShow = ts; timeRow.hidden = !ts } if (ts) T.time('×' + tdil.toFixed(2));

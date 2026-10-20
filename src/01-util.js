@@ -19,6 +19,7 @@ const fmtDate = s => new Date(s + 'T00:00:00Z').toLocaleDateString('en-GB', { da
 const MON3 = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const coarse = matchMedia('(pointer: coarse)').matches;
+const buzz = p => { if (coarse) try { navigator.vibrate?.(p) } catch (e) { } };   // phones only; iPhones ignore it
 const QS = new URLSearchParams(location.search), TEST_EARLY = QS.has('test');
 let booted = false, introActive = false;   // booted: the intro has handed control to the pilot
 // a canvas texture drawn once by a 2D painter

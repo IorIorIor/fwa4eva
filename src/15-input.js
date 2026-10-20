@@ -6,7 +6,6 @@ const locked = () => document.pointerLockElement === canvas;
 function updateLockUI() {
   const fly = S.mode === 'fly'; document.body.classList.toggle('locked', locked());
   $('cross').toggleAttribute('hidden', !fly);
-  $('lock').hidden = !(fly && !locked() && !lockFailed && !coarse && booted);
 }
 document.addEventListener('pointerlockchange', updateLockUI);
 // a browser refuses a re-lock for about a second after Esc; that's not a failure, just click again
@@ -101,7 +100,7 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
-[['thrust', v => touchThrust = v], ['boost', v => touchBoost = v]].forEach(([id, to]) => { const b = $(id), set = v => { to(v); b.classList.toggle('on', v) }; b.addEventListener('pointerdown', e => { e.preventDefault(); set(true); navigator.vibrate?.(8); try { b.setPointerCapture(e.pointerId) } catch { } }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => set(false))); b.addEventListener('contextmenu', e => e.preventDefault()) });   // captured, so a thumb sliding off keeps going
+[['thrust', v => touchThrust = v], ['boost', v => touchBoost = v]].forEach(([id, to]) => { const b = $(id), set = v => { to(v); b.classList.toggle('on', v) }; b.addEventListener('pointerdown', e => { e.preventDefault(); set(true); buzz(8); try { b.setPointerCapture(e.pointerId) } catch { } }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => set(false))); b.addEventListener('contextmenu', e => e.preventDefault()) });   // captured, so a thumb sliding off keeps going
 
 /* ───────────────────────── picking ───────────────────────── */
 const _vp = new THREE.Matrix4();

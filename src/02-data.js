@@ -97,7 +97,7 @@ if (USING_IMPORT) {
   const byYear = new Map(); byMonth.forEach(d => { if (!byYear.has(d.year) || byYear.get(d.year).score < d.score) byYear.set(d.year, d) });
   byYear.forEach(d => { d.award = 'FOTY'; d.score = Math.min(9.8, +(d.score + .2).toFixed(2)) });
 }
-const N = D.length; loadProg(.15);
+const N = D.length; window.__introTotal = N; loadProg(.15);
 function resolveShots() { D.forEach(d => { d.shotKey = [d.shot, d.date, slug(d.title), String(d.i)].find(k => k && SHOT_KEYS.has(k)) || null }) }
 resolveShots();
 const YEARS = []; for (let y = 2000; y <= 2026; y++) YEARS.push(y);
