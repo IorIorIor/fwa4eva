@@ -101,7 +101,7 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
-{ const thr = $('thrust'); thr.addEventListener('pointerdown', e => { e.preventDefault(); touchThrust = true }); ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => thr.addEventListener(t, () => { touchThrust = false })) }
+{ const thr = $('thrust'), set = v => { touchThrust = v; thr.classList.toggle('on', v) }; thr.addEventListener('pointerdown', e => { e.preventDefault(); thr.setPointerCapture(e.pointerId); set(true); navigator.vibrate?.(8) }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => thr.addEventListener(t, () => set(false))); thr.addEventListener('contextmenu', e => e.preventDefault()) }   // captured, so a thumb sliding off keeps thrusting
 
 /* ───────────────────────── picking ───────────────────────── */
 const _vp = new THREE.Matrix4();
