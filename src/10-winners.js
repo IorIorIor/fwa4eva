@@ -2,13 +2,16 @@
    Far away each winner is a point-spread function (a white-hot core in a halo of its colour). Close up the
    nearest few become real suns, and the exotic ones are built from the sandbox objects. */
 const COL = new Float32Array(N * 3), ALPHA = new Float32Array(N), TA = new Float32Array(N).fill(1);
+// the game: winners you've flown through (kept in this browser). 1 = collected
+const GOT = new Float32Array(N); { const g = store.json('sotd-got', []); if (Array.isArray(g)) g.forEach(d => { const i = D.findIndex(x => x.date === d); if (i >= 0) GOT[i] = 1 }) }
 loadProg(.45);
 const stars = (() => {
-  const geo = quads(N, { aP: [P, 3], aSize: [SIZE, 1], aType: [TYPE, 1] });
+  const geo = quads(N, { aP: [P, 3], aSize: [SIZE, 1], aType: [TYPE, 1], aR: [STAR_R, 1] });
+  geo.setAttribute('aGot', new THREE.InstancedBufferAttribute(GOT, 1).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(COL, 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aAlpha', new THREE.InstancedBufferAttribute(ALPHA, 1).setUsage(THREE.DynamicDrawUsage));
-  const u = { coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1) };
-  const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vA = varyingProperty('float', 'vA'), vT = varyingProperty('float', 'vT'), vPs = varyingProperty('float', 'vPs'), vDot = varyingProperty('float', 'vDot');
+  const u = { coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
+  const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vA = varyingProperty('float', 'vA'), vT = varyingProperty('float', 'vT'), vPs = varyingProperty('float', 'vPs'), vDot = varyingProperty('float', 'vDot'), vRing = varyingProperty('float', 'vRing'), vRon = varyingProperty('float', 'vRon'), vPx = varyingProperty('float', 'vPx'), vGot = varyingProperty('float', 'vGot');
   m.vertexNode = Fn(() => {
     const ab = aberrate(ia('aP', 'vec3')), al = ia('aAlpha', 'float');
     const mv = cameraViewMatrix.mul(vec4(ab, 1)).toVar(), on = step(.5, al).mul(u.hi), z = mv.z.negate();
@@ -18,7 +21,10 @@ const stars = (() => {
     // on the map every winner stays a white pixel; in flight the far ones thin out and fade away
     const flyK = clamp(ps.div(dot1), .3, 1).mul(smoothstep(3.5e5, 1.2e6, z).oneMinus());
     vA.assign(al.mul(mix(.95, 1, smoothstep(dot1, dot1.mul(2), ps))).mul(mix(1, flyK, u.far)));
-    return billboardPx(mv, vPs);
+    // the game: a ring of the star's real size (× ring size). Once it's a few px across the sprite grows to hold it and the ring takes over
+    const rpx = ia('aR', 'float').mul(u.rsz).mul(pxScale).div(max(z, .01)), ron = smoothstep(2.5, 7, rpx).mul(u.ring), side = max(vPs, rpx.mul(2.6)).mul(ron).add(vPs.mul(ron.oneMinus())).min(9000);
+    vRon.assign(ron); vRing.assign(rpx.div(side.mul(.5))); vPx.assign(side); vGot.assign(ia('aGot', 'float'));
+    return billboardPx(mv, side);
   })();
   m.fragmentNode = Fn(() => {
     const p = vec2(uv().x.sub(.5), uv().y.oneMinus().sub(.5)), d = length(p); Discard(d.greaterThan(.5));
@@ -41,10 +47,17 @@ const stars = (() => {
     // the far-off dot: a flat, near-white disc that fills its pixel instead of a point-spread too small to land on one
     const dotA = smoothstep(.5, .32, d), dotC = mix(vC, vec3(1), .7).mul(mix(1.05, .85, u.far));   // on the map every winner is a full white pixel
     col.assign(mix(col, dotC, vDot)); a.assign(mix(a, dotA, vDot));
+    // the ring: a crisp band (never under a pixel) with a soft glow, its colour until collected, then warm white and brighter
+    If(vRon.greaterThan(.001), () => {
+      const rf = r.mul(vPs.div(vPx)), px1 = float(2.4).div(vPx), w = max(vRing.mul(u.rw), px1), dd = rf.sub(vRing).div(w), band = exp(dd.mul(dd).negate());
+      const gl = exp(rf.sub(vRing).div(vRing.mul(.45).add(px1)).pow(2).negate()).mul(.35), g = vGot;
+      const rc = mix(mix(vC, vec3(1), .25), mix(vC, vec3(1, .88, .62), .7).mul(u.gotGlow), g), ra = band.add(gl.mul(mix(1, u.gotGlow, g)));
+      col.assign(mix(col, rc.mul(band.mul(1.3).add(gl)), vRon)); a.assign(mix(a, ra, vRon));
+    });
     const k = a.mul(vA); return vec4(col.mul(k), k);
   })();
   const mesh = layer(new THREE.Mesh(geo, m), scene, 2);
-  return { mesh, u, aColor: geo.attributes.aColor, aAlpha: geo.attributes.aAlpha };
+  return { mesh, u, aColor: geo.attributes.aColor, aAlpha: geo.attributes.aAlpha, aGot: geo.attributes.aGot };
 })();
 
 /* nearby winners as suns: limb darkening, boiling granulation, slow convection, a few spots, a bright rim of plasma */

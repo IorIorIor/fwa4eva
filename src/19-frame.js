@@ -108,7 +108,7 @@ const _bm = new THREE.Matrix4(), _bs = new V3(), _bq = new Q4();
 function updateBodies() {
   const B = bodies; let n = 0;
   for (let b = BODY_N - 1; b >= 0; b--) {   // farthest first: one instanced draw, blended back to front
-    const co = B.coronas[b], c = LOOK.bodies ? bodyCand[b] : null; co.visible = false; if (!c) continue;
+    const co = B.coronas[b], c = LOOK.bodies && !LOOK.rings ? bodyCand[b] : null; co.visible = false; if (!c) continue;   // with rings, no suns
     const i = c[1], d = Math.sqrt(c[0]), ps = Math.min(220, SIZE[i] * LOOK.starSize * pxJS() / Math.max(1, d)), coreR = LOOK.starCore * (TYPE[i] > 1.5 ? .5 : TYPE[i] > .5 ? .7 : 1) * ps * .5;
     const bodyR = starR(i) * innerHeight * DPR / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, d)), a = sstep(bodyR, coreR * .8, coreR * 1.6);
     if (a <= .01) continue;
@@ -338,7 +338,7 @@ function tick(now) {
   // the open winner: the screenshot can replace the dot; the lock holds until you let go
   openI = -1; openA = 0;
   if (fly && nearI >= 0) { const sr = stopR(nearI); openA = 1 - sstep(nearCD, sr * 1.06, sr * 1.8); if (openA > 0) openI = nearI }
-  if (openI >= 0 && L.shot3d) {
+  if (openI >= 0 && L.shot3d && !L.rings) {
     if (SHOT.userData.i !== openI) { SHOT.material.map = shot(D[openI]); SHOT.material.needsUpdate = true; SHOT.userData.i = openI; SHOT.quaternion.copy(camera.quaternion) }   // faces you at the moment it opens, then holds still
     starPos(openI, SHOT.position); SHOT.material.color.setScalar(L.shotBright); const e = 1 - Math.pow(1 - openA, 3); SHOT.scale.setScalar(CR[openI] * 3.4 * (.25 + .75 * e)); SHOT.material.opacity = Math.min(1, openA * 1.6); SHOT.visible = true;
     const avg = SHOT.material.map && SHOT.material.map.avgCol; if (avg) shotLight.color.copy(avg);
@@ -350,6 +350,7 @@ function tick(now) {
     let open = -1;
     if (fly && nearI >= 0 && TA[nearI] === 1) { const rpx = starR(nearI) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(starPos(nearI, tmp)))); if (rpx >= L.tipOpen * (cardI === nearI ? .75 : 1)) open = nearI }
     else if (!fly && S.sel >= 0 && camera.position.distanceTo(starPos(S.sel, tmp)) < CR[S.sel] * 20) open = S.sel;
+    if (gotCard.t > 0 && S.mode === 'fly') open = gotCard.i;   // a ring you just flew through keeps its record open a while
     showCard(open);
   }
   { let ch = false; for (let i = 0; i < N; i++) { const t = i === openI && L.shot3d ? TA[i] * (1 - Math.min(1, openA * 2)) : TA[i], d = t - ALPHA[i]; if (Math.abs(d) > .002) { ALPHA[i] += d * Math.min(1, dt * (i === openI ? 20 : 8)); ch = true } } if (ch) stars.aAlpha.needsUpdate = true }
@@ -359,7 +360,7 @@ function tick(now) {
   updateHover(dt); updateLabels();
   if (fly) gauge.fly(); else gauge.map();
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
-  updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt);
+  updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt);
   mapK += ((S.mode === 'map' && !tween ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); PU.bgK.value = 1 - (L.mapFade ?? .85) * mapK; bgStars.u.op.value = L.bgStars * (1 - (L.mapFade ?? .85) * mapK);   // the map clears down to the winners once the move ends
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,
       look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3); coreIn += (inside - coreIn) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it
@@ -386,7 +387,7 @@ function tick(now) {
     const on = !!L.volumetric, u = vol.u; vol.mesh.visible = on; PU.volOn.value = on ? 1 : 0;
     if (on) {
       u.cam.value.copy(camera.position); vol.mesh.worldToLocal(u.cam.value);
-      u.glow.value = L.volGlow; u.dust.value = L.volDust; u.steps.value = L.volSteps; u.noise.value = L.volNoise; u.wispLo.value = L.volWispLo; u.wispHi.value = Math.max(L.volWispLo + (L.volEdge ?? .02), L.volWispHi); u.janim.value = L.volJitterMove ? 1 : 0; PU.volBlur.value = (L.volSmooth ?? 0) / LOOK.volRes;   // a hard wisp edge pops on and off as the clouds move: volEdge keeps it soft u.warp.value = L.volWarp; u.armK.value = L.volArmK; u.thick.value = L.volThick;
+      u.glow.value = L.volGlow; u.dust.value = L.volDust; u.steps.value = L.volSteps; u.noise.value = L.volNoise; u.wispLo.value = L.volWispLo; u.wispHi.value = Math.max(L.volWispLo + (L.volEdge ?? .02), L.volWispHi); u.janim.value = L.volJitterMove ? 1 : 0; PU.volBlur.value = (L.volSmooth ?? 0) / LOOK.volRes;   u.warp.value = L.volWarp; u.armK.value = L.volArmK; u.thick.value = L.volThick;   // a hard wisp edge pops on and off as the clouds move: volEdge keeps it soft
       u.coreV.value = L.volCore * (1 + ((L.coreGlows ?? 1) - 1) * coreIn); u.dustT.value = L.volDustT; u.emAbs.value = L.volEmAbs; u.flow.value = L.volFlow; u.inner.value = L.volInner; u.outer.value = L.volOuter; u.opMax.value = L.volOpMax; u.coreMix.value = L.volColMix; u.wispGain.value = L.volWisp; u.base.value = L.volBase; u.detail.value = L.volDetail; u.satV.value = L.volSat; u.contrast.value = L.volContrast;
       vol.mesh.scale.y = VOL_S * VOL_H * L.volHeight; u.spin.value = L.arcSpin * L.volSpin; u.armW.value = L.armWidth;
     }

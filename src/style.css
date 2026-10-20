@@ -433,3 +433,9 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 #rmPanel .rwin b{font-family:"FF Good Pro",var(--body);font-weight:400;font-size:24px;line-height:1.1;color:#fff}
 #rmPanel .rwin .ra{font-family:var(--mono);font-size:11px;color:var(--dim)}
 #rmPanel .rrow{margin-top:8px}
+
+/* the game's count */
+#gotPill{right:max(16px,env(safe-area-inset-right,0px));top:calc(60px + env(safe-area-inset-top,0px));font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--dim);pointer-events:none}
+#gotPill b{font-family:"FF Good Pro",var(--body);font-weight:400;font-size:20px;color:#fff;letter-spacing:0;margin-right:2px}
+#gotPill.pop b{animation:gotPop .6s cubic-bezier(.2,1.4,.3,1)}
+@keyframes gotPop{0%{color:#ffd99a;text-shadow:0 0 14px #ffcf80}100%{color:#fff;text-shadow:none}}

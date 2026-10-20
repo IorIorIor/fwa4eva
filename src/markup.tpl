@@ -17,6 +17,7 @@
   <div id="navTl"><button type="button" id="navDay"></button><canvas aria-label="Timeline: scroll or drag to a day"></canvas></div>
 </div>
 <div class="hud" id="tourPill" hidden></div>
+<div class="hud" id="gotPill" hidden></div>
 <div id="radial" hidden><svg viewBox="-170 -170 340 340" aria-label="Menu"></svg><i id="rmDot" hidden></i></div>
 <div id="rmPanel" class="hud" role="dialog" hidden><header><span class="ri"></span><b></b><button type="button" class="x" aria-label="Close">×</button></header><div class="rb"></div></div>
 <div class="hud" id="speed" aria-hidden="true"><b></b><i><i></i></i></div>

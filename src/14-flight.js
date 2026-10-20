@@ -118,16 +118,16 @@ function updatePlayer(dt) {
     // heading toward the nearest winner: 1 straight at it, fading to 0 as you aim past it or away
     let ap = 0, apW = 0; if (nearI >= 0) { starPos(nearI, tmp).sub(p.pos); const L0 = Math.max(1, tmp.length()); if (sp0 > 1) ap = sstep(p.vel.dot(tmp) / (sp0 * L0), .1, .92); if (thrusting) apW = sstep(wish.dot(tmp) / L0, .1, .92) }   // apW: the same for where you're pushing
     // the speed a winner allows: slow beside it, rising faster than the distance, so far out you hardly notice it
-    const Z = nearI >= 0 ? starR(nearI) * L.nearZone : 1, g0 = Math.max(0, gap), z = g0 / Z, nearCap = 30 + g0 * L.nearRate * (1 + z * z);   // the zone scales with the star
+    const Z = nearI >= 0 ? starR(nearI) * L.nearZone : 1, g0 = Math.max(0, gap), z = g0 / Z, nearCap = L.rings ? Infinity : 30 + g0 * L.nearRate * (1 + z * z);   // rings: no speed limit round winners   // the zone scales with the star
     const lockCap = lockI >= 0 && lockI === nearI ? 4 + g0 * L.approachRate : Infinity;   // a locked star always eases you to a stop beside it
     const awayK = 1 / Math.max(1, L.nearAway ?? 12), capIn = Math.min(nearCap, lockCap) / Math.max(ap, awayK), capW = thrusting ? Math.min(nearCap, lockCap) / Math.max(apW, awayK) : Infinity;   // strict heading in, nearAway times looser heading out
-    const prox = nearI >= 0 ? (1 - sstep(g0, 0, Z * .5)) * L.nearCalm * (thrusting ? apW : 1) : 0;   // close to a winner the engine is gentle, unless you're pushing away from it
+    const prox = nearI >= 0 && !L.rings ? (1 - sstep(g0, 0, Z * .5)) * L.nearCalm * (thrusting ? apW : 1) : 0;   // close to a winner the engine is gentle, unless you're pushing away from it
     /* orbiting: close to a star you aren't locked onto, its gravity takes over. Sized so a circular orbit at r0 = orbitR × its
        radius takes orbitT seconds: v0 = 2πr0/T and GM = v0²·r0 = 4π²r0³/T², pulling GM/r² toward it. In there the glide drag
        is off (orbits keep going), the engine is a gentle orbitThrust × GM/r0² for nudging between orbits, and speed is held
        under 1.3 × escape velocity √(2GM/r), so you can be captured and can always climb out. ob blends it in at the zone's edge. */
     let ob = 0, GM = 0, oR = 0;
-    if (L.orbit && nearI >= 0 && lockI !== nearI) { const Rs = starR(nearI), r0 = Rs * L.orbitR, Ro = Rs * Math.max(L.orbitZone, L.orbitR * 1.5); GM = 4 * Math.PI * Math.PI * r0 * r0 * r0 / (L.orbitT * L.orbitT); oR = r0; ob = 1 - sstep(nearCD, Ro * .6, Ro); if (thrusting) { starPos(nearI, tmp2).sub(p.pos).normalize(); ob *= 1 - sstep(-wish.dot(tmp2), .2, .7) } }   // pushing away from the star breaks orbit: full engine, out you go
+    if (L.orbit && !L.rings && nearI >= 0 && lockI !== nearI) { const Rs = starR(nearI), r0 = Rs * L.orbitR, Ro = Rs * Math.max(L.orbitZone, L.orbitR * 1.5); GM = 4 * Math.PI * Math.PI * r0 * r0 * r0 / (L.orbitT * L.orbitT); oR = r0; ob = 1 - sstep(nearCD, Ro * .6, Ro); if (thrusting) { starPos(nearI, tmp2).sub(p.pos).normalize(); ob *= 1 - sstep(-wish.dot(tmp2), .2, .7) } }   // pushing away from the star breaks orbit: full engine, out you go
     const T1 = Math.max(1, L.cruiseTime), T2 = Math.max(T1 + 1, L.lightTime), VT = Math.min(LIGHT * .97, L.topSpeed ?? Infinity), V1 = Math.min(L.cruiseSpeed, VT / 1.01), VL = Math.max(V1 * 1.01, VT);   // the top: light speed, or lower if you set it
     const vAt = c => { const t = c * T2; return t <= T1 ? 150 * Math.pow(V1 / 150, t / T1) : V1 * Math.pow(VL / V1, Math.min(1, (t - T1) / (T2 - T1))) };   // cruise = seconds of straight thrust / T2
     const cAt = v => { v = Math.max(150, v); const t = v <= V1 ? T1 * Math.log(v / 150) / Math.log(V1 / 150) : T1 + (T2 - T1) * Math.log(v / V1) / Math.log(VL / V1); return Math.min(1, t / T2) };
@@ -147,10 +147,10 @@ function updatePlayer(dt) {
       const sp = p.vel.length();
       const capO = ob > 0 ? Math.sqrt(2 * GM / Math.max(nearCD, 1)) * 1.3 : Infinity, capX = ob > 0 ? capIn + (capO - capIn) * ob : capIn;   // in orbit the cap is escape speed, not the approach limit
       if (sp > capX) p.vel.multiplyScalar((capX + (sp - capX) * Math.exp(-3 * L.nearBrake * dt)) / sp);
-      if (ob < .5 && ap > .5 && gap > 0 && gap < Z * .5) { const s2 = p.vel.length(), tau = gap / Math.max(1, s2 * ap); if (tau < .5 && s2 > 60) p.vel.multiplyScalar(Math.exp(-1.5 / Math.max(.05, tau) * dt)) }
+      if (!L.rings && ob < .5 && ap > .5 && gap > 0 && gap < Z * .5) { const s2 = p.vel.length(), tau = gap / Math.max(1, s2 * ap); if (tau < .5 && s2 > 60) p.vel.multiplyScalar(Math.exp(-1.5 / Math.max(.05, tau) * dt)) }
     }
     if (ob > 0) { starPos(nearI, tmp2).sub(p.pos); const r = Math.max(tmp2.length(), 1); p.vel.addScaledVector(tmp2, GM / (r * r * r) * ob * dt) }   // gravity: GM/r² toward the star
-    if (nearI >= 0 && !thrusting && ob < .01) {   // let go beside a winner and it gently draws you to the docking distance
+    if (nearI >= 0 && !thrusting && ob < .01 && !L.rings) {   // let go beside a winner and it gently draws you to the docking distance
       const w0 = 1 - sstep(nearCD, dockDist(nearI), stopR(nearI) * 2.5), w = w0 * w0;
       if (w > 0) { starPos(nearI, tmp); tmp2.copy(p.pos).sub(tmp).setLength(dockDist(nearI)).add(tmp).sub(p.pos); p.vel.addScaledVector(tmp2, 7 * w * L.wellPull * dt); p.vel.multiplyScalar(Math.exp(-3.5 * w * L.wellPull * dt)) }
     }
@@ -159,7 +159,7 @@ function updatePlayer(dt) {
   // move, in substeps when touching a winner: its surface is a spring that stiffens toward the star, so you bounce off
   // along the normal and keep your sideways motion. The nose swings round to the new heading.
   let touch = 0;
-  if (nearI >= 0) {
+  if (nearI >= 0 && !L.rings) {
     const outer = stopR(nearI), hard = Math.min(outer * .97, starR(nearI) * 1.06), shell = Math.max(.01, outer - hard), n = (nearCD - outer) < p.vel.length() * dt + shell ? 6 : 1, h = dt / n;
     starPos(nearI, tmp);
     for (let k = 0; k < n; k++) {
@@ -176,6 +176,7 @@ function updatePlayer(dt) {
     if (Ld < hard) { tmp2.multiplyScalar(hard / Ld); p.pos.copy(tmp).add(tmp2); const nn = tmp2.normalize(), vn = p.vel.dot(nn); if (vn < 0) p.vel.addScaledVector(nn, -vn * (1 + L.bounce * .6)) }
   } else p.pos.addScaledVector(p.vel, dt);
   contactK += (touch - contactK) * Math.min(1, dt * 10);
+  if (L.rings) ringCheck(p);
   if (touch > 0 && !auto && lockI !== nearI) { const sp = p.vel.length(); if (sp > 1) p.base.slerp(lookAtQ(_vn.copy(p.vel).divideScalar(sp), Yv.clone().applyQuaternion(p.base), _nq), Math.min(1, dt * 6 * Math.min(1, touch * 3))) }   // pushed: the nose follows the bounce
   {
     tmp.copy(p.pos).sub(GC); const d = tmp.length(), mn = BH.sh * 1.3;
