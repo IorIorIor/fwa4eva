@@ -267,7 +267,7 @@ function updateHover(dt) {
       put('p' + pin, tipHTML(pin) + TNAV + tipMore(pin), pin === cardI);
       const rpx = starR(pin) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), full = pin === cardI;   // the star's own radius on screen
       let x = (tmp.x * .5 + .5) * innerWidth + (full ? rpx * .72 : 0), y = (-tmp.y * .5 + .5) * innerHeight - (full ? rpx * .5 : 0);
-      if (full && !coarse) { x = 24; y = Math.max(70, (innerHeight - tip.offsetHeight) / 2) }   // the full record waits on the left, still, whatever the camera does
+      if (full && !coarse) { x = 24; y = 64; tip.style.setProperty('--cs', Math.max(.5, Math.min(LOOK.cardScale ?? 1.7, (innerHeight - 64 - 130) / Math.max(1, tip.offsetHeight), innerWidth * .5 / Math.max(1, tip.offsetWidth))).toFixed(3)) }   // the full record: top left, as big as the screen allows   // the full record waits on the left, still, whatever the camera does
       else if (full) { const w = tip.offsetWidth + 24, h = tip.offsetHeight + 24; if (x + w > innerWidth) x = Math.max(8, (tmp.x * .5 + .5) * innerWidth - rpx * .72 - w); x = Math.max(8, Math.min(innerWidth - w, x)); y = Math.max(60, Math.min(innerHeight - h - 8, y)) }
       tip.style.left = x + 'px'; tip.style.top = y + 'px';
     } else tip.hidden = true;
