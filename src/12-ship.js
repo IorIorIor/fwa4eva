@@ -102,16 +102,18 @@ const avatar = makeAvatar(); avatar.scale.setScalar(.68 * SHIP_K); shipScene.add
 /* the engine flare: a hard white point, a wide bloom round it and thin diffraction spikes, all sized in screen pixels so it
    reads the same at any distance. It sits at the mouth of the hole and only shows while you can see into it. */
 const flare = (() => {
-  const u = { col: uniform(new C3(1, .4, .4)), k: uniform(0), n: uniform(4), turn: uniform(Math.PI / 4), px: uniform(280) };
+  const u = { col: uniform(new C3(1, .4, .4)), k: uniform(0), n: uniform(4), turn: uniform(Math.PI / 4), px: uniform(280), spk: uniform(1), rate: uniform(2), glow: uniform(1) };
   const m = new THREE.SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
   m.colorNode = Fn(() => {
     const p = uv().sub(.5).mul(u.px), r = length(p), L = u.px.mul(.5), spikes = float(0).toVar();
     for (let j = 0; j < 4; j++) {   // up to four lines through the centre: 2, 4, 6 or 8 spikes
       const a = u.turn.add(float(j * 2 * Math.PI).div(u.n)), dir = vec2(cos(a), sin(a)), along = abs(dot(p, dir)), across = abs(dot(p, vec2(dir.y.negate(), dir.x)));
       const w = along.mul(.006).add(.75), fall = pow(max(0, along.div(L).oneMinus()), 2.6);
-      spikes.addAssign(exp(across.div(w).pow(2).negate()).mul(fall).mul(step(float(j).add(.5), u.n.mul(.5))));
+      // sparkle: each line twinkles on its own beat, and glints run out along it
+      const tw = sin(U.now.mul(u.rate).mul(1 + j * .37).add(j * 2.1)).mul(.5).add(.5), gl = pow(sin(along.div(L).mul(18).sub(U.now.mul(u.rate).mul(3 + j))).mul(.5).add(.5), 6);
+      spikes.addAssign(exp(across.div(w).pow(2).negate()).mul(fall).mul(step(float(j).add(.5), u.n.mul(.5))).mul(u.spk.mul(tw.sub(.6).add(gl.mul(.8))).add(1).max(.15)));
     }
-    const core = exp(r.div(1.5).pow(2).negate()), bloomIn = exp(r.div(L.mul(.022)).negate()), bloomOut = exp(r.div(L.mul(.15)).negate());
+    const core = exp(r.div(1.5).pow(2).negate()), bloomIn = exp(r.div(L.mul(.022)).negate()).mul(u.glow), bloomOut = exp(r.div(L.mul(.15).mul(u.glow.sqrt())).negate()).mul(u.glow);
     const c = mix(u.col, vec3(1), .55).mul(spikes.mul(1.1)).add(vec3(1).mul(core.mul(6))).add(mix(u.col, vec3(1), .35).mul(bloomIn.mul(1.1))).add(u.col.mul(bloomOut.mul(.4)));
     return vec4(c.mul(u.k), 1);
   })();

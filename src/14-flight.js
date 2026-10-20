@@ -120,8 +120,8 @@ function updatePlayer(dt) {
     // the speed a winner allows: slow beside it, rising faster than the distance, so far out you hardly notice it
     const Z = nearI >= 0 ? starR(nearI) * L.nearZone : 1, g0 = Math.max(0, gap), z = g0 / Z, nearCap = 30 + g0 * L.nearRate * (1 + z * z);   // the zone scales with the star
     const lockCap = lockI >= 0 && lockI === nearI ? 4 + g0 * L.approachRate : Infinity;   // a locked star always eases you to a stop beside it
-    const capIn = Math.min(nearCap, lockCap) / Math.max(ap, .25), capW = thrusting ? Math.min(nearCap, lockCap) / Math.max(apW, .25) : Infinity;   // strict heading in, four times looser heading out
-    const prox = nearI >= 0 ? (1 - sstep(g0, 0, Z * .5)) * L.nearCalm : 0;   // close to a winner the engine is gentle
+    const awayK = 1 / Math.max(1, L.nearAway ?? 12), capIn = Math.min(nearCap, lockCap) / Math.max(ap, awayK), capW = thrusting ? Math.min(nearCap, lockCap) / Math.max(apW, awayK) : Infinity;   // strict heading in, nearAway times looser heading out
+    const prox = nearI >= 0 ? (1 - sstep(g0, 0, Z * .5)) * L.nearCalm * (thrusting ? apW : 1) : 0;   // close to a winner the engine is gentle, unless you're pushing away from it
     /* orbiting: close to a star you aren't locked onto, its gravity takes over. Sized so a circular orbit at r0 = orbitR × its
        radius takes orbitT seconds: v0 = 2πr0/T and GM = v0²·r0 = 4π²r0³/T², pulling GM/r² toward it. In there the glide drag
        is off (orbits keep going), the engine is a gentle orbitThrust × GM/r0² for nudging between orbits, and speed is held
