@@ -313,8 +313,8 @@ function tick(now) {
     b.vrot.value.setFromMatrix4(camera.matrixWorldInverse).multiply(GQ3); b.px.value = camera.projectionMatrix.elements[0]; b.py.value = camera.projectionMatrix.elements[5]; b.t.value = worldT;
     // from far off the shadow hides completely in the core's own light, and the core blooms instead; up close it's all there
     const dGC = camera.position.distanceTo(GC), F0 = BH.rs * (L.bhFar ?? 25), farK = sstep(dGC, F0, F0 * 3);
-    b.veil.value = farK; coreFlare.material.opacity = farK * (L.bhGlow ?? 1) * (S.mode === 'map' ? .35 : .8); coreFlare.visible = farK > .002;
-    coreFlare.scale.setScalar(Math.max(BH.rs * 30, dGC * .05));   // a fixed slice of the view, so the bloom reads at any distance
+    const g = (L.bhGlow ?? 1) * (S.mode === 'map' ? .35 : .8); b.veil.value = farK; coreFlare.material.opacity = farK * Math.min(1, g); coreFlare.material.color.setRGB(1, .93, .82).multiplyScalar(Math.max(1, g)); coreFlare.visible = farK > .002 && g > 0;   // above 1 it brightens rather than just going opaque
+    coreFlare.scale.setScalar(Math.max(BH.rs * 30, dGC * (L.bhGlowSize ?? 5) / 100));   // a fixed slice of the view, so the bloom reads at any distance
   }
   // the open winner: the screenshot can replace the dot; the lock holds until you let go
   openI = -1; openA = 0;
