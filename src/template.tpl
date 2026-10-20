@@ -16,7 +16,7 @@
 </div>
 <script>/* the splash flickers on like an old tube: each piece its own pattern, length and moment */
 (() => { const r = (a, b) => a + Math.random() * (b - a); let t = r(.15, .35);
-  document.querySelectorAll('#intro .flk, #intro .go > *').forEach(e => { const go = !!e.closest('.go'); e.style.setProperty('--fk', 'flk' + (1 + (Math.random() * 3 | 0))); e.style.setProperty('--fd', r(.55, 1.2).toFixed(2) + 's'); e.style.setProperty('--fdl', (go ? r(0, .35) : (t += r(.1, .45))).toFixed(2) + 's') }) })();
+  document.querySelectorAll('#intro .flk').forEach(e => { const go = !!e.closest('.go'); e.style.setProperty('--fk', 'flk' + (1 + (Math.random() * 3 | 0))); e.style.setProperty('--fd', r(.55, 1.2).toFixed(2) + 's'); e.style.setProperty('--fdl', (go ? r(0, .35) : (t += r(.1, .45))).toFixed(2) + 's') }) })();
 </script>
 <div id="skipHint" aria-hidden="true">Esc to skip</div>
 <script type="module">
