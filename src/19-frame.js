@@ -1,5 +1,6 @@
 /* ───────────────────────── every frame ───────────────────────── */
-let coreGlowV = { k: 0, s: 1 }, mapK = 0;   // the core glow's strength and size, for its volumetric version
+let coreGlowV = { k: 0, s: 1 }, mapK = 0;
+const shipCam = new THREE.PerspectiveCamera();   // the ship layer's camera: the main one, with a near plane small enough for the tiny ship   // the core glow's strength and size, for its volumetric version
 const _v2 = new THREE.Vector2();
 function resize() { renderer.setSize(innerWidth, innerHeight, false); shipRenderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.getDrawingBufferSize(_v2); U.res.value.copy(_v2); U.dpr.value = _v2.y / Math.max(1, innerHeight) }
 function setDpr(d, force) { d = Math.max(.5, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); shipRenderer.setPixelRatio(d); resize() } }
@@ -211,9 +212,9 @@ function engineLook(dt) {
   const thrNow = thrusting && booted && S.mode === 'fly', spNow = player.vel.length(); if (thrNow && !engineLook.was) engineLook.burst = Math.max(engineLook.burst || 0, 1 - .85 * sstep(Math.log10(Math.max(1, spNow)), 2, 5.3)); engineLook.was = thrNow;   // a push from standstill kicks hard; at speed only a little
   if (boosting && !engineLook.wasB) engineLook.burst = Math.max(engineLook.burst || 0, 1.1); engineLook.wasB = boosting;   // boost always booms engineLook.burst = (engineLook.burst || 0) * Math.exp(-dt / Math.max(.05, L.flareBurstTime ?? .5));
   const spK = sstep(Math.log(Math.max(150, player.vel.length())), Math.log(150), Math.log(Math.max(300, L.cruiseSpeed))), sp = 1 + (L.flareSpeed ?? 1) * (spK - .3), bu = engineLook.burst * (L.flareBurst ?? 1.2);
-  const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2 * Math.max(.3, sp) * (1 + bu * .5) * (1 + igniteK * 1.2);   // ignition: a flash out of the engine
-  fu.spk.value = L.flareSparkle ?? 1; fu.rate.value = L.flareRate ?? 2; fu.glow.value = (L.flareGlow ?? 1) * (1 + bu * .6) * (1 + igniteK * 1.2);
-  fu.col.value.copy(_fc); fu.k.value = L.flare * vis * (on * Math.max(.3, sp) * (1 + bu) + igniteK * (L.igniteBloom ?? 1.5)); fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px; fu.q.value = px * 3;
+  const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2 * Math.max(.3, sp) * (1 + bu * .5);
+  fu.spk.value = L.flareSparkle ?? 1; fu.rate.value = L.flareRate ?? 2; fu.glow.value = (L.flareGlow ?? 1) * (1 + bu * .6);
+  fu.col.value.copy(_fc); fu.k.value = L.flare * vis * Math.max(on * Math.max(.3, sp) * (1 + bu), igniteK * .6); fu.ig.value = igniteK * (L.igniteBloom ?? 1.5);   // ignition flares the point and spikes only fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px; fu.q.value = px * 3;
   flare.position.copy(mouth).addScaledVector(back, avatar.scale.x * .06); flare.scale.setScalar(px * 3 * 2 * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight) * d); flare.visible = S.mode === 'fly' && fu.k.value > .002;
 }
 
@@ -393,7 +394,7 @@ function tick(now) {
     }
   }
   PU.beta.value = fly ? Math.min(1, beta * L.relativity) : 0; PU.ab.value += ((fly ? Math.min(1.5, player.cruise * .35 + beta * 1.2 + boostK * .8) * L.aberr : 0) - PU.ab.value) * Math.min(1, dt * 4);
-  updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { pipeline.render(); shipRenderer.render(shipScene, camera) } perf.ms = performance.now() - t0;
+  updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { if (!(intro.active && veil.material.opacity > .999)) pipeline.render(); shipCam.copy(camera); shipCam.near = camera.near * SHIP_SC * .1; shipCam.far = 2e5; shipCam.updateProjectionMatrix(); shipRenderer.render(shipScene, shipCam) } perf.ms = performance.now() - t0;   // under the opening's black veil the galaxy isn't drawn at all
 }
 let loopErrs = 0;
 function loop(now) { requestAnimationFrame(loop); if (!booted && !introActive) { last = now; return }   // nothing to draw behind the splash: leave the GPU to the loading

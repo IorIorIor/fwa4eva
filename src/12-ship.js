@@ -165,18 +165,18 @@ function makeAvatar(geo = ARROW) {
   g.userData.nav = [dot(0xff4a4a, at(geo.nav[0])), dot(0x4aff8a, at(geo.nav[1])), dot(0xffffff, at(geo.nav[2]))];
   return g;
 }
-let SHIP_LEN = (Math.max(...ARROW.pts.map(p => p[1])) - Math.min(...ARROW.pts.map(p => p[1]))) * .68 * SHIP_K;   // tip to tail, in world units
-const avatar = makeAvatar(); avatar.scale.setScalar(.68 * SHIP_K); shipScene.add(avatar);   // on the ship layer, over the HUD
+let SHIP_LEN = (Math.max(...ARROW.pts.map(p => p[1])) - Math.min(...ARROW.pts.map(p => p[1]))) * .68 * SHIP_K * SHIP_SC;   // tip to tail, in world units
+const avatar = makeAvatar(); avatar.scale.setScalar(.68 * SHIP_K * SHIP_SC); shipScene.add(avatar);   // on the ship layer, over the HUD
 let shipK = 0;   // which pointer you fly
 function setShip(k) {   // swap the ship's shape in place (same group, same materials), keeping the lights, engine and trail hooks
   k = Math.max(0, Math.min(CURSORS.length - 1, k | 0)); shipK = k; ARROW = cursorGeo(CURSORS[k]); store.set('sotd-ship-k', String(k));
   const ng = makeAvatar(ARROW); avatar.clear(); [...ng.children].forEach(c => avatar.add(c)); avatar.userData = ng.userData;
-  SHIP_LEN = (Math.max(...ARROW.pts.map(p => p[1])) - Math.min(...ARROW.pts.map(p => p[1]))) * .68 * SHIP_K; avatar.userData.nav.forEach(b => b.visible = !!LOOK.nav);
+  SHIP_LEN = (Math.max(...ARROW.pts.map(p => p[1])) - Math.min(...ARROW.pts.map(p => p[1]))) * .68 * SHIP_K * SHIP_SC; avatar.userData.nav.forEach(b => b.visible = !!LOOK.nav);
 }
 /* the engine flare: a hard white point, a wide bloom round it and thin diffraction spikes, all sized in screen pixels so it
    reads the same at any distance. It sits at the mouth of the hole and only shows while you can see into it. */
 const flare = (() => {
-  const u = { col: uniform(new C3(1, .4, .4)), k: uniform(0), n: uniform(4), turn: uniform(Math.PI / 4), px: uniform(280), spk: uniform(1), rate: uniform(2), glow: uniform(1), half: uniform(0), q: uniform(840) };
+  const u = { col: uniform(new C3(1, .4, .4)), k: uniform(0), n: uniform(4), turn: uniform(Math.PI / 4), px: uniform(280), spk: uniform(1), rate: uniform(2), glow: uniform(1), half: uniform(0), q: uniform(840), ig: uniform(0) };
   const m = new THREE.SpriteNodeMaterial({ transparent: true, depthWrite: false, depthTest: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor });
   m.colorNode = Fn(() => {
     const p = uv().sub(.5).mul(u.q), r = length(p), L = u.px.mul(.5), spikes = float(0).toVar();   // the quad (q px) is three times the spikes, so the glow has room to fade out
@@ -187,7 +187,8 @@ const flare = (() => {
       const tw = sin(U.now.mul(u.rate).mul(1 + j * .37).add(j * 2.1)).mul(.5).add(.5), gl = pow(sin(along.div(L).mul(18).sub(U.now.mul(u.rate).mul(3 + j))).mul(.5).add(.5), 6);
       spikes.addAssign(exp(across.div(w).pow(2).negate()).mul(fall).mul(step(float(j).add(.5), u.n.mul(.5))).mul(u.spk.mul(tw.sub(.6).add(gl.mul(.8))).add(1).max(.15)));
     }
-    const core = exp(r.div(1.5).pow(2).negate()), bloomIn = exp(r.div(L.mul(.022)).negate()).mul(u.glow), bloomOut = exp(r.div(L.mul(.15).mul(u.glow.sqrt().min(2.2))).negate()).mul(u.glow.min(3));
+    spikes.mulAssign(u.ig.mul(1.5).add(1));   // ignition: the spikes flare
+    const core = exp(r.div(1.5).pow(2).negate()).mul(u.ig.mul(8).add(1)), bloomIn = exp(r.div(L.mul(.022)).negate()).mul(u.glow), bloomOut = exp(r.div(L.mul(.15).mul(u.glow.sqrt().min(2.2))).negate()).mul(u.glow.min(3));
     const c = mix(u.col, vec3(1), .55).mul(spikes.mul(1.1)).add(vec3(1).mul(core.mul(6))).add(mix(u.col, vec3(1), .35).mul(bloomIn.mul(1.1))).add(u.col.mul(bloomOut.mul(.4)));
     const cc = clamp(c.mul(u.k).mul(smoothstep(u.q.mul(.5), u.q.mul(.3), r)), 0, 1);   // nothing reaches the quad's edge
     return vec4(cc, max(max(cc.r, cc.g), cc.b));   // light on the transparent ship layer: alpha covers the colour

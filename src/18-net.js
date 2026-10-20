@@ -6,7 +6,7 @@ let PILOT_HUE = (() => { let h = parseInt(store.get('sotd-hue'), 10); if (!(h >=
 Net.self.hue = PILOT_HUE;
 const PEER_N = 160, _pc = new C3(), _pd = new V3(), _ps = new V3(), _pe = new V3();
 function peerViz(hue) {
-  const g = makeAvatar(); g.scale.setScalar(.68 * SHIP_K); g.userData.nav.forEach(b => b.visible = false); scene.add(g);
+  const g = makeAvatar(); g.scale.setScalar(.68 * SHIP_K * SHIP_SC); g.userData.nav.forEach(b => b.visible = false); scene.add(g);
   const col = new C3().setHSL(hue / 360, 1, .6), fl = g.userData.flame; fl.material = fl.material.clone(); fl.material.color.copy(col); g.userData.hole.col.value.copy(col); g.userData.hole.on.value = .5; g.userData.emit.material.color.copy(col); g.userData.emit.material.opacity = .4;
   const pos = new Float32Array(PEER_N * 6), cl = new Float32Array(PEER_N * 6), geo = new THREE.BufferGeometry(), idx = [];
   for (let k = 0; k < PEER_N - 1; k++) { const a = k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2) } geo.setIndex(idx);

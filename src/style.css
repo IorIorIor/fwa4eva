@@ -450,3 +450,4 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 #rmPanel .ships button.lock:hover{background:rgba(255,255,255,.04);color:#e9e9e6}
 #rmPanel .rk{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.06em}
 #gotPill.unlock::after{content:attr(data-new);display:block;margin-top:4px;font-family:var(--mono);font-size:11px;color:#ffd99a;letter-spacing:.08em;text-transform:uppercase}
+#intro button,#intro .go #enter{cursor:default}   /* Start keeps the plain pointer: it's about to become your ship */

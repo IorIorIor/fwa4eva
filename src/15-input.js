@@ -90,7 +90,7 @@ function zoom(dy, x = innerWidth / 2, y = innerHeight / 2) {
   if (P && P.distanceTo(orbit.target) < orbit.dist * 8) orbit.target.sub(P).multiplyScalar(k).add(P);   // the point under the cursor stays put
   orbit.dist = d1;
 }
-canvas.addEventListener('wheel', e => { e.preventDefault(); if (S.mode === 'map') zoom(e.deltaY, e.clientX, e.clientY); else rig.dist = Math.max(1.2, Math.min(9, rig.dist * Math.exp(e.deltaY * .001))) }, { passive: false });
+canvas.addEventListener('wheel', e => { e.preventDefault(); if (S.mode === 'map') zoom(e.deltaY, e.clientX, e.clientY); else rig.dist = Math.max(1.2 * SHIP_SC, Math.min(9 * SHIP_SC, rig.dist * Math.exp(e.deltaY * .001))) }, { passive: false });
 ['keydown', 'mousemove', 'pointerdown', 'wheel', 'touchstart'].forEach(t => addEventListener(t, () => { lastInput = performance.now() }, { passive: true }));
 addEventListener('keydown', e => {
   if (e.target.matches('input,select,textarea')) return;

@@ -28,20 +28,16 @@ const intro = {
     // every time: the ship faces the galaxy's core and the camera's frame is the ship's own, so the opening always looks the same
     aimAt(GC.clone().sub(player.pos), 1); player.base.copy(rig.q); player.quat.copy(rig.q); player.vel.set(0, 0, 0);
     camera.fov = LOOK.fov; camera.updateProjectionMatrix();
-    this.D0 = .503 * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 21);   // the arrow about 21 px tall: a real pointer's size
+    this.D0 = .503 * SHIP_SC * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 21);   // the arrow about 21 px tall: a real pointer's size
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
-    INTRO_END.set(0, .55, 2.1).multiplyScalar(LOOK.introDist ?? .5); this.lit = false;   // where the opening ends up: close behind the pointer
+    INTRO_END.set(0, .55, 2.1).multiplyScalar((LOOK.introDist ?? .5) * SHIP_SC); this.lit = false;   // where the opening ends up: close behind the pointer
     this.goal = null; this.av.x = this.av.y = 0;
     this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
     document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.p = 1;
-    if (LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d()))) {   // first the logo: it sits where the splash's logo was, and the camera dives through it onto the pointer
-      this.at = null; this.update(0); this.q0.copy(camera.quaternion);
-      const D0 = this.D0, hL = D0 * 2.5, Dv = D0 * 6; this.Bs = Dv + hL - D0;
-      const Wl = this.logoAt.w / innerHeight * 2 * Dv * Math.tan(LOOK.fov * Math.PI / 360);
-      logo3d.position.copy(player.pos).addScaledVector(_iu.set(0, 1, 0).applyQuaternion(rig.q), hL); logo3d.quaternion.copy(this.q0);
-      logo3d.scale.set(Wl / 509, Wl / 509, Wl / 509 * (LOOK.logoDepth ?? .12)); logo3d.visible = true;
-      this.at = { x: this.logoAt.x, y: this.logoAt.y }; this.p = 0;
-    }
+    // the logo: it starts exactly where the splash's was and flies at the camera, its W passing right over you, while the
+    // pointer is already yours at the click and the camera swings in behind it
+    this.lt = -1; if (LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d()))) { this.lt = 0; logo3d.visible = true }
+    setDpr(.5, true); this.lowDpr = true;   // nothing but black, the pointer and the logo to draw at first: the lowest resolution is plenty
     this.update(0);
     if (this.at && this.p >= 1) {   // shift the frame so the pointer's tip, not its middle, sits exactly on the click
       camera.clearViewOffset(); camera.updateMatrixWorld(); avatar.updateMatrixWorld(true);
@@ -73,6 +69,8 @@ const intro = {
         const K = 90 * (LOOK.introSpring ?? 1), C = 2 * Math.sqrt(K) * .78, h = Math.min(dt, 1 / 30);
         for (const a of ['x', 'y']) { this.av[a] += ((this.goal[a] - this.at[a]) * K - this.av[a] * C) * h; this.at[a] += this.av[a] * h }
       }
+      if (this.lt >= 0) this.logoFly(dt);
+      if (this.lowDpr && this.t >= .27) { this.lowDpr = false; setDpr(Math.min(LOOK.maxDpr, devicePixelRatio || 1), true) }   // full resolution back just before the galaxy shows
       if (this.at) { const k = 1 - sstep(this.t, .12, (reduceMotion ? 1 : on) * .95), W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }   // the pointer still follows your mouse at first, less and less as the camera swings in behind it
       veil.material.opacity = 1 - sstep(this.t, .3, .9); veil.scale.setScalar(camera.position.distanceTo(player.pos) + .45);
       emitGlow = quint(sstep(this.t, on - .26, on));
@@ -82,6 +80,14 @@ const intro = {
       if (this.t >= (reduceMotion ? 1 : on)) this.finish();   // the camera has all but landed: yours to fly (what's left of the move is too small to see)
     }
     camera.updateMatrixWorld();
+  },
+  logoFly(dt) {   // the logo in the camera's own frame: from its splash spot and size, accelerating straight at you and past
+    const T = Math.max(.5, LOOK.logoTime ?? 6); this.lt += dt; const q = Math.min(1, this.lt / T), e = Math.pow(q, 2.4), Dv = this.D0 * .6;
+    const th = Math.tan(LOOK.fov * Math.PI / 360), W = innerWidth, H = innerHeight, x0 = (this.logoAt.x / W * 2 - 1) * th * W / H * Dv, y0 = (1 - this.logoAt.y / H * 2) * th * Dv;
+    const z = -Dv * (1 - e) + Dv * .12 * e, s = this.logoAt.w / H * 2 * Dv * th / 509;
+    logo3d.position.set(x0 * (1 - e), y0 * (1 - e), z).applyQuaternion(camera.quaternion).add(camera.position); logo3d.quaternion.copy(camera.quaternion); logo3d.scale.set(s, s, s * (LOOK.logoDepth ?? .12));
+    const bump = sstep(this.lt, T * .55, T) * (1 - sstep(this.lt, T, T * 1.6)); camera.fov = LOOK.fov + ((LOOK.logoFov ?? 125) - LOOK.fov) * bump * .6; camera.updateProjectionMatrix();   // the view flares wide as it passes
+    if (this.lt > T * 1.6) { logo3d.visible = false; this.lt = -1; camera.fov = LOOK.fov; camera.updateProjectionMatrix() }
   },
   // the dive: straight down the axis onto the pointer, through the logo, the FOV flaring wide as you pass it and settling as you land
   logoStep(dt) {
@@ -95,7 +101,7 @@ const intro = {
     if (this.p >= 1) { logo3d.visible = false; this.at = null; camera.clearViewOffset(); camera.fov = LOOK.fov; camera.updateProjectionMatrix() }
   },
   finish() {
-    this.p = 1; if (logo3d) logo3d.visible = false;
+    this.p = 1; if (logo3d) logo3d.visible = false; this.lt = -1; if (this.lowDpr) { this.lowDpr = false; setDpr(Math.min(LOOK.maxDpr, devicePixelRatio || 1), true) }
     if (!this.active) return; this.active = introActive = false; veil.visible = false; emitGlow = 1; camera.clearViewOffset(); this.at = null;
     camRel.copy(INTRO_END); camRelV.set(0, 0, 0); if (!this.hud) { document.body.classList.remove('intro'); flickIn() } if (!booted) handOver();
   },

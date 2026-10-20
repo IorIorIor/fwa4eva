@@ -9,7 +9,7 @@ const player = { pos: HOME_P.clone(), vel: new V3(), quat: new Q4(), base: new Q
 const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist: 30, quat: new Q4() };
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
-const camRel = new V3(0, .8, 3.4), camRelV = new V3(), prevVel = new V3();
+const camRel = new V3(0, .8, 3.4).multiplyScalar(SHIP_SC), camRelV = new V3(), prevVel = new V3();
 let holdSp = -1, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
@@ -95,7 +95,8 @@ function updatePlayer(dt) {
   else if (!auto && (gasOn || (L.follow && lockI < 0))) steerTo = aimQ(_rf.set(0, 0, -1).applyQuaternion(rig.q));                // the nose follows the reticle
   else if (auto && p.vel.lengthSq() > 4) steerTo = aimQ(p.vel.clone().normalize());
   let turnAmt = 0;
-  if (steerTo) { const ang = p.base.angleTo(steerTo); if (!auto && pedal) turnAmt = sstep(ang, .06, .5); if (ang > 1e-4) { const rate = L.turnRate * (1 - L.turnHeavy * sstep(sp0, 3000, 800000)) * (1 + (L.turnSlow ?? 2.5) * (1 - sstep(sp0, 40, 4000))); p.base.slerp(steerTo, Math.min(1, rate * dt / ang)) } }
+  const obT = L.orbit && !L.rings && nearI >= 0 && lockI !== nearI ? 1 - sstep(nearCD, starR(nearI) * Math.max(L.orbitZone, L.orbitR * 1.5) * .6, starR(nearI) * Math.max(L.orbitZone, L.orbitR * 1.5)) : 0;   // inside a star's gravity
+  if (steerTo) { const ang = p.base.angleTo(steerTo); if (!auto && pedal) turnAmt = sstep(ang, .06, .5); if (ang > 1e-4) { const rate = L.turnRate * (1 - L.turnHeavy * sstep(sp0, 3000, 800000)) * (1 + (L.turnSlow ?? 2.5) * (1 - sstep(sp0, 40, 4000))) * (1 + 9 * obT * (1 - sstep(sp0, 20, 2000))); p.base.slerp(steerTo, Math.min(1, rate * dt / ang)) } }   // in a star's gravity, from a standstill you turn ten times quicker
   fwd.set(0, 0, -1).applyQuaternion(p.base);
   const braking = fw < 0;
   // W drives along the nose; boost on its own keeps the course you're already on
@@ -137,7 +138,7 @@ function updatePlayer(dt) {
     if (turnAmt > 0) { const capC = T1 / T2 * Math.min(1, L.steerCap / V1); if (p.cruise > capC) p.cruise -= (p.cruise - capC) * Math.min(1, turnAmt * L.steerSlow * 2.5 * dt) }   // steering bleeds the build-up back to cruise
     const vC = vAt(p.cruise) * (1 + boostK * L.boostTop), spNow = p.vel.length();
     const accel = (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
-    p.vel.addScaledVector(wish, (accel + (GM / (oR * oR || 1) * L.orbitThrust - accel) * ob) * dt);
+    p.vel.addScaledVector(wish, (accel + (GM / (oR * oR || 1) * L.orbitThrust - accel) * ob) * (1 - .5 * obT) * dt);   // and accelerate half as hard
     if (gasOn) { const vf = p.vel.dot(fwd); tmp.copy(p.vel).addScaledVector(fwd, -vf); p.vel.addScaledVector(tmp, -(1 - Math.exp(-2.8 * dt))) }
     p.vel.multiplyScalar(Math.exp(-(braking ? (L.brakeStr ?? 5.5) : thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
     if (keys.x && !thrusting && !braking) { if (holdSp < 0) holdSp = p.vel.length(); p.vel.copy(fwd).multiplyScalar(holdSp); p.cruise = Math.max(p.cruise, cAt(holdSp)) } else holdSp = -1;   // X: hold the speed you have, along the nose
@@ -198,7 +199,7 @@ function updateCamera(dt) {
     if (camNear > 0) { if (booted && thrusting) camNearGo = true; if (camNearGo) { camNear = Math.max(0, camNear - dt / 3.5); if (!camNear) camNearGo = false } tmp2.lerp(INTRO_END, ease(camNear)) }   // after the intro the camera stays close until your first push
     const k = 60 / Math.max(.15, L.elastic), c = 2 * Math.sqrt(k) * .62;                    // underdamped: a little overshoot
     camRelV.addScaledVector(tmp2.sub(camRel), k * dt).multiplyScalar(Math.exp(-c * dt));
-    _sd.copy(player.vel).sub(prevVel).applyQuaternion(_iq.copy(rig.quat).invert()); prevVel.copy(player.vel); const kick = Math.min(_sd.length(), 400); if (kick > 1e-3) camRelV.addScaledVector(_sd.setLength(kick), -.06 * L.elastic * SHIP_K);   // acceleration kicks the camera back
+    _sd.copy(player.vel).sub(prevVel).applyQuaternion(_iq.copy(rig.quat).invert()); prevVel.copy(player.vel); const kick = Math.min(_sd.length(), 400); if (kick > 1e-3) camRelV.addScaledVector(_sd.setLength(kick), -.06 * L.elastic * SHIP_K * SHIP_SC);   // acceleration kicks the camera back
     camRel.addScaledVector(camRelV, dt); const maxL = rig.dist * pull * 2.2; if (camRel.length() > maxL) camRel.setLength(maxL);
     tmp.copy(camRel).applyQuaternion(rig.quat).add(player.pos);
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur || 1.2); const e = ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tmp, player.pos, e); else camera.position.lerpVectors(tween.fp, tmp, e); camera.quaternion.copy(tween.fq).slerp(rig.quat, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }

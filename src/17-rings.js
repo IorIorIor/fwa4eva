@@ -9,10 +9,16 @@ function ringCheck(p) {   // called by the flight after it moves you
   if (ringIn === nearI) { if (d > R * 1.25) ringIn = -1; return }
   if (d < R * .92 && TA[nearI] === 1) { ringIn = nearI; collect(nearI) }
 }
+function collectSound(v = 1) {   // two quick rising notes, bright and glassy, with a soft whoosh under them
+  if (!AC || AC.state !== 'running' || !master) return; const t = AC.currentTime + .005;
+  [0, 7, 12].forEach((st, k) => { const f = 880 * Math.pow(2, st / 12), o = AC.createOscillator(), g = AC.createGain(); o.type = k ? 'sine' : 'triangle'; o.frequency.setValueAtTime(f * .985, t + k * .055); o.frequency.exponentialRampToValueAtTime(f, t + k * .055 + .03); g.gain.setValueAtTime(0, t + k * .055); g.gain.linearRampToValueAtTime(.18 * v / (1 + k * .5), t + k * .055 + .006); g.gain.exponentialRampToValueAtTime(.0001, t + k * .055 + .55); o.connect(g); g.connect(master); o.start(t + k * .055); o.stop(t + k * .055 + .6) });
+  const n = AC.createBufferSource(), b = AC.createBuffer(1, AC.sampleRate * .4, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+  const bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = 'bandpass'; bp.Q.value = 1.2; bp.frequency.setValueAtTime(600, t); bp.frequency.exponentialRampToValueAtTime(3200, t + .35); g.gain.value = .12 * v; n.buffer = b; n.connect(bp); bp.connect(g); g.connect(master); n.start(t);
+}
 function collect(i) {
-  player.vel.multiplyScalar(1 - (LOOK.ringSlow ?? .06));
+  player.vel.multiplyScalar(1 + (LOOK.ringBurst ?? .2)); engineLook.burst = Math.max(engineLook.burst || 0, 1.3); igniteK = Math.max(igniteK, .6); collectSound(GOT[i] ? .6 : 1);   // a kick: speed, the engine flaring, a bright little sound
   gotCard = { i, t: LOOK.ringCard ?? 7 }; showCard(i);
-  starPos(i, tmp).project(camera); tingle(galOf(D[i].year), i, Math.max(-1, Math.min(1, tmp.x))); buzz(18);
+  buzz(18);
   if (GOT[i]) return; GOT[i] = 1; gotN++; stars.aGot.needsUpdate = true;
   store.set('sotd-got', JSON.stringify(D.flatMap((d, k) => GOT[k] ? [d.date] : [])));
   const el = $('gotPill'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); rings.show();

@@ -2,7 +2,7 @@
    One galaxy. Time spirals inward: 2000 sits on the rim, today circles the black hole at the core.
    Everything random is drawn from one seeded stream in a fixed order, so the sky is the same on every visit
    background stars → haze → nebulae → lanes → arcs → winners → extra nebulae and lanes. */
-const SHIP_K = .1, PLAYER_R = 2.4 * SHIP_K;              // the pilot: everything else is measured against this
+const SHIP_K = .1, PLAYER_R = 2.4 * SHIP_K, SHIP_SC = .1;   // SHIP_SC: the ship and the camera's distance to it, scaled together (it looks the same size, it's just much smaller in the galaxy)              // the pilot: everything else is measured against this
 const SPIRAL = !!SHAPE.spiral;   // one single spiral carrying the whole timeline, instead of arms crossing date rings
 const GAL_OUT = 850000 * (SPIRAL ? SHAPE.ssize : 1), GAL_R0 = SHAPE.r0 * (SPIRAL ? SHAPE.shole : 1), GAL_LEN = GAL_OUT - GAL_R0, WIND = SHAPE.wind, ARMS = SPIRAL ? 1 : SHAPE.arms, UNI_D = 2.4e6;
 const SP_TW = 2 * Math.PI * 5.4 * SHAPE.turns;   // the single spiral's total turn, core to rim (one turn per five years by default)
