@@ -8,6 +8,7 @@ and gives quick visual feedback; keep replies short).
 
 - `npm run dev` → http://localhost:5173. Reloads on any `src/` change; the multiplayer relay runs on the same port.
 - `npm run build` → `dist/`; `npm start` serves `dist/` + relay on `$PORT` (what Railway runs, see `railway.json`).
+- Commit and push straight to `main` (Laurens's call); Railway deploys it.
 - `npm run build:single` → `dist-single/index.html`, one self-contained page; also runs eslint `no-undef` on the
   concatenated source. Run it after every change: it is the only lint.
 
