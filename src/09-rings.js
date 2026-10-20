@@ -63,15 +63,18 @@ const spiralLine = SPIRAL ? (() => {
 })() : null;
 // month dividers along the spiral timeline: a short tick across the line at the start of every month (a longer one each January)
 const monthTicks = SPIRAL ? (() => {
-  const pos = [[], []], at = u => { const r = GAL_R0 + u * GAL_LEN, th = armPhase(r); return [Math.cos(th) * r, Math.sin(th) * r] };
+  const pos = [[], [], []], at = u => { const r = GAL_R0 + u * GAL_LEN, th = armPhase(r); return [Math.cos(th) * r, Math.sin(th) * r] };
   YEARS.forEach(y => { for (let m = 0; m < 12; m++) { const t = Date.UTC(y, m, 1); if (t > Date.now()) return; const u = yearU(t); if (u <= .001) continue;
-    const [x0, z0] = at(u), [x1, z1] = at(u + .0004), tx = x1 - x0, tz = z1 - z0, l = Math.hypot(tx, tz) || 1, nx = -tz / l, nz = tx / l, k = m ? 1 : 2.2;
-    pos[m ? 0 : 1].push(x0 - nx * k, 0, z0 - nz * k, x0 + nx * k, 0, z0 + nz * k) } });   // unit-length ticks, scaled by the length uniform below; months and year lines (each January) apart
-  const u = { a: uniform(0), ya: uniform(0), len: uniform(1500) };
-  const mk = (p, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); const m = new THREE.LineBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }); m.positionNode = positionGeometry; m.colorNode = vec3(.92, .95, 1); m.opacityNode = op; const l = new THREE.LineSegments(g, m); l.userData.base = new Float32Array(p); l.frustumCulled = false; return l };
-  const mesh = mk(pos[0], u.a), years = mk(pos[1], u.ya); mesh.add(years); mesh.years = years;   // the year lines stay on at any zoom; months only up close
-  mesh.position.copy(GC); mesh.quaternion.copy(GQ); layer(mesh, scene, 1); years.layers.mask = mesh.layers.mask; years.renderOrder = mesh.renderOrder; mesh.u = u; mesh.visible = false;
-  mesh.setLen = (L, YL = L * 2.2) => { const key = L + ',' + YL; if (mesh.userData.len === key) return; mesh.userData.len = key; [[mesh, L], [years, YL / 2.2]].forEach(([o, L]) => { const base = o.userData.base, ga = o.geometry.attributes.position, p = ga.array; for (let i = 0; i < p.length; i += 6) { const cx = (base[i] + base[i + 3]) / 2, cz = (base[i + 2] + base[i + 5]) / 2; p[i] = cx + (base[i] - cx) * L; p[i + 2] = cz + (base[i + 2] - cz) * L; p[i + 3] = cx + (base[i + 3] - cx) * L; p[i + 5] = cz + (base[i + 5] - cz) * L } ga.needsUpdate = true }) };   // YL: the year lines' own length
+    const [x0, z0] = at(u), [x1, z1] = at(u + .0004), tx = x1 - x0, tz = z1 - z0, l = Math.hypot(tx, tz) || 1, nx = -tz / l, nz = tx / l;
+    pos[m ? 0 : y % 5 ? 1 : 2].push(x0 - nx, 0, z0 - nz, x0 + nx, 0, z0 + nz) } });   // unit-length ticks across the line, scaled by their length below: months, years, and every fifth year
+  const u = { a: uniform(0), ya: uniform(0), fade: uniform(.6) }, vE = varying(attribute('aE', 'float'));
+  const mk = (p, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setAttribute('aE', new THREE.Float32BufferAttribute(p.map((_, k) => k % 6 < 3 ? -1 : 1).filter((_, k) => k % 3 === 0), 1));
+    const m = new THREE.LineBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }); m.positionNode = positionGeometry; m.colorNode = vec3(.92, .95, 1);
+    m.opacityNode = op.mul(smoothstep(1, float(1).sub(u.fade).clamp(0, .999), abs(vE)).mul(u.fade).add(u.fade.oneMinus()));   // each line fades out toward both its tips
+    const l = new THREE.LineSegments(g, m); l.userData.base = new Float32Array(p); l.frustumCulled = false; return l };
+  const mesh = mk(pos[0], u.a), years = mk(pos[1], u.ya), eras = mk(pos[2], u.ya); mesh.add(years, eras); mesh.years = years;   // the year lines stay on at any zoom; months only up close
+  mesh.position.copy(GC); mesh.quaternion.copy(GQ); layer(mesh, scene, 1); years.renderOrder = eras.renderOrder = mesh.renderOrder; mesh.u = u; mesh.visible = false;
+  mesh.setLen = (L, YL = L * 2.2, EL = YL) => { const key = L + ',' + YL + ',' + EL; if (mesh.userData.len === key) return; mesh.userData.len = key; [[mesh, L], [years, YL], [eras, EL]].forEach(([o, L]) => { const base = o.userData.base, ga = o.geometry.attributes.position, p = ga.array; for (let i = 0; i < p.length; i += 6) { const cx = (base[i] + base[i + 3]) / 2, cz = (base[i + 2] + base[i + 5]) / 2; p[i] = cx + (base[i] - cx) * L; p[i + 2] = cz + (base[i + 2] - cz) * L; p[i + 3] = cx + (base[i + 3] - cx) * L; p[i + 5] = cz + (base[i + 5] - cz) * L } ga.needsUpdate = true }) };   // half-lengths in u: months, years, every fifth year
   return mesh;
 })() : null;
 

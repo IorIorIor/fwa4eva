@@ -62,7 +62,7 @@ const armSlope = r => (armPhase(r * 1.01) - armPhase(r / 1.01)) / (2 * Math.log(
 // arms widen toward the rim: 1 at the start of the arms, 1 + widen at the rim (shape setting, so fixed once built)
 const armWAt = r => 1 + SHAPE.widen * Math.pow(Math.min(1, Math.max(0, (r - GAL_R0) / GAL_LEN)), SHAPE.wcurve);
 function galPoint(g, arm, u, dr, dth, y, out = new V3()) {
-  const wk = armWAt(GAL_R0 + u * GAL_LEN); dr *= wk; dth *= wk;   // everything placed across an arm spreads wider further out
+  const wk = armWAt(GAL_R0 + u * GAL_LEN) / (SHAPE.widen + 1); dr *= wk; dth *= wk;   // everything placed across an arm spreads wider further out (the rim keeps its width, the inner arms draw in)
   const r = Math.max(GAL_R0 * .3, GAL_R0 + u * GAL_LEN + dr), th = arm * 2 * Math.PI / g.arms + armPhase(r) + dth;
   return out.set(Math.cos(th) * r, y, Math.sin(th) * r).applyQuaternion(g.quat).add(g.center);
 }
@@ -143,7 +143,7 @@ const P = new Float32Array(N * 3), CR = new Float32Array(N), SIZE = new Float32A
 // every winner sits on the timeline: its distance from the core is its date, on one of the arms
 D.forEach((d, i) => {
   const u = yearU(d.t), r = GAL_R0 + u * GAL_LEN, s = 7700 + r * .045, arm = (R() * GAL.arms) | 0;
-  const W = SHAPE.bw, H = SHAPE.bh * (2600 + 15000 * Math.exp(-r / 105000)), A = SHAPE.ba;   // the band the winners sit in: width across the arm, height off the disk, spread along it
+  const W = SHAPE.bw, H = SHAPE.bh * (2600 + 15000 * SHAPE.ch * Math.exp(-r / 105000)), A = SHAPE.ba;   // the band the winners sit in: width across the arm, height off the disk, spread along it
   const v = SPIRAL ? galPoint(GAL, 0, u, gauss() * s * .7 * W, gauss() * .1 * A * s / r, gauss() * H)   // on the spiral the date is how far along it you are
     : galPoint(GAL, arm, u, gauss() * s * .2 * W, gauss() * 1.1 * A * s / r, gauss() * H);
   P[i * 3] = v.x; P[i * 3 + 1] = v.y; P[i * 3 + 2] = v.z;

@@ -90,7 +90,7 @@ function updateLabels() {
   const W = innerWidth, H = innerHeight, map = S.mode === 'map', boxes = [], fr = !!LOOK.ringFly; _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   for (const l of labelEls) {
     let fade = 1;
-    if (l.ruler != null) { ringPoint(l.ruler, SPIRAL ? armPhase(GAL_R0 + l.ruler * GAL_LEN) : ruler.th, 0, l.pos); fade = map ? mapLvl[l.lvl] : l.lvl === 2 ? 0 : fr ? 1 : l.lvl === 0 ? ringFarK : 0 }   // dates ride the turning ruler (from far out in flight, the five-year marks)
+    if (l.ruler != null) { ringPoint(l.ruler, SPIRAL ? armPhase(GAL_R0 + l.ruler * GAL_LEN) : ruler.th, 0, l.pos); fade = map ? (l.lvl === 1 && SPIRAL && (LOOK.mapYearLines ?? 1) > 0 ? Math.max(mapLvl[1], LOOK.mapYearLabels ?? 1) : mapLvl[l.lvl]) : l.lvl === 2 ? 0 : fr ? 1 : l.lvl === 0 ? ringFarK : 0 }   // dates ride the turning ruler (from far out in flight, the five-year marks)
     let show = fade > .04 && !(map ? (l.mapFar && orbit.dist > l.mapFar) : (l.near && !(l.ruler != null && ringFarK > .05) && camera.position.distanceTo(l.pos) > l.near));   // local names only once you're close
     let x = 0, y = 0;
     if (show) { tmp.copy(l.pos).applyMatrix4(_vp); show = tmp.z <= 1 && tmp.z >= -1 && Math.abs(tmp.x) <= 1.1 && Math.abs(tmp.y) <= 1.1; x = Math.round((tmp.x * .5 + .5) * W); y = Math.round((-tmp.y * .5 + .5) * H) }

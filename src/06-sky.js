@@ -138,7 +138,7 @@ const arcs = (() => {
   const m = skyMat({ side: THREE.DoubleSide }), vA = varyingProperty('float', 'vA'), vRim = varyingProperty('float', 'vRim'), vV = varyingProperty('float', 'vV'), vJ = varyingProperty('float', 'vJ'), vRc = varyingProperty('vec3', 'vRc');
   m.vertexNode = Fn(() => {
     const aS = attribute('aS', 'float'), aSide = attribute('aSide', 'float'), aR = ia('aR', 'float');
-    const aWk = armWT(aR), Rr = aR.add(ia('aDr', 'float').mul(u.armW).mul(aWk)), w = u.spin.mul(.0035).mul(sqrt(float(GAL_R0).div(max(Rr, GAL_R0 * .3))));
+    const aWk = armWT(aR).div(SHAPE.widen + 1), Rr = aR.add(ia('aDr', 'float').mul(u.armW).mul(aWk)), w = u.spin.mul(.0035).mul(sqrt(float(GAL_R0).div(max(Rr, GAL_R0 * .3))));
     const th = ia('aTh', 'float').add(ia('aDt', 'float').mul(u.armW).mul(aWk)).add(U.time.mul(w)).add(aS.sub(.5).mul(ia('aLen', 'float')).mul(u.len).mul(.25)).toVar();
     const l = vec3(cos(th).mul(Rr), ia('aY', 'float'), sin(th).mul(Rr)), tl = vec3(sin(th).negate(), 0, cos(th));
     const wp = fromGal(l).toVar(), tw = normalize(U.GQ.mul(tl)), toC = cameraPosition.sub(wp), dist = length(toC).toVar();
@@ -187,7 +187,7 @@ const vol = (() => {
       const rn = length(p.xz);
       If(rn.lessThanEqual(1), () => {
         const rw = max(rn.mul(VOL_S), GAL_R0 * .5), da = abs(fract(atan(p.z, p.x).sub(armPhT(rw)).mul(ARMS / 6.28318).add(.5)).sub(.5)).mul(2);
-        const awv = u.armW.mul(armWT(rw)), arm = exp(da.mul(da).negate().mul(u.armK).div(awv.mul(awv))).mul(smoothstep(u.inner.mul(.2), u.inner, rn)).mul(smoothstep(u.outer, 1, rn).oneMinus());
+        const awv = u.armW.mul(armWT(rw)).div(SHAPE.widen + 1), arm = exp(da.mul(da).negate().mul(u.armK).div(awv.mul(awv))).mul(smoothstep(u.inner.mul(.2), u.inner, rn)).mul(smoothstep(u.outer, 1, rn).oneMinus());
         const vert = exp(p.y.mul(p.y).negate().mul(u.thick));
         const ra = U.time.mul(u.spin).mul(.0035).mul(sqrt(float(GAL_R0).div(max(rw, GAL_R0 * .3)))), ca = cos(ra), sa = sin(ra);   // the same differential orbit as the arcs
         const q = vec3(p.x.mul(ca).add(p.z.mul(sa)), p.y, p.z.mul(ca).sub(p.x.mul(sa))).mul(7).mul(u.noise).toVar();

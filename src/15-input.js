@@ -61,7 +61,7 @@ const endPtr = e => {
     else if (rmenu.panel) { rmenu.close(); if (fly && !down.touch && !locked() && !lockFailed) requestLock() }
     else if (fly && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it (or just take the pointer back)
     else if (fly) { const i = hov(cx, cy); if (i >= 0 && i !== lockI) focus(i); else if (i >= 0) unlock() }   // a star: lock on (again: let go)
-    else { const h = mapHover(e.clientX, e.clientY), i = coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (h.ring) ringZoom(h.ring) }   // map: a star once you're close, else the ring under the cursor, else the menu
+    else { const h = mapHover(e.clientX, e.clientY), i = coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (h.ring) ringZoom(h.ring); else mapZone.click() }   // map: a star once you're close, else the ring under the cursor, else the menu
   }
   if (!ptrs.size) down = null;
 };
@@ -111,6 +111,7 @@ addEventListener('keydown', e => {
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
   if (k === 'r' && !e.repeat) setRings(!LOOK.rings);   // R: rings game on/off
   if (k === 'escape' && tour.on) stopTour();
+  if (k === 'escape' && mapZone.on) mapZone.clear();
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }
   if (k === '/') { e.preventDefault(); keys[k] = false; rmenu.sub('search') }   // / searches
   if ((k === 'arrowleft' || k === 'arrowright') && S.mode === 'fly' && !rmenu.panel) { keys[k] = false; e.preventDefault(); if (!e.repeat) stepByDist(k === 'arrowright' ? 1 : -1) }   // ← a nearer winner, → a farther one (of those in hover reach), locked on or not
