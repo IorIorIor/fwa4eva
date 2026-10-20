@@ -373,7 +373,11 @@ function tick(now) {
       const R = (GAL_R0 + GAL_LEN) * (L.bhPuffR ?? .06), sB = bulgeR * .42 * (L.bulgePuffSpread ?? 1), E = Math.max(sB * 3.2, R * 1.4), cg = 1 + ((L.coreGlows ?? 1) - 1) * coreIn;
       puffVol.mesh.scale.setScalar(E); pv.E.value = E; pv.cam.value.copy(camera.position); puffVol.mesh.worldToLocal(pv.cam.value);
       pv.sB.value = sB; pv.R.value = R; pv.H.value = L.bhPuffH ?? 1; pv.kB.value = .9 * L.bulge * L.bulgePuffs * L.puffVolGlow * cg; pv.kC.value = .6 * (L.bhPuffs ?? 1) * L.puffVolGlow * cg;
-      pv.f.value = 6 * (L.bhPuffD ?? 1) / R / (L.puffVolGrainSize ?? 1); pv.tint.value = L.puffVolTint ?? .5; pv.grain.value = L.puffVolGrain; pv.dust.value = L.puffVolDust; pv.steps.value = L.puffVolSteps;
+      const gs = L.puffVolGrainSize ?? 1, cnt = k => Math.cbrt(Math.max(.5, k) / 16), gm = (base, tex) => Math.min(1, base + (tex ?? 0) * (1 - base));   // the particle puffs' sliders steer the volume too
+      pv.f.value = 6 * (L.bhPuffD ?? 1) * cnt(L.bhPuffN ?? 16) / R / gs / (L.bhPuffSize ?? 1); pv.fB.value = 6 * (L.bulgePuffD ?? 1) * cnt((L.bulgePuffN ?? 6) * 2.7) / sB / gs / (L.bulgePuffSize ?? 1);
+      pv.gC.value = gm(L.puffVolGrain, L.bhPuffTex); pv.gB.value = gm(L.puffVolGrain, L.bulgePuffTex); pv.shC.value = L.bhPuffSoft ?? 1; pv.shB.value = L.bulgePuffSoft ?? 1;
+      pv.vC.value = L.bhPuffVar ?? 0; pv.vB.value = L.bulgePuffVar ?? 0; pv.flC.value = L.bhPuffFlick ?? 0; pv.flB.value = L.bulgePuffFlick ?? 0; pv.tC.value = L.bhPuffTint ?? .5; pv.tB.value = L.bulgePuffTint ?? .5;
+      pv.tint.value = L.puffVolTint ?? .5; pv.grain.value = L.puffVolGrain; pv.dust.value = L.puffVolDust; pv.steps.value = L.puffVolSteps;
     }
   }
   {   // volumetric gas

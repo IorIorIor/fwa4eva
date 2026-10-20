@@ -38,7 +38,7 @@ const corePuffs = (() => {
 })();
 // the same puffs (and the bulge's), raymarched instead: a glowing, self-shadowing cloud with the same shape, its grain from noise
 const puffVol = (() => {
-  const u = { cam: uniform(new V3()), E: uniform(1), sB: uniform(1), kB: uniform(0), R: uniform(1), H: uniform(1), kC: uniform(0), f: uniform(1), grain: uniform(.7), dust: uniform(.6), steps: uniform(32), bh: uniform(BH.sh * 2), tint: uniform(.5) };
+  const u = { cam: uniform(new V3()), E: uniform(1), sB: uniform(1), kB: uniform(0), R: uniform(1), H: uniform(1), kC: uniform(0), f: uniform(1), grain: uniform(.7), fB: uniform(1), gB: uniform(.7), gC: uniform(.7), shB: uniform(1), shC: uniform(1), vB: uniform(0), vC: uniform(0), flB: uniform(0), flC: uniform(0), tB: uniform(.5), tC: uniform(.5), dust: uniform(.6), steps: uniform(32), bh: uniform(BH.sh * 2), tint: uniform(.5) };
   const m = skyMat({ blend: 'premul', side: THREE.BackSide, depthTest: false });
   m.fragmentNode = Fn(() => {
     const ro = u.cam, rd = normalize(positionGeometry.sub(u.cam)).toVar();
@@ -53,9 +53,15 @@ const puffVol = (() => {
       const hD = u.R.mul(exp(r.div(u.R.mul(.35)).pow(2).negate()).mul(.07).add(.02)).mul(u.H).max(1);
       const bul = exp(dot(qb, qb).mul(-.5)).mul(u.kB).div(u.sB);
       const cor = exp(dot(qc, qc).mul(-.5)).mul(.45).add(exp(r.div(u.R.mul(.32)).negate()).mul(exp(x.y.div(hD).pow(2).mul(-.5))).mul(.55)).mul(u.kC).div(u.R);
-      const gr = mix(1, fbm5(x.mul(u.f)).mul(2.2).sub(.35).max(0), u.grain), clr = smoothstep(u.bh, u.bh.mul(2), length(x));
-      const d = bul.add(cor).mul(gr).mul(clr).mul(dw);
-      col.addAssign(T.mul(mix(vec3(1, .8, .58), vec3(1, .93, .82), gr.min(1))).mul(select(u.tint.lessThan(.5), mix(vec3(.72, .86, 1.2), vec3(1), u.tint.mul(2)), mix(vec3(1), vec3(1.2, .9, .62), u.tint.sub(.5).mul(2)))).mul(d)); T.mulAssign(exp(d.mul(u.dust).negate()));
+      // each part keeps its own puff settings: grain size (size, detail, count), mottling (texture), edge (crisp), size variety, brightness variety, colour
+      const grainOf = (f, amt, sh, vr, fl) => { const n = fbm5(x.mul(f)), n2 = noise3(x.mul(f.mul(.43)).add(7.7)), g0 = pow(n.mul(2.2).sub(.35).max(0), sh);
+        const g1 = mix(g0, pow(noise3(x.mul(f.mul(2.6)).add(3.3)).mul(2).sub(.4).max(0), sh), vr.mul(n2));   // size variety: some places finer
+        return mix(1, g1, amt).mul(mix(1, n2.mul(1.8).add(.1), fl)) };
+      const tintOf = k => select(k.lessThan(.5), mix(vec3(.72, .86, 1.2), vec3(1), k.mul(2)), mix(vec3(1), vec3(1.2, .9, .62), k.sub(.5).mul(2)));
+      const grB = grainOf(u.fB, u.gB, u.shB, u.vB, u.flB), grC = grainOf(u.f, u.gC, u.shC, u.vC, u.flC), clr = smoothstep(u.bh, u.bh.mul(2), length(x));
+      const dB = bul.mul(grB), dC = cor.mul(grC), d = dB.add(dC).mul(clr).mul(dw), gr = dB.add(dC).div(bul.add(cor).max(1e-9));
+      const tc = tintOf(u.tB).mul(dB).add(tintOf(u.tC).mul(dC)).div(dB.add(dC).max(1e-9)).mul(tintOf(u.tint).mul(2).sub(1).max(.3));
+      col.addAssign(T.mul(mix(vec3(1, .8, .58), vec3(1, .93, .82), gr.min(1))).mul(tc).mul(d)); T.mulAssign(exp(d.mul(u.dust).negate()));
     });
     return vec4(col, T.oneMinus());
   })();
