@@ -16,11 +16,12 @@ const intro = {
     // every time: the ship faces the galaxy's core and the camera's frame is the ship's own, so the opening always looks the same
     aimAt(GC.clone().sub(player.pos), 1); player.base.copy(rig.q); player.quat.copy(rig.q); player.vel.set(0, 0, 0);
     camera.fov = LOOK.fov; camera.updateProjectionMatrix();
-    this.D0 = .503 * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 36);   // the arrow about 36 px tall, like a pointer
+    this.D0 = .503 * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 21);   // the arrow about 21 px tall: a real pointer's size
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
     this.t = 0; this.glow = 0; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
     document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.update(0);
   },
+  at: null,   // where on screen the pointer starts (the Start button's centre), eased back to the centre as the camera swings
   update(dt) {
     avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = true; avatar.userData.flame.material.opacity = 0;
     if (this.t < 1) {
@@ -33,12 +34,13 @@ const intro = {
       const toShip = _ib.copy(player.pos).sub(camera.position).normalize(), fwd = _ix.set(0, 0, -1).applyQuaternion(rig.q), dir = toShip.lerp(fwd, w).normalize();
       const up = this.upW.copy(this.up0).applyQuaternion(rig.q).lerp(_iu.set(0, 1, 0).applyQuaternion(rig.q), ez).normalize();
       _il.lookAt(_ia.set(0, 0, 0), dir, up); camera.quaternion.setFromRotationMatrix(_il);
+      if (this.at) { const k = 1 - ez, W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }
       veil.material.opacity = 1 - sstep(this.t, .3, .9); veil.scale.setScalar(camera.position.distanceTo(player.pos) + .45);
     } else { veil.visible = false; this.glow = Math.min(1, this.glow + dt / 1.8); emitGlow = quint(this.glow); if (this.glow >= 1) this.finish() }   // then the engine lights
     camera.updateMatrixWorld();
   },
   finish() {
-    if (!this.active) return; this.active = introActive = false; veil.visible = false; emitGlow = 1;
+    if (!this.active) return; this.active = introActive = false; veil.visible = false; emitGlow = 1; camera.clearViewOffset(); this.at = null;
     camRel.copy(INTRO_END); camRelV.set(0, 0, 0); document.body.classList.remove('intro'); flickIn(); handOver();
   },
 };
@@ -63,20 +65,22 @@ if (coarse) $('skipHint').hidden = true;   // touch: the opening just plays
   Object.entries(EXO_KINDS).forEach(([k, K], j) => { const b = K.build(K.P, EXO_SHARED[k] ??= {}); b.obj.scale.setScalar(.02); b.obj.position.set((j - 4) * 60, 0, -900).applyQuaternion(camera.quaternion).add(camera.position); warm.add(b.obj) });
   bodies.mesh.count = 1; bodies.mesh.setMatrixAt(0, new THREE.Matrix4().compose(new V3(0, 0, -900).applyQuaternion(camera.quaternion).add(camera.position), new Q4(), new V3(10, 10, 10)));
   const bar = $('introBar'), steps = 3;
-  for (let s = 0; s < steps; s++) { pipeline.render(); bar.style.strokeDashoffset = 1 - (s + 1) / steps; await new Promise(r => setTimeout(r, 30)) }
+  for (let s = 0; s < steps; s++) { pipeline.render(); if (window.__introProgress) window.__introProgress((s + 1) / steps); else bar.style.strokeDashoffset = 1 - (s + 1) / steps; await new Promise(r => setTimeout(r, 30)) }
   scene.remove(warm); bodies.mesh.count = 0;
 }
 function begin(withSound, e) {
+  { const r = $('enter').getBoundingClientRect(); intro.at = r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null }   // the pointer appears right where Start was
   if (e && e.pointerType !== 'touch' && e.clientX) { mouse.x = e.clientX; mouse.y = e.clientY; mouse.in = true }   // the pointer is already where you clicked: no second click to wake it
   if (withSound) { setMuted(false); audio() }
   if (!coarse && !lockFailed && !TEST) requestLock();
-  $('intro').classList.add('gone'); setTimeout(() => $('intro').hidden = true, 1200);
+  $('intro').hidden = true;   // straight to black: then only the pointer fades in
+  if (!TEST) { shipCanvas.style.transition = 'none'; shipCanvas.style.opacity = 0; void shipCanvas.offsetWidth; shipCanvas.style.transition = ''; requestAnimationFrame(() => requestAnimationFrame(() => { shipCanvas.style.opacity = 1 })) }
   if (!TEST) { intro.start(); const skip = e => { if (e.key !== 'Escape' && e.key !== ' ') return; intro.finish(); removeEventListener('keydown', skip) }; setTimeout(() => addEventListener('keydown', skip), 400) }   // clicks never skip it; Esc or Space does
   else handOver();
 }
 if (TEST) { $('intro').hidden = true; LOOK.adaptive = 0; handOver() }
 else {
-  const enter = $('enter'); document.body.classList.add('ready');
+  const enter = $('enter'); if (window.__introProgress) window.__introProgress(1); else document.body.classList.add('ready');   // the ring opens Start when it closes
   enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); begin(false, e) };
   addEventListener('keydown', function k(e) { if ($('intro').classList.contains('gone')) return removeEventListener('keydown', k); if (e.target.closest && e.target.closest('#intro button')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeEventListener('keydown', k); begin(true) } });
 }

@@ -149,7 +149,7 @@ body.idle #cross{opacity:.18}
 #cross.on .ring,#cross.mag .ring{stroke:var(--flare);opacity:1}
 #cross .ring{transition:stroke .18s,opacity .18s}
 #cross .dot{fill:var(--ink);opacity:.8}
-#boostArc{fill:none;stroke:#fff;stroke-width:1.5;stroke-linecap:round;stroke-dasharray:138.2;opacity:0;transition:opacity .4s}
+#boostArc{fill:none;stroke:#fff;stroke-width:1.5;stroke-linecap:butt;stroke-dasharray:138.2;opacity:0;transition:opacity .4s}
 #cross #hdg line{stroke:var(--ink);stroke-width:1;opacity:.45}
 #cross #hdg line.maj{opacity:.9}
 #cross #cmp{display:none}
@@ -309,3 +309,21 @@ body.ready #intro .go #enter{opacity:1;transform:scale(1)}
 body.ready #intro .go #enter:hover{transform:scale(1.05)}
 #enterQuiet{position:absolute;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);opacity:0;pointer-events:none;transition:opacity .7s ease .5s}
 body.ready #enterQuiet{opacity:1;pointer-events:auto}
+#lock{display:none !important}
+#shipLayer{transition:opacity 1.6s ease}
+#skipHint{display:none !important}
+#intro .ring circle{transition:none}
+
+/* other pilots: a dot in their colour with the distance, pinned to the edge when off screen; P lists them */
+#peerMarks{position:fixed;inset:0;pointer-events:none;z-index:4}
+.pm{position:absolute;left:0;top:0;display:flex;align-items:center;gap:6px;margin:-5px 0 0 -5px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--c);white-space:nowrap}
+.pm i{width:10px;height:10px;border:1px solid var(--c);box-shadow:0 0 10px var(--c)}
+.pm.edge i{background:var(--c)}
+#pilots{top:calc(60px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));width:300px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(14px);font-family:var(--mono);font-size:11px;z-index:9}
+#pilots .ph{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.2);font-family:"FF Good Pro Cond",var(--mono);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+#pilots .ph span{font-family:var(--mono);font-weight:400;letter-spacing:.02em;text-transform:none;color:var(--dim)}
+#pilots .pr{display:grid;grid-template-columns:12px 1fr auto;align-items:center;gap:8px;width:100%;padding:7px 10px;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.1);color:#fff;text-align:left;font:inherit;cursor:pointer}
+#pilots button.pr:hover{background:#fff;color:#000}
+#pilots .pr i{width:10px;height:10px;background:var(--c)}
+#pilots .pr span{color:var(--dim)}
+#pilots .none{display:block;color:var(--dim);cursor:default;line-height:1.5}

@@ -168,7 +168,9 @@ function updateTrail(dt, on) {
   // right at the engine the ribbon is as wide as the hole it comes out of, and it widens to its own width over a few ship lengths
   const holeW = HOLE.r * 2 * avatar.scale.x * L.trHead, blend = avatar.scale.x * 22;
   const put = (p, dir, t, c, a, w, run = 1e9) => {
-    if (v >= TR_MAX) return; _c.copy(camera.position).sub(p); _sdv.crossVectors(dir, _c); const l = _sdv.length(), cl = _c.length(), hw = (w * pxW * cl + (holeW * .5 - w * pxW * cl) * (1 - sstep(run, 0, blend))); if (l > 1e-6) _sdv.multiplyScalar(hw / l); else _sdv.set(0, 0, 0);
+    if (v >= TR_MAX) return; _c.copy(camera.position).sub(p); _sdv.crossVectors(dir, _c); const l = _sdv.length(), cl = _c.length(), hmin = .75 * pxW * cl; let hw = (w * pxW * cl + (holeW * .5 - w * pxW * cl) * (1 - sstep(run, 0, blend)));
+    if (hw < hmin) { a *= hw / hmin; hw = hmin }   // never thinner than about 1.5 px: below that it gets fainter instead, so it fades out smoothly rather than flickering away
+    if (l > 1e-6) _sdv.multiplyScalar(hw / l); else _sdv.set(0, 0, 0);
     const x = p.x - O.x, y = p.y - O.y, z = p.z - O.z, o = v * 6; trPos[o] = x + _sdv.x; trPos[o + 1] = y + _sdv.y; trPos[o + 2] = z + _sdv.z; trPos[o + 3] = x - _sdv.x; trPos[o + 4] = y - _sdv.y; trPos[o + 5] = z - _sdv.z;
     trT[v * 2] = trT[v * 2 + 1] = t; trC[o] = trC[o + 3] = c.r; trC[o + 1] = trC[o + 4] = c.g; trC[o + 2] = trC[o + 5] = c.b; trA[v * 2] = trA[v * 2 + 1] = a; v++;
   };
@@ -235,7 +237,13 @@ function updateHover(dt) {
   else if (ringHov && pin < 0) { put('r' + ringHov.y, ringTip(ringHov), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (pin >= 0) {
     const d = Math.max(1, camera.position.distanceTo(starPos(pin, tmp))); tmp.project(camera);
-    if (tmp.z < 1 && Math.abs(tmp.x) < 1.3 && Math.abs(tmp.y) < 1.3) {
+    const edge = pin === lockI && pin !== cardI && !coarse && !(tmp.z < 1 && Math.abs(tmp.x) < 1 && Math.abs(tmp.y) < 1);
+    if (edge) {   // the star you're locked on is off screen: its card waits at the edge, beside the arrow pointing to it
+      put('p' + pin, tipHTML(pin) + tipMore(pin), false);
+      let x = tmp.x, y = tmp.y; if (tmp.z >= 1) { x = -x; y = -y } const m = Math.max(Math.abs(x) / .92, Math.abs(y) / .88, 1e-6); x /= m; y /= m;
+      const w = tip.offsetWidth, h = tip.offsetHeight, px = (x * .5 + .5) * innerWidth, py = (-y * .5 + .5) * innerHeight;
+      tip.style.left = Math.max(12, Math.min(innerWidth - w - 12, px - (x > 0 ? w + 22 : -22))) + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, py - h / 2)) + 'px';
+    } else if (tmp.z < 1 && Math.abs(tmp.x) < 1.3 && Math.abs(tmp.y) < 1.3) {
       put('p' + pin, tipHTML(pin) + tipMore(pin), pin === cardI);
       const rpx = starR(pin) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), full = pin === cardI;   // the star's own radius on screen
       let x = (tmp.x * .5 + .5) * innerWidth + (full ? rpx * .72 : 0), y = (-tmp.y * .5 + .5) * innerHeight - (full ? rpx * .5 : 0);
@@ -244,7 +252,7 @@ function updateHover(dt) {
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
 }
-function updateBoostUI() { const a = $('boostArc'), show = S.mode === 'fly' && (boosting || boostE < .999); a.style.opacity = show ? (boosting ? .95 : .45) : 0; a.style.strokeDashoffset = (1 - boostE) * 138.2 }
+function updateBoostUI() { const a = $('boostArc'), show = S.mode === 'fly' && (boosting || boostE < .999); a.style.opacity = show && boostE > .004 ? (boosting ? .95 : .45) : 0; a.style.strokeDashoffset = (1 - boostE) * 138.2 }   // empty means nothing at all, not a dot
 
 // a tiny readout of the renderer (press the backtick key, or open with ?stats)
 const stats = { el: null, t: 0, n: 0, show(on) { if (on && !this.el) { this.el = document.createElement('div'); this.el.id = 'stats'; document.body.appendChild(this.el) } if (this.el) this.el.hidden = !on; this.on = on } };
