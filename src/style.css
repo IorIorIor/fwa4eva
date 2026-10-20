@@ -481,3 +481,6 @@ body.map #gl,body.map #gl.hovering{cursor:pointer!important}   /* on the map the
 
 #dayLabels{position:fixed;inset:0;pointer-events:none;z-index:4}
 #dayLabels span{position:absolute;transform:translate(6px,-50%);font-family:var(--mono);font-size:var(--dls,8px);letter-spacing:.06em;color:rgba(255,255,255,.62);white-space:nowrap;text-shadow:0 0 4px #000}
+.mapnote{display:flex;flex-direction:column;gap:6px;margin:10px 16px 4px;padding:10px 12px;border:1px solid rgba(255,214,140,.5);background:rgba(255,214,140,.07);font-family:var(--mono);font-size:11px;color:var(--ink)}
+.mapnote b{font-weight:400;text-transform:uppercase;letter-spacing:.12em;color:#ffd99a}
+.mapnote .btn{align-self:flex-start}

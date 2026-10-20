@@ -383,7 +383,7 @@ function tick(now) {
   updateHover(dt); updateLabels();
   if (fly) gauge.fly(); else gauge.map();
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
-  updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt); musicMap(S.mode === 'map'); dayLab();
+  updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt); musicMap(S.mode === 'map'); dayLab(); swapLook();
   mapK += ((S.mode === 'map' && !tween ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); PU.bgK.value = 1 - (L.mapFade ?? .85) * mapK; bgStars.u.op.value = L.bgStars * (1 - (L.mapFade ?? .85) * mapK);   // the map clears down to the winners once the move ends
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,
       look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3); coreIn += (inside - coreIn) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it

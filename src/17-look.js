@@ -35,8 +35,15 @@ function applyLook() {
 /* settings also live in the viewer's claude.ai account, so they survive reloads, new versions and other devices */
 let lookDoc = null, lookT = 0;
 const lookData = () => { const d = {}; Object.keys(LOOK).forEach(k => { if (k[0] !== '_') d[k] = LOOK[k] }); return d };
-function saveLookNow() { store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
-function saveLook() { store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
+// the map can have a look of its own: with the switch on, the Look panel edits a separate set of settings while you're on the map
+const MAP_KEY = 'sotd-look-map';
+let LOOK_FLY = LOOK, LOOK_MAP = { ...LOOK, ...store.json(MAP_KEY, {}) };
+function swapLook() {
+  if (LOOK === LOOK_MAP) LOOK_FLY.mapOwnLook = LOOK_MAP.mapOwnLook; else { LOOK_FLY = LOOK; LOOK_MAP.mapOwnLook = LOOK.mapOwnLook }
+  const want = S.mode === 'map' && LOOK_FLY.mapOwnLook ? LOOK_MAP : LOOK_FLY; if (LOOK !== want) { LOOK = want; renderLook(); applyLook() }
+}
+function saveLookNow() { if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
+function saveLook() { if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
 (async () => {
   try {
     if (!window.claude || !claude.use) return; const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]); if (!db || !user) return;
@@ -83,6 +90,7 @@ function galPreview() {
 const prevSoon = () => { if (prevQ) return; prevQ = requestAnimationFrame(() => { prevQ = 0; galPreview() }) };
 function renderLook() {
   const body = $('lookBody'); body.innerHTML = '';
+  if (LOOK === LOOK_MAP) { const n = document.createElement('div'); n.className = 'mapnote'; n.innerHTML = '<b>Map look</b><span>You are tuning the map\'s own look. Flying keeps its own.</span><button class="btn" type="button">Start from the flying look</button>'; n.querySelector('button').onclick = () => { LOOK_MAP = LOOK = { ...LOOK_FLY }; saveLook(); renderLook(); applyLook() }; body.appendChild(n) }
   let openSecs = store.json('sotd-look-open', []); if (!Array.isArray(openSecs)) openSecs = [];
   LOOK_DEF.forEach(([title, rows]) => {
     const sec = document.createElement('div'); sec.className = 'lsec' + (openSecs.includes(title) ? ' open' : '');
@@ -118,7 +126,7 @@ function findLook() {
 }
 $('lookFind').oninput = findLook; $('lookFind').onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { e.target.value = ''; findLook() } };   // typing here never flies the ship
 $('presets').innerHTML = Object.keys(PRESETS).map(n => `<button data-p="${n}">${n}</button>`).join('') + '<button data-p="reset">Reset</button>';
-$('presets').onclick = e => { const p = e.target.dataset && e.target.dataset.p; if (!p) return; LOOK = { ...LOOK_DEFAULTS, ...(p === 'reset' ? {} : PRESETS[p]) }; saveLook(); renderLook(); applyLook() };
+$('presets').onclick = e => { const p = e.target.dataset && e.target.dataset.p; if (!p) return; const onMap = LOOK === LOOK_MAP, own = LOOK.mapOwnLook; LOOK = { ...LOOK_DEFAULTS, ...(p === 'reset' ? {} : PRESETS[p]), mapOwnLook: own }; if (onMap) LOOK_MAP = LOOK; else LOOK_FLY = LOOK; saveLook(); renderLook(); applyLook() };
 $('lookCopy').onclick = () => {
   const diff = {}; Object.keys(LOOK).forEach(k => { if (k[0] !== '_' && LOOK[k] !== LOOK_DEFAULTS[k]) diff[k] = LOOK[k] });
   const txt = 'FWA FOREVER look settings: ' + JSON.stringify(diff), ta = $('lookOut'); ta.value = txt; ta.hidden = false;
