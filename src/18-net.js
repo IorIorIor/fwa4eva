@@ -23,18 +23,41 @@ function peerUpdate(p) {
   if (!v.cur || v.cur.distanceTo(v.tgt) > 5e5) { v.cur = v.tgt.clone(); v.pts.length = 0; v.g.quaternion.copy(v.q) }   // new, or jumped home
 }
 function peerDrop(id) { const v = Net.peers.get(id); if (!v) return; scene.remove(v.g, v.tr, v.dot); v.tr.geometry.dispose(); Net.peers.delete(id) }
+/* two transports, same messages. On claude.ai the artifact's room (signed-in viewers); anywhere else a tiny WebSocket relay
+   served beside the page at /ws (server.mjs: no accounts, it only passes positions between whoever is connected). */
+const NET_URL = (() => { if (QS.get('relay')) return QS.get('relay'); if (!/^https?:$/.test(location.protocol) || /claude(usercontent)?\.(ai|com)$/.test(location.hostname)) return null; return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws' })();
+const netLive = () => { Net.enabled = true; $('net').textContent = 'live, everyone with this page open flies here' };
 Net.connect = async () => {
   try {
-    if (!window.claude || !claude.use) return; const room = await claude.use('room'); if (!room) return;
-    Net.room = room; Net.enabled = true; $('net').textContent = 'live, everyone with this page open flies here';
-    room.onPeers(ch => { ch.left.forEach(p => peerDrop(p.peer)); ch.joined.concat(ch.updated).forEach(p => { if (!p.sameTab && p.kind === 'viewer') peerUpdate(p) }) },
-      () => { Net.enabled = false; Net.room = null; [...Net.peers.keys()].forEach(peerDrop) });
+    if (window.claude && claude.use) {
+      const room = await claude.use('room');
+      if (room) {
+        Net.room = room; netLive();
+        room.onPeers(ch => { ch.left.forEach(p => peerDrop(p.peer)); ch.joined.concat(ch.updated).forEach(p => { if (!p.sameTab && p.kind === 'viewer') peerUpdate(p) }) },
+          () => { Net.enabled = false; Net.room = null; [...Net.peers.keys()].forEach(peerDrop) });
+        return;
+      }
+    }
   } catch (e) { }
+  if (NET_URL && !TEST) wsConnect(0);
 };
+function wsConnect(tries) {
+  let ws; try { ws = new WebSocket(NET_URL) } catch (e) { return }
+  ws.onopen = () => { Net.ws = ws; tries = 0; netLive() };
+  ws.onmessage = e => {
+    let m; try { m = JSON.parse(e.data) } catch (_) { return } if (!m || typeof m.id !== 'string') return;
+    if (m.t === 'p' && m.s && typeof m.s === 'object') peerUpdate({ peer: 'w:' + m.id, presence: m.s }); else if (m.t === 'x') peerDrop('w:' + m.id);
+  };
+  ws.onclose = () => { if (Net.ws === ws) Net.ws = null; Net.enabled = false; [...Net.peers.keys()].filter(k => k.startsWith('w:')).forEach(peerDrop); setTimeout(() => wsConnect(tries + 1), Math.min(30000, 1500 * 2 ** Math.min(tries, 5))) };   // back off and try again
+  ws.onerror = () => { try { ws.close() } catch (_) { } };
+}
 Net.send = s => {
-  const r = Net.room; if (!r) return; const f = x => Math.round(x * 100) / 100;
-  r.presence({ p: s.pos.map(f), q: s.quat.map(x => Math.round(x * 1e4) / 1e4), v: s.vel.map(Math.round), h: PILOT_HUE, m: s.mode, th: s.th }).catch(() => { });
+  const f = x => Math.round(x * 100) / 100, msg = { p: s.pos.map(f), q: s.quat.map(x => Math.round(x * 1e4) / 1e4), v: s.vel.map(Math.round), h: PILOT_HUE, m: s.mode, th: s.th };
+  if (Net.room) Net.room.presence(msg).catch(() => { });
+  else if (Net.ws && Net.ws.readyState === 1) Net.ws.send(JSON.stringify({ t: 'p', s: msg }));
 };
+// a pilot that's gone quiet for a while has left (a closed laptop doesn't say goodbye)
+setInterval(() => { const now = performance.now(); for (const [id, v] of Net.peers) if (now - v.at > 12000) peerDrop(id) }, 3000);
 // every frame: glide each pilot toward where they said they are (plus how far they've flown since), lay their trail
 function updatePeers(dt) {
   if (!Net.peers.size) return;

@@ -18,6 +18,11 @@ scene.add(camera);
 scene.add(new THREE.HemisphereLight(0xb8b0ff, 0x1a1430, 1.1 * Math.PI));   // three's lights are physically based now; × π keeps the old intensities
 const sunLight = new THREE.DirectionalLight(0xffffff, .8 * Math.PI); sunLight.position.set(.62, .48, .36); scene.add(sunLight);
 const rimLight = new THREE.DirectionalLight(0x8fa6ff, .9 * Math.PI); rimLight.position.set(-.62, -.3, -.5); scene.add(rimLight);   // cool back light so silhouettes read
+// the ship flies on its own layer: a second, transparent canvas above the instruments, so the pointer is never covered by them
+const shipCanvas = document.createElement('canvas'); shipCanvas.id = 'shipLayer'; shipCanvas.setAttribute('aria-hidden', 'true'); canvas.after(shipCanvas);
+const shipRenderer = new THREE.WebGPURenderer({ canvas: shipCanvas, antialias: true, alpha: true, forceWebGL: QS.has('webgl') });
+await shipRenderer.init(); shipRenderer.highPrecision = true; shipRenderer.setPixelRatio(DPR); shipRenderer.setClearColor(0x000000, 0);
+const shipScene = new THREE.Scene(); shipScene.add(new THREE.HemisphereLight(0xb8b0ff, 0x1a1430, 1.1 * Math.PI), sunLight.clone(), rimLight.clone());
 
 /* uniforms every layer can read */
 const U = {

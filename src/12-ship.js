@@ -97,7 +97,7 @@ function makeAvatar() {
   g.userData.nav = [dot(0xff4a4a, at(1)), dot(0x4aff8a, at(6)), dot(0xffffff, at(0))];
   return g;
 }
-const avatar = makeAvatar(); avatar.scale.setScalar(.68 * SHIP_K); scene.add(avatar);
+const avatar = makeAvatar(); avatar.scale.setScalar(.68 * SHIP_K); shipScene.add(avatar);   // on the ship layer, over the HUD
 /* the engine flare: a hard white point, a wide bloom round it and thin diffraction spikes, all sized in screen pixels so it
    reads the same at any distance. It sits at the mouth of the hole and only shows while you can see into it. */
 const flare = (() => {
@@ -114,7 +114,7 @@ const flare = (() => {
     const c = mix(u.col, vec3(1), .55).mul(spikes.mul(1.1)).add(vec3(1).mul(core.mul(6))).add(mix(u.col, vec3(1), .35).mul(bloomIn.mul(1.1))).add(u.col.mul(bloomOut.mul(.4)));
     return vec4(c.mul(u.k), 1);
   })();
-  const s = new THREE.Sprite(m); s.renderOrder = 6; s.frustumCulled = false; s.u = u; s.position.copy(avatar.userData.tail).add(new V3(0, 0, .06)); avatar.add(s); return s;
+  const s = new THREE.Sprite(m); s.renderOrder = 6; s.frustumCulled = false; s.u = u; scene.add(s); return s;   // in the main scene, so the bloom catches it; placed at the engine each frame
 })();
 
 /* TRON light trail: emitted only while you thrust. Each point keeps the colour and brightness it was born with,

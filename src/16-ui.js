@@ -144,7 +144,7 @@ $('reset').onclick = () => {
 };
 $('vFly').onclick = () => setMode('fly'); $('vMap').onclick = () => setMode('map');
 $('fbtn').onclick = () => togglePanel('panel');
-$('net').textContent = 'solo for now (others show up when signed-in viewers have it open)';
+$('net').textContent = 'solo for now (others show up as soon as they open the page)';
 function renderLegend() {
   let items;
   if (S.colorBy === 'type') items = [['Blue', KINDS[0][1]], ['White', KINDS[2][1]], ['Yellow', KINDS[4][1]], ['Orange', KINDS[5][1]], ['Red', KINDS[6][1]], ['Giants', KINDS[7][1]], ['Supergiants', KINDS[10][1]]];

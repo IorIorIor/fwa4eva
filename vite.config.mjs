@@ -26,5 +26,6 @@ export default {
   plugins: [fwa],
   build: { target: 'esnext', outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 4000 },
   optimizeDeps: { entries: ['index.html'], esbuildOptions: { target: 'esnext' } },
-  server: { port: 5173 },
+  // `npm run dev` talks to the relay from `npm start` (run both) for multiplayer while developing
+  server: { port: 5173, proxy: { '/ws': { target: 'ws://localhost:8787', ws: true } } },
 };

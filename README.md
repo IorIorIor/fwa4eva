@@ -10,8 +10,9 @@ Ships as one self-contained HTML page plus the soundtrack.
 
 ```sh
 npm install
-npm run dev          # Vite dev server (what `canopy dev` runs); edits in src/ reload the page
-npm run build        # dist/: the static site (what `canopy deploy` publishes)
+npm run dev          # Vite dev server; edits in src/ reload the page
+npm run build        # dist/: the built site
+npm start            # serves dist/ plus the multiplayer relay (what Railway runs)
 npm run build:single # dist-single/: one self-contained page plus the soundtrack, three.js from a CDN
 ```
 
@@ -55,11 +56,17 @@ bundled by esbuild (which inlines the three.js add-ons used).
 
 ## Multiplayer
 
-`src/18-net.js` shares each pilot's position a few times a second and draws everyone else as a cursor with a trail in
-their own colour. Today the transport is the claude.ai artifact `room` capability, which only admits signed-in
-claude.ai viewers. The page works solo without it. To make it open to anyone, swap `Net.connect` / `Net.send` for a
-small WebSocket relay (Cloudflare Durable Objects, PartyKit, Liveblocks or Supabase Realtime all fit); the rest of
-the module stays as it is.
+`server.mjs` serves the built site and runs a small WebSocket relay at `/ws`: each pilot sends where they are ten
+times a second and the relay passes it on to everyone else. No accounts, nothing stored. The page connects to
+`/ws` on its own host automatically (on claude.ai it uses the artifact's room instead). `?relay=wss://host/ws` points a
+page at another relay.
+
+Locally: `npm run build && npm start` (http://localhost:8787), or `npm start` beside `npm run dev` (Vite proxies `/ws`).
+
+## Deploying (Railway)
+
+Connect the GitHub repo; `railway.json` builds with `npm run build` and starts `npm start`, which listens on `$PORT`.
+`/health` reports how many pilots are connected.
 
 ## Tests
 

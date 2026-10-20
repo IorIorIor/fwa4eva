@@ -1,7 +1,7 @@
 /* ───────────────────────── every frame ───────────────────────── */
 const _v2 = new THREE.Vector2();
-function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.getDrawingBufferSize(_v2); U.res.value.copy(_v2); U.dpr.value = _v2.y / Math.max(1, innerHeight) }
-function setDpr(d, force) { d = Math.max(.5, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); resize() } }
+function resize() { renderer.setSize(innerWidth, innerHeight, false); shipRenderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.getDrawingBufferSize(_v2); U.res.value.copy(_v2); U.dpr.value = _v2.y / Math.max(1, innerHeight) }
+function setDpr(d, force) { d = Math.max(.5, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); shipRenderer.setPixelRatio(d); resize() } }
 addEventListener('resize', resize);
 // adaptive resolution: compare frame time with the display's own interval (60, 120, 144 Hz…); step the pixel ratio
 // down when frames run long, back up when there's headroom. Stalls (hidden tab, a shader compiling) don't count.
@@ -200,7 +200,7 @@ function engineLook(dt) {
   const back = _d.set(0, 0, 1).applyQuaternion(avatar.quaternion), toCam = _c.copy(camera.position).sub(mouth), d = toCam.length(); toCam.divideScalar(d || 1);
   const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2;
   fu.col.value.copy(_fc); fu.k.value = L.flare * on * vis; fu.n.value = L.flareSpikes; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px;
-  flare.scale.setScalar(px * 2 * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight) * d / avatar.scale.x); flare.visible = avatar.visible && fu.k.value > .002;
+  flare.position.copy(mouth).addScaledVector(back, avatar.scale.x * .06); flare.scale.setScalar(px * 2 * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight) * d); flare.visible = S.mode === 'fly' && fu.k.value > .002;
 }
 
 /* lock-on marker, reticle and tooltip */
@@ -295,8 +295,8 @@ function tick(now) {
     b.vrot.value.setFromMatrix4(camera.matrixWorldInverse).multiply(GQ3); b.px.value = camera.projectionMatrix.elements[0]; b.py.value = camera.projectionMatrix.elements[5]; b.t.value = worldT;
     // from far off the shadow hides completely in the core's own light, and the core blooms instead; up close it's all there
     const dGC = camera.position.distanceTo(GC), F0 = BH.rs * (L.bhFar ?? 25), farK = sstep(dGC, F0, F0 * 3);
-    b.veil.value = farK; coreFlare.material.opacity = farK * (L.bhGlow ?? 1); coreFlare.visible = farK > .002;
-    coreFlare.scale.setScalar(Math.max(BH.rs * 30, dGC * .09));   // a fixed slice of the view, so the bloom reads at any distance
+    b.veil.value = farK; coreFlare.material.opacity = farK * (L.bhGlow ?? 1) * (S.mode === 'map' ? .35 : .8); coreFlare.visible = farK > .002;
+    coreFlare.scale.setScalar(Math.max(BH.rs * 30, dGC * .05));   // a fixed slice of the view, so the bloom reads at any distance
   }
   // the open winner: the screenshot can replace the dot; the lock holds until you let go
   openI = -1; openA = 0;
@@ -341,7 +341,7 @@ function tick(now) {
     }
   }
   PU.beta.value = fly ? Math.min(1, beta * L.relativity) : 0; PU.ab.value += ((fly ? Math.min(1.5, player.cruise * .35 + beta * 1.2 + boostK * .8) * L.aberr : 0) - PU.ab.value) * Math.min(1, dt * 4);
-  updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) pipeline.render(); perf.ms = performance.now() - t0;
+  updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { pipeline.render(); shipRenderer.render(shipScene, camera) } perf.ms = performance.now() - t0;
 }
 let loopErrs = 0;
 function loop(now) { requestAnimationFrame(loop); try { tick(now) } catch (e) { if (loopErrs++ < 5) console.error(e) } }   // one bad frame never stops the sky
