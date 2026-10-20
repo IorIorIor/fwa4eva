@@ -29,7 +29,7 @@ function applyLook() {
   if (!L.cards) $('arrive').classList.remove('show');
   rig.dist = L.camDist * SHIP_K;
   setPassScales(); if (L.maxDpr !== applyLook.dpr) { applyLook.dpr = L.maxDpr; setDpr(Math.min(L.maxDpr, devicePixelRatio || 1), true) }
-  if (AC) { const t = AC.currentTime; if (musicGain) musicGain.gain.setTargetAtTime(.6 * L.music, t, .1); if (ambBus) ambBus.gain.setTargetAtTime(.33 * L.amb, t, .1); if (master) master.gain.setTargetAtTime(.2 * L.ting, t, .1) }
+  if (AC) { const t = AC.currentTime; if (musicGain) musicGain.gain.setTargetAtTime(.6 * L.music, t, .1); if (ambBus) ambBus.gain.setTargetAtTime(.33 * L.amb, t, .1); if (master) master.gain.setTargetAtTime(CHIME_K * L.ting, t, .1) }
 }
 
 /* settings also live in the viewer's claude.ai account, so they survive reloads, new versions and other devices */

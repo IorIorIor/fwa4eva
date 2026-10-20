@@ -6,9 +6,10 @@ let AC = null, out = null, master = null, ambBus = null, musicGain = null, ENG =
 const musicEl = (() => { try { const a = new Audio(); a.loop = true; a.preload = TEST_EARLY ? 'none' : 'auto'; a.src = 'an-ending-ascent.mp3'; return a } catch (e) { return null } })();
 let muted = store.get('sotd-muted') === '1';
 const KEYROOT = [72, 74, 76, 79, 81, 84], PENTA = [0, 2, 4, 7, 9];
-function spaceIR(sec) {   // swells in, then darkens as it dies away
+const CHIME_K = .9;   // the chime bus level (× the Hover tingles slider)
+function spaceIR(sec) {   // a room: quick onset, then a tail that darkens as it dies away
   const sr = AC.sampleRate, n = Math.floor(sr * sec), b = AC.createBuffer(2, n, sr);
-  for (let c = 0; c < 2; c++) { const d = b.getChannelData(c), seedR = mulberry32(c ? 91 : 17); let lp = 0; for (let i = 0; i < n; i++) { const t = i / sr, env = (1 - Math.exp(-t * 3.2)) * Math.exp(-t / 2.7), k = .55 + .4 * Math.min(1, t / 4); lp = lp * k + (seedR() * 2 - 1) * (1 - k); d[i] = lp * env * (1.6 + .4 * Math.sin(t * .7 + c)) } }
+  for (let c = 0; c < 2; c++) { const d = b.getChannelData(c), seedR = mulberry32(c ? 91 : 17); let lp = 0; for (let i = 0; i < n; i++) { const t = i / sr, env = (1 - Math.exp(-t * 60)) * Math.exp(-t / (sec * .28)), k = .2 + .7 * Math.min(1, t / sec); lp = lp * k + (seedR() * 2 - 1) * (1 - k); d[i] = lp * env * .5 } }
   return b;
 }
 function audio() {
@@ -27,18 +28,15 @@ function audio() {
       ENG = { bp, nG, lp, tG, oscs, eng, buf: nb };
     } catch (e) { }
     try { musicGain = AC.createGain(); musicGain.gain.value = .6 * LOOK.music; AC.createMediaElementSource(musicEl).connect(musicGain); musicGain.connect(out); musicEl.play().catch(() => { }) } catch (e) { }
-    // chimes: a quiet dry signal, a long dark reverb that swells in after the strike, slow ping-pong echoes that darken as they fade
-    master = AC.createGain(); master.gain.value = .2 * LOOK.ting;
+    // chimes: their own bus, loud enough to sit clearly over the music: the dry bell up front, a short bright room behind it,
+    // and two soft echoes panned left and right
+    master = AC.createGain(); master.gain.value = CHIME_K * LOOK.ting; master.connect(out);
     try {
-      const dry = AC.createGain(); dry.gain.value = .28; master.connect(dry); dry.connect(out);
-      const pre = AC.createDelay(1); pre.delayTime.value = .07; const conv = AC.createConvolver(); conv.buffer = spaceIR(9.5);
-      const rHP = AC.createBiquadFilter(); rHP.type = 'highpass'; rHP.frequency.value = 160; const rLP = AC.createBiquadFilter(); rLP.type = 'lowpass'; rLP.frequency.value = 5200; const rG = AC.createGain(); rG.gain.value = 1.25;
-      master.connect(pre); pre.connect(conv); conv.connect(rHP); rHP.connect(rLP); rLP.connect(rG); rG.connect(out);
-      const send = AC.createGain(); send.gain.value = .32; master.connect(send);
-      const dL = AC.createDelay(3), dR = AC.createDelay(3), fL = AC.createGain(), fR = AC.createGain(), lpL = AC.createBiquadFilter(), lpR = AC.createBiquadFilter(), pL = AC.createStereoPanner(), pR = AC.createStereoPanner();
-      dL.delayTime.value = .47; dR.delayTime.value = .71; fL.gain.value = fR.gain.value = .48; lpL.type = lpR.type = 'lowpass'; lpL.frequency.value = lpR.frequency.value = 2600; pL.pan.value = -.85; pR.pan.value = .85;
-      send.connect(dL); dL.connect(lpL); lpL.connect(pL); pL.connect(out); lpL.connect(fL); fL.connect(dR); dR.connect(lpR); lpR.connect(pR); pR.connect(out); lpR.connect(fR); fR.connect(dL); pR.connect(pre);
-    } catch (e) { master.connect(out) }
+      const conv = AC.createConvolver(); conv.buffer = spaceIR(3.6); const rG = AC.createGain(); rG.gain.value = .55; master.connect(conv); conv.connect(rG); rG.connect(out);
+      const dL = AC.createDelay(2), dR = AC.createDelay(2), gL = AC.createGain(), gR = AC.createGain(), pL = AC.createStereoPanner(), pR = AC.createStereoPanner();
+      dL.delayTime.value = .32; dR.delayTime.value = .55; gL.gain.value = .22; gR.gain.value = .14; pL.pan.value = -.7; pR.pan.value = .7;
+      master.connect(dL); dL.connect(gL); gL.connect(pL); pL.connect(out); master.connect(dR); dR.connect(gR); gR.connect(pR); pR.connect(out);
+    } catch (e) { }
     ambBus = AC.createGain(); ambBus.gain.value = .33 * LOOK.amb; ambBus.connect(out);
     const dl2 = AC.createDelay(2), fb2 = AC.createGain(); dl2.delayTime.value = .61; fb2.gain.value = .45; ambBus.connect(dl2); dl2.connect(fb2); fb2.connect(dl2); dl2.connect(out);
     hum = AC.createGain(); hum.gain.value = 0; hum.connect(ambBus);
@@ -63,22 +61,21 @@ function updateEngine() {
 }
 function setMuted(m) { muted = m; store.set('sotd-muted', m ? '1' : '0'); const b = $('sbtn'); b.textContent = m ? 'Sound off' : 'Sound on'; b.setAttribute('aria-pressed', !m); if (out) out.gain.setTargetAtTime(m ? 0 : 1, AC.currentTime, .05) }
 $('sbtn').onclick = () => { audio(); setMuted(!muted) }; setMuted(muted);
-// a struck glass bell: FM partials, a soft sub-octave body and a slow shimmer an octave up, two or three notes rolled like a harp,
-// panned to where the star sits on screen. Same star, same chord.
+// hovering a star strikes a small glass bell: two or three notes of a pentatonic chord rolled like a harp, panned to where
+// the star sits on screen. Same star, same chord. Each note: a sine with a bright FM strike that fades into a pure tone.
 function tingle(dec = 1, seed, pan = 0) {
-  if (!AC || AC.state === 'closed') return; if (AC.state !== 'running') AC.resume().catch(() => { });   // a context the browser parked wakes up for the chime
-  const now = AC.currentTime; if (now - lastTing < .12) return; lastTing = now;
-  const rnd = seed == null ? Math.random : mulberry32(seed * 7919 + 101), n = 2 + (rnd() * 2 | 0), root = KEYROOT[dec] - 12 + (rnd() < .5 ? 0 : 12), used = [];
+  if (!AC || AC.state === 'closed' || !master) return; if (AC.state !== 'running') AC.resume().catch(() => { });   // a context the browser parked wakes up for the chime
+  const now = AC.currentTime + .01; if (now - lastTing < .1) return; lastTing = now;
+  const rnd = seed == null ? Math.random : mulberry32(seed * 7919 + 101), n = 2 + (rnd() * 2 | 0), root = KEYROOT[Math.max(0, Math.min(5, dec | 0))] - 12 + (rnd() < .5 ? 0 : 12), used = [];
   for (let k = 0; k < n; k++) {
-    let note; do { note = root + PENTA[rnd() * 5 | 0] + (rnd() < .4 ? 12 : 0) } while (used.includes(note) && used.length < 5); used.push(note);
-    const t = now + k * (.07 + rnd() * .09), f = 440 * Math.pow(2, (note - 69) / 12), v = (.16 + rnd() * .06) / (1 + k * .35), dur = 2.6 + rnd() * 2.2, ratio = rnd() < .5 ? 3.5 : 2.76;
-    const pn = AC.createStereoPanner(); pn.pan.value = Math.max(-.9, Math.min(.9, pan + (rnd() - .5) * .5)); pn.connect(master);
-    const car = AC.createOscillator(), mod = AC.createOscillator(), mg = AC.createGain(), g = AC.createGain(); car.frequency.value = f; mod.frequency.value = f * ratio;
-    mg.gain.setValueAtTime(f * 2.2, t); mg.gain.exponentialRampToValueAtTime(f * .02, t + .9); mod.connect(mg); mg.connect(car.frequency);
-    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .006); g.gain.exponentialRampToValueAtTime(v * .35, t + .35); g.gain.exponentialRampToValueAtTime(.0001, t + dur); car.connect(g); g.connect(pn);
-    const sub = AC.createOscillator(), sg = AC.createGain(); sub.type = 'sine'; sub.frequency.value = f / 2; sg.gain.setValueAtTime(0, t); sg.gain.linearRampToValueAtTime(v * .22, t + .25); sg.gain.exponentialRampToValueAtTime(.0001, t + dur * .8); sub.connect(sg); sg.connect(pn);
-    const sh = AC.createOscillator(), hg = AC.createGain(); sh.type = 'sine'; sh.frequency.value = f * 2.003; hg.gain.setValueAtTime(0, t); hg.gain.linearRampToValueAtTime(v * .12, t + .6); hg.gain.exponentialRampToValueAtTime(.0001, t + dur * 1.2); sh.connect(hg); hg.connect(pn);
-    [car, mod, sub, sh].forEach(o => { o.start(t); o.stop(t + dur * 1.25) });
+    let note; do { note = root + PENTA[rnd() * 5 | 0] + (rnd() < .3 ? 12 : 0) } while (used.includes(note) && used.length < 5); used.push(note);
+    const t = now + k * (.06 + rnd() * .07), f = 440 * Math.pow(2, (note - 69) / 12), v = .32 / (1 + k * .4), dur = 1.6 + rnd() * 1.2;
+    const pn = AC.createStereoPanner(); pn.pan.value = Math.max(-.85, Math.min(.85, pan * .8 + (rnd() - .5) * .3)); pn.connect(master);
+    const car = AC.createOscillator(), mod = AC.createOscillator(), mg = AC.createGain(), g = AC.createGain(); car.type = 'sine'; car.frequency.value = f; mod.frequency.value = f * 3.5;
+    mg.gain.setValueAtTime(f * 1.6, t); mg.gain.exponentialRampToValueAtTime(f * .01, t + .5); mod.connect(mg); mg.connect(car.frequency);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .004); g.gain.exponentialRampToValueAtTime(v * .3, t + .25); g.gain.exponentialRampToValueAtTime(.0001, t + dur); car.connect(g); g.connect(pn);
+    const oc = AC.createOscillator(), og = AC.createGain(); oc.type = 'sine'; oc.frequency.value = f * 2.01; og.gain.setValueAtTime(0, t); og.gain.linearRampToValueAtTime(v * .18, t + .01); og.gain.exponentialRampToValueAtTime(.0001, t + dur * .6); oc.connect(og); og.connect(pn);
+    [car, mod, oc].forEach(o => { o.start(t); o.stop(t + dur + .1) });
   }
 }
 canvas.addEventListener('pointerdown', () => { if (booted) audio() }); addEventListener('keydown', () => { if (booted) audio() });

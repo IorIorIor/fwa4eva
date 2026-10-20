@@ -1,6 +1,7 @@
 node_modules/
-dist/app.js
-dist/dev.html
+dist/
+dist-single/
 test/*.png
 test/result.json
 .DS_Store
+.canopy/

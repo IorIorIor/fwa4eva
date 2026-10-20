@@ -37,7 +37,7 @@ async function runBench() {
   const up = new V3(0, 1, 0).applyQuaternion(GQ), side = new V3(1, 0, 0).applyQuaternion(GQ), at = (p, look) => { if (S.mode !== 'fly') setMode('fly'); tween = null; player.pos.copy(p); aimAt(look.clone().sub(p), 1); player.base.copy(rig.q); player.quat.copy(rig.q); player.vel.set(0, 0, 0); player.cruise = 0 };
   const star = Math.floor(N / 2), sp = starPos(star);
   const poses = [
-    ['Outpost (start)', () => at(HOME_P, GC)],
+    ['Start (past the rim)', () => at(HOME_P, GC)],
     ['Inside an arm', () => at(ringPoint(.42, 1, 2500), GC)],
     ['Beside a winner', () => at(sp.clone().add(new V3(1, .3, .5).normalize().multiplyScalar(stopR(star) * 1.6)), sp)],
     ['Black hole, far', () => at(GC.clone().addScaledVector(side, 700000).addScaledVector(up, 126000), GC)],

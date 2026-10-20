@@ -69,7 +69,7 @@ YEARS.forEach(y => {
 let labelEls = [];
 function refreshLabels() {
   const Lw = $('labels'); Lw.innerHTML = '';
-  const src = S.mode === 'map' ? [...galaxyLabels, { text: 'You', cls: 'you', pos: player.pos, f: 1e9 }, { text: 'Outpost', cls: 'yr', pos: new V3(0, 0, 0), f: 1e9 }] : galaxyLabels;
+  const src = S.mode === 'map' ? [...galaxyLabels, { text: 'You', cls: 'you', pos: player.pos, f: 1e9 }] : galaxyLabels;
   labelEls = src.map(g => {
     const e = document.createElement('div'); e.className = 'glab ' + g.cls; e.style.display = 'none';
     if (g.col) e.innerHTML = `<i style="background:${g.col}"></i>${esc(g.text)}`; else e.textContent = g.text;
@@ -91,8 +91,8 @@ function updateLabels() {
   const W = innerWidth, H = innerHeight, map = S.mode === 'map', boxes = [], fr = !!LOOK.ringFly; _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   for (const l of labelEls) {
     let fade = 1;
-    if (l.ruler != null) { ringPoint(l.ruler, SPIRAL ? armPhase(GAL_R0 + l.ruler * GAL_LEN) : ruler.th, 0, l.pos); fade = map ? mapLvl[l.lvl] : fr ? 1 : 0 }   // dates ride the turning ruler
-    let show = fade > .04 && !(map ? (l.mapFar && orbit.dist > l.mapFar) : (l.near && camera.position.distanceTo(l.pos) > l.near));   // local names only once you're close
+    if (l.ruler != null) { ringPoint(l.ruler, SPIRAL ? armPhase(GAL_R0 + l.ruler * GAL_LEN) : ruler.th, 0, l.pos); fade = map ? mapLvl[l.lvl] : fr ? 1 : l.lvl === 0 ? ringFarK : 0 }   // dates ride the turning ruler (from far out in flight, the five-year marks)
+    let show = fade > .04 && !(map ? (l.mapFar && orbit.dist > l.mapFar) : (l.near && !(l.ruler != null && ringFarK > .05) && camera.position.distanceTo(l.pos) > l.near));   // local names only once you're close
     let x = 0, y = 0;
     if (show) { tmp.copy(l.pos).applyMatrix4(_vp); show = tmp.z <= 1 && tmp.z >= -1 && Math.abs(tmp.x) <= 1.1 && Math.abs(tmp.y) <= 1.1; x = Math.round((tmp.x * .5 + .5) * W); y = Math.round((-tmp.y * .5 + .5) * H) }
     if (show && l.w) {   // declutter: a label only shows if it doesn't land on a more important one
@@ -244,7 +244,6 @@ function updateCompass() {
 let region = null, arriveTimer = 0;
 const _rl = new V3();
 function regionOf(p) {
-  if (p.length() < 6000) return 'out';
   if (p.distanceTo(GC) < Math.max(GAL_R0 * 1.1, BH.disk1 * 1.4)) return 'bh';
   if (ANDRO) for (let k = 0; k < SATS.length; k++) if (p.distanceTo(SATS[k].pos) < SATS[k].r * 2.5) return 'sat' + k;
   toLocal(p, _rl); const rr = Math.hypot(_rl.x, _rl.z);

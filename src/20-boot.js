@@ -6,31 +6,35 @@ const TEST = QS.has('test');
 /* the opening: nothing but the pointer on a black screen, then the camera swings round and in, with a great deal of
    easing, to just above and behind it as the galaxy comes up far ahead; a light wakes in the back of the stem (the
    trail emitter), the instruments arrive, and your first push lets the camera settle back to its usual distance */
-const INTRO_END = new V3(0, .55, 2.1), _inq = new Q4(), _il = new THREE.Matrix4(), _ia = new V3(), _ib = new V3(), _ix = new V3();
+const INTRO_END = new V3(0, .55, 2.1), _il = new THREE.Matrix4(), _ia = new V3(), _ib = new V3(), _ix = new V3(), _iu = new V3();
 let camNear = 0, camNearGo = false, emitGlow = 1;
 const quint = x => x < .5 ? 16 * x ** 5 : 1 - Math.pow(-2 * x + 2, 5) / 2;
 const veil = (() => { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 1, side: THREE.BackSide, depthWrite: false })); m.renderOrder = 9999; m.frustumCulled = false; m.visible = false; camera.add(m); return m })();   // blacks out all but the ship
 const intro = {
-  active: false, t: 0, glow: 0, dur: 8, D0: 10, qs: new Q4(),
+  active: false, t: 0, glow: 0, dur: 8, D0: 10, up0: new V3(), upW: new V3(),
   start() {
-    if (player.pos.distanceTo(HOME_P) < 2) player.pos.y += 12;   // hover well clear of the pad: only the pointer and the dark, then only the galaxy ahead
+    // every time: the ship faces the galaxy's core and the camera's frame is the ship's own, so the opening always looks the same
+    aimAt(GC.clone().sub(player.pos), 1); player.base.copy(rig.q); player.quat.copy(rig.q); player.vel.set(0, 0, 0);
     camera.fov = LOOK.fov; camera.updateProjectionMatrix();
     this.D0 = .503 * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 36);   // the arrow about 36 px tall, like a pointer
-    _il.lookAt(_ia.set(0, this.D0, 0), _ib.set(0, 0, 0), _ix.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax))); this.qs.copy(rig.q).multiply(_inq.setFromRotationMatrix(_il));   // overhead, turned so it sits like the pointer on a screen
+    this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
     this.t = 0; this.glow = 0; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
     document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.update(0);
   },
   update(dt) {
     avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = true; avatar.userData.flame.material.opacity = 0;
     if (this.t < 1) {
-      this.t = Math.min(1, this.t + dt / (reduceMotion ? 2 : this.dur));
-      const ez = quint(sstep(this.t, .03, .97)), er = quint(sstep(this.t, .08, 1));
+      this.t = Math.min(1, this.t + dt / (reduceMotion ? 2.5 : this.dur));
+      // one move: the camera swings from straight overhead round to just above and behind, easing in and out a great deal,
+      // and it keeps looking at the ship until, at the very end, it settles into looking ahead past it
+      const ez = quint(sstep(this.t, .02, .98)), w = quint(sstep(this.t, .3, 1));
       const b = _ib.copy(INTRO_END).normalize(), ang = Math.acos(b.y), d = Math.exp(Math.log(this.D0) * (1 - ez) + Math.log(INTRO_END.length()) * ez);
-      camera.position.copy(_ia.set(0, 1, 0).applyAxisAngle(_ix.set(1, 0, 0), ang * ez).multiplyScalar(d)).applyQuaternion(rig.q).add(player.pos);   // swings back and down toward behind the ship
-      camera.quaternion.copy(this.qs).slerp(rig.q, er);
+      camera.position.copy(_ia.set(0, 1, 0).applyAxisAngle(_ix.set(1, 0, 0), ang * ez).multiplyScalar(d)).applyQuaternion(rig.q).add(player.pos);
+      const toShip = _ib.copy(player.pos).sub(camera.position).normalize(), fwd = _ix.set(0, 0, -1).applyQuaternion(rig.q), dir = toShip.lerp(fwd, w).normalize();
+      const up = this.upW.copy(this.up0).applyQuaternion(rig.q).lerp(_iu.set(0, 1, 0).applyQuaternion(rig.q), ez).normalize();
+      _il.lookAt(_ia.set(0, 0, 0), dir, up); camera.quaternion.setFromRotationMatrix(_il);
       veil.material.opacity = 1 - sstep(this.t, .3, .9); veil.scale.setScalar(camera.position.distanceTo(player.pos) + .45);
-    } else { veil.visible = false; this.glow = Math.min(1, this.glow + dt / 1.8); emitGlow = sstep(this.glow, 0, 1); if (this.glow >= 1) this.finish() }
-    const em = avatar.userData.emit; em.material.color.copy(trailColour(.4, 1, _flc)); em.material.opacity = emitGlow * .38;
+    } else { veil.visible = false; this.glow = Math.min(1, this.glow + dt / 1.8); emitGlow = quint(this.glow); if (this.glow >= 1) this.finish() }   // then the engine lights
     camera.updateMatrixWorld();
   },
   finish() {
@@ -45,8 +49,7 @@ aimAt(GC.clone().sub(HOME_P), 1); player.base.copy(rig.q); player.quat.copy(rig.
 { const sv = store.json('sotd-ship'); if (sv && sv.p && sv.p.every(Number.isFinite)) { player.pos.fromArray(sv.p); player.base.fromArray(sv.q); player.quat.copy(player.base); rig.q.fromArray(sv.r) } }
 camera.position.copy(player.pos).add(new V3(0, .3, 1));
 recolor(); applyFilter(); refreshLabels(); renderLook(); applyLook(); updateLockUI(); Net.connect(); resize();
-$('rBadge').textContent = GPU ? 'WebGPU' : 'WebGL 2';
-if (coarse) { $('introKeys').textContent = 'hold to thrust · drag to look · tap a star to lock on'; $('skipHint').textContent = 'Tap to skip' }
+if (coarse) $('skipHint').textContent = 'Tap to skip';
 
 // warm-up: one exotic of each kind and a sun in view while the first frames compile every pipeline
 {
@@ -61,7 +64,7 @@ function begin(withSound) {
   if (withSound) { setMuted(false); audio() }
   if (!coarse && !lockFailed && !TEST) requestLock();
   $('intro').classList.add('gone'); setTimeout(() => $('intro').hidden = true, 1200);
-  if (LOOK.intro && !TEST && !reduceMotion) { intro.start(); const skip = e => { if (e.type === 'keydown' && e.key === 'Escape') return; if (e.type === 'pointerdown') down = null; intro.finish(); removeEventListener('keydown', skip); canvas.removeEventListener('pointerdown', skip) }; setTimeout(() => { addEventListener('keydown', skip); canvas.addEventListener('pointerdown', skip) }, 400) }
+  if (!TEST) { intro.start(); const skip = e => { if (e.type === 'keydown' && e.key === 'Escape') return; if (e.type === 'pointerdown') down = null; intro.finish(); removeEventListener('keydown', skip); canvas.removeEventListener('pointerdown', skip) }; setTimeout(() => { addEventListener('keydown', skip); canvas.addEventListener('pointerdown', skip) }, 400) }
   else handOver();
 }
 if (TEST) { $('intro').hidden = true; LOOK.adaptive = 0; handOver() }

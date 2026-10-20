@@ -44,14 +44,21 @@ function rulerScore(th, us) {   // how many of the dates would be on screen with
   let n = 0; for (const uu of us) { const a = ringPoint(uu, th, 0, tmp2).project(camera); if (a.z < 1 && Math.abs(a.x) < .9 && Math.abs(a.y) < .86) n++ }
   const c = ringPoint(0, th, 0, tmp2).project(camera).clone(), e = ringPoint(1, th, 0, tmp2).project(camera); return n + .25 * Math.max(0, c.y - e.y) / Math.max(.01, Math.hypot(e.x - c.x, e.y - c.y));
 }
+let ringFarK = 0;
 function updateTimeRings(dt) {
   const L = LOOK, u = timeRings.u, map = S.mode === 'map', fr = !!L.ringFly, lp = toLocal(map ? orbit.target : camera.position, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   if (map) {   // how many years fit across the view where you're looking decides which rings show
     const uu = Math.max(.03, Math.min(1, (Math.max(GAL_R0, rr) - GAL_R0) / GAL_LEN)), span = 2 * orbit.dist * Math.tan(camera.fov * Math.PI / 360) * Math.min(1, camera.aspect);
-    mapYrs = span * 27 / .62 * Math.pow(uu, 1 / .62 - 1) / GAL_LEN;
+    mapYrs = span * yrsPerU(uu) / GAL_LEN;
     mapLvl[0] = 1; mapLvl[1] = 1 - sstep(mapYrs, L.mapYears, L.mapYears * 1.6); mapLvl[2] = 1 - sstep(mapYrs, 1.3, 2.6); mapStars = orbit.dist < 160000 ? 1 : 0;
-  } else { const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = fr ? 1 : 0; mapLvl[1] = fr ? inside : 0; mapLvl[2] = fr ? 1 : 0; mapStars = 0 }
-  const show = map || fr; timeRings.mesh.visible = show && L.ruler + L.eraRings + L.ringYear > 0; ruler.visible = timeRings.mesh.visible && !SPIRAL;   // the spiral carries its own dates
+    ringFarK = 0;
+  } else {
+    // far enough out (above the disk or past its rim) the timeline comes into view: the five-year marks, and the spiral itself
+    const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.ringFar ?? .55); ringFarK = sstep(out, F, F * 1.6);
+    const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = fr ? 1 : ringFarK; mapLvl[1] = fr ? inside : 0; mapLvl[2] = fr ? 1 : 0; mapStars = 0;
+  }
+  const show = map || fr || ringFarK > .005; timeRings.mesh.visible = show && L.ruler + L.eraRings + L.ringYear > 0; ruler.visible = timeRings.mesh.visible && !SPIRAL;   // the spiral carries its own dates
+  if (spiralLine) { spiralLine.visible = show; spiralLine.u.a.value = .3 * mapLvl[0] * (map ? 1 : .8) }
   u.era.value = .3 * L.eraRings * mapLvl[0] * (map ? 1.3 : 1); u.yr.value = .13 * L.ringYear * mapLvl[1] * (map ? 1.4 : 1); u.mo.value = .1 * L.ringMonth * mapLvl[2] * (map ? 1.3 : 1);
   u.moR.value = map ? orbit.dist * 1.4 : L.monthRange; u.armOnly.value = SPIRAL ? 1 : L.ringArms; u.y0.value = S.y0; u.y1.value = S.y1;
   u.hiA.value += ((map && (ringHov || ringLab) ? 1 : 0) - u.hiA.value) * Math.min(1, dt * (ringHov || ringLab ? 14 : 3));
@@ -125,7 +132,9 @@ function updateStreaks(dt) {
 }
 
 /* the TRON trail, rebuilt each frame as one ribbon for all its strands */
-const strands = []; let curStrand = null;
+const strands = []; let curStrand = null, trClock = 0;
+// how long a stretch of trail lives depends on how fast you were going when you laid it: a crawl leaves a short wisp, speed a long ribbon
+const trLife = sp => { const L = LOOK; return L.trLifeCrawl + (L.trLifeCruise - L.trLifeCrawl) * sstep(sp, 2, 900) + (L.trLifeFast - L.trLifeCruise) * sstep(sp, 900, 600000) };
 const _flc = new C3(), _amber = new C3(0xffb547), _slowC = new C3(), _fastC = new C3(), _trc = new C3(), _white = new C3(.8, .9, 1), _te = new V3(), _d = new V3(), _c = new V3(), _sdv = new V3();
 // W alone lays the usual trail, boost alone a blue one, both together a light neon magenta
 const _cBoost = new C3(), _cBoth = new C3(); let trW = 1, trB = 0;
@@ -134,15 +143,17 @@ function trailColour(sT, b, o, gw = 1, gb = 0) {
   if (gb > .001) { _cBoost.setHSL(.6, 1, .56 + sT * .1); _cBoth.setHSL(.84, 1, .74); const wW = gw * (1 - gb), wB = gb * (1 - gw), wM = gw * gb, sum = wW + wB + wM || 1; o.multiplyScalar(wW / sum).add(_cBoost.multiplyScalar(wB / sum)).add(_cBoth.multiplyScalar(wM / sum)) }
   return o.multiplyScalar(b);
 }
-function trimStrand(st) { let acc = 0; const Pp = st.pts; for (let k = 1; k < Pp.length; k++) { const d = Pp[k].p.distanceTo(Pp[k - 1].p); if (acc + d >= st.len) { const f = (st.len - acc) / Math.max(d, 1e-6); Pp[k].p.lerpVectors(Pp[k - 1].p, Pp[k].p, f); Pp.length = k + 1; return } acc += d } if (Pp.length > TR_STRAND) Pp.length = TR_STRAND }
+function trimStrand(st) { const Pp = st.pts; while (Pp.length > 2 && trClock - Pp[Pp.length - 2].t > Pp[Pp.length - 2].life) Pp.pop();   // whatever has outlived its time is gone
+  let acc = 0; for (let k = 1; k < Pp.length; k++) { const d = Pp[k].p.distanceTo(Pp[k - 1].p); if (acc + d >= st.len) { const f = (st.len - acc) / Math.max(d, 1e-6); Pp[k].p.lerpVectors(Pp[k - 1].p, Pp[k].p, f); Pp.length = k + 1; return } acc += d } if (Pp.length > TR_STRAND) Pp.length = TR_STRAND }
 function updateTrail(dt, on) {
   const L = LOOK, sp = player.vel.length(), lin = Math.max(0, Math.min(1, Math.log10(Math.max(sp, 20) / 20) / Math.max(.1, L.trRef - Math.log10(20)))), speedT = Math.pow(lin, L.trColorCurve);
+  trClock += dt; const life = trLife(sp);
   const emit = (st, mul) => {
     const eng = _te.copy(avatar.userData.tail).multiplyScalar(avatar.scale.x).applyQuaternion(player.quat).add(player.pos), bright = L.trBright * (.75 + speedT * 1.4 * L.trSpeedBoost + .25) * mul, step = Math.max(.4, st.len / (TR_STRAND * .9));
-    const pt = () => ({ p: eng.clone(), s: speedT, b: bright, w: trW, k: trB });
+    const pt = () => ({ p: eng.clone(), s: speedT, b: bright, w: trW, k: trB, t: trClock, life });
     if (st.pts.length < 2) st.pts = [pt(), pt()];   // pts[0] rides the engine; the rest are laid down in space
     else if (st.pts[1].p.distanceTo(eng) > step) st.pts.unshift(pt());
-    else { const h = st.pts[0]; h.p.copy(eng); h.s = speedT; h.b = bright; h.w = trW; h.k = trB }
+    else { const h = st.pts[0]; h.p.copy(eng); h.s = speedT; h.b = bright; h.w = trW; h.k = trB; h.t = trClock; h.life = life }
     trimStrand(st);
   };
   if (thrusting) { trW += ((gasOn ? 1 : 0) - trW) * Math.min(1, dt * 7); trB += ((boosting ? 1 : 0) - trB) * Math.min(1, dt * 7) }
@@ -154,22 +165,42 @@ function updateTrail(dt, on) {
   const still = sp < 6;
   for (let i = strands.length - 1; i >= 0; i--) { const st = strands[i]; if (st === curStrand) continue; const r = still ? L.trStill : L.trFade; st.alpha *= Math.exp(-r * .6 * dt); st.len *= Math.exp(-r * .35 * dt); trimStrand(st); if (st.alpha < .02 || st.len < 1 || st.pts.length < 2) strands.splice(i, 1) }
   let v = 0; const pxW = Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight), O = player.pos; trail.position.copy(O);   // vertices relative to the ship
-  const put = (p, dir, t, c, a, w) => {
-    if (v >= TR_MAX) return; _c.copy(camera.position).sub(p); _sdv.crossVectors(dir, _c); const l = _sdv.length(); if (l > 1e-6) _sdv.multiplyScalar(w * pxW * _c.length() / l); else _sdv.set(0, 0, 0);
+  // right at the engine the ribbon is as wide as the hole it comes out of, and it widens to its own width over a few ship lengths
+  const holeW = HOLE.r * 2 * avatar.scale.x * L.trHead, blend = avatar.scale.x * 22;
+  const put = (p, dir, t, c, a, w, run = 1e9) => {
+    if (v >= TR_MAX) return; _c.copy(camera.position).sub(p); _sdv.crossVectors(dir, _c); const l = _sdv.length(), cl = _c.length(), hw = (w * pxW * cl + (holeW * .5 - w * pxW * cl) * (1 - sstep(run, 0, blend))); if (l > 1e-6) _sdv.multiplyScalar(hw / l); else _sdv.set(0, 0, 0);
     const x = p.x - O.x, y = p.y - O.y, z = p.z - O.z, o = v * 6; trPos[o] = x + _sdv.x; trPos[o + 1] = y + _sdv.y; trPos[o + 2] = z + _sdv.z; trPos[o + 3] = x - _sdv.x; trPos[o + 4] = y - _sdv.y; trPos[o + 5] = z - _sdv.z;
     trT[v * 2] = trT[v * 2 + 1] = t; trC[o] = trC[o + 3] = c.r; trC[o + 1] = trC[o + 4] = c.g; trC[o + 2] = trC[o + 5] = c.b; trA[v * 2] = trA[v * 2 + 1] = a; v++;
   };
   for (const st of strands) {
     const Pp = st.pts, n = Pp.length; if (n < 2) continue; let total = 0; for (let k = 1; k < n; k++) total += Pp[k].p.distanceTo(Pp[k - 1].p); if (total <= 0) continue; let run = 0;
+    const live = st === curStrand;
     for (let k = 0; k < n; k++) {
       if (k > 0) run += Pp[k].p.distanceTo(Pp[k - 1].p); _d.copy(Pp[Math.min(k + 1, n - 1)].p).sub(Pp[Math.max(k - 1, 0)].p);
-      const t = run / total, w = L.trWMin + (L.trWMax - L.trWMin) * Math.pow(Pp[k].s, L.trWCurve); trailColour(Pp[k].s, Pp[k].b, _trc, Pp[k].w ?? 1, Pp[k].k ?? 0);
-      if (k === 0) put(Pp[k].p, _d, t, _trc, 0, w); put(Pp[k].p, _d, t, _trc, st.alpha, w); if (k === n - 1) put(Pp[k].p, _d, t, _trc, 0, w);
+      const t = run / total, w = L.trWMin + (L.trWMax - L.trWMin) * Math.pow(Pp[k].s, L.trWCurve), age = Math.max(0, trClock - Pp[k].t) / Math.max(.05, Pp[k].life ?? 3), fa = st.alpha * (1 - sstep(age, .2, 1));
+      trailColour(Pp[k].s, Pp[k].b, _trc, Pp[k].w ?? 1, Pp[k].k ?? 0);
+      if (k === 0) put(Pp[k].p, _d, t, _trc, 0, w, live ? 0 : 1e9);
+      if (k === 1 && live) for (const f of [.04, .15, .45, 1]) { if (blend * f >= run) break; _sdv.lerpVectors(Pp[0].p, Pp[1].p, blend * f / run); put(_sdv.clone(), _d, t * blend * f / run, _trc, fa, w, blend * f) }   // extra joints where it flares out of the hole
+      put(Pp[k].p, _d, t, _trc, fa, w, live ? run : 1e9); if (k === n - 1) put(Pp[k].p, _d, t, _trc, 0, w);
     }
   }
   const used = Math.max(v, trail.userData.used || 0); for (let k = v; k < used; k++) { trA[k * 2] = trA[k * 2 + 1] = 0; if (v > 0) trPos.copyWithin(k * 6, (v - 1) * 6, v * 6) } trail.userData.used = v;
   trail.geometry.setDrawRange(0, Math.max(0, v - 1) * 6); if (v) ['position', 'aT', 'aC', 'aA'].forEach(n => trail.geometry.attributes[n].needsUpdate = true);
   const u = trail.u, cd = camera.position.distanceTo(player.pos); u.nearA.value = cd * .12 * L.trNearFade; u.nearB.value = cd * .5 * L.trNearFade; u.core.value = L.trCore; u.glow.value = L.trGlow; u.taper.value = L.trTaper; u.shim.value = L.trShimmer;
+}
+
+/* the engine: the light in the hole, the glow at its mouth and the flare, all in the trail's colour; brighter while you thrust */
+let thrS = 0; const _fc = new C3();
+function engineLook(dt) {
+  const L = LOOK; thrS += ((thrusting && booted && S.mode === 'fly' ? 1 : 0) - thrS) * Math.min(1, dt * 6);
+  const on = emitGlow * (.42 + .58 * thrS + .3 * boostK); trailColour(.4, 1, _fc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0);
+  const h = avatar.userData.hole; h.col.value.copy(_fc); h.on.value = on;
+  const em = avatar.userData.emit; em.material.color.copy(_fc); em.material.opacity = Math.min(1, on * .85);
+  const mouth = _te.copy(avatar.userData.tail).multiplyScalar(avatar.scale.x).applyQuaternion(avatar.quaternion).add(avatar.position);
+  const back = _d.set(0, 0, 1).applyQuaternion(avatar.quaternion), toCam = _c.copy(camera.position).sub(mouth), d = toCam.length(); toCam.divideScalar(d || 1);
+  const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2;
+  fu.col.value.copy(_fc); fu.k.value = L.flare * on * vis; fu.n.value = L.flareSpikes; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px;
+  flare.scale.setScalar(px * 2 * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight) * d / avatar.scale.x); flare.visible = avatar.visible && fu.k.value > .002;
 }
 
 /* lock-on marker, reticle and tooltip */
@@ -183,7 +214,7 @@ function updateLockMark() {
     lockMark.hidden = false; crossEl.classList.add('lockon'); lockMark.classList.toggle('edge', !on); lockMark.style.setProperty('--a', Math.atan2(-y, x) + 'rad'); lockMark.style.width = lockMark.style.height = px + 'px'; lockMark.style.left = ((x * .5 + .5) * innerWidth) + 'px'; lockMark.style.top = ((-y * .5 + .5) * innerHeight) + 'px';
   } else if (!lockMark.hidden) { lockMark.hidden = true; crossEl.classList.remove('lockon') }
 }
-let hoverT = 0, lastRing = null; const tipAt = { x: 0, y: 0 };
+let hoverT = 0, lastRing = null, hovPick = -1; const tipAt = { x: 0, y: 0 };
 const ringTip = R => { const n = R.lvl === 2 ? null : perYear[Math.floor(R.y) - 2000] || 0; return tipBox(R.lvl === 2 ? `${MONTHS[R.m]} ${R.yr}` : R.lvl === 0 ? `${R.yr} · five-year mark` : String(R.yr), R.lvl === 2 ? `${MONTHS[R.m]} ${R.yr}` : `${n.toLocaleString('en')} winners`) };
 function updateHover(dt) {
   hoverT += dt; if (hoverT > .06) {
@@ -191,7 +222,7 @@ function updateHover(dt) {
     let h = -1, R = null;
     if (map) { if (mouse.in && !down && booted && !tween) { const r = mapHover(hx, hy); h = r.i; R = r.ring } }   // the map points at rings, and at winners once you're close
     else { if ((aim || mouse.in) && !down && booted) h = pick(hx, hy); if (h >= 0 && starPx(h, Math.max(1, camera.position.distanceTo(starPos(h, tmp)))) < 2.5) h = -1 }   // label once it's a few px across
-    if (h === openI) h = -1;
+    hovPick = h; if (h === openI) h = -1;   // a click can only take a star you've just hovered
     if (h >= 0 && h !== lastHov) { starPos(h, tmp).project(camera); tingle(galOf(D[h].year), h, Math.max(-1, Math.min(1, tmp.x))) } lastHov = h;
     if (R && (!lastRing || lastRing.y !== R.y)) tingle(galOf(R.yr), 5000 + Math.round(R.y * 12), Math.max(-1, Math.min(1, hx / innerWidth * 2 - 1)));
     ringHov = R; lastRing = R; if (R) timeRings.u.hi.value = R.y;
@@ -229,9 +260,9 @@ function tick(now) {
     updatePlayer(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat);
     const fl = avatar.userData.flame; fl.material.opacity += ((thrusting ? .85 : 0) - fl.material.opacity) * Math.min(1, dt * 10); fl.scale.z = .6 + .4 * Math.sin(now * .04) + (thrusting ? .6 + player.cruise * 1.5 : 0);
     fl.material.color.copy(trailColour(1, 1, _flc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0).lerp(_amber, gasOn && !boosting ? 1 : 0));   // the flame takes the trail's colour
-    const em = avatar.userData.emit; em.material.color.copy(trailColour(.4, 1, _flc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0)); em.material.opacity = emitGlow * (thrusting ? .95 : .38 + .08 * Math.sin(now * .003));
   } else if (booted) { nearest(camera.position) }   // on the map, the winners right around you become suns as you zoom in
   if (!intro.active) updateCamera(dt); else intro.update(dt);
+  engineLook(dt);
   avatar.visible = fly; youMark.visible = !fly; if (!fly) { youMark.position.copy(player.pos); youMark.scale.setScalar(.028 * (1 + .18 * Math.sin(now * .005))) }
   updateBodies();
   // relativity: real aberration of where things appear, and a Doppler shift (exaggerated to taste) in the final pass

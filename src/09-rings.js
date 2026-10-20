@@ -52,3 +52,13 @@ const youRing = (() => {
 // day ticks: a tiny ruler beside each nearby winner, one notch per day either side of its date
 const DAY_N = 12, dayPos = new Float32Array(DAY_N * 7 * 2 * 3);
 const dayTicks = (() => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(dayPos, 3).setUsage(THREE.DynamicDrawUsage)); return layer(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false })), scene, 1) })();
+// the single spiral's own line, core (today) to rim (2000): on the map, and in flight once you're far enough out to see it whole
+const spiralLine = SPIRAL ? (() => {
+  const pos = [], n = 2400, tNow = Math.min(T_B, Date.now()), tau0 = 1 - tFrac(tNow);
+  for (let k = 0; k <= n; k++) { const tau = tau0 + (1 - tau0) * k / n, r = GAL_R0 + spRho(tau) * GAL_LEN, th = armPhase(r); pos.push(Math.cos(th) * r, 0, Math.sin(th) * r) }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  const u = { a: uniform(0) }, m = new THREE.LineBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  m.colorNode = vec3(.92, .95, 1); m.opacityNode = u.a;
+  const mesh = new THREE.Line(g, m); mesh.position.copy(GC); mesh.quaternion.copy(GQ); layer(mesh, scene, 1); mesh.u = u; mesh.visible = false; return mesh;
+})() : null;
+

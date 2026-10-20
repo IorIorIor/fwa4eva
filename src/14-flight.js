@@ -19,7 +19,7 @@ function aimAt(dir, k) {   // ease the rig toward a world direction, keeping its
   if (dir.lengthSq() < 1e-6) return; const d = dir.clone().normalize(), up = Yv.clone().applyQuaternion(rig.q);
   rig.q.slerp(lookAtQ(d, Math.abs(up.dot(d)) > .999 ? new V3(1, 0, 0).applyQuaternion(rig.q) : up, _qi), k);
 }
-const lookQuat = (eye, target) => new Q4().setFromRotationMatrix(new THREE.Matrix4().lookAt(eye, target, new V3(0, 1, 0)));
+const lookQuat = (eye, target, up = new V3(0, 1, 0)) => new Q4().setFromRotationMatrix(new THREE.Matrix4().lookAt(eye, target, up));
 function tweenCam(pos, quat, dur, done, around = null) { tween = { fp: camera.position.clone(), fq: camera.quaternion.clone(), tp: pos, tq: quat, t: 0, dur, done, c: around } }
 // fly a camera from a to b around a centre: direction swings on the sphere, distance eases in log space (every ×10 takes as long)
 const _ta = new V3(), _tb = new V3(), _tx = new V3(), _tqq = new Q4();
@@ -28,7 +28,11 @@ function lerpLogPolar(out, a, b, c, e) {
   const ang = Math.acos(Math.max(-1, Math.min(1, _ta.dot(_tb)))); _tx.crossVectors(_ta, _tb); if (_tx.lengthSq() < 1e-10) _tx.set(0, 1, 0); _tx.normalize();
   return out.copy(_ta).applyQuaternion(_tqq.setFromAxisAngle(_tx, ang * e)).multiplyScalar(Math.exp(Math.log(da) * (1 - e) + Math.log(db) * e)).add(c);
 }
-function orbitPose() { const o = orbit, p = new V3(Math.sin(o.phi) * Math.sin(o.theta), Math.cos(o.phi), Math.sin(o.phi) * Math.cos(o.theta)).multiplyScalar(o.dist).add(o.target); return { p, q: lookQuat(p, o.target) } }
+// the map orbits in the galaxy's own frame: phi is measured from the disk's axis, so the map looks down on the disk
+const GAL_UP = new V3(0, 1, 0).applyQuaternion(GQ);
+function orbitPose() { const o = orbit, p = new V3(Math.sin(o.phi) * Math.sin(o.theta), Math.cos(o.phi), Math.sin(o.phi) * Math.cos(o.theta)).applyQuaternion(GQ).multiplyScalar(o.dist).add(o.target); return { p, q: lookQuat(p, o.target, GAL_UP) } }
+const mapPhi = () => (90 - Math.max(5, Math.min(90, LOOK.mapAngle ?? 70))) * Math.PI / 180 + 1e-3;   // 70° above the disk by default
+const mapHomeD = () => (GAL_R0 + GAL_LEN) * 1.6;   // the whole disk, filling the view
 
 function setMode(m) {
   if (m === S.mode) return; S.mode = m; document.body.classList.toggle('map', m === 'map');
@@ -37,8 +41,8 @@ function setMode(m) {
   if (m === 'map') {
     if (document.pointerLockElement) document.exitPointerLock();
     // the whole galaxy, seen from the side your ship is on: one continuous pull back and up
-    const rel = tmp.copy(camera.position).sub(GC), dd = rel.length() || 1, ph = Math.acos(Math.max(-1, Math.min(1, rel.y / dd)));
-    Object.assign(orbit, { target: GC.clone(), dist: UNI_D * .9, theta: Math.atan2(rel.x, rel.z), phi: Math.max(.32, Math.min(1, ph)) });
+    const rel = tmp.copy(camera.position).sub(GC).applyQuaternion(GQI), up = rel.y < 0 ? -1 : 1;
+    Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), theta: Math.atan2(rel.x, rel.z), phi: up > 0 ? mapPhi() : Math.PI - mapPhi() });   // from whichever face of the disk you were on
     const o = orbitPose(); tweenCam(o.p, o.q, 2.4, null, GC.clone());
   } else { tween = { fp: camera.position.clone(), fq: camera.quaternion.clone(), t: 0, dur: 2.2, c: true }; if (S.mapPick >= 0) { const i = S.mapPick; S.mapPick = -1; focus(i) } }
   refreshLabels(); updateLockUI();
@@ -49,7 +53,7 @@ function focus(i) {
   else { S.mapPick = i; orbit.target.copy(p); orbit.dist = CR[i] * 14; const o = orbitPose(); tweenCam(o.p, o.q, 1.8) }
 }
 function goHome() {
-  if (S.mode === 'map') { Object.assign(orbit, { target: GC.clone(), dist: UNI_D }); const o = orbitPose(); tweenCam(o.p, o.q, 1.6); return }
+  if (S.mode === 'map') { Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), phi: orbit.phi > Math.PI / 2 ? Math.PI - mapPhi() : mapPhi() }); const o = orbitPose(); tweenCam(o.p, o.q, 1.6); return }
   auto = { i: -1, dest: HOME_P.clone() }; lockI = -1;
 }
 
@@ -164,7 +168,6 @@ function updatePlayer(dt) {
   } else p.pos.addScaledVector(p.vel, dt);
   contactK += (touch - contactK) * Math.min(1, dt * 10);
   if (touch > 0 && !auto && lockI !== nearI) { const sp = p.vel.length(); if (sp > 1) p.base.slerp(lookAtQ(_vn.copy(p.vel).divideScalar(sp), Yv.clone().applyQuaternion(p.base), _nq), Math.min(1, dt * 6 * Math.min(1, touch * 3))) }   // pushed: the nose follows the bounce
-  collideOutpost(p);
   {
     tmp.copy(p.pos).sub(GC); const d = tmp.length(), mn = BH.sh * 1.3;
     if (d < mn) { tmp.setLength(mn); p.pos.copy(GC).add(tmp); const n = tmp.normalize(), vn = p.vel.dot(n); if (vn < 0) p.vel.addScaledVector(n, -vn) }
@@ -193,8 +196,8 @@ function updateCamera(dt) {
   } else {
     const mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), mz = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0), zq = (keys.q ? 1 : 0) - (keys.e ? 1 : 0);
     if ((mx || mz || zq) && !tween) {
-      const o = orbitPose(), r = tmp.set(1, 0, 0).applyQuaternion(o.q), fz = tmp2.set(0, 0, -1).applyQuaternion(o.q); r.y = 0; fz.y = 0;
-      if (fz.lengthSq() < 1e-4) fz.set(0, 1, 0).applyQuaternion(o.q).setY(0); r.normalize(); fz.normalize();
+      const o = orbitPose(), r = tmp.set(1, 0, 0).applyQuaternion(o.q).projectOnPlane(GAL_UP), fz = tmp2.set(0, 0, -1).applyQuaternion(o.q).projectOnPlane(GAL_UP);
+      if (fz.lengthSq() < 1e-4) fz.set(0, 1, 0).applyQuaternion(o.q).projectOnPlane(GAL_UP); r.normalize(); fz.normalize();
       orbit.target.addScaledVector(r, mx * orbit.dist * .6 * dt).addScaledVector(fz, mz * orbit.dist * .6 * dt); if (zq) orbit.dist = Math.max(MAP_MIN, Math.min(4e7, orbit.dist * Math.exp(zq * 1.2 * dt)))
     }
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur); const e = ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tween.tp, tween.c, e); else camera.position.lerpVectors(tween.fp, tween.tp, e); camera.quaternion.copy(tween.fq).slerp(tween.tq, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }

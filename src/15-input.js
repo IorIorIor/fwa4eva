@@ -32,21 +32,23 @@ canvas.addEventListener('pointermove', e => {
   if (S.mode === 'fly') { if (down.touch || lockFailed) rotateRig(-dx * .005, -dy * .005); return }   // touch (and lock-less mouse) drag looks around
   if (tween) return;
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0) zoom((pinch0 - d) * 4); pinch0 = d; return }
-  if (down.btn === 2 || down.shift) { orbit.theta -= dx * .005; orbit.phi = Math.max(.08, Math.min(1.5, orbit.phi - dy * .005)) }   // right-drag (or Shift) turns the view
+  const dk = LOOK.mapDrag ?? .35;
+  if (down.btn === 2 || down.shift) { orbit.theta -= dx * .005 * dk; orbit.phi = orbit.phi > Math.PI / 2 ? Math.max(Math.PI - 1.5, Math.min(Math.PI - .01, orbit.phi + dy * .005 * dk)) : Math.max(.01, Math.min(1.5, orbit.phi - dy * .005 * dk)) }   // right-drag (or Shift) turns the view
   else {   // drag pans: the spot you grabbed stays under the pointer
     const a = groundAt(e.clientX - dx, e.clientY - dy, _pa), b = a && groundAt(e.clientX, e.clientY, _pb);
-    if (a && b && a.distanceTo(b) < orbit.dist * 4) orbit.target.add(a).sub(b);
-    else { const k = orbit.dist * .0013, o = orbitPose(), r = new V3(1, 0, 0).applyQuaternion(o.q), f = new V3(r.z, 0, -r.x); orbit.target.addScaledVector(r, -dx * k).addScaledVector(f, -dy * k) }
+    if (a && b && a.distanceTo(b) < orbit.dist * 4) orbit.target.addScaledVector(a.sub(b), dk);   // slower than the pointer, so the map glides
+    else { const k = orbit.dist * .0013 * dk, o = orbitPose(), r = new V3(1, 0, 0).applyQuaternion(o.q), f = new V3(r.z, 0, -r.x); orbit.target.addScaledVector(r, -dx * k).addScaledVector(f, -dy * k) }
   }
 });
 const endPtr = e => {
   ptrs.delete(e.pointerId); pinch0 = 0;
   if (down && !dragged && e.type === 'pointerup' && booted) {
     const unlock = () => { lockI = -1; if (auto && auto.i >= 0) auto = null };
-    if (S.mode === 'fly' && !down.touch && !locked() && !lockFailed) { const i = pick(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it
-    else if (S.mode === 'fly' && lockI >= 0) { const i = locked() ? pick(innerWidth / 2, innerHeight / 2) : pick(e.clientX, e.clientY); if (i >= 0 && i !== lockI) focus(i); else unlock() }   // while locked, any click lets go
-    else if (S.mode === 'map') { const h = mapHover(e.clientX, e.clientY); if (h.i >= 0) focus(h.i); else if (h.ring) ringZoom(h.ring) }   // map: a star once you're close, else the ring under the cursor
-    else { const i = locked() ? pick(innerWidth / 2, innerHeight / 2) : pick(e.clientX, e.clientY); if (i >= 0) focus(i); else unlock() }
+    const hov = (x, y) => coarse || down.touch ? pick(x, y) : hovPick;   // with a mouse, only the star whose tooltip is showing; touch has no hover, so a tap picks
+    if (S.mode === 'fly' && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it
+    else if (S.mode === 'fly' && lockI >= 0) { const i = locked() ? hov(innerWidth / 2, innerHeight / 2) : hov(e.clientX, e.clientY); if (i >= 0 && i !== lockI) focus(i); else unlock() }   // while locked, any click lets go
+    else if (S.mode === 'map') { const h = mapHover(e.clientX, e.clientY), i = coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (h.ring) ringZoom(h.ring) }   // map: a star once you're close, else the ring under the cursor
+    else { const i = locked() ? hov(innerWidth / 2, innerHeight / 2) : hov(e.clientX, e.clientY); if (i >= 0) focus(i); else unlock() }
   }
   if (!ptrs.size) down = null;
 };

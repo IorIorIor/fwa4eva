@@ -61,7 +61,11 @@ const aberrate = wp => {
 };
 // the arm spiral on the GPU (the twin of armPhase in the world model)
 const armPhT = r => {
-  if (SPIRAL) return r.sub(GAL_R0).div(GAL_LEN).mul(SP_TW);
+  if (SPIRAL) {
+    const u = r.sub(GAL_R0).div(GAL_LEN); if (SP_FLAT) return u.mul(SP_TW);
+    const c = clamp(u, 0, 1), tau = log(c.mul(-(SP_G - 1) / SP_G).add(1)).mul(-1 / SP_LG).add(u.sub(c).mul(mix(SP_S0, SP_S1, step(0, u))));
+    return tau.mul(SP_TW);
+  }
   const x = log(max(r, GAL_R0 * .5)), base = x.sub(Math.log(GAL_R0)).mul(WIND); if (!ARM.lock) return base;
   const u = clamp(r.sub(GAL_R0).div(GAL_LEN), 0, 1), E = pow(u, 1 / .62).oneMinus().mul(5.4);
   const mid = float(5).sub(E).mul(ARM.d).add(ARM.ph25), out = x.sub(ARM.x00).mul(WIND).add(ARM.ph25 + 5 * ARM.d);

@@ -7,7 +7,7 @@ Net.self.hue = PILOT_HUE;
 const PEER_N = 160, _pc = new C3(), _pd = new V3(), _ps = new V3(), _pe = new V3();
 function peerViz(hue) {
   const g = makeAvatar(); g.scale.setScalar(.68 * SHIP_K); g.userData.nav.forEach(b => b.visible = false); scene.add(g);
-  const col = new C3().setHSL(hue / 360, 1, .6), fl = g.userData.flame; fl.material = fl.material.clone(); fl.material.color.copy(col);
+  const col = new C3().setHSL(hue / 360, 1, .6), fl = g.userData.flame; fl.material = fl.material.clone(); fl.material.color.copy(col); g.userData.hole.col.value.copy(col); g.userData.hole.on.value = .5; g.userData.emit.material.color.copy(col); g.userData.emit.material.opacity = .4;
   const pos = new Float32Array(PEER_N * 6), cl = new Float32Array(PEER_N * 6), geo = new THREE.BufferGeometry(), idx = [];
   for (let k = 0; k < PEER_N - 1; k++) { const a = k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2) } geo.setIndex(idx);
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('color', new THREE.BufferAttribute(cl, 3).setUsage(THREE.DynamicDrawUsage)); geo.setDrawRange(0, 0);
@@ -42,7 +42,7 @@ function updatePeers(dt) {
   for (const v of Net.peers.values()) {
     _pd.copy(v.tgt).addScaledVector(v.vel, Math.min(1, (now - v.at) / 1000)); v.cur.lerp(_pd, 1 - Math.exp(-9 * dt));
     v.g.position.copy(v.cur); v.g.quaternion.slerp(v.q, 1 - Math.exp(-10 * dt)); v.g.visible = fly;
-    const fl = v.g.userData.flame; fl.material.opacity += ((v.th ? .85 : 0) - fl.material.opacity) * Math.min(1, dt * 10); fl.scale.z = .8 + .4 * Math.sin(now * .04);
+    const fl = v.g.userData.flame; fl.material.opacity += ((v.th ? .85 : 0) - fl.material.opacity) * Math.min(1, dt * 10); const ho = v.g.userData.hole; ho.on.value += ((v.th ? 1.1 : .45) - ho.on.value) * Math.min(1, dt * 6); fl.scale.z = .8 + .4 * Math.sin(now * .04);
     v.dot.visible = !fly; if (!fly) { v.dot.position.copy(v.cur); v.dot.scale.setScalar(.022) }
     // trail: a point every little stretch while they thrust; it drains away when they let go
     const sp = v.vel.length(), step = Math.max(.4, sp * .025);

@@ -10,11 +10,13 @@ Ships as one self-contained HTML page plus the soundtrack.
 
 ```sh
 npm install
-npm run build      # writes dist/index.html (CDN three.js), dist/dev.html (local three.js), dist/app.js
-npm run serve      # http://localhost:8765/dist/dev.html
+npm run dev          # Vite dev server (what `canopy dev` runs); edits in src/ reload the page
+npm run build        # dist/: the static site (what `canopy deploy` publishes)
+npm run build:single # dist-single/: one self-contained page plus the soundtrack, three.js from a CDN
 ```
 
-`dist/` is a static site: deploy `dist/index.html` and `dist/an-ending-ascent.mp3` anywhere.
+`index.html` is a stub: `vite.config.mjs` swaps in the page from `src/template.tpl` and serves `src/main.js` as the
+`src/NN-*.js` files concatenated in order (`shell.mjs` does the assembling for both builds).
 
 Useful query flags: `?stats` (fps readout; or press the backtick key), `?webgl` (force the WebGL 2 fallback),
 `?test` (no title card, deterministic hooks on `window.__sky` for scripted tests), `?norender` (logic only).
@@ -49,7 +51,7 @@ bundled by esbuild (which inlines the three.js add-ons used).
 | `src/19-guide.js` | first-flight tips, benchmark |
 | `src/19-frame.js` | the frame loop |
 | `src/20-boot.js` | warm-up, opening sequence, test hooks |
-| `src/template.html`, `markup.html`, `style.css`, `font.css.part` | the page shell, HUD markup, styles, embedded fonts |
+| `src/template.tpl`, `markup.tpl`, `style.css`, `font.css.part` | the page shell, HUD markup, styles, embedded fonts |
 
 ## Multiplayer
 
@@ -65,8 +67,8 @@ The `test/` scripts drive the page in headless Chromium (Playwright, WebGPU thro
 
 ```sh
 pip install playwright && python -m playwright install chromium
-python test/run2.py "http://localhost:8765/dist/dev.html?test" test/flight.js      # flight logic, no rendering
-python test/shots.py "http://localhost:8765/dist/dev.html?test" out 1280 720 "start::await t.run(3)"
+python test/run2.py "http://localhost:5173/?test" test/flight.js      # flight logic, no rendering
+python test/shots.py "http://localhost:5173/?test" out 1280 720 "start::await t.run(3)"
 ```
 
 ## Notes

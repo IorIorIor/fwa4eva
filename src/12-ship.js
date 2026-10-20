@@ -6,7 +6,7 @@ function mergeByMaterial(group, keep = () => false) {
   const out = new THREE.Group(); byMat.forEach((gs, m) => out.add(new THREE.Mesh(mergeGeometries(gs.map(g => g.index ? g : g.toNonIndexed())), m)));
   return { merged: out, kept };
 }
-const outpost = new THREE.Group(); outpost.scale.setScalar(SHIP_K); scene.add(outpost);
+const outpost = new THREE.Group(); outpost.scale.setScalar(SHIP_K); outpost.visible = false;   // retired: flights start out past the rim now
 const ring2 = new THREE.Group(); outpost.add(ring2);
 const beacons = [], beamPivot = new THREE.Group();
 {
@@ -41,8 +41,8 @@ const beacons = [], beamPivot = new THREE.Group();
   const beam = new THREE.Mesh(bg, bm); beam.rotation.z = 1.05; beamPivot.position.set(0, -OUT.hubH - 26, 0); beamPivot.add(beam); outpost.add(beamPivot);
 }
 
-/* the ship: a mouse pointer. The classic arrow, extruded: white faces, black sides, and a black outline that steps down
-   around the face like the real cursor's border. Tip forward; the stem is the engine. */
+/* the ship: a mouse pointer. The classic arrow, extruded: a black face inside a white border that steps down around it,
+   like the pointer on a Mac. Tip forward; the stem is the engine, with a round hole in its back where the trail comes out. */
 const ARROW = (() => {
   const P0 = [[0, 0], [0, 16.6], [4.2, 12.6], [7.3, 19.2], [9.6, 18.2], [6.6, 11.7], [11.7, 11.7]], k = .36;
   const ax = Math.atan2(8.45, 18.7), rot = ([x, y]) => [x * Math.cos(ax) - y * Math.sin(ax), x * Math.sin(ax) + y * Math.cos(ax)];   // tip → stem along the axis
@@ -59,27 +59,63 @@ function inflate(pts, o) {   // offset a polygon outward by o (mitred, clamped a
     return [p[0] + bx / bl * L, p[1] + by / bl * L];
   });
 }
-const ARROW_TILT = 0;   // flat: the tip points exactly where you're going (the chase camera sits high enough to see the face)
+const ARROW_TILT = 0;
+/* the engine: a round hole in the back of the stem. It's drawn as one disc whose shader looks into a tube behind it
+   (where the view ray meets the wall or the floor), so it reads as a real opening from any angle. The floor is the light. */
+const HOLE = { r: .3, d: .55, z: .42 };   // radius, depth (model units), and how far the border sits behind the stem's end
+function holeMesh() {
+  const u = { col: uniform(new C3(1, .3, .3)), on: uniform(0) }, m = new THREE.MeshBasicNodeMaterial();
+  const pv = varying(modelViewMatrix.mul(vec4(positionGeometry, 1)).xyz), pg = varying(positionGeometry.xy);
+  m.colorNode = Fn(() => {
+    const v = normalize(transpose(modelViewMatrix).mul(vec4(normalize(pv), 0)).xyz), q = pg, r = float(HOLE.r), d = float(HOLE.d);
+    const vz = min(v.z, -.02), a = max(dot(v.xy, v.xy), 1e-6), b = dot(q, v.xy), c = dot(q, q).sub(r.mul(r));
+    const tw = sqrt(max(b.mul(b).sub(a.mul(c)), 0)).sub(b).div(a), tb = d.div(vz.negate()), floor_ = step(tb, tw);
+    const zw = min(tw.mul(vz.negate()), d), qb = q.add(v.xy.mul(tb)), core = exp(dot(qb, qb).div(r.mul(r).mul(.22)).negate());
+    const wall = u.col.mul(exp(d.sub(zw).mul(-4.5))).mul(u.on.mul(1.4)).add(vec3(.015));
+    const flr = mix(u.col, vec3(1), core.mul(.65)).mul(u.on.mul(core.mul(5).add(1.6))).add(vec3(.02));
+    return mix(wall, flr, floor_);
+  })();
+  const mesh = new THREE.Mesh(new THREE.CircleGeometry(HOLE.r, 40), m); mesh.u = u; return mesh;
+}   // flat: the tip points exactly where you're going (the chase camera sits high enough to see the face)
 function makeAvatar() {
   const g = new THREE.Group(), body = new THREE.Group();
   const shape = pts => { const s = new THREE.Shape(); pts.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); s.closePath(); return s };
   const slab = (pts, depth, mats) => { const geo = new THREE.ExtrudeGeometry(shape(pts), { depth, bevelEnabled: false }); geo.translate(0, 0, -depth / 2); geo.rotateX(Math.PI / 2); return new THREE.Mesh(geo, mats) };
   const white = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: .32, roughness: .38, metalness: .05 });
-  const black = new THREE.MeshStandardMaterial({ color: 0x0b0b0e, roughness: .55, metalness: .2 });
-  body.add(slab(ARROW.pts, 1.3, [white, black]), slab(inflate(ARROW.pts, .42), .96, black));
+  const black = new THREE.MeshStandardMaterial({ color: 0x08080a, roughness: .42, metalness: .25 }), rim = new THREE.MeshStandardMaterial({ color: 0x6c6c74, emissive: 0xffffff, emissiveIntensity: .05, roughness: .5, metalness: .1 });
+  body.add(slab(ARROW.pts, 1.3, [black, black]), slab(inflate(ARROW.pts, .42), .96, [white, rim]));   // the border's top is white, its edges a soft grey
   body.rotation.x = ARROW_TILT;   // tip raised, so from the chase camera it reads as a pointer, face on
   g.add(body);
-  const [tx, tz] = ARROW.tail, tail = new V3(tx, 0, tz).applyEuler(new THREE.Euler(ARROW_TILT, 0, 0)); g.userData.tail = tail;
+  const [tx, tz] = ARROW.tail, tail = new V3(tx, 0, tz + HOLE.z).applyEuler(new THREE.Euler(ARROW_TILT, 0, 0)); g.userData.tail = tail;   // the mouth of the hole
+  const hole = holeMesh(); hole.position.copy(tail).add(new V3(0, 0, .004)); g.add(hole); g.userData.hole = hole.u;
   const fg = new THREE.ConeGeometry(.55, 3, 12, 1, true); fg.rotateX(Math.PI / 2); fg.translate(tail.x, tail.y, tail.z + 1.5);
   const flame = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ color: 0xffb547, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); g.add(flame); g.userData.flame = flame;
   // the trail emitter: a soft light in the back of the stem, faint at rest and bright while you thrust
-  const em = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); em.position.set(tail.x, tail.y, tail.z + .2); em.scale.setScalar(1.9); g.add(em); g.userData.emit = em;
+  const em = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); em.position.set(tail.x, tail.y, tail.z + .05); em.scale.setScalar(HOLE.r * 3.2); g.add(em); g.userData.emit = em;
   const nav = c => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2 }), dot = (c, p) => { const b = new THREE.Mesh(new THREE.BoxGeometry(.32, .32, .32), nav(c)); b.position.copy(p); g.add(b); return b };
   const at = i => new V3(ARROW.pts[i][0], .7, ARROW.pts[i][1]).applyEuler(new THREE.Euler(ARROW_TILT, 0, 0));
   g.userData.nav = [dot(0xff4a4a, at(1)), dot(0x4aff8a, at(6)), dot(0xffffff, at(0))];
   return g;
 }
 const avatar = makeAvatar(); avatar.scale.setScalar(.68 * SHIP_K); scene.add(avatar);
+/* the engine flare: a hard white point, a wide bloom round it and thin diffraction spikes, all sized in screen pixels so it
+   reads the same at any distance. It sits at the mouth of the hole and only shows while you can see into it. */
+const flare = (() => {
+  const u = { col: uniform(new C3(1, .4, .4)), k: uniform(0), n: uniform(4), turn: uniform(Math.PI / 4), px: uniform(280) };
+  const m = new THREE.SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  m.colorNode = Fn(() => {
+    const p = uv().sub(.5).mul(u.px), r = length(p), L = u.px.mul(.5), spikes = float(0).toVar();
+    for (let j = 0; j < 4; j++) {   // up to four lines through the centre: 2, 4, 6 or 8 spikes
+      const a = u.turn.add(float(j * 2 * Math.PI).div(u.n)), dir = vec2(cos(a), sin(a)), along = abs(dot(p, dir)), across = abs(dot(p, vec2(dir.y.negate(), dir.x)));
+      const w = along.mul(.006).add(.75), fall = pow(max(0, along.div(L).oneMinus()), 2.6);
+      spikes.addAssign(exp(across.div(w).pow(2).negate()).mul(fall).mul(step(float(j).add(.5), u.n.mul(.5))));
+    }
+    const core = exp(r.div(1.5).pow(2).negate()), bloomIn = exp(r.div(L.mul(.022)).negate()), bloomOut = exp(r.div(L.mul(.15)).negate());
+    const c = mix(u.col, vec3(1), .55).mul(spikes.mul(1.1)).add(vec3(1).mul(core.mul(6))).add(mix(u.col, vec3(1), .35).mul(bloomIn.mul(1.1))).add(u.col.mul(bloomOut.mul(.4)));
+    return vec4(c.mul(u.k), 1);
+  })();
+  const s = new THREE.Sprite(m); s.renderOrder = 6; s.frustumCulled = false; s.u = u; s.position.copy(avatar.userData.tail).add(new V3(0, 0, .06)); avatar.add(s); return s;
+})();
 
 /* TRON light trail: emitted only while you thrust. Each point keeps the colour and brightness it was born with,
    so the trail records how fast you were going along its length. Vertices are written relative to the ship,
@@ -94,7 +130,7 @@ const trail = (() => {
   const vT = varying(attribute('aT', 'float')), vV = varying(attribute('aV', 'float')), vC = varying(attribute('aC', 'vec3'));
   const vA = varying(attribute('aA', 'float').mul(smoothstep(u.nearA, u.nearB, modelViewMatrix.mul(vec4(positionGeometry, 1)).z.negate())));
   m.fragmentNode = Fn(() => {
-    const core = exp(vV.mul(vV).mul(-38)), halo = exp(vV.mul(vV).mul(-3.5)), along = pow(max(0, vT.oneMinus()), u.taper).mul(smoothstep(0, .02, vT.add(.005)));
+    const core = exp(vV.mul(vV).mul(-38)), halo = exp(vV.mul(vV).mul(-3.5)), along = pow(max(0, vT.oneMinus()), u.taper);
     const flick = u.shim.oneMinus().add(u.shim.mul(sin(vT.mul(240).sub(U.now.mul(30)))));
     return vec4(vC.mul(halo).mul(.85).mul(u.glow).add(mix(vC, vec3(1), .75).mul(core).mul(1.6).mul(u.core)).mul(along).mul(flick).mul(vA), 1);
   })();

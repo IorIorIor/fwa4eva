@@ -4,8 +4,14 @@
    background stars → haze → nebulae → lanes → arcs → winners → extra nebulae and lanes. */
 const SHIP_K = .1, PLAYER_R = 2.4 * SHIP_K;              // the pilot: everything else is measured against this
 const SPIRAL = !!SHAPE.spiral;   // one single spiral carrying the whole timeline, instead of arms crossing date rings
-const GAL_OUT = 850000, GAL_R0 = SHAPE.r0, GAL_LEN = GAL_OUT - SHAPE.r0, WIND = SHAPE.wind, ARMS = SPIRAL ? 1 : SHAPE.arms, UNI_D = 2.4e6;
+const GAL_OUT = 850000 * (SPIRAL ? SHAPE.ssize : 1), GAL_R0 = SHAPE.r0 * (SPIRAL ? SHAPE.shole : 1), GAL_LEN = GAL_OUT - GAL_R0, WIND = SHAPE.wind, ARMS = SPIRAL ? 1 : SHAPE.arms, UNI_D = 2.4e6;
 const SP_TW = 2 * Math.PI * 5.4 * SHAPE.turns;   // the single spiral's total turn, core to rim (one turn per five years by default)
+/* the single spiral turns at an even pace through time (τ: 0 today, 1 for 2000), but its radius opens geometrically, so the
+   windings sit SP_G times further apart at the core than at the rim. u = ρ(τ) is the radius fraction, τ = spTau(u) its inverse
+   (carried on in straight lines outside 0…1). */
+const SP_G = SHAPE.sgap, SP_LG = Math.log(SP_G), SP_FLAT = Math.abs(SP_LG) < 1e-3, SP_S0 = SP_FLAT ? 1 : (SP_G - 1) / (SP_G * SP_LG), SP_S1 = SP_FLAT ? 1 : (SP_G - 1) / SP_LG;
+const spRho = tau => SP_FLAT ? tau : SP_G * (1 - Math.pow(SP_G, -tau)) / (SP_G - 1);
+const spTau = u => { if (SP_FLAT) return u; const c = Math.max(0, Math.min(1, u)); return -Math.log(1 - c * (SP_G - 1) / SP_G) / SP_LG + (u - c) * (u < 0 ? SP_S0 : SP_S1) };
 const NGAL = 1, GAL_YRS = 5, NERA = 6;
 const MIN_SEP = SHAPE.sep;          // no two winners closer than this, centre to centre
 
@@ -22,8 +28,9 @@ const GQ3 = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationF
 const GAL = { name: 'The Galaxy', y0: 2000, arms: ARMS, center: GC, quat: GQ };
 const T_A = Date.UTC(2000, 0, 1), T_B = Date.UTC(2027, 0, 1);
 const tFrac = t => Math.max(0, Math.min(1, (t - T_A) / (T_B - T_A)));
-const yearU = t => SPIRAL ? 1 - tFrac(t) : Math.pow(1 - tFrac(t), .62);                  // 0 = core (today), 1 = rim (2000); the spiral spaces its windings evenly
-const uToT = u => { u = Math.max(0, Math.min(1, u)); return T_A + (1 - (SPIRAL ? u : Math.pow(u, 1 / .62))) * (T_B - T_A) };
+const yearU = t => SPIRAL ? spRho(1 - tFrac(t)) : Math.pow(1 - tFrac(t), .62);                  // 0 = core (today), 1 = rim (2000)
+const uToT = u => { u = Math.max(0, Math.min(1, u)); return T_A + (1 - (SPIRAL ? spTau(u) : Math.pow(u, 1 / .62))) * (T_B - T_A) };
+const yrsPerU = u => SPIRAL ? 27 * (SP_FLAT ? 1 : SP_S0 * Math.pow(SP_G, spTau(u))) : 27 / .62 * Math.pow(Math.max(u, .03), 1 / .62 - 1);   // years per unit of u here
 // u0 = inner edge (the era's end), u1 = outer edge (its start)
 const ERAS = Array.from({ length: NERA }, (_, k) => { const y0 = 2000 + k * GAL_YRS; return { k, y0, name: k < NERA - 1 ? `${y0}–${y0 + GAL_YRS - 1}` : `${y0}–now`, u0: k < NERA - 1 ? yearU(Date.UTC(y0 + GAL_YRS, 0, 1)) : 0, u1: k ? yearU(Date.UTC(y0, 0, 1)) : 1 } });
 const galOf = y => Math.max(0, Math.min(NERA - 1, Math.floor((y - 2000) / GAL_YRS)));
@@ -45,7 +52,7 @@ const ARM = (() => {
 })();
 const eraE = r => { const u = Math.max(0, Math.min(1, (r - GAL_R0) / GAL_LEN)); return 5.4 * (1 - Math.pow(u, 1 / .62)) };   // 0 on the 2000 ring, 5 on 2025
 function armPhase(r) {
-  if (SPIRAL) return SP_TW * (r - GAL_R0) / GAL_LEN;   // an even (Archimedean) spiral: every winding the same distance apart
+  if (SPIRAL) return SP_TW * spTau((r - GAL_R0) / GAL_LEN);   // one turn per five years; the windings open out toward the core
   const x = Math.log(Math.max(r, GAL_R0 * .5)), base = WIND * (x - Math.log(GAL_R0)); if (!ARM.lock) return base;
   const mid = ARM.ph25 + (5 - eraE(r)) * ARM.d, out = ARM.ph25 + 5 * ARM.d + WIND * (x - ARM.x00);
   const w1 = sstep(x, ARM.x25 - ARM.h, ARM.x25 + ARM.h), w2 = sstep(x, ARM.x00 - ARM.h, ARM.x00 + ARM.h);
@@ -176,5 +183,6 @@ const starR = i => STAR_R[i] * LOOK.bodySize, stopR = i => starR(i) * LOOK.stopK
 
 /* the outpost: a small station adrift beyond the rim, where every flight starts */
 const OUT = { hubR: 40, hubH: 60, ringR: 150, ringT: 20, padY: 64, padHalf: 45 };
-const HOME_P = new V3(0, (OUT.padY + 2) * SHIP_K + PLAYER_R + .06, 1.2);
+// no station any more: every pilot starts just outside the rim and well above the disk, at a random point round it
+const HOME_P = (() => { const a = Math.random() * Math.PI * 2, R = GAL_R0 + GAL_LEN; return new V3(Math.cos(a) * R * 1.12, R * .42, Math.sin(a) * R * 1.12).applyQuaternion(GQ).add(GC) })();
 const LIGHT = 1.2e6;   // the speed of light, in world units per second
