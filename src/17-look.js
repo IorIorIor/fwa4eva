@@ -105,7 +105,18 @@ function renderLook() {
     });
     body.appendChild(sec)
   });
+  if ($('lookFind').value) findLook();
 }
+// search: show only the rows whose label (or section name) holds every word typed, with their sections open
+function findLook() {
+  const words = $('lookFind').value.toLowerCase().split(/\s+/).filter(Boolean), body = $('lookBody'); body.classList.toggle('finding', words.length > 0);
+  body.querySelectorAll('.lsec').forEach(sec => {
+    const title = sec.querySelector('.lhd').textContent.toLowerCase(); let any = false;
+    sec.querySelectorAll('.lbody>*').forEach(r => { const t = title + ' ' + r.textContent.toLowerCase(), hit = words.every(w => t.includes(w)); r.classList.toggle('miss', !hit); any = any || hit });
+    sec.classList.toggle('found', any);
+  });
+}
+$('lookFind').oninput = findLook; $('lookFind').onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { e.target.value = ''; findLook() } };   // typing here never flies the ship
 $('presets').innerHTML = Object.keys(PRESETS).map(n => `<button data-p="${n}">${n}</button>`).join('') + '<button data-p="reset">Reset</button>';
 $('presets').onclick = e => { const p = e.target.dataset && e.target.dataset.p; if (!p) return; LOOK = { ...LOOK_DEFAULTS, ...(p === 'reset' ? {} : PRESETS[p]) }; saveLook(); renderLook(); applyLook() };
 $('lookCopy').onclick = () => {

@@ -19,7 +19,7 @@
 <div class="hud" id="topbar"><button class="btn" hidden id="lbtn" aria-expanded="false" aria-controls="lookPanel">Look</button><button class="btn" hidden id="fbtn" aria-expanded="false" aria-controls="panel">Filters</button></div>
 <aside class="hud sheet" id="lookPanel" aria-label="Look" inert>
   <header><div class="lh">Look</div><div class="presets" id="presets"></div></header>
-  <div class="lsave"><button class="btn" id="lookCopy">Copy settings</button><span id="lookMsg" role="status"></span><textarea id="lookOut" readonly hidden aria-label="Current settings"></textarea></div>
+  <div class="lsave"><input type="search" id="lookFind" placeholder="Search settings" aria-label="Search settings" autocomplete="off" spellcheck="false"><button class="btn" id="lookCopy">Copy settings</button><span id="lookMsg" role="status"></span><textarea id="lookOut" readonly hidden aria-label="Current settings"></textarea></div>
   <div class="scroll" id="lookBody"></div>
 </aside>
 <button class="hud" id="thrust" aria-label="Thrust (slide up to boost)"><i></i><b>Boost</b><span>Thrust</span></button><button class="hud" id="brake">Brake</button>
