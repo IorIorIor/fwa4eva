@@ -22,7 +22,7 @@
   <div class="lsave"><button class="btn" id="lookCopy">Copy settings</button><span id="lookMsg" role="status"></span><textarea id="lookOut" readonly hidden aria-label="Current settings"></textarea></div>
   <div class="scroll" id="lookBody"></div>
 </aside>
-<button class="hud" id="boost" aria-label="Boost"><span>Boost</span><i></i></button><button class="hud" id="thrust">Thrust</button>
+<button class="hud" id="boost" aria-label="Boost"><span>Boost</span><i></i></button><button class="hud" id="thrust">Thrust</button><button class="hud" id="brake">Brake</button>
 
 <aside class="hud sheet" id="panel" aria-label="Filters" inert>
   <header><div id="count">0<small>sites</small></div><button class="btn" id="reset">Reset</button></header>

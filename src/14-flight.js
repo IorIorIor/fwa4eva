@@ -80,7 +80,7 @@ function updatePlayer(dt) {
   const p = player, L = LOOK;
   if (lockFailed && mouse.in && !down) rotateRig(-steerCurve(mouse.x / innerWidth * 2 - 1) * 1.8 * dt, -steerCurve(mouse.y / innerHeight * 2 - 1) * 1.4 * dt);   // lock-less desktop fallback
   rig.quat.copy(rig.q);
-  const fw = (keys.w || keys.arrowup || touchThrust ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0), rl = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);
+  const fw = (keys.w || keys.arrowup || touchThrust ? 1 : 0) - (keys.s || keys.arrowdown || touchBrake ? 1 : 0), rl = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);
   if (rl) p.base.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), rl * 2.2 * dt)).normalize();   // A/D roll the ship itself; the camera stays level
   const prevF = _hf.set(0, 0, -1).applyQuaternion(p.base), prevR = _hr.set(1, 0, 0).applyQuaternion(p.base), sp0 = p.vel.length();
   // boost: Shift or Space. A short tank that drains while boosting and refills when you don't.

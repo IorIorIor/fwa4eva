@@ -51,7 +51,7 @@ function boostWhoosh() {
 }
 function updateEngine() {
   if (!ENG || !AC) return; const t = AC.currentTime, fly = S.mode === 'fly', sp = player.vel.length(), k = Math.min(1, Math.log10(1 + sp) / 6.3);   // 0 parked .. 1 near light speed
-  const th = fly && thrusting ? 1 : 0, brk = fly && (keys.s || keys.arrowdown) && sp > 5 ? 1 : 0, move = fly ? sstep(sp, 2, 400) : 0;
+  const th = fly && thrusting ? 1 : 0, brk = fly && (keys.s || keys.arrowdown || touchBrake) && sp > 5 ? 1 : 0, move = fly ? sstep(sp, 2, 400) : 0;
   ENG.nG.gain.setTargetAtTime((.006 + th * .05 + move * .018 + boostK * .07) * (1 + k * .6), t, th ? .12 : .6);
   ENG.bp.frequency.setTargetAtTime(180 + k * 1500 + th * 220, t, .25);
   ENG.tG.gain.setTargetAtTime(fly ? (.012 + th * .035 + move * .012) : 0, t, th ? .15 : .8);

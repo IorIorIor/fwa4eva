@@ -141,7 +141,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 #gauge .bar i{position:absolute;left:0;top:-1px;height:3px;background:var(--flare)}
 body.panel-open #gauge{display:none}
 #gauge,#cross,#labels,#brand,#topbar,#logo,#tip,#speed{transition:opacity 1.4s ease}
-body.idle #thrust,body.idle #boost{opacity:.2}
+body.idle #thrust,body.idle #boost,body.idle #brake{opacity:.2}
 body.idle #speed,body.idle #gauge,body.idle #labels,body.idle #brand,body.idle #topbar,body.idle #logo{opacity:0}
 body.idle #cross{opacity:.18}
 #speed{left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);pointer-events:none;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums;white-space:nowrap;text-shadow:0 0 6px var(--void);display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -214,7 +214,7 @@ body.idle #youTime{opacity:.25 !important}
 .glab.yr{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
 .glab.you{font-family:var(--mono);font-size:11px;color:var(--flare);letter-spacing:.1em}
 .glab.dec{transform:translate(-50%,-50%);font-family:var(--mono);font-size:8px;line-height:1;letter-spacing:.08em;text-transform:none;padding:3px 6px 2px;border:1px solid rgba(255,255,255,.28);background:rgba(30,31,34,.6);border-radius:999px;color:var(--ink);text-shadow:none}
-#thrust,#boost{display:none}
+#thrust,#boost,#brake{display:none}
 @media (max-width:760px),(pointer:coarse){
   /* sits square in the corner; fills toward solid white the longer you hold it, lets go quickly */
   #thrust{display:block;position:fixed;z-index:5;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:76px;height:76px;padding:0;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.06);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font-family:var(--mono);font-size:10px;line-height:1.35;text-transform:uppercase;letter-spacing:.1em;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;transition:background-color .35s ease,border-color .35s ease,color .25s ease,transform .2s ease,opacity 1.4s ease}
@@ -223,7 +223,10 @@ body.idle #youTime{opacity:.25 !important}
   #boost{display:block;position:fixed;z-index:5;right:calc(max(16px,env(safe-area-inset-right,0px)) + 84px);bottom:calc(16px + env(safe-area-inset-bottom,0px));width:52px;height:52px;padding:0;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.06);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;overflow:hidden;transition:background-color .35s ease,border-color .35s ease,color .25s ease,transform .2s ease,opacity 1.4s ease}
   #boost i{position:absolute;left:0;right:0;bottom:0;height:2px;background:currentColor;transform-origin:left;opacity:.8}
   #boost.on{background:rgba(255,255,255,.92);border-color:#fff;color:#000;transform:scale(.94);transition:background-color .5s cubic-bezier(.3,0,.25,1),border-color .3s ease,color .2s ease .15s,transform .12s ease}
-  body.map #thrust,body.map #boost,body:not(.map) #gauge{display:none}   /* on touch the speed readout at the bottom centre is the only flight instrument */
+  /* brake: the same small square, mirrored into the bottom-left corner */
+  #brake{display:block;position:fixed;z-index:5;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:52px;height:52px;padding:0;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.06);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;overflow:hidden;transition:background-color .35s ease,border-color .35s ease,color .25s ease,transform .2s ease,opacity 1.4s ease}
+  #brake.on{background:rgba(255,255,255,.92);border-color:#fff;color:#000;transform:scale(.94);transition:background-color .5s cubic-bezier(.3,0,.25,1),border-color .3s ease,color .2s ease .15s,transform .12s ease}
+  body.map #thrust,body.map #boost,body.map #brake,body:not(.map) #gauge{display:none}   /* on touch the speed readout at the bottom centre is the only flight instrument */
 }
 @media (max-width:760px){
   #panel,#lookPanel{left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));width:auto;bottom:auto;max-height:62vh}
