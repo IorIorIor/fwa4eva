@@ -5,9 +5,41 @@
 const DAY0 = Date.UTC(2000, 0, 1), dayIdx = s => Math.round((Date.parse(s + 'T00:00:00Z') - DAY0) / 864e5);
 const W_DAY = new Int32Array(N); for (let i = 0; i < N; i++) W_DAY[i] = dayIdx(D[i].date);
 const NAV_DAYS = Math.max(W_DAY[N - 1] + 30, dayIdx(new Date().toISOString().slice(0, 10)));
-function flyTo(i) {   // lock on and let the autopilot take you there (on the map: the camera goes)
-  if (i < 0) return; focus(i); if (S.mode === 'fly') auto = { i, dest: null };
+function flyTo(i) {   // lock on and let the autopilot take you there (on the map: the camera goes); with warp on, jump
+  if (i < 0) return; focus(i); if (S.mode !== 'fly') return;
+  if (LOOK.warp && player.pos.distanceTo(starPos(i, tmp)) > stopR(i) * 40) startWarp(i); else auto = { i, dest: null };
 }
+// warp: a few seconds at (nearly) light speed straight to the star, the streaks and the Doppler swelling and fading on the way
+let warp = null;
+function startWarp(i) {
+  const to = starPos(i, new V3()), from = player.pos.clone(), back = from.clone().sub(to), bl = back.length() || 1;
+  warp = { i, from, to, dest: to.clone().addScaledVector(back, dockDist(i) * 1.5 / bl), t: 0, dur: Math.max(.6, LOOK.warpTime ?? 2.4), prev: from.clone() }; auto = null; curStrand = null;
+}
+function stepWarp(dt) {
+  const w = warp; w.t += dt; const p = Math.min(1, w.t / w.dur), e = p * p * p * (p * (p * 6 - 15) + 10);
+  w.prev.copy(player.pos); player.pos.lerpVectors(w.from, w.dest, e); thrusting = false;
+  player.vel.copy(w.dest).sub(w.from).setLength(LIGHT * .97 * Math.pow(Math.sin(Math.PI * Math.min(1, p * 1.08)), .7) + 1);   // what the speed effects read: up to light speed and back
+  aimAt(tmp.copy(w.to).sub(camera.position), 1 - Math.exp(-8 * dt)); player.quat.slerp(rig.q, 1 - Math.exp(-8 * dt)); player.base.copy(player.quat);
+  if (p >= 1) { player.vel.set(0, 0, 0); warp = null }
+}
+// tours: a list of winners, flown one after another, pausing at each so its record can open. Any thrust or brake ends it
+const tour = { ids: [], k: -1, wait: 0, on: false, name: '' };
+function startTour(ids, name) { if (!ids.length) return; Object.assign(tour, { ids, k: -1, on: true, name }); nextStop() }
+function stopTour() { tour.on = false; $('tourPill').hidden = true }
+function nextStop() {
+  if (++tour.k >= tour.ids.length) return stopTour(); flyTo(tour.ids[tour.k]); tour.wait = LOOK.tourDwell ?? 6;
+  const p = $('tourPill'); p.hidden = false; p.innerHTML = `<b>${esc(tour.name)}</b> ${tour.k + 1} / ${tour.ids.length}<button type="button" aria-label="Stop the tour">×</button>`;
+}
+function tourUpdate(dt) {
+  if (!tour.on) return; if (keys.w || keys.s || keys.arrowup || keys.arrowdown || keys.shift || touchThrust || touchBrake || S.mode !== 'fly') return stopTour();
+  const i = tour.ids[tour.k]; if (warp || auto || nearI !== i) return; if ((tour.wait -= dt) <= 0) nextStop();
+}
+const TOURS = {
+  'Every FWA of the Year': () => D.flatMap((d, i) => d.award === 'FOTY' && TA[i] === 1 ? [i] : []),
+  'Sites of the Month, one year': () => { const y = lockI >= 0 ? D[lockI].year : 2000 + Math.floor(Math.random() * 26); return D.flatMap((d, i) => d.award === 'SOTM' && d.year === y && TA[i] === 1 ? [i] : []) },
+  'This agency': () => { const a = lockI >= 0 ? D[lockI].agency : ''; return a ? D.flatMap((d, i) => d.agency === a ? [i] : []) : [] },
+  'Surprise me': () => { const m = D.flatMap((d, i) => TA[i] === 1 ? [i] : []); for (let k = m.length - 1; k > 0; k--) { const j = Math.random() * (k + 1) | 0; [m[k], m[j]] = [m[j], m[k]] } return m.slice(0, 12).sort((a, b) => a - b) },
+};
 let aimFast = 0;   // seconds left of a quick turn onto the locked star
 function navStep(dir, from = lockI >= 0 ? lockI : cardI >= 0 ? cardI : nav.pick, how = 'fly') {   // the next matching winner by date: fly there, or ('turn') just swing round and lock on
   let j = from < 0 ? (dir > 0 ? -1 : N) : from;
@@ -81,6 +113,7 @@ const nav = (() => {
   q.onblur = () => setTimeout(() => { if (document.activeElement !== q) res.hidden = true }, 150);
   q.onfocus = () => { if (document.pointerLockElement) document.exitPointerLock(); if (q.value) find() };
   res.onpointerdown = e => { const b = e.target.closest('button'); if (b) { e.preventDefault(); choose(+b.dataset.i) } };
+  $('tourPill').onclick = e => { if (e.target.closest('button')) stopTour() };
   $('navPrev').onclick = () => navStep(-1); $('navNext').onclick = () => navStep(1);
   $('navFilter').onclick = () => { togglePanel('panel'); $('navFilter').setAttribute('aria-expanded', $('panel').classList.contains('open')) };
   // the tooltip's ‹ › step on from the star it's showing

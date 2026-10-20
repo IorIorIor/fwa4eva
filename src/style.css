@@ -385,3 +385,8 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 .pm i,.pm.edge i{width:4px;height:4px;border:0;background:#fff;box-shadow:none}
 #intro .ring circle{transition:stroke-dashoffset .8s cubic-bezier(.3,.1,.2,1)}
 #tip.dock{transition:none;transform:scale(var(--cs,1.7));transform-origin:0 0}   /* the full record, docked top left and big */
+
+#tourPill{left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.35);padding:6px 6px 6px 12px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#tourPill b{font-weight:400;text-transform:uppercase;color:#fff}
+#tourPill button{background:none;border:0;color:var(--ink);font-size:15px;line-height:1;padding:0 6px;cursor:pointer}
+#tourPill button:hover{background:#fff;color:#000}

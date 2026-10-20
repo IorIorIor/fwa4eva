@@ -97,6 +97,7 @@ addEventListener('keydown', e => {
   if (k === 'm') setMode(S.mode === 'fly' ? 'map' : 'fly');
   if (k === 'h') goHome();
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
+  if (k === 'escape' && tour.on) stopTour();
   if (k === '/') { e.preventDefault(); keys[k] = false; $('navQ').focus() }   // / searches
   if ((k === 'arrowleft' || k === 'arrowright') && lockI >= 0 && S.mode === 'fly') { keys[k] = false; e.preventDefault(); if (!e.repeat) navStep(k === 'arrowright' ? 1 : -1, undefined, 'turn') }   // locked on: ← → step to the previous / next winner
 });

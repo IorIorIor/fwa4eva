@@ -16,6 +16,7 @@
   <div class="nrow"><button type="button" id="navPrev" aria-label="Previous winner" title="Previous (←)">‹</button><input type="search" id="navQ" placeholder="Search FWAs" aria-label="Search winners" autocomplete="off" spellcheck="false"><button type="button" id="navNext" aria-label="Next winner" title="Next (→)">›</button><button type="button" id="navFilter" aria-expanded="false" aria-controls="panel">Filter</button></div>
   <div id="navTl"><button type="button" id="navDay"></button><canvas aria-label="Timeline: scroll or drag to a day"></canvas></div>
 </div>
+<div class="hud" id="tourPill" hidden></div>
 <div class="hud" id="speed" aria-hidden="true"><b></b><i><i></i></i></div>
 <div id="lockMark" hidden><i></i><i></i><i></i><i></i><b></b></div>
 <div class="hud" id="gauge"></div>
