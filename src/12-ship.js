@@ -137,7 +137,7 @@ const trail = (() => {
     const flick = u.shim.oneMinus().add(u.shim.mul(sin(vT.mul(240).sub(U.now.mul(30)))));
     const c0 = vC.mul(halo).mul(.85).mul(u.glow).add(mix(vC, vec3(1), .3).mul(core).mul(1.6).mul(u.core)).mul(along).mul(max(flick, 0)).mul(vA);
     const c = c0.div(max(1, max(max(c0.r, c0.g), c0.b).div(1.25)));   // too bright scales down as a whole rather than burning to white: the pilot's colour survives
-    return vec4(clamp(c, 0, 8), 0);   // added light only: never darker than what's behind it
+    const cc = clamp(c, 0, 1); return vec4(cc, max(max(cc.r, cc.g), cc.b));   // light on the transparent ship canvas: alpha must cover the colour (premultiplied), or the browser drops it
   })();
   const mesh = layer(new THREE.Mesh(g, m), shipScene, 50); mesh.u = u; return mesh;   // on the ship's own layer, drawn after it: the trail runs over the arrow (light only, so the clear canvas adds it to the view)
 })();
