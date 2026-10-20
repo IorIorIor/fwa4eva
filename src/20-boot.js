@@ -45,10 +45,15 @@ const intro = {
     if (this.at && this.p >= 1) {   // shift the frame so the pointer's tip, not its middle, sits exactly on the click
       camera.clearViewOffset(); camera.updateMatrixWorld(); avatar.updateMatrixWorld(true);
       const tip = avatar.localToWorld(_ia.set(ARROW.pts[0][0], .7, ARROW.pts[0][1])).project(camera);
-      this.at.x -= tip.x * innerWidth / 2; this.at.y += tip.y * innerHeight / 2; this.update(0);
+      this.tipOff = { x: -tip.x * innerWidth / 2, y: tip.y * innerHeight / 2 }; this.at.x += this.tipOff.x; this.at.y += this.tipOff.y; this.update(0);
     }
   },
-  at: null,   // where on screen the pointer starts (the Start button's centre), eased back to the centre as the camera swings
+  at: null, tipOff: { x: 0, y: 0 },
+  mouse(e) {   // during the swing the arrow is still your mouse pointer: it moves with the mouse (the pull fades as the camera settles)
+    if (this.p < 1) return; if (!this.at) this.at = { x: innerWidth / 2, y: innerHeight / 2 };
+    if (document.pointerLockElement) { this.at.x += e.movementX; this.at.y += e.movementY } else { this.at.x = e.clientX + this.tipOff.x; this.at.y = e.clientY + this.tipOff.y }
+    this.at.x = Math.max(0, Math.min(innerWidth, this.at.x)); this.at.y = Math.max(0, Math.min(innerHeight, this.at.y));
+  },   // where on screen the pointer starts (the Start button's centre), eased back to the centre as the camera swings
   update(dt) {
     avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = true; avatar.userData.flame.material.opacity = 0;
     if (this.p < 1) { this.logoStep(dt); camera.updateMatrixWorld(); return }
@@ -62,9 +67,9 @@ const intro = {
       const toShip = _ib.copy(player.pos).sub(camera.position).normalize(), fwd = _ix.set(0, 0, -1).applyQuaternion(rig.q), dir = toShip.lerp(fwd, w).normalize();
       const up = this.upW.copy(this.up0).applyQuaternion(rig.q).lerp(_iu.set(0, 1, 0).applyQuaternion(rig.q), ez).normalize();
       _il.lookAt(_ia.set(0, 0, 0), dir, up); camera.quaternion.setFromRotationMatrix(_il);
-      if (this.at) { const k = 1 - ez, W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }
-      veil.material.opacity = 1 - sstep(this.t, .3, .9); veil.scale.setScalar(camera.position.distanceTo(player.pos) + .45);
       const dur = reduceMotion ? 2.5 : this.dur, on = 1 - 1 / dur;   // engine and instruments are fully on a second before the camera lands
+      if (this.at) { const k = 1 - sstep(this.t, .12, (reduceMotion ? 1 : on) * .95), W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }   // the pointer still follows your mouse at first, less and less as the camera swings in behind it
+      veil.material.opacity = 1 - sstep(this.t, .3, .9); veil.scale.setScalar(camera.position.distanceTo(player.pos) + .45);
       emitGlow = quint(sstep(this.t, on - .26, on));
       if (!this.lit && this.t >= on - .2) { this.lit = true; igniteK = 1; engineLook.burst = 1.5 }   // ignition: a big bloom that settles   // the engine lights during the last of the swing
       if (this.t >= on - .22 && !this.hud) { this.hud = true; document.body.classList.remove('intro'); flickIn(Math.max(.3, (on - this.t) * dur)) }   // and the instruments flicker in, all landed by then
