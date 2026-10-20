@@ -1,0 +1,20 @@
+{
+  "name": "fwa-forever",
+  "version": "0.59.0",
+  "private": true,
+  "description": "Every FWA winner as a star in one galaxy you fly through as a mouse cursor.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "npx --yes http-server -p 8765 -c-1 .",
+    "dev": "npm run build && npm run serve"
+  },
+  "dependencies": {
+    "three": "0.184.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.10",
+    "eslint": "^9.36.0",
+    "globals": "^16.4.0"
+  }
+}

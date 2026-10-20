@@ -1,0 +1,6 @@
+node_modules/
+dist/app.js
+dist/dev.html
+test/*.png
+test/result.json
+.DS_Store
