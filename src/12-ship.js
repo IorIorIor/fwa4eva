@@ -127,7 +127,7 @@ for (let k = 0; k < TR_MAX; k++) { trV[k * 2] = 1; trV[k * 2 + 1] = -1 }
 const trail = (() => {
   const g = new THREE.BufferGeometry(), ix = []; for (let k = 0; k < TR_MAX - 1; k++) { const a = k * 2; ix.push(a, a + 1, a + 2, a + 1, a + 3, a + 2) } g.setIndex(ix);
   [['position', trPos, 3], ['aT', trT, 1], ['aV', trV, 1], ['aC', trC, 3], ['aA', trA, 1]].forEach(([n, a, c]) => g.setAttribute(n, new THREE.BufferAttribute(a, c).setUsage(THREE.DynamicDrawUsage)));
-  const u = { core: uniform(1), glow: uniform(1), taper: uniform(1.35), shim: uniform(.08), nearA: uniform(4), nearB: uniform(30) }, m = skyMat({ side: THREE.DoubleSide });
+  const u = { core: uniform(1), glow: uniform(1), taper: uniform(1.35), shim: uniform(.08), nearA: uniform(4), nearB: uniform(30) }, m = skyMat({ side: THREE.DoubleSide, depthTest: false });
   const vT = varying(attribute('aT', 'float')), vV = varying(attribute('aV', 'float')), vC = varying(attribute('aC', 'vec3'));
   const vA = varying(clamp(attribute('aA', 'float'), 0, 1).mul(smoothstep(u.nearA, u.nearB.max(u.nearA.add(.001)), modelViewMatrix.mul(vec4(positionGeometry, 1)).z.negate())));
   m.fragmentNode = Fn(() => {
@@ -137,7 +137,7 @@ const trail = (() => {
     const c = c0.div(max(1, max(max(c0.r, c0.g), c0.b).div(1.25)));   // too bright scales down as a whole rather than burning to white: the pilot's colour survives
     return vec4(clamp(c, 0, 8), 0);   // added light only: never darker than what's behind it
   })();
-  const mesh = layer(new THREE.Mesh(g, m), trailScene, 0); mesh.u = u; return mesh;
+  const mesh = layer(new THREE.Mesh(g, m), shipScene, 50); mesh.u = u; return mesh;   // on the ship's own layer, drawn after it: the trail runs over the arrow (light only, so the clear canvas adds it to the view)
 })();
 
 /* the ship's shadow on the galaxy plane when you skim it */

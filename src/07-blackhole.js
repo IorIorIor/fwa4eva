@@ -82,8 +82,10 @@ function makeBlackHole(bgAt) {
     // the sky behind: where the bent ray lands on screen (mirrored back in if it leaves the screen), plus faint lensed stars
     const vn = normalize(v), rel = u.vrot.mul(p.add(vn.mul(60)).sub(ro)), dep0 = rel.z.negate(), dep = select(abs(dep0).lessThan(1e-4), 1e-4, dep0);   // behind you: the antipode
     const ndc = vec2(rel.x.mul(u.px).div(dep), rel.y.mul(u.py).div(dep)), uvb = vec2(ndc.x.mul(.5).add(.5), ndc.y.mul(-.5).add(.5));
-    const mir = x => abs(fract(x.mul(.5)).mul(2).sub(1)).oneMinus(), on = step(0, uvb.x).mul(step(uvb.x, 1)).mul(step(0, uvb.y)).mul(step(uvb.y, 1)).mul(step(0, dep0));
-    const bg = bgAt(vec2(mir(uvb.x), mir(uvb.y))).mul(mix(.6, 1, on)).mul(mix(.22, 1, smoothstep(2.7, 10, sqrt(h2)))).toVar();   // the sky right around the hole is darker, so its own light reads
+    const mir = x => abs(fract(x.mul(.5)).mul(2).sub(1)).oneMinus();
+    // where the bent ray lands off screen there is no sky to read: fade (not step) to the unbent view there, so no hard edges
+    const inEdge = min(min(uvb.x, uvb.y.oneMinus()), min(uvb.x.oneMinus(), uvb.y)), onS = smoothstep(-.02, .12, inEdge).mul(step(0, dep0));
+    const bg = mix(bgAt(screenUV), bgAt(vec2(mir(uvb.x), mir(uvb.y))), onS).mul(mix(.22, 1, smoothstep(2.7, 10, sqrt(h2)))).toVar();   // the sky right around the hole is darker, so its own light reads
     const bend = acos(clamp(dot(vn, rd), -1, 1)), cell = floor(vn.mul(260)), hs = hash3(cell), fp = fract(vn.mul(260)).sub(.5);
     bg.addAssign(vec3(.9, .93, 1).mul(step(.985, hs)).mul(exp(dot(fp, fp).mul(-40))).mul(smoothstep(.03, .3, bend)).mul(.8));
     // the core's glow between you and the hole veils it: from afar the shadow is a soft darkening in the light, not a hole punched through it
