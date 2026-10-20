@@ -21,7 +21,7 @@ function applyLook() {
   // the black hole: its mass sets its size, live
   setBH(L.bhMass); U.bhClear.value = BH.sh * 1.5; vol.u.bh.value = BH.sh * 1.05 / VOL_S;
   bh.mesh.scale.setScalar(RP * BH.rs); bh.shadow.scale.setScalar(BH.sh * .985);
-  { const b = bh.u; b.rin.value = 3; b.rout.value = Math.max(3.5, L.bhDiskOut); b.br.value = L.bhDisk * 8; b.hot.value = L.bhHot; b.spin.value = L.bhSpin; b.halo.value = L.bhHalo / .75; b.dop.value = L.bhDoppler; b.lens.value = L.bhLens; b.steps.value = Math.round(L.bhSteps) }
+  { const b = bh.u; b.rin.value = 3; b.rout.value = Math.max(3.5, L.bhDiskOut); b.br.value = L.bhDisk * 8; b.hot.value = L.bhHot; b.warm.value = L.bhWarm ?? 0; b.spin.value = L.bhSpin; b.halo.value = L.bhHalo / .75; b.dop.value = L.bhDoppler; b.lens.value = L.bhLens; b.steps.value = Math.round(L.bhSteps) }
   const su = stars.u; su.sharp.value = L.starSharp; su.coreW.value = L.starCore; su.haloW.value = L.starHalo; su.fall.value = L.starFall; su.spikes.value = L.starSpikes; su.white.value = L.starWhite; su.twink.value = L.starTwinkle; su.size.value = L.starSize; su.glow.value = L.starGlow; su.flare.value = L.flares ? 1 : 0;
   constellation.u.glow.value = L.lineGlow;
   avatar.userData.nav.forEach(b => b.visible = !!L.nav); beamPivot.visible = !!L.search;

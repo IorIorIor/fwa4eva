@@ -10,7 +10,7 @@ const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist:
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
 const camRel = new V3(0, .8, 3.4), camRelV = new V3(), prevVel = new V3();
-let worldT = 0, tdil = 1, beta = 0, coreK = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
+let worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
 function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps

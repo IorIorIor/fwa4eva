@@ -43,7 +43,7 @@ const RP = 26, BH_STEPS = 300;
 function makeBlackHole(bgAt) {
   const u = {
     cam: uniform(new V3()), rot: uniform(new THREE.Matrix3()), vrot: uniform(new THREE.Matrix3()), px: uniform(1), py: uniform(1),
-    veil: uniform(0), rin: uniform(3), rout: uniform(10), br: uniform(1), hot: uniform(1), spin: uniform(1), halo: uniform(1), dop: uniform(1), lens: uniform(1), steps: uniform(150), t: uniform(0),
+    veil: uniform(0), rin: uniform(3), rout: uniform(10), br: uniform(1), hot: uniform(1), warm: uniform(0), spin: uniform(1), halo: uniform(1), dop: uniform(1), lens: uniform(1), steps: uniform(150), t: uniform(0),
   };
   const m = new THREE.NodeMaterial(); m.side = THREE.BackSide; m.depthTest = false; m.depthWrite = false; m.transparent = false;
   const accel = (q, h2, rr) => q.mul(h2.mul(-1.5).mul(u.lens).div(pow(rr, 5)).mul(smoothstep(RP, RP * .55, rr)));   // fades to straight lines at the rim, so the edge is seamless
@@ -74,7 +74,7 @@ function makeBlackHole(bgAt) {
           const dens = smoothstep(u.rin, u.rin.mul(1.12), rq).mul(smoothstep(u.rout.mul(.5), u.rout, rq).oneMinus());
           const a = clamp(dens.mul(tex.mul(1.1).add(.25)), 0, 1).mul(.92);
           const I = Tn.mul(Tn).mul(Tn).mul(Tn).mul(pow(gD, 3)).mul(smoothstep(.2, .85, tex).mul(1.5).add(.35)).mul(u.br).mul(select(nX.greaterThan(.5), u.halo, 1));
-          const em = bbRGB(Tn.mul(gD).mul(u.hot).mul(9000).add(800)).mul(I);
+          const em0 = bbRGB(Tn.mul(gD).mul(u.hot).mul(9000).add(800)).mul(I), em = mix(em0, vec3(1, .66, .3).mul(luma(em0)).mul(1.39), u.warm);   // warmth: toward yellow-orange at the same brightness
           col.addAssign(em.mul(a).mul(A.oneMinus())); A.addAssign(a.mul(A.oneMinus())); nX.addAssign(1);
         });
       });

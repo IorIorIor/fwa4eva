@@ -24,13 +24,14 @@ const farDimJS = d => 1 - LOOK.farDim * sstep(d, LOOK.farStart, LOOK.farStart * 
 function updateAndro() {
   const L = LOOK, dGC = camera.position.distanceTo(GC), f = farDimJS(dGC);
   const inK = s => sstep(dGC, s * .12, s * .55);   // big glows fade once you're inside them, instead of whiting out the view
-  coreGlow.material.opacity = L.core * .22 * f * inK(coreGlow.scale.x);
+  const cg = 1 + ((L.coreGlows ?? 1) - 1) * coreIn;   // every big glow (core, bulge, haze, gas) scaled by "Glows in the core" while you're in it
+  coreGlow.material.opacity = L.core * .22 * f * inK(coreGlow.scale.x) * cg; haze.u.op.value = L.haze * L.hazeBright * cg;
   wallSky.mesh.position.copy(camera.position); wallSky.u.op.value = L.wallpaper ? L.wallBlue : 0; wallSky.mesh.visible = !!L.wallpaper;
   sparkle.mesh.position.copy(camera.position); sparkle.u.op.value = L.wallpaper ? L.sparkle : 0; sparkle.mesh.visible = !!L.wallpaper && L.sparkle > 0;
   andro.visible = ANDRO; dustFil.visible = ANDRO && L.dustLanes > 0; if (!ANDRO) return;
-  bulgeSpr.forEach(s => { s.scale.setScalar(bulgeR * 2 * s.userData.k * L.bulgeSize); s.material.opacity = s.userData.o * L.bulge * f * inK(s.scale.x) });
+  bulgeSpr.forEach(s => { s.scale.setScalar(bulgeR * 2 * s.userData.k * L.bulgeSize); s.material.opacity = s.userData.o * L.bulge * f * inK(s.scale.x) * cg });
   { const n = Math.round(Math.min(48, L.bulgePuffN ?? 6) * 1000), d = L.bulgePuffD ?? 1, sp = L.bulgePuffSpread ?? 1;   // finer grain: smaller puffs, each a little brighter so the bulge doesn't fade
-    bulgePts.geometry.instanceCount = n; bulgePts.u.sz.value = 9000 / d / sp; bulgePts.u.op.value = .05 * L.bulge * L.bulgePuffs * Math.sqrt(d);
+    bulgePts.geometry.instanceCount = n; bulgePts.u.sz.value = 9000 / d / sp; bulgePts.u.op.value = .05 * L.bulge * L.bulgePuffs * Math.sqrt(d) * cg;
     bulgePts.scale.setScalar(sp); bulgePts.position.copy(GC).multiplyScalar(1 - sp); bulgePts.visible = L.bulgePuffs > 0 && n > 0 }
   const lp = toLocal(camera.position, tmp), rr = Math.hypot(lp.x, lp.z), inG = (1 - sstep(Math.abs(lp.y), L.dustInH * .4, L.dustInH)) * (1 - sstep(rr, GAL_R0 + GAL_LEN, (GAL_R0 + GAL_LEN) * 1.15));
   const du = dustFil.u; du.dust.value = L.dustLanes * (1 - L.dustInFade * inG); du.nearD.value = L.dustNear; du.wid.value = L.dustWidth; du.blur.value = L.dustBlur; du.armW.value = L.armWidth; du.len.value = L.dustLen; du.wig.value = L.dustWiggle; du.rag.value = L.dustRag; du.fib.value = L.dustFibre; du.brk.value = L.dustBreak;
@@ -344,7 +345,7 @@ function tick(now) {
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
   updatePeers(dt); coach.update(dt);
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,
-      look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it
+      look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3); coreIn += (inside - coreIn) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it
   {   // bloom swells near light speed and follows the core settings; exposure too
     const k = fly ? sstep(beta, .05, .92) * L.bloomBoost : 0, on = L.bloom ? 1 : 0;
     bloomPass.strength.value = on * (L.bloomStr + (2 - L.bloomStr) * k) * (1 + (L.coreBloom - 1) * coreK); bloomPass.radius.value = L.bloomRad + (1 - L.bloomRad) * k;
@@ -356,7 +357,7 @@ function tick(now) {
     if (on) {
       u.cam.value.copy(camera.position); vol.mesh.worldToLocal(u.cam.value);
       u.glow.value = L.volGlow; u.dust.value = L.volDust; u.steps.value = L.volSteps; u.noise.value = L.volNoise; u.wispLo.value = L.volWispLo; u.wispHi.value = Math.max(L.volWispLo + (L.volEdge ?? .02), L.volWispHi); u.janim.value = L.volJitterMove ? 1 : 0; PU.volBlur.value = (L.volSmooth ?? 0) / LOOK.volRes;   // a hard wisp edge pops on and off as the clouds move: volEdge keeps it soft u.warp.value = L.volWarp; u.armK.value = L.volArmK; u.thick.value = L.volThick;
-      u.coreV.value = L.volCore; u.dustT.value = L.volDustT; u.emAbs.value = L.volEmAbs; u.flow.value = L.volFlow; u.inner.value = L.volInner; u.outer.value = L.volOuter; u.opMax.value = L.volOpMax; u.coreMix.value = L.volColMix; u.wispGain.value = L.volWisp; u.base.value = L.volBase; u.detail.value = L.volDetail; u.satV.value = L.volSat; u.contrast.value = L.volContrast;
+      u.coreV.value = L.volCore * (1 + ((L.coreGlows ?? 1) - 1) * coreIn); u.dustT.value = L.volDustT; u.emAbs.value = L.volEmAbs; u.flow.value = L.volFlow; u.inner.value = L.volInner; u.outer.value = L.volOuter; u.opMax.value = L.volOpMax; u.coreMix.value = L.volColMix; u.wispGain.value = L.volWisp; u.base.value = L.volBase; u.detail.value = L.volDetail; u.satV.value = L.volSat; u.contrast.value = L.volContrast;
       vol.mesh.scale.y = VOL_S * VOL_H * L.volHeight; u.spin.value = L.arcSpin * L.volSpin; u.armW.value = L.armWidth;
     }
   }
