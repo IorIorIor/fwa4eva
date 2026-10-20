@@ -40,13 +40,15 @@ const sparkle = (() => {
    screen (no discs drifting past the camera) and the black hole stays clear. Accumulated on its own and
    soft-clipped when composited, so overlapping puffs saturate gently instead of blowing out. */
 const haze = (() => {
-  const H = HAZE, u = { op: uniform(.22), size: uniform(1), soft: uniform(1), near: uniform(1), pal: uniform(.6), mono: uniform(0), h: uniform(1), g: uniform(1) };
+  const H = HAZE, u = { op: uniform(.22), size: uniform(1), soft: uniform(1), near: uniform(1), pal: uniform(.6), mono: uniform(0), h: uniform(1), g: uniform(1), ev: uniform(0), cut: uniform(0), csz: uniform(1) };
   const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vA = varyingProperty('float', 'vA');
   m.vertexNode = Fn(() => {
     const ctr = ia('aCtr', 'vec3'), dl = U.GQI.mul(ia('aP', 'vec3').sub(ctr)).mul(vec3(u.g, u.h, u.g)), P = ctr.add(U.GQ.mul(dl)).toVar();
     const mv = cameraViewMatrix.mul(vec4(P, 1)).toVar(), z = mv.z.negate();
-    const ps = ia('aS', 'float').mul(u.size).mul(pxScale).div(max(z, 1)).toVar(), big = max(60, u.near.mul(320));
-    vA.assign(farDim(z).mul(u.op).mul(smoothstep(big.mul(.5), big, ps).oneMinus()).mul(smoothstep(.6, 3, ps)).mul(smoothstep(U.bhClear, U.bhClear.mul(2.6), distance(P, U.GC))));
+    const rr = length(toGal(ctr).xz).div(GAL_R0 + GAL_LEN);   // 0 at the core, 1 on the rim
+    const even = pow(clamp(rr, .02, 1), u.ev).mul(smoothstep(u.cut.mul(.3), u.cut.add(.001), rr));   // thin the haze toward the core (the rim stays as it is), and clear a hole of radius cut
+    const ps = ia('aS', 'float').mul(u.size).mul(mix(u.csz, 1, clamp(rr.mul(2), 0, 1))).mul(pxScale).div(max(z, 1)).toVar(), big = max(60, u.near.mul(320));
+    vA.assign(farDim(z).mul(u.op).mul(even).mul(smoothstep(big.mul(.5), big, ps).oneMinus()).mul(smoothstep(.6, 3, ps)).mul(smoothstep(U.bhClear, U.bhClear.mul(2.6), distance(P, U.GC))));
     const c = monoTint(mix(ia('aC', 'vec3'), ia('aPal', 'vec3'), u.pal), u.mono).toVar();
     vC.assign(mix(c, radCol(length(toGal(ctr).xz)).mul(luma(c).mul(1.4).add(.3)), U.rad));
     return billboardPx(mv, min(ps, big));

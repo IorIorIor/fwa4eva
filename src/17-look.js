@@ -14,7 +14,7 @@ function applyLook() {
   coreGlow.material.color.copy(new C3(1, 1, 1).lerp(new C3(.75, .85, 1), L.mono));
   vol.u.core.value.copy(mcol(NEB_PAL[0][0], L.mono)); vol.u.edge.value.copy(mcol(NEB_PAL[0][1], L.mono));
   // haze
-  const H = haze.u; H.mono.value = L.mono; H.op.value = L.haze * L.hazeBright; H.h.value = L.hazeHeight; H.g.value = L.hazeGirth * L.armWidth; H.size.value = L.hazeSize; H.soft.value = L.hazeSoft; H.near.value = L.hazeNear; H.pal.value = L.hazePal;
+  const H = haze.u; H.mono.value = L.mono; H.op.value = L.haze * L.hazeBright; H.h.value = L.hazeHeight; H.g.value = L.hazeGirth * L.armWidth; H.size.value = L.hazeSize; H.soft.value = L.hazeSoft; H.near.value = L.hazeNear; H.pal.value = L.hazePal; H.ev.value = L.hazeEven ?? 0; H.cut.value = L.hazeHole ?? 0; H.csz.value = L.hazeCoreSize ?? 1;
   haze.mesh.geometry.instanceCount = Math.floor(HAZE.n * L.hazeDensity / 2); PU.hazeScreen.value = L.hazeSoftBlend ? 1 : 0;
   bgStars.u.op.value = L.bgStars;
   // winners
