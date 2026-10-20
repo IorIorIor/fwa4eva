@@ -269,3 +269,22 @@ body.intro #skipHint{opacity:1;transition-delay:1.6s}
 #shipLayer{position:fixed;inset:0;width:100%;height:100%;z-index:7;pointer-events:none}
 #tip{z-index:8}
 .sheet{z-index:9}
+/* ── FWA-style controls: monochrome, thin Tabler outline icons, white on black that flips to black on white ── */
+#logo{left:max(16px,env(safe-area-inset-left,0px));right:auto}
+#brand{left:auto;right:max(16px,env(safe-area-inset-right,0px));flex-direction:row;align-items:center;gap:8px}
+#topbar{display:none}
+.ico{width:20px;height:20px;stroke-width:1.25;display:block;flex:none}
+.seg{background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.22);padding:3px;gap:3px}
+.seg button{display:flex;align-items:center;gap:7px;padding:7px 13px 7px 10px;color:rgba(255,255,255,.72);font-family:"FF Good Pro Cond",var(--mono);font-weight:700;font-size:13px;letter-spacing:.12em;transition:background .2s,color .2s}
+.seg button:hover{color:#fff}
+.seg button[aria-pressed="true"]{background:#fff;color:#000}
+.ibtn{display:grid;place-items:center;width:40px;height:40px;padding:0;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:#fff;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+.ibtn:hover{background:#fff;color:#000;border-color:#fff}
+.ibtn[aria-pressed="false"]{color:rgba(255,255,255,.55)}
+.ibtn[aria-pressed="false"]:hover{color:#000}
+.btn{background:rgba(0,0,0,.55);border-color:rgba(255,255,255,.22);font-family:"FF Good Pro Cond",var(--mono);font-weight:700;font-size:13px;letter-spacing:.12em;color:#fff;transition:background .2s,color .2s,border-color .2s}
+.btn:hover{background:#fff;color:#000;border-color:#fff}
+#intro .go .btn{font-size:14px;letter-spacing:.2em;padding:11px 34px}
+#enter{background:#fff;color:#000;border-color:#fff}
+#enter:hover{background:#000;color:#fff}
+@media (max-width:520px){.seg button span{display:none}.seg button{padding:7px 9px}}

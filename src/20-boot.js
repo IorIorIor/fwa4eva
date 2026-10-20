@@ -66,7 +66,8 @@ if (coarse) $('skipHint').hidden = true;   // touch: the opening just plays
   for (let s = 0; s < steps; s++) { pipeline.render(); bar.style.transform = `scaleX(${(s + 1) / steps})`; await new Promise(r => setTimeout(r, 30)) }
   scene.remove(warm); bodies.mesh.count = 0;
 }
-function begin(withSound) {
+function begin(withSound, e) {
+  if (e && e.pointerType !== 'touch' && e.clientX) { mouse.x = e.clientX; mouse.y = e.clientY; mouse.in = true }   // the pointer is already where you clicked: no second click to wake it
   if (withSound) { setMuted(false); audio() }
   if (!coarse && !lockFailed && !TEST) requestLock();
   $('intro').classList.add('gone'); setTimeout(() => $('intro').hidden = true, 1200);
@@ -76,7 +77,7 @@ function begin(withSound) {
 if (TEST) { $('intro').hidden = true; LOOK.adaptive = 0; handOver() }
 else {
   const enter = $('enter'); document.body.classList.add('ready');
-  enter.onclick = () => begin(true); $('enterQuiet').onclick = () => { setMuted(true); begin(false) };
+  enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); begin(false, e) };
   addEventListener('keydown', function k(e) { if ($('intro').classList.contains('gone')) return removeEventListener('keydown', k); if (e.target.closest && e.target.closest('#intro button')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeEventListener('keydown', k); begin(true) } });
 }
 let vt = performance.now();

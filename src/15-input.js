@@ -10,9 +10,11 @@ function updateLockUI() {
 }
 document.addEventListener('pointerlockchange', updateLockUI);
 // a browser refuses a re-lock for about a second after Esc; that's not a failure, just click again
-let lockErrs = 0; const lockErr = () => { lockErrs++; if (lockErrs >= 4 || !canvas.requestPointerLock) lockFailed = true; updateLockUI() };
+// a refusal right after letting go is the browser's re-lock cooldown: click again. Any other refusal (a frame without pointer-lock
+// permission, say) means mouse mode for good, so nobody gets asked to click to fly over and over
+let lockErrs = 0, lastUnlock = 0; const lockErr = () => { lockErrs++; if (performance.now() - lastUnlock > 1600 || lockErrs >= 4 || !canvas.requestPointerLock) lockFailed = true; updateLockUI() };
 document.addEventListener('pointerlockerror', lockErr);
-document.addEventListener('pointerlockchange', () => { if (locked()) { lockErrs = 0; lockFailed = false; updateLockUI() } else for (const k in keys) keys[k] = false });
+document.addEventListener('pointerlockchange', () => { if (locked()) { lockErrs = 0; lockFailed = false; updateLockUI() } else { lastUnlock = performance.now(); for (const k in keys) keys[k] = false } });
 function requestLock() { if (!canvas.requestPointerLock) { lockErr(); return } try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(lockErr) } catch (e) { lockErr() } }
 document.addEventListener('mousemove', e => { if (!locked() || S.mode !== 'fly' || introActive) return; rotateRig(-e.movementX * SENS * LOOK.sens, -e.movementY * SENS * LOOK.sens) });
 // pointer events: map orbit, touch look, click/tap to focus
@@ -94,6 +96,7 @@ addEventListener('keydown', e => {
   if (!booted) return;
   if (k === 'm') setMode(S.mode === 'fly' ? 'map' : 'fly');
   if (k === 'h') goHome();
+  if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
