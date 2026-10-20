@@ -50,13 +50,12 @@ function buildConstellation() {
     c.ids.sort((a, b) => D[a].t - D[b].t); cc.set(c.col); const len = c.ids.length;
     c.ids.forEach((id, j) => chainPos.set(id, { n: j, len, seg: seg + j, name: c.name }));
     for (let j = 0; j < len - 1 && v < CON_MAX; j++, v++) {
-      const a = c.ids[j] * 3, b = c.ids[j + 1] * 3, o = v * 6;
-      conPos[o] = P[a]; conPos[o + 1] = P[a + 1]; conPos[o + 2] = P[a + 2]; conPos[o + 3] = P[b]; conPos[o + 4] = P[b + 1]; conPos[o + 5] = P[b + 2];
-      conSeq[v * 2] = seg + j; conSeq[v * 2 + 1] = seg + j + .9999; conCol.set([cc.r, cc.g, cc.b, cc.r, cc.g, cc.b], o)
+      const a = c.ids[j] * 3, b = c.ids[j + 1] * 3, o = v * 3, B = constellation.buf;
+      B.pa.set([P[a], P[a + 1], P[a + 2]], o); B.pb.set([P[b], P[b + 1], P[b + 2]], o); B.sq[v] = seg + j; B.col.set([cc.r, cc.g, cc.b], o)
     }
     seg += len + 1
   }
-  chain = chains; const g = constellation.geometry; ['position', 'aSeq', 'aCol'].forEach(k => g.attributes[k].needsUpdate = true); g.setDrawRange(0, v * 2); conOn = v > 0;
+  chain = chains; const g = constellation.geometry; ['aA', 'aB', 'aSeq', 'aCol'].forEach(k => g.attributes[k].needsUpdate = true); g.instanceCount = v; conOn = v > 0;
 }
 
 /* labels: the dates ride the ruler (it turns to keep them in view), plus a few named places. On the map the dates come in

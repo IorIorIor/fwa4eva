@@ -8,16 +8,17 @@ function updateLockUI() {
   $('cross').toggleAttribute('hidden', !fly);
 }
 document.addEventListener('pointerlockchange', updateLockUI);
-const relock = () => { if (booted && S.mode === 'fly' && !locked() && !lockFailed && !coarse && !rmenu.panel && !document.querySelector('.sheet.open') && document.visibilityState === 'visible') try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { }) } catch (e) { } };
+const relock = () => { if (booted && S.mode === 'fly' && !locked() && !lockFailed && !coarse && !rmenu.panel && !document.querySelector('.sheet.open') && document.visibilityState === 'visible') try { quietLock = performance.now(); const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { }) } catch (e) { } };   // a try without a click: if the browser says no, that's no failure
 addEventListener('focus', () => setTimeout(relock, 60)); document.addEventListener('visibilitychange', () => setTimeout(relock, 60));   // alt-tab back: the ship takes the mouse again
 // a browser refuses a re-lock for about a second after Esc; that's not a failure, just click again
 // a refusal right after letting go is the browser's re-lock cooldown: click again. Any other refusal (a frame without pointer-lock
 // permission, say) means mouse mode for good, so nobody gets asked to click to fly over and over
-let lockErrs = 0, lastUnlock = 0; const lockErr = () => { lockErrs++; if (performance.now() - lastUnlock > 1600 || lockErrs >= 4 || !canvas.requestPointerLock) lockFailed = true; updateLockUI() };
+let lockErrs = 0, lastUnlock = 0, quietLock = -1e9; const lockErr = () => { if (performance.now() - quietLock < 1500) return; lockErrs++; if (performance.now() - lastUnlock > 1600 || lockErrs >= 4 || !canvas.requestPointerLock) lockFailed = true; updateLockUI() };
 document.addEventListener('pointerlockerror', lockErr);
 document.addEventListener('pointerlockchange', () => { if (locked()) { lockErrs = 0; lockFailed = false; updateLockUI() } else { lastUnlock = performance.now(); for (const k in keys) keys[k] = false } });
 function requestLock() { if (!canvas.requestPointerLock) { lockErr(); return } try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(lockErr) } catch (e) { lockErr() } }
-document.addEventListener('mousemove', e => { if (rmenu.open) { rmenu.move(e); return } if (intro.active && !booted) { intro.mouse(e); return } if (!locked() || S.mode !== 'fly' || introActive) return; rotateRig(-e.movementX * SENS * LOOK.sens, -e.movementY * SENS * LOOK.sens) });
+// the menu takes the mouse, but the view still drifts a little with it
+document.addEventListener('mousemove', e => { if (rmenu.open) { rmenu.move(e); if (locked() && S.mode === 'fly' && !introActive) rotateRig(-e.movementX * SENS * LOOK.sens * (LOOK.menuSteer ?? .15), -e.movementY * SENS * LOOK.sens * (LOOK.menuSteer ?? .15)); return } if (intro.active && !booted) { intro.mouse(e); return } if (!locked() || S.mode !== 'fly' || introActive) return; rotateRig(-e.movementX * SENS * LOOK.sens, -e.movementY * SENS * LOOK.sens) });
 // pointer events: map orbit, touch look, click/tap to focus
 const ptrs = new Map();
 canvas.addEventListener('pointerdown', e => {
@@ -56,7 +57,7 @@ const endPtr = e => {
     const unlock = () => { lockI = -1; if (auto && auto.i >= 0) auto = null };
     const hov = (x, y) => coarse || down.touch ? pick(x, y) : hovPick;   // with a mouse, only the star whose tooltip is showing; touch has no hover, so a tap picks
     const fly = S.mode === 'fly', cx = locked() ? innerWidth / 2 : e.clientX, cy = locked() ? innerHeight / 2 : e.clientY;
-    if (rmenu.open) { if (!rmenu.held || rmenu.hot) rmenu.choose(); rmenu.held = false }   // let go over a segment to pick it; let go in the middle and it stays open for a click
+    if (rmenu.open) { rmenu.choose(); rmenu.held = false }   // let go: the segment you nudged toward, or nothing (the menu goes)
     else if (rmenu.panel) { rmenu.close(); if (fly && !down.touch && !locked() && !lockFailed) requestLock() }
     else if (fly && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it (or just take the pointer back)
     else if (fly) { const i = hov(cx, cy); if (i >= 0 && i !== lockI) focus(i); else if (i >= 0) unlock() }   // a star: lock on (again: let go)

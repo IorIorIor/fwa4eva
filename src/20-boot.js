@@ -33,10 +33,10 @@ const intro = {
     INTRO_END.set(0, .55, 2.1).multiplyScalar((LOOK.introDist ?? .5) * SHIP_SC); this.lit = false;   // where the opening ends up: close behind the pointer
     this.goal = null; this.av.x = this.av.y = 0;
     this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
-    document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.p = 1;
+    document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.p = 1; this.wipe = true;   // one frame through the black veil, so the warm-up's last picture doesn't linger on the canvas
     // the logo: it starts exactly where the splash's was and flies at the camera, its W passing right over you, while the
     // pointer is already yours at the click and the camera swings in behind it
-    this.lt = -1; if (LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d()))) { this.lt = 0; logo3d.visible = true }
+    const wantLogo = LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d())); this.lt = -1; if (logo3d) logo3d.visible = false;
     setDpr(.5, true); this.lowDpr = true;   // nothing but black, the pointer and the logo to draw at first: the lowest resolution is plenty
     this.update(0);
     if (this.at && this.p >= 1) {   // shift the frame so the pointer's tip, not its middle, sits exactly on the click
@@ -44,6 +44,15 @@ const intro = {
       const tip = avatar.localToWorld(_ia.set(ARROW.pts[0][0], .7, ARROW.pts[0][1])).project(camera);
       this.tipOff = { x: -tip.x * innerWidth / 2, y: tip.y * innerHeight / 2 }; this.at.x += this.tipOff.x; this.at.y += this.tipOff.y; this.update(0);
     }
+    if (wantLogo) {   // the logo: small, hung in space just in front of the camera, right where the splash's was on screen. Nothing moves it: the camera's dive toward the pointer sweeps it past you (at 'logoPass' of the way)
+      camera.updateMatrixWorld(); const W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), ep = this.ez(LOOK.logoPass ?? .3), Ld = INTRO_END.length();
+      const dp = Math.exp(Math.log(this.D0) * (1 - ep) + Math.log(Ld) * ep), dz = Math.max(1e-4, (this.D0 - dp * Math.cos(Math.acos(INTRO_END.y / Ld) * ep)) * .85), wW = dz * 2 * th * this.logoAt.w / H;   // as far ahead as the camera will have come by then, and as big as the splash's looked
+      const dir = _ia.set(this.logoAt.x / W * 2 - 1, 1 - this.logoAt.y / H * 2, .5).unproject(camera).sub(camera.position).normalize(), fwd = _ib.set(0, 0, -1).applyQuaternion(camera.quaternion);
+      const s = wW / 509; logo3d.position.copy(camera.position).addScaledVector(dir, dz / Math.max(.2, dir.dot(fwd))); logo3d.quaternion.copy(camera.quaternion); logo3d.scale.set(s, s, s * (LOOK.logoDepth ?? .12)); logo3d.visible = true; this.lt = 0;
+    }
+  },
+  ez(t) {   // the zoom: creeping at first, faster and faster (exponentially), then landing softly
+    const x = Math.min(1, Math.max(0, (t - .02) / .96)), k = LOOK.introEaseIn ?? 5, f = (Math.exp(k * x) - 1) / (Math.exp(k) - 1); return 1 - Math.pow(1 - f, LOOK.introEaseOut ?? 2.2);
   },
   at: null, goal: null, av: { x: 0, y: 0 }, tipOff: { x: 0, y: 0 },
   mouse(e) {   // during the swing the arrow is still your mouse pointer: it moves with the mouse (the pull fades as the camera settles)
@@ -53,12 +62,11 @@ const intro = {
   },   // where on screen the pointer starts (the Start button's centre), eased back to the centre as the camera swings
   update(dt) {
     avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = true; avatar.userData.flame.material.opacity = 0;
-    if (this.p < 1) { this.logoStep(dt); camera.updateMatrixWorld(); return }
     if (this.t < 1) {
       this.t = Math.min(1, this.t + dt / (reduceMotion ? 2.5 : this.dur));
       // one move: the camera swings from straight overhead round to just above and behind, easing in and out a great deal,
       // and it keeps looking at the ship until, at the very end, it settles into looking ahead past it
-      const ez = 1 - Math.pow(1 - Math.pow(Math.min(1, Math.max(0, (this.t - .02) / .96)), 1.4), 4), w = quint(sstep(this.t, .3, 1));
+      const ez = this.ez(this.t), w = quint(sstep(this.t, .3, 1));
       const b = _ib.copy(INTRO_END).normalize(), ang = Math.acos(b.y), d = Math.exp(Math.log(this.D0) * (1 - ez) + Math.log(INTRO_END.length()) * ez);
       camera.position.copy(_ia.set(0, 1, 0).applyAxisAngle(_ix.set(1, 0, 0), ang * ez).multiplyScalar(d)).applyQuaternion(rig.q).add(player.pos);
       const toShip = _ib.copy(player.pos).sub(camera.position).normalize(), fwd = _ix.set(0, 0, -1).applyQuaternion(rig.q), dir = toShip.lerp(fwd, w).normalize();
@@ -69,7 +77,7 @@ const intro = {
         const K = 90 * (LOOK.introSpring ?? 1), C = 2 * Math.sqrt(K) * .78, h = Math.min(dt, 1 / 30);
         for (const a of ['x', 'y']) { this.av[a] += ((this.goal[a] - this.at[a]) * K - this.av[a] * C) * h; this.at[a] += this.av[a] * h }
       }
-      if (this.lt >= 0) this.logoFly(dt);
+      if (this.lt >= 0 && logo3d && logo3d.position.clone().sub(camera.position).dot(_ia.set(0, 0, -1).applyQuaternion(camera.quaternion)) < -.5 * logo3d.scale.x * 509) { logo3d.visible = false; this.lt = -1 }   // well behind you now
       if (this.lowDpr && this.t >= .27) { this.lowDpr = false; setDpr(Math.min(LOOK.maxDpr, devicePixelRatio || 1), true) }   // full resolution back just before the galaxy shows
       if (this.at) { const k = 1 - sstep(this.t, .12, (reduceMotion ? 1 : on) * .95), W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }   // the pointer still follows your mouse at first, less and less as the camera swings in behind it
       veil.material.opacity = 1 - sstep(this.t, .3, .9); veil.scale.setScalar(camera.position.distanceTo(player.pos) + .45);
@@ -80,25 +88,6 @@ const intro = {
       if (this.t >= (reduceMotion ? 1 : on)) this.finish();   // the camera has all but landed: yours to fly (what's left of the move is too small to see)
     }
     camera.updateMatrixWorld();
-  },
-  logoFly(dt) {   // the logo in the camera's own frame: from its splash spot and size, accelerating straight at you and past
-    const T = Math.max(.5, LOOK.logoTime ?? 6); this.lt += dt; const q = Math.min(1, this.lt / T), e = Math.pow(q, 2.4), Dv = this.D0 * .6;
-    const th = Math.tan(LOOK.fov * Math.PI / 360), W = innerWidth, H = innerHeight, x0 = (this.logoAt.x / W * 2 - 1) * th * W / H * Dv, y0 = (1 - this.logoAt.y / H * 2) * th * Dv;
-    const z = -Dv * (1 - e) + Dv * .12 * e, s = this.logoAt.w / H * 2 * Dv * th / 509;
-    logo3d.position.set(x0 * (1 - e), y0 * (1 - e), z).applyQuaternion(camera.quaternion).add(camera.position); logo3d.quaternion.copy(camera.quaternion); logo3d.scale.set(s, s, s * (LOOK.logoDepth ?? .12));
-    const bump = sstep(this.lt, T * .55, T) * (1 - sstep(this.lt, T, T * 1.6)); camera.fov = LOOK.fov + ((LOOK.logoFov ?? 125) - LOOK.fov) * bump * .6; camera.updateProjectionMatrix();   // the view flares wide as it passes
-    if (this.lt > T * 1.6) { logo3d.visible = false; this.lt = -1; camera.fov = LOOK.fov; camera.updateProjectionMatrix() }
-  },
-  // the dive: straight down the axis onto the pointer, through the logo, the FOV flaring wide as you pass it and settling as you land
-  logoStep(dt) {
-    this.p = Math.min(1, this.p + dt / Math.max(.3, LOOK.logoTime ?? 2.6));
-    const x = this.p, e = x * x * x * (x * (x * 6 - 15) + 10), D0 = this.D0, hL = D0 * 2.5, h = D0 + this.Bs * (1 - e);
-    camera.position.copy(player.pos).addScaledVector(_iu.set(0, 1, 0).applyQuaternion(rig.q), h); camera.quaternion.copy(this.q0);
-    const eX = 1 - (hL - D0) / this.Bs, ee = Math.pow(e, Math.log(.5) / Math.log(eX));   // remapped so the FOV peaks as you pass through the logo
-    camera.fov = LOOK.fov + ((LOOK.logoFov ?? 125) - LOOK.fov) * Math.pow(Math.sin(Math.PI * ee), 1.5); camera.updateProjectionMatrix();
-    if (this.at) { const k = 1 - sstep(e, 0, eX * .85), W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }
-    veil.scale.setScalar(h + .45);
-    if (this.p >= 1) { logo3d.visible = false; this.at = null; camera.clearViewOffset(); camera.fov = LOOK.fov; camera.updateProjectionMatrix() }
   },
   finish() {
     this.p = 1; if (logo3d) logo3d.visible = false; this.lt = -1; if (this.lowDpr) { this.lowDpr = false; setDpr(Math.min(LOOK.maxDpr, devicePixelRatio || 1), true) }
@@ -122,6 +111,7 @@ if (coarse) $('skipHint').hidden = true;   // touch: the opening just plays
 
 // warm-up: one exotic of each kind and a sun in view while the first frames compile every pipeline
 {
+  const SCN = [scene, softScene, hazeScene, volScene, trailScene, arcScene, shipScene], had = SCN.map(sc => new Set(sc.children));   // the exotics put glows in other scenes too: note what was there
   const warm = new THREE.Group(); scene.add(warm); camera.updateMatrixWorld();
   Object.entries(EXO_KINDS).forEach(([k, K], j) => { const b = K.build(K.P, EXO_SHARED[k] ??= {}); b.obj.scale.setScalar(.02); b.obj.position.set((j - 4) * 60, 0, -900).applyQuaternion(camera.quaternion).add(camera.position); warm.add(b.obj) });
   bodies.mesh.count = 1; bodies.mesh.setMatrixAt(0, new THREE.Matrix4().compose(new V3(0, 0, -900).applyQuaternion(camera.quaternion).add(camera.position), new Q4(), new V3(10, 10, 10)));
@@ -129,8 +119,15 @@ if (coarse) $('skipHint').hidden = true;   // touch: the opening just plays
   const jobs = [[renderer, scene], [renderer, softScene], [renderer, hazeScene], [renderer, volScene], [renderer, trailScene], [renderer, arcScene], [shipRenderer, shipScene]]; let done = 0;
   try { await Promise.all(jobs.map(([r, sc]) => r.compileAsync(sc, camera).catch(() => { }).then(() => loadProg(.6 + .3 * ++done / jobs.length)))) } catch (e) { }
   pipeline.render(); loadProg(.95); await new Promise(r => setTimeout(r, 0)); pipeline.render();   // the post chain on top
-  scene.remove(warm); bodies.mesh.count = 0;
+  scene.remove(warm); bodies.mesh.count = 0; SCN.forEach((sc, i) => sc.children.filter(o => !had[i].has(o)).forEach(o => sc.remove(o)));   // and take every bit of it away again, so nothing shows at the start
 }
+// the start screen's mouse pointer is the ship you flew last: drawn from the same outline, black with a white rim like a real one
+if (store.get('sotd-ship-k') != null) try {
+  const def = CURSORS[shipK] || CURSORS[0], img = sc => { const c = document.createElement('canvas'), pad = 2; c.width = c.height = Math.ceil(24 * sc); const g = c.getContext('2d'); g.scale(sc, sc); g.translate(pad, pad);
+    g.beginPath(); def.parts.forEach(p => { const o = Array.isArray(p) ? { o: p, h: [] } : p; [o.o, ...o.h].forEach(r => r.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath() });
+    g.lineJoin = 'round'; g.strokeStyle = '#fff'; g.lineWidth = 2.2; g.stroke(); g.fillStyle = '#000'; g.fill('evenodd'); return c.toDataURL() };
+  const hx = Math.round(def.tip[0] + 2), hy = Math.round(def.tip[1] + 2); $('intro').style.cursor = `url(${img(1)}) ${hx} ${hy}, auto`; $('intro').style.cursor = `-webkit-image-set(url(${img(1)}) 1x, url(${img(2)}) 2x) ${hx} ${hy}, auto`;
+} catch (e) { }
 function begin(withSound, e) {
   { const m = document.querySelector('#intro .mark'), r0 = m && m.getBoundingClientRect(); intro.logoAt = r0 && r0.width ? { x: r0.left + r0.width * LOGO_THRU[0] / 509, y: r0.top + r0.height * LOGO_THRU[1] / 149, w: r0.width } : null }   // the 3D logo starts exactly over the splash's
   { const r = $('enter').getBoundingClientRect(); intro.at = e && e.detail && e.clientX ? { x: e.clientX, y: e.clientY } : r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null }   // the pointer appears right where you clicked Start
@@ -151,4 +148,4 @@ let vt = performance.now();
 if (!TEST) requestAnimationFrame(t => { last = t; loop(t) });
 else last = vt;
 window.__ready = true;
-window.__sky = { starR, hazeVis: v => haze.mesh.visible = v, softVis: v => softScene.children.forEach(o => { if (o.isMesh || o.isSprite || o.isGroup) o.visible = v }), starsVis: v => stars.mesh.visible = v, tickOnly(dtMs = 16.7) { vt += dtMs; tick(vt) }, lockI: () => lockI, applyFilter, matchCount: () => matchCount, avatar, outpost, ringPoint, stopR, aimAt, GQ, toLocal, async run(n = 1, dtMs = 16.7) { for (let i = 0; i < n; i++) { vt += dtMs; tick(vt) } await new Promise(r => requestAnimationFrame(r)); vt += dtMs; tick(vt); if (GPU) await renderer.backend.device.queue.onSubmittedWorkDone(); await new Promise(r => requestAnimationFrame(r)) }, keys, regionOf, setDpr, THREE, get LOOK() { return LOOK }, player, rig, camera, renderer, perf, S, setMode, focus, applyLook, D, P, GC, starPos, get GPU() { return GPU }, intro, pipeline, U, PU, orbit, zoom, rotateRig, mapHover, ringAt, ringZoom, mapLvl, get mapYrs() { return mapYrs }, ruler, timeRings, bh, BH, setBH, armPhase, nearest, get nearI() { return nearI }, get contact() { return contactK }, avatarTail: () => avatar.userData.tail, tip, get hovI() { return hovI }, updateHover, get ringHov() { return ringHov }, coach, runBench, bench, peerUpdate, Net, showCard, SATS, flyTo, navStep, GOT, setShip, CURSORS, HALO, get gotN() { return gotN }, startTour, TOURS, get tour() { return tour }, get warp() { return warp }, rmenu };
+window.__sky = { slowmo, HALOS: () => HALO.live, starR, hazeVis: v => haze.mesh.visible = v, softVis: v => softScene.children.forEach(o => { if (o.isMesh || o.isSprite || o.isGroup) o.visible = v }), starsVis: v => stars.mesh.visible = v, tickOnly(dtMs = 16.7) { vt += dtMs; tick(vt) }, lockI: () => lockI, applyFilter, matchCount: () => matchCount, avatar, outpost, ringPoint, stopR, aimAt, GQ, toLocal, async run(n = 1, dtMs = 16.7) { for (let i = 0; i < n; i++) { vt += dtMs; tick(vt) } await new Promise(r => requestAnimationFrame(r)); vt += dtMs; tick(vt); if (GPU) await renderer.backend.device.queue.onSubmittedWorkDone(); await new Promise(r => requestAnimationFrame(r)) }, keys, regionOf, setDpr, THREE, get LOOK() { return LOOK }, player, rig, camera, renderer, perf, S, setMode, focus, applyLook, D, P, GC, starPos, get GPU() { return GPU }, intro, pipeline, U, PU, orbit, zoom, rotateRig, mapHover, ringAt, ringZoom, mapLvl, get mapYrs() { return mapYrs }, ruler, timeRings, bh, BH, setBH, armPhase, nearest, get nearI() { return nearI }, get contact() { return contactK }, avatarTail: () => avatar.userData.tail, tip, get hovI() { return hovI }, updateHover, get ringHov() { return ringHov }, coach, runBench, bench, peerUpdate, Net, showCard, SATS, flyTo, navStep, GOT, setShip, CURSORS, HALO, get gotN() { return gotN }, startTour, TOURS, get tour() { return tour }, get warp() { return warp }, rmenu };

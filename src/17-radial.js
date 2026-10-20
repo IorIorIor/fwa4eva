@@ -22,7 +22,7 @@ const RM_FILL = {   // solid versions for the ring's segments
 };
 const ico = (k, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RM_ICON[k]}</svg>`;
 const rmenu = (() => {
-  const R0 = 70, R1 = 150, GAP = 5;   // inner and outer radius (px), gap between segments (px)
+  const R0 = 14, R1 = 75, GAP = 3;   // inner and outer radius (px), gap between segments (px)
   const SEG = [['date', 'Date', 220], ['filters', 'Filters', 168], ['map', 'Map', 116], ['upgrades', 'Upgrades', 64], ['search', 'Search', 12], ['settings', 'Settings', -40]];   // centre angles, counter-clockwise from the right
   const el = $('radial'), svg = el.querySelector('svg'), dot = $('rmDot'), panel = $('rmPanel'), body = panel.querySelector('.rb');
   const P = (r, a) => [r * Math.cos(a * Math.PI / 180), -r * Math.sin(a * Math.PI / 180)];
@@ -31,26 +31,27 @@ const rmenu = (() => {
     const [x0, y0] = P(R1, a0 + d1), [x1, y1] = P(R1, a1 - d1), [x2, y2] = P(R0, a1 - d0), [x3, y3] = P(R0, a0 + d0);
     return `M${x0} ${y0}A${R1} ${R1} 0 0 0 ${x1} ${y1}L${x2} ${y2}A${R0} ${R0} 0 0 1 ${x3} ${y3}Z`;
   };
-  svg.innerHTML = SEG.map(([k, label, a], n) => { const [lx, ly] = P((R0 + R1) / 2, a);
-    return `<g class="rs" data-k="${k}" style="--n:${n};transform-origin:0 0"><path d="${sector(a, 52)}"/><g transform="translate(${lx} ${ly})"><svg x="-13" y="-30" width="26" height="26" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg><text y="16">${label}</text></g></g>` }).join('');
+  svg.innerHTML = SEG.map(([k, label, a], n) => { const [lx, ly] = P(R0 + (R1 - R0) * .58, a);
+    return `<g class="rs" data-k="${k}" style="--n:${n};transform-origin:0 0"><path d="${sector(a, 52)}"/><g transform="translate(${lx} ${ly})"><svg x="-8" y="-15" width="16" height="16" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg><text y="10">${label}</text></g></g>` }).join('');
   const segs = [...svg.querySelectorAll('.rs')];
-  let homes = [], open = false, cx = 0, cy = 0, vx = 0, vy = 0, hot = null, which = null;
+  let px = 0, py = 0, settleT = 0, homes = [], open = false, cx = 0, cy = 0, vx = 0, vy = 0, hot = null, which = null;
   const setHot = k => { if (k === hot) return; hot = k; segs.forEach(s => s.classList.toggle('hot', s.dataset.k === k)); if (k) nav.tick() };
-  const pickAt = (x, y) => { const r = Math.hypot(x, y); if (r < R0 * .55 || r > R1 * 1.35) return null; let a = Math.atan2(-y, x) * 180 / Math.PI; let best = null, bd = 40; for (const [k, , c] of SEG) { const d = Math.abs(((a - c + 540) % 360) - 180); if (d < bd) { bd = d; best = k } } return best };
+  const pickAt = (x, y) => { const r = Math.hypot(x, y); if (r < 1) return null;   // any nudge picks the segment in that direction
+    let a = Math.atan2(-y, x) * 180 / Math.PI; let best = null, bd = 40; for (const [k, , c] of SEG) { const d = Math.abs(((a - c + 540) % 360) - 180); if (d < bd) { bd = d; best = k } } return best };
   function show(x, y) {
     if (panel.hidden === false) close();
-    const m = R1 + 16; cx = Math.max(m, Math.min(innerWidth - m, x)); cy = Math.max(m, Math.min(innerHeight - m, y)); vx = vy = 0;
+    const m = R1 + 16; cx = Math.max(m, Math.min(innerWidth - m, x)); cy = Math.max(m, Math.min(innerHeight - m, y)); vx = vy = 0; px = x; py = y;
     const R_ = document.documentElement.style; R_.setProperty('--rmb', (LOOK.menuBlur ?? 8) + 'px'); R_.setProperty('--rmd', LOOK.menuDim ?? .3);
     document.body.classList.add('rm-open'); tip.hidden = true;   // other tooltips step aside, and the world behind blurs
     el.style.left = cx + 'px'; el.style.top = cy + 'px'; el.hidden = false; void el.offsetWidth; el.classList.add('in'); open = true; setHot(null);
     segs.find(s => s.dataset.k === 'map').querySelector('text').textContent = S.mode === 'map' ? 'Fly' : 'Map';
     segs.find(s => s.dataset.k === 'map').querySelector('.ri').innerHTML = RM_FILL[S.mode === 'map' ? 'fly' : 'map'];
-    dot.hidden = !locked(); dot.style.transform = 'none';
+    dot.hidden = true; clearTimeout(settleT); el.classList.remove('settled'); settleT = setTimeout(() => el.classList.add('settled'), 450);   // no pointer at all: the direction you nudge picks
   }
   function hide() { document.body.classList.toggle('rm-open', !panel.hidden && !!which); open = false; el.classList.remove('in'); setTimeout(() => { if (!open) el.hidden = true }, 220); setHot(null) }
   function move(e) {   // captured pointer: a dot you steer inside the ring; free pointer: wherever the pointer is
-    if (locked()) { vx += e.movementX; vy += e.movementY; const r = Math.hypot(vx, vy), lim = R1 * .95; if (r > lim) { vx *= lim / r; vy *= lim / r } dot.style.transform = `translate(${vx}px, ${vy}px)`; setHot(pickAt(vx, vy)) }
-    else setHot(pickAt(e.clientX - cx, e.clientY - cy));
+    const dx = locked() ? e.movementX : e.clientX - px, dy = locked() ? e.movementY : e.clientY - py; px = e.clientX; py = e.clientY;
+    vx += dx; vy += dy; const r = Math.hypot(vx, vy), lim = 10; if (r > lim) { vx *= lim / r; vy *= lim / r } setHot(pickAt(vx, vy));   // kept on a short leash, so turning to another segment takes only a flick
   }
   function choose(k = hot) {
     hide(); if (!k) return;
@@ -58,7 +59,6 @@ const rmenu = (() => {
     if (k === 'settings') { if (locked()) document.exitPointerLock(); if (!$('lookPanel').classList.contains('open')) togglePanel('lookPanel'); return }
     sub(k);
   }
-  svg.addEventListener('pointermove', e => { if (!locked()) setHot(e.target.closest('.rs')?.dataset.k || null) });
   svg.addEventListener('pointerup', e => { if (locked()) return; e.stopPropagation(); const s = e.target.closest('.rs'); choose(s ? s.dataset.k : null) });
   el.addEventListener('pointerdown', e => e.stopPropagation());
   // ── the panels ──

@@ -10,7 +10,7 @@ const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist:
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
 const camRel = new V3(0, .8, 3.4).multiplyScalar(SHIP_SC), camRelV = new V3(), prevVel = new V3();
-let holdSp = -1, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
+let rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
 function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
@@ -81,7 +81,14 @@ function updatePlayer(dt) {
   if (lockFailed && mouse.in && !down) rotateRig(-steerCurve(mouse.x / innerWidth * 2 - 1) * 1.8 * dt, -steerCurve(mouse.y / innerHeight * 2 - 1) * 1.4 * dt);   // lock-less desktop fallback
   rig.quat.copy(rig.q);
   const fw = (keys.w || keys.arrowup || touchThrust ? 1 : 0) - (keys.s || keys.arrowdown || touchBrake ? 1 : 0), rl = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);
-  if (rl) p.base.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), rl * 2.2 * dt)).normalize();   // A/D roll the ship itself; the camera stays level
+  {   // A/D roll the ship itself. Options: inertia (it winds up and coasts on), a double-tap barrel roll with a sideways hop, and the camera rolling along
+    const inr = L.rollInertia ?? 0, wT = rl * (L.rollSpeed ?? 2.2); rollW += (wT - rollW) * Math.min(1, dt * (inr > 0 ? 1.2 + 30 * (1 - inr) * (1 - inr) : 1e9));
+    let dr = rollW * dt;
+    if (rl && !rollHeld && L.rollBarrel) { const t = performance.now(); if (rollTap.d === rl && t - rollTap.t < 280) { barrel = { d: rl, t: 0 }; const side = _ax.set(-rl, 0, 0).applyQuaternion(p.base); p.vel.addScaledVector(side, (L.rollHop ?? .35) * Math.max(80, p.vel.length() * .25)) } rollTap = { d: rl, t } }   // double tap: a full barrel roll, hopping sideways
+    rollHeld = !!rl;
+    if (barrel) { const T = Math.max(.15, L.rollBarrelTime ?? .5), e0 = ease(Math.min(1, barrel.t / T)); barrel.t += dt; const e1 = ease(Math.min(1, barrel.t / T)); dr += barrel.d * 2 * Math.PI * (e1 - e0); if (barrel.t >= T) barrel = null }
+    if (dr) { p.base.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), dr)).normalize(); const rc = L.rollCam ?? 0; if (rc > 0) rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), dr * rc)).normalize() }   // rollCam: the view (and the horizon) rolls with you
+  }
   const prevF = _hf.set(0, 0, -1).applyQuaternion(p.base), prevR = _hr.set(1, 0, 0).applyQuaternion(p.base), sp0 = p.vel.length();
   // boost: Shift or Space. A short tank that drains while boosting and refills when you don't.
   const pressB = (keys.shift || keys[' '] || touchBoost) && !auto; if (!pressB) boostSpent = false; const wantB = pressB && !boostSpent;   // run it dry and it stays off, refilling, until you press boost again
@@ -92,7 +99,7 @@ function updatePlayer(dt) {
   const shipUp = _su.set(0, 1, 0).applyQuaternion(p.base), aimQ = d => lookAtQ(d, Math.abs(shipUp.dot(d)) > .995 ? _su2.set(0, 1, 0).applyQuaternion(rig.q) : shipUp, _hq);
   let steerTo = null;
   if (lockI >= 0 && pedal && !auto) { const dir = starPos(lockI, tmp).sub(p.pos); if (dir.lengthSq() > 1) steerTo = aimQ(dir.normalize()) }   // locked: the ship keeps facing its star
-  else if (!auto && (gasOn || (L.follow && lockI < 0))) steerTo = aimQ(_rf.set(0, 0, -1).applyQuaternion(rig.q));                // the nose follows the reticle
+  else if (!auto && !keys.x && (gasOn || (L.follow && lockI < 0))) steerTo = aimQ(_rf.set(0, 0, -1).applyQuaternion(rig.q));                // the nose follows the reticle (not while X holds your course)
   else if (auto && p.vel.lengthSq() > 4) steerTo = aimQ(p.vel.clone().normalize());
   let turnAmt = 0;
   const obT = L.orbit && !L.rings && nearI >= 0 && lockI !== nearI ? 1 - sstep(nearCD, starR(nearI) * Math.max(L.orbitZone, L.orbitR * 1.5) * .6, starR(nearI) * Math.max(L.orbitZone, L.orbitR * 1.5)) : 0;   // inside a star's gravity
@@ -100,7 +107,9 @@ function updatePlayer(dt) {
   fwd.set(0, 0, -1).applyQuaternion(p.base);
   const braking = fw < 0;
   // W drives along the nose; boost on its own keeps the course you're already on
-  if (gasOn) wish.copy(fwd); else if (boosting) { if (sp0 > 1) wish.copy(p.vel).divideScalar(sp0); else wish.copy(fwd) } else wish.set(0, 0, 0);
+  if (keys.x) { if (!holdDir) holdDir = sp0 > 1 ? p.vel.clone().divideScalar(sp0) : fwd.clone() } else holdDir = null;   // X: the course you're on stays your course, whatever W, S or the mouse do
+  const course = holdDir || fwd;
+  if (gasOn) wish.copy(course); else if (boosting) { if (sp0 > 1) wish.copy(p.vel).divideScalar(sp0); else wish.copy(fwd) } else wish.set(0, 0, 0);
   thrusting = pedal; if (thrusting && auto) auto = null;
   const turnSide = _hf.set(0, 0, -1).applyQuaternion(p.base).sub(prevF).dot(prevR) / Math.max(dt, 1e-4);   // bank from the ship's own turning
 
@@ -139,9 +148,9 @@ function updatePlayer(dt) {
     const vC = vAt(p.cruise) * (1 + boostK * L.boostTop), spNow = p.vel.length();
     const accel = (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
     p.vel.addScaledVector(wish, (accel + (GM / (oR * oR || 1) * L.orbitThrust - accel) * ob) * (1 - .5 * obT) * dt);   // and accelerate half as hard
-    if (gasOn) { const vf = p.vel.dot(fwd); tmp.copy(p.vel).addScaledVector(fwd, -vf); p.vel.addScaledVector(tmp, -(1 - Math.exp(-2.8 * dt))) }
+    if (gasOn) { const vf = p.vel.dot(course); tmp.copy(p.vel).addScaledVector(course, -vf); p.vel.addScaledVector(tmp, -(1 - Math.exp(-2.8 * dt))) }
     p.vel.multiplyScalar(Math.exp(-(braking ? (L.brakeStr ?? 5.5) : thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
-    if (keys.x && !thrusting && !braking) { if (holdSp < 0) holdSp = p.vel.length(); p.vel.copy(fwd).multiplyScalar(holdSp); p.cruise = Math.max(p.cruise, cAt(holdSp)) } else holdSp = -1;   // X: hold the speed you have, along the nose
+    if (keys.x && !thrusting && !braking) { if (holdSp < 0) holdSp = p.vel.length(); p.vel.copy(course).multiplyScalar(holdSp); p.cruise = Math.max(p.cruise, cAt(holdSp)) } else { holdSp = -1; if (holdDir) p.vel.copy(holdDir).multiplyScalar(Math.max(0, p.vel.dot(holdDir))) }   // X: hold the speed you have, on the course you had; W and S only change the speed
     const vmax = Math.min(thrusting ? vC : Infinity, turnAmt > 0 ? Math.min(vC, L.steerCap) + Math.max(0, vC - L.steerCap) * (1 - turnAmt) : Infinity);
     { const sp = p.vel.length(); if (sp > vmax) p.vel.setLength(Math.max(vmax, sp * Math.exp(-(thrusting ? 4 : 1 / Math.max(.1, L.glide)) * dt))) }   // eases down, never snaps
     {   // heading into a winner your speed eases down to what it allows (which shrinks as you close in), and never lets you slam in
@@ -192,7 +201,7 @@ function updatePlayer(dt) {
 function updateCamera(dt) {
   const L = LOOK;
   if (S.mode === 'fly') {
-    const sp = player.vel.length(), pull = 1 + L.speedPull * (sstep(sp, 40, 3000) * .6 + sstep(Math.log10(Math.max(1, sp)), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) * 1.4) + boostK * .45;   // the second part follows the FOV's curve: they widen and pull back together
+    const sp = player.vel.length(), pull = 1 + L.speedPull * (sstep(sp, 40, 3000) * .6 + sstep(Math.log10(Math.max(1, sp)), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) * (L.speedPullFar ?? 3.5)) + boostK * .45;   // the second part follows the FOV's curve: they widen and pull back together
     tmp2.set(0, rig.dist * L.camHeight * Math.sqrt(pull), rig.dist * pull);                 // where the camera wants to sit, in the ship's frame (rising as it pulls back, so the arrow's face stays in view)
     { idleT = thrusting || boosting || keys.x ? 0 : idleT + dt; const w = sstep(idleT, L.camRestAfter ?? 1, (L.camRestAfter ?? 1) + (L.camRestTime ?? 5)); camRest += ((thrusting || boosting ? 0 : w) - camRest) * Math.min(1, dt * (thrusting || boosting ? 2 : .6));   // left alone, the camera drifts in very slowly until the ship fills a share of the view
       if (camRest > 1e-3) { const d = SHIP_LEN / (2 * (L.camRestFill ?? .2) * Math.tan(camera.fov * Math.PI / 360)); tmp2.setLength(tmp2.length() + (Math.min(tmp2.length(), d) - tmp2.length()) * camRest); tmp2.y *= 1 - .6 * camRest } }   // and drops lower, so the ship sits nearer the middle

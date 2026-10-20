@@ -13,10 +13,10 @@ const dayLab = (() => {
     for (let j = k; j < shown; j++) pool[j].hidden = true; shown = k;
   };
 })();
-const shipCam = new THREE.PerspectiveCamera();   // the ship layer's camera: the main one, with a near plane small enough for the tiny ship   // the core glow's strength and size, for its volumetric version
+let boostK0 = 0; const shipCam = new THREE.PerspectiveCamera();   // the ship layer's camera: the main one, with a near plane small enough for the tiny ship   // the core glow's strength and size, for its volumetric version
 const _v2 = new THREE.Vector2();
 function resize() { renderer.setSize(innerWidth, innerHeight, false); shipRenderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.getDrawingBufferSize(_v2); U.res.value.copy(_v2); U.dpr.value = _v2.y / Math.max(1, innerHeight) }
-function setDpr(d, force) { d = Math.max(.5, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); shipRenderer.setPixelRatio(d); resize() } }
+function setDpr(d, force) { d = Math.max(.5, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); shipRenderer.setPixelRatio(Math.min(3, Math.max(d, devicePixelRatio || 1))); resize() } }   // the ship's own layer always draws at full resolution
 addEventListener('resize', resize);
 // adaptive resolution: compare frame time with the display's own interval (60, 120, 144 Hz…); step the pixel ratio
 // down when frames run long, back up when there's headroom. Stalls (hidden tab, a shader compiling) don't count.
@@ -76,10 +76,10 @@ function updateTimeRings(dt) {
     ringFarK = 0;
   } else {
     // far enough out (above the disk or past its rim) the timeline comes into view: the five-year marks, and the spiral itself
-    const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.ringFar ?? .55); ringFarK = sstep(out, F, F * 1.6);
+    const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.ringFar ?? .55), still = performance.now() - lastInput > (L.ringIdle ?? 3) * 1000 && !thrusting && !boosting; ringFarK += (sstep(out, F, F * 1.6) * (still ? 1 : 0) - ringFarK) * Math.min(1, dt * (still ? .8 : 3));   // far out and left alone a few seconds: the timeline fades in; touch anything and it goes
     const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = fr ? 1 : ringFarK; mapLvl[1] = fr ? inside : 0; mapLvl[2] = 0; mapStars = 0;
   }
-  const show = map || fr || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0;   // with the single spiral, the spiral itself is the timeline ruler.visible = timeRings.mesh.visible && !SPIRAL;   // the spiral carries its own dates
+  const show = map || fr || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0; ruler.visible = timeRings.mesh.visible && !SPIRAL;   // with the single spiral, the spiral itself is the timeline (it carries its own dates)
   if (monthTicks) { monthTicks.visible = map && (L.mapMonths ?? 1) + (L.mapYearLines ?? 1) > 0; monthTicks.u.a.value = .55 * (L.mapMonths ?? 1) * (1 - sstep(mapYrs, L.mapMonthYrs ?? 8, (L.mapMonthYrs ?? 8) * 1.7)); monthTicks.u.ya.value = .6 * (L.mapYearLines ?? 1); monthTicks.setLen(L.mapTickLen ?? 1500, Math.max((L.mapTickLen ?? 1500) * 2.2, L.mapYearLen ?? 24000)) }   // month dividers once a few years fill the view
   if (spiralLine) { spiralLine.visible = show; spiralLine.u.a.value = (map ? .55 : .5 * ringFarK + (fr ? .35 : 0)) * Math.max(.3, Math.min(2, L.eraRings || 1)) }
   u.era.value = .3 * L.eraRings * mapLvl[0] * (map ? 1.3 : 1); u.yr.value = .13 * L.ringYear * mapLvl[1] * (map ? 1.4 : 1); u.mo.value = .1 * L.ringMonth * mapLvl[2] * (map ? 1.3 : 1);
@@ -213,7 +213,7 @@ function updateTrail(dt, on) {
   }
   const used = Math.max(v, trail.userData.used || 0); for (let k = v; k < used; k++) { trA[k * 2] = trA[k * 2 + 1] = 0; if (v > 0) trPos.copyWithin(k * 6, (v - 1) * 6, v * 6) } trail.userData.used = v;
   trail.geometry.setDrawRange(0, Math.max(0, v - 1) * 6); if (v) ['position', 'aT', 'aC', 'aA'].forEach(n => trail.geometry.attributes[n].needsUpdate = true);
-  const u = trail.u, cd = camera.position.distanceTo(player.pos); u.nearA.value = cd * .12 * L.trNearFade; u.nearB.value = cd * .5 * L.trNearFade; u.core.value = L.trCore; u.glow.value = L.trGlow; u.taper.value = L.trTaper; u.shim.value = L.trShimmer;
+  const u = trail.u, cd = camera.position.distanceTo(player.pos); u.nearA.value = cd * .12 * L.trNearFade; u.nearB.value = cd * .5 * L.trNearFade; u.core.value = L.trCore; u.hot.value = L.trHot ?? 1; u.hotW.value = (L.trHotW ?? 2) * shipRenderer.getPixelRatio(); u.hotT.value = L.trHotTaper ?? 1; u.glow.value = L.trGlow; u.taper.value = L.trTaper; u.shim.value = L.trShimmer;
 }
 
 /* the engine: the light in the hole, the glow at its mouth and the flare, all in the trail's colour; brighter while you thrust */
@@ -226,12 +226,13 @@ function engineLook(dt) {
   const mouth = _te.copy(avatar.userData.tail).multiplyScalar(avatar.scale.x).applyQuaternion(avatar.quaternion).add(avatar.position);
   const back = _d.set(0, 0, 1).applyQuaternion(avatar.quaternion), toCam = _c.copy(camera.position).sub(mouth), d = toCam.length(); toCam.divideScalar(d || 1);
   // speed lengthens and brightens the spikes; pressing thrust sets off a short burst
-  const thrNow = thrusting && booted && S.mode === 'fly', spNow = player.vel.length(); if (thrNow && !engineLook.was) engineLook.burst = Math.max(engineLook.burst || 0, 1 - .85 * sstep(Math.log10(Math.max(1, spNow)), 2, 5.3)); engineLook.was = thrNow;   // a push from standstill kicks hard; at speed only a little
-  if (boosting && !engineLook.wasB) engineLook.burst = Math.max(engineLook.burst || 0, 1.1); engineLook.wasB = boosting;   // boost always booms engineLook.burst = (engineLook.burst || 0) * Math.exp(-dt / Math.max(.05, L.flareBurstTime ?? .5));
+  const thrNow = thrusting && booted && S.mode === 'fly', spNow = player.vel.length(); if (thrNow && !engineLook.was) engineLook.peak = Math.max(engineLook.peak || 0, 1 - .85 * sstep(Math.log10(Math.max(1, spNow)), 2, 5.3)); engineLook.was = thrNow;   // a push from standstill kicks hard; at speed only a little
+  if (boosting && !engineLook.wasB) engineLook.peak = Math.max(engineLook.peak || 0, 1.1); engineLook.wasB = boosting;   // boost always booms
+  { const E = engineLook, pk = E.peak || 0; E.burst = E.burst || 0; if (pk > E.burst) { E.burst = Math.min(pk, E.burst + pk * dt / .12); if (E.burst >= pk) E.peak = 0 } else { E.peak = 0; E.burst *= Math.exp(-dt / Math.max(.05, L.flareBurstTime ?? .5)) } }   // each burst swells in over 120 ms, then dies away
   const spK = sstep(Math.log(Math.max(150, player.vel.length())), Math.log(150), Math.log(Math.max(300, L.cruiseSpeed))), sp = 1 + (L.flareSpeed ?? 1) * (spK - .3), bu = engineLook.burst * (L.flareBurst ?? 1.2);
   const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2 * Math.max(.3, sp) * (1 + bu * .5) * (1 + ringPop * 2 * (L.ringPopSize ?? 1));
   fu.spk.value = L.flareSparkle ?? 1; fu.rate.value = L.flareRate ?? 2; fu.glow.value = (L.flareGlow ?? 1) * (1 + bu * .6);
-  fu.col.value.copy(_fc); fu.k.value = L.flare * vis * Math.max(on * Math.max(.3, sp) * (1 + bu), igniteK * .6, ringPop * (L.ringPop ?? 1)); fu.ig.value = igniteK * (L.igniteBloom ?? 1.5); fu.pop.value = ringPop * (L.ringPop ?? 1);   // ignition flares the point and spikes only fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px; fu.q.value = px * 3;
+  fu.col.value.copy(_fc); fu.k.value = L.flare * vis * Math.max(on * Math.max(.3, sp) * (1 + bu), igniteK * .6, ringPop * (L.ringPop ?? 1)); fu.ig.value = igniteK * (L.igniteBloom ?? 1.5); fu.pop.value = ringPop * (L.ringPop ?? 1); fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px; fu.q.value = px * 3;   // ignition flares the point and spikes only
   flare.position.copy(mouth).addScaledVector(back, avatar.scale.x * .06); flare.scale.setScalar(px * 3 * 2 * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight) * d); flare.visible = S.mode === 'fly' && fu.k.value > .002;
 }
 
@@ -296,9 +297,9 @@ function updateHover(dt) {
 const RET = { L: $('arcL'), R: $('arcR'), sp: $('lSPD'), pw: $('lPWR'), sv: '', bv: '', used: +store.get('sotd-pwr-used') || 0 };
 function updateBoostUI(dt = 0) {   // the reticle's brackets: speed on the left, boost power on the right; their labels until you've boosted 5 s in all
   const fly = S.mode === 'fly', sp = player.vel.length(), top = Math.min(LIGHT * .97, LOOK.topSpeed ?? Infinity), k = Math.pow(Math.min(1, Math.max(0, (Math.log10(1 + sp) - 1) / (Math.log10(1 + top) - 1))), .8), moving = fly && sp > 25;
-  const arc = (el, v, key) => { const s = v.toFixed(3); if (s === RET[key]) return; RET[key] = s; el.style.strokeDasharray = `${v * 100} 100`; el.style.strokeDashoffset = (-(100 - v * 100) / 2).toFixed(2) };   // grows from its middle
+  const arc = (el, v, key) => { const s = v.toFixed(3); if (s === RET[key]) return; RET[key] = s; el.style.strokeDasharray = `${v * 100} 100`; el.style.strokeDashoffset = (-(100 - v * 100)).toFixed(2) };   // fills from the bottom up
   arc(RET.L, Math.max(.04, k), 'sv'); RET.L.style.opacity = moving ? .95 : 0;
-  const bShow = fly && (boosting || boostE < .999) && boostE > .004; arc(RET.R, boostE, 'bv'); RET.R.style.opacity = bShow ? (boosting ? 1 : .55) : 0;
+  const bShow = fly && (boosting || boostE < .999); arc(RET.R, 1 - boostE, 'bv'); RET.R.style.opacity = bShow ? (boosting ? 1 : .55) : 0;
   if (boosting && RET.used < 5) { RET.used += dt; if (RET.used >= 5) store.set('sotd-pwr-used', '5') }
   const lbl = RET.used < 5 && !crossEl.classList.contains('lockon'); RET.sp.style.opacity = lbl && moving ? .32 : 0; RET.pw.style.opacity = lbl && boosting ? .32 : 0;
   crossEl.style.setProperty('--rs', LOOK.reticleSize ?? 1);
@@ -311,7 +312,7 @@ if (QS.has('stats')) stats.show(true);
 function updateStats(dt) { if (!stats.on) return; stats.t += dt; stats.n++; if (stats.t < .5) return; stats.el.textContent = `${GPU ? 'WebGPU' : 'WebGL 2'} · ${Math.round(stats.n / stats.t)} fps · ${perf.avg.toFixed(1)} ms · js ${perf.js.toFixed(1)} ms · dpr ${DPR}`; stats.t = stats.n = 0 }
 let last = performance.now(), netT = 0, cardTick = 0, conT = 0;
 function tick(now) {
-  const tStart = performance.now(), rawMs = now - last, dt = Math.max(0, Math.min(.05, rawMs / 1000)); last = Math.max(last, now); adapt(rawMs); if (bench.on && rawMs > 0 && rawMs < 500) bench.ms.push(rawMs);
+  const tStart = performance.now(), rawMs = now - last, rdt = Math.max(0, Math.min(.05, rawMs / 1000)), dt = rdt * slowmo.k; slowmo.step(rdt); last = Math.max(last, now); adapt(rawMs); if (bench.on && rawMs > 0 && rawMs < 500) bench.ms.push(rawMs);   // dt: game time (slows through a ring)
   const L = LOOK, fly = S.mode === 'fly';
   ring2.rotation.y += dt * .05; beacons.forEach((b, k) => { b.material.emissiveIntensity = (Math.sin(now * .003 + k * 1.7) > .6) ? 2 : .2 });
   if (fly && booted) {
@@ -330,7 +331,7 @@ function tick(now) {
   U.beta.value = Math.min(.995, beta * L.relativity); PU.betaC.value = Math.min(.8, beta * L.shift); PU.beam.value = L.beaming;
   PU.vV.value.copy(U.vdir.value).transformDirection(camera.matrixWorldInverse); PU.ty.value = Math.tan(camera.fov * Math.PI / 360); PU.tx.value = PU.ty.value * camera.aspect;
   PU.nV.value.set(0, 1, 0).applyQuaternion(GQ).transformDirection(camera.matrixWorldInverse); PU.edge.value = L.edgeDim; { const a = Math.sin(L.edgeAngle * Math.PI / 180); PU.edgeA.value = a; PU.edgeB.value = Math.min(1, Math.max(a * 1.05 + .002, a * L.edgeSoft)) }
-  stars.u.far.value = fly ? 1 : 0;
+  stars.u.far.value = fly ? 1 : 0; stars.u.thin.value = fly ? 0 : L.mapDots ?? 1;
   { const d = (fly ? player.pos : camera.position).distanceTo(GC); tdil = L.bhTime ? Math.max(.12, 1 - .88 * Math.exp(-Math.max(0, d - BH.sh) / (BH.sh * 2.5))) : 1; worldT += dt * tdil }
   U.time.value = worldT; U.now.value = now * .001;
   updateLandmarks(dt); updateAndro(); updateTimeRings(dt);
@@ -341,7 +342,7 @@ function tick(now) {
   conT += dt * L.pulse; constellation.u.t.value = conT;
   disc.material.opacity = L.discs * .6 * sstep(camera.position.distanceTo(GC), GAL_LEN * .9, GAL_LEN * 2.6);
   beamPivot.rotation.y += dt * .22; avatar.userData.nav.forEach((b, k) => { b.material.emissiveIntensity = Math.sin(now * .005 + k * 2.1) > .55 ? 3.2 : .25 });
-  boostK += ((fly && boosting ? 1 : 0) - boostK) * Math.min(1, dt * (boosting ? 6 : 2));
+  boostK += ((fly && boosting ? 1 : 0) - boostK) * Math.min(1, dt * (boosting ? 6 : 2)); if (boosting) boostK = Math.min(boostK, (boostK0 += dt / .12)); else boostK0 = boostK;   // the boost glow swells in over 120 ms
   updateTrail(dt, fly && !!L.trail); trail.visible = fly && !!L.trail && trail.userData.used > 1; updateEngine(); updateBoostUI(dt);
   if (fly && booted) { if (player.vel.length() < 1 && !auto) { shipStill += dt; if (shipStill > 3 && !shipSaved) { shipSaved = true; store.set('sotd-ship', JSON.stringify({ p: player.pos.toArray(), q: player.base.toArray(), r: rig.q.toArray() })) } } else { shipStill = 0; shipSaved = false } }
   if (fly) { updateCompass(); const r = regionOf(player.pos); if (r !== region) { region = r; if (L.cards && booted) arrive(r) } } else if (region !== null) { region = null; $('arrive').classList.remove('show') }
@@ -419,7 +420,7 @@ function tick(now) {
     }
   }
   PU.beta.value = fly ? Math.min(1, beta * L.relativity) : 0; PU.ab.value += ((fly ? Math.min(1.5, player.cruise * .35 + beta * 1.2 + boostK * .8) * L.aberr : 0) - PU.ab.value) * Math.min(1, dt * 4);
-  updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { if (!(intro.active && veil.material.opacity > .999)) pipeline.render(); shipCam.copy(camera); shipCam.near = camera.near * SHIP_SC * .1; shipCam.far = 2e5; shipCam.updateProjectionMatrix(); shipRenderer.render(shipScene, shipCam) } perf.ms = performance.now() - t0;   // under the opening's black veil the galaxy isn't drawn at all
+  updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { if (!(intro.active && veil.material.opacity > .999) || intro.wipe) { intro.wipe = false; pipeline.render() } shipCam.copy(camera); shipCam.near = camera.near * SHIP_SC * (intro.active ? .01 : .1); shipCam.far = 2e5; shipCam.updateProjectionMatrix(); shipRenderer.render(shipScene, shipCam) } perf.ms = performance.now() - t0;   // under the opening's black veil the galaxy isn't drawn at all
 }
 let loopErrs = 0;
 function loop(now) { requestAnimationFrame(loop); if (!booted && !introActive) { last = now; return }   // nothing to draw behind the splash: leave the GPU to the loading

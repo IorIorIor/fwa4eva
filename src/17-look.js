@@ -23,7 +23,7 @@ function applyLook() {
   bh.mesh.scale.setScalar(RP * BH.rs); bh.shadow.scale.setScalar(BH.sh * .985);
   { const b = bh.u; b.rin.value = 3; b.rout.value = Math.max(3.5, L.bhDiskOut); b.br.value = L.bhDisk * 8; b.hot.value = L.bhHot; b.warm.value = L.bhWarm ?? 0; b.spin.value = L.bhSpin; b.halo.value = L.bhHalo / .75; b.dop.value = L.bhDoppler; b.lens.value = L.bhLens; b.steps.value = Math.round(L.bhSteps) }
   const su = stars.u; su.sharp.value = L.starSharp; su.coreW.value = L.starCore; su.haloW.value = L.starHalo; su.fall.value = L.starFall; su.spikes.value = L.starSpikes; su.white.value = L.starWhite; su.twink.value = L.starTwinkle; su.size.value = L.starSize; su.glow.value = L.starGlow; su.flare.value = L.flares ? 1 : 0;
-  constellation.u.glow.value = L.lineGlow;
+  constellation.u.glow.value = L.lineGlow; constellation.u.w.value = L.conWidth ?? 2; constellation.u.gw.value = L.conGlowW ?? 10;
   avatar.userData.nav.forEach(b => b.visible = !!L.nav); beamPivot.visible = !!L.search;
   $('cmp').style.display = L.compass ? '' : 'none'; $('hdg').style.display = L.heading ? '' : 'none'; $('gauge').style.visibility = L.gauge ? '' : 'hidden';
   if (!L.cards) $('arrive').classList.remove('show');
@@ -38,12 +38,17 @@ const lookData = () => { const d = {}; Object.keys(LOOK).forEach(k => { if (k[0]
 // the map can have a look of its own: with the switch on, the Look panel edits a separate set of settings while you're on the map
 const MAP_KEY = 'sotd-look-map';
 let LOOK_FLY = LOOK, LOOK_MAP = { ...LOOK, ...store.json(MAP_KEY, {}) };
+const LOOK_MIX = {};   // in between: every slider part way from the flying look to the map's, following the camera's move
 function swapLook() {
-  if (LOOK === LOOK_MAP) LOOK_FLY.mapOwnLook = LOOK_MAP.mapOwnLook; else { LOOK_FLY = LOOK; LOOK_MAP.mapOwnLook = LOOK.mapOwnLook }
-  const want = S.mode === 'map' && LOOK_FLY.mapOwnLook ? LOOK_MAP : LOOK_FLY; if (LOOK !== want) { LOOK = want; renderLook(); applyLook() }
+  if (LOOK === LOOK_MAP) LOOK_FLY.mapOwnLook = LOOK_MAP.mapOwnLook; else if (LOOK !== LOOK_MIX) { LOOK_FLY = LOOK; LOOK_MAP.mapOwnLook = LOOK.mapOwnLook }
+  if (S.mode !== swapLook.mode) { swapLook.mode = S.mode; swapLook.tw = tween }   // a mode switch: blend over the move that goes with it (and only that one)
+  const toMap = S.mode === 'map' && LOOK_FLY.mapOwnLook, e = tween && tween === swapLook.tw ? ease(Math.min(1, tween.t)) : 1, k = LOOK_FLY.mapOwnLook ? (toMap ? e : 1 - e) : 0;
+  if (k <= 0 || k >= 1) { const want = k >= 1 ? LOOK_MAP : LOOK_FLY; if (LOOK !== want) { LOOK = want; renderLook(); applyLook() } return }
+  for (const key in LOOK_FLY) { const a = LOOK_FLY[key], b = LOOK_MAP[key]; LOOK_MIX[key] = typeof a === 'number' && typeof b === 'number' ? a + (b - a) * k : k < .5 ? a : b ?? a }
+  LOOK = LOOK_MIX; applyLook();
 }
-function saveLookNow() { if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
-function saveLook() { if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
+function saveLookNow() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
+function saveLook() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
 (async () => {
   try {
     if (!window.claude || !claude.use) return; const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]); if (!db || !user) return;
@@ -51,7 +56,7 @@ function saveLook() { if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify
     const snap = await lookDoc.get(), d = snap.exists && snap.data();
     if (d && d.look && typeof d.look === 'object') {
       Object.keys(d.look).forEach(k => { if (k in LOOK_DEFAULTS && typeof d.look[k] === 'number') LOOK[k] = d.look[k] }); migrateLook(LOOK);
-      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
+      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
     } else saveLook();
   } catch (e) { }
 })();

@@ -7,7 +7,7 @@ import {
   float, vec2, vec3, vec4,
   positionGeometry, positionWorld, normalWorld, modelViewMatrix, modelWorldMatrix, positionView, normalView, positionLocal,
   cameraPosition, cameraViewMatrix, cameraProjectionMatrix, modelScale, transpose,
-  abs, acos, atan, clamp, cos, cross, distance, dot, exp, floor, fract, length, log, max, min, mix, mod, normalize, pow, sin, smoothstep, sqrt, step,
+  abs, acos, atan, clamp, cos, cross, distance, dot, exp, floor, fract, fwidth, length, log, max, min, mix, mod, normalize, pow, sin, smoothstep, sqrt, step,
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';

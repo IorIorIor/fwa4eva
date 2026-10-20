@@ -21,7 +21,7 @@ scene.add(new THREE.HemisphereLight(0xb8b0ff, 0x1a1430, 1.1 * Math.PI));   // th
 const sunLight = new THREE.DirectionalLight(0xffffff, .8 * Math.PI); sunLight.position.set(.62, .48, .36); scene.add(sunLight);
 const rimLight = new THREE.DirectionalLight(0x8fa6ff, .9 * Math.PI); rimLight.position.set(-.62, -.3, -.5); scene.add(rimLight);   // cool back light so silhouettes read
 // the ship flies on its own layer: a second, transparent canvas above the instruments, so the pointer is never covered by them
-shipRenderer.highPrecision = true; shipRenderer.setPixelRatio(DPR); shipRenderer.setClearColor(0x000000, 0);
+shipRenderer.highPrecision = true; shipRenderer.setPixelRatio(Math.min(3, Math.max(DPR, devicePixelRatio || 1))); shipRenderer.setClearColor(0x000000, 0);
 // trails are drawn on their own and added after the colour grade, so a monochrome look never bleaches a pilot's colour
 const trailScene = new THREE.Scene(); trailScene.background = new THREE.Color(0, 0, 0);
 // the long-exposure arcs (the galaxy's rim streaks among them) render on their own and join the background, so the black hole lenses them

@@ -205,7 +205,7 @@ for (let k = 0; k < TR_MAX; k++) { trV[k * 2] = 1; trV[k * 2 + 1] = -1 }
 const trail = (() => {
   const g = new THREE.BufferGeometry(), ix = []; for (let k = 0; k < TR_MAX - 1; k++) { const a = k * 2; ix.push(a, a + 1, a + 2, a + 1, a + 3, a + 2) } g.setIndex(ix);
   [['position', trPos, 3], ['aT', trT, 1], ['aV', trV, 1], ['aC', trC, 3], ['aA', trA, 1]].forEach(([n, a, c]) => g.setAttribute(n, new THREE.BufferAttribute(a, c).setUsage(THREE.DynamicDrawUsage)));
-  const u = { core: uniform(1), glow: uniform(1), taper: uniform(1.35), shim: uniform(.08), nearA: uniform(4), nearB: uniform(30) }, m = skyMat({ side: THREE.DoubleSide, depthTest: false });
+  const u = { core: uniform(1), glow: uniform(1), taper: uniform(1.35), shim: uniform(.08), nearA: uniform(4), nearB: uniform(30), hot: uniform(1), hotW: uniform(2), hotT: uniform(1) }, m = skyMat({ side: THREE.DoubleSide, depthTest: false });
   const vT = varying(attribute('aT', 'float')), vV = varying(attribute('aV', 'float')), vC = varying(attribute('aC', 'vec3'));
   const vA = varying(clamp(attribute('aA', 'float'), 0, 1).mul(smoothstep(u.nearA, u.nearB.max(u.nearA.add(.001)), modelViewMatrix.mul(vec4(positionGeometry, 1)).z.negate())));
   m.fragmentNode = Fn(() => {
@@ -213,7 +213,9 @@ const trail = (() => {
     const flick = u.shim.oneMinus().add(u.shim.mul(sin(vT.mul(240).sub(U.now.mul(30)))));
     const c0 = vC.mul(halo).mul(.85).mul(u.glow).add(mix(vC, vec3(1), .3).mul(core).mul(1.6).mul(u.core)).mul(along).mul(max(flick, 0)).mul(vA);
     const c = c0.div(max(1, max(max(c0.r, c0.g), c0.b).div(1.25)));   // too bright scales down as a whole rather than burning to white: the pilot's colour survives
-    const cc = clamp(c, 0, 1); return vec4(cc, max(max(cc.r, cc.g), cc.b));   // light on the transparent ship canvas: alpha must cover the colour (premultiplied), or the browser drops it
+    // the white-hot thread down the middle, straight out of the engine: hotW px wide at the mouth, tapering to nothing, added on top
+    const px = abs(vV).div(max(fwidth(vV), 1e-5)), hw = u.hotW.mul(.5).mul(pow(max(0, vT.oneMinus()), u.hotT)), hot = smoothstep(hw.add(.5), hw.sub(.5), px).mul(min(hw.mul(2), 1)).mul(u.hot).mul(vA);
+    const cc = clamp(c.add(vec3(hot)), 0, 1); return vec4(cc, max(max(cc.r, cc.g), cc.b));   // light on the transparent ship canvas: alpha must cover the colour (premultiplied), or the browser drops it
   })();
   const mesh = layer(new THREE.Mesh(g, m), shipScene, 50); mesh.u = u; return mesh;   // on the ship's own layer, drawn after it: the trail runs over the arrow (light only, so the clear canvas adds it to the view)
 })();

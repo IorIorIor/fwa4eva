@@ -10,7 +10,7 @@ const stars = (() => {
   geo.setAttribute('aGot', new THREE.InstancedBufferAttribute(GOT, 1).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(COL, 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aAlpha', new THREE.InstancedBufferAttribute(ALPHA, 1).setUsage(THREE.DynamicDrawUsage));
-  const u = { coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
+  const u = { coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
   const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vA = varyingProperty('float', 'vA'), vT = varyingProperty('float', 'vT'), vPs = varyingProperty('float', 'vPs'), vDot = varyingProperty('float', 'vDot'), vRing = varyingProperty('float', 'vRing'), vRon = varyingProperty('float', 'vRon'), vPx = varyingProperty('float', 'vPx'), vGot = varyingProperty('float', 'vGot');
   m.vertexNode = Fn(() => {
     const ab = aberrate(ia('aP', 'vec3')), al = ia('aAlpha', 'float');
@@ -20,7 +20,7 @@ const stars = (() => {
     vDot.assign(smoothstep(dot1.mul(2.6), dot1, ps)); vPs.assign(clamp(ps, mix(dot1, U.dpr.mul(4), on), 220)); vC.assign(ia('aColor', 'vec3')); vT.assign(ia('aType', 'float'));
     // on the map every winner stays a white pixel; in flight the far ones thin out and fade away
     const flyK = clamp(ps.div(dot1), .3, 1).mul(smoothstep(3.5e5, 1.2e6, z).oneMinus());
-    vA.assign(al.mul(mix(.95, 1, smoothstep(dot1, dot1.mul(2), ps))).mul(mix(1, flyK, u.far)));
+    vA.assign(al.mul(mix(.95, 1, smoothstep(dot1, dot1.mul(2), ps))).mul(mix(1, flyK, u.far)).mul(mix(1, smoothstep(dot1.mul(.45), dot1.mul(1.4), ps), u.thin.mul(on.oneMinus()))));   // map, zoomed out: winners too small to see fade away instead of each staying a pixel
     // the game: a ring of the star's real size (× ring size). Once it's a few px across the sprite grows to hold it and the ring takes over
     const rpx = ia('aR', 'float').mul(u.rsz).mul(pxScale).div(max(z, .01)), ron = smoothstep(2.5, 7, rpx).mul(u.ring).mul(smoothstep(40, 18, rpx)), side = max(vPs, rpx.mul(2.6)).mul(ron).add(vPs.mul(ron.oneMinus())).min(9000);   // up close the 3D halo takes over
     vRon.assign(ron); vRing.assign(rpx.div(side.mul(.5))); vPx.assign(side); vGot.assign(ia('aGot', 'float'));
@@ -81,20 +81,34 @@ const bodies = (() => {
 })();
 const bodyCand = [];
 
-/* constellations: filtered winners joined in date order. Pulses travel from older to newer along each line. */
+/* constellations: filtered winners joined in date order, each award to the next: still lines with a soft glow */
 const CON_MAX = Math.max(1500, N);   // enough segments to chain any filter, date to date
 const AG_PAL = ['#ffb547', '#5ee0b0', '#ff6fae', '#7aa2ff', '#c58bff', '#ffd166', '#6ff0d0', '#ff8a5b'], agCol = new Map();
 const agColor = a => agCol.get(a) || '#ffb547';
-const conPos = new Float32Array(CON_MAX * 2 * 3), conSeq = new Float32Array(CON_MAX * 2), conCol = new Float32Array(CON_MAX * 2 * 3);
-const constellation = (() => {
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(conPos, 3).setUsage(THREE.DynamicDrawUsage)); g.setAttribute('aSeq', new THREE.BufferAttribute(conSeq, 1).setUsage(THREE.DynamicDrawUsage)); g.setAttribute('aCol', new THREE.BufferAttribute(conCol, 3).setUsage(THREE.DynamicDrawUsage)); g.setDrawRange(0, 0);
-  const u = { t: uniform(0), cur: uniform(-10), op: uniform(0), glow: uniform(1) }, m = new THREE.LineBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
-  const seq = attribute('aSeq', 'float'), seg = floor(seq), f = seq.sub(seg);
-  const pulse = smoothstep(.8, 1, fract(f.sub(u.t.mul(.35)))).mul(.9).add(smoothstep(.93, 1, fract(f.mul(3).sub(u.t.mul(1.05)))).mul(.35));
-  const isCur = abs(seg.sub(u.cur)).lessThan(.5), hl = select(isCur.or(abs(seg.sub(u.cur.sub(1))).lessThan(.5)), 1, 0), out = hl.mul(select(isCur, 1, .55));
-  m.colorNode = mix(attribute('aCol', 'vec3'), vec3(1), pulse.mul(.6).add(out.mul(.3))).mul(pulse.add(.3).add(out.mul(.9))).mul(u.glow);
-  m.opacityNode = clamp(pulse.mul(.75).add(.22).add(out.mul(.6)).mul(u.op).mul(u.glow), 0, 1);
-  const mesh = layer(new THREE.LineSegments(g, m), scene, 3); mesh.u = u; return mesh;
+const constellation = (() => {   // each link a screen-space ribbon: a 2 px line with a soft glow round it, the same width near or far
+  const g = new THREE.InstancedBufferGeometry(); g.index = QUAD.index; g.setAttribute('position', QUAD.attributes.position); g.setAttribute('uv', QUAD.attributes.uv);
+  const pa = new Float32Array(CON_MAX * 3), pb = new Float32Array(CON_MAX * 3), col = new Float32Array(CON_MAX * 3), sq = new Float32Array(CON_MAX);
+  [['aA', pa, 3], ['aB', pb, 3], ['aCol', col, 3], ['aSeq', sq, 1]].forEach(([k, a, n]) => g.setAttribute(k, new THREE.InstancedBufferAttribute(a, n).setUsage(THREE.DynamicDrawUsage))); g.instanceCount = 0;
+  const u = { t: uniform(0), cur: uniform(-10), op: uniform(0), glow: uniform(1), w: uniform(2), gw: uniform(10) }, m = skyMat({ blend: 'alpha', depthTest: false }), vD = varyingProperty('float', 'vD'), vC = varyingProperty('vec3', 'vC'), vH = varyingProperty('float', 'vH');
+  m.vertexNode = Fn(() => {
+    const near = float(1), A = cameraViewMatrix.mul(vec4(ia('aA', 'vec3'), 1)).toVar(), B = cameraViewMatrix.mul(vec4(ia('aB', 'vec3'), 1)).toVar();
+    // clip the link to the space in front of the camera, so a line running past you never flips
+    If(A.z.greaterThan(near.negate()), () => { A.assign(mix(A, B, clamp(A.z.add(near).div(A.z.sub(B.z)), 0, 1))) });
+    If(B.z.greaterThan(near.negate()), () => { B.assign(mix(B, A, clamp(B.z.add(near).div(B.z.sub(A.z)), 0, 1))) });
+    const cA = cameraProjectionMatrix.mul(A), cB = cameraProjectionMatrix.mul(B), half = U.res.mul(.5), sA = cA.xy.div(cA.w).mul(half), sB = cB.xy.div(cB.w).mul(half);
+    const dv = sB.sub(sA), L = max(length(dv), 1e-3), dir = dv.div(L), nrm = vec2(dir.y.negate(), dir.x), hw = u.w.mul(.5).add(u.gw).mul(U.dpr), t = uv().x, side = positionGeometry.y.mul(2);
+    const c = mix(cA, cB, t), off = nrm.mul(side.mul(hw)).add(dir.mul(t.mul(2).sub(1).mul(hw)));   // a little past each end, so joins round off
+    vD.assign(side.mul(hw).div(U.dpr)); vC.assign(ia('aCol', 'vec3'));
+    const seg = floor(ia('aSeq', 'float')), cur = abs(seg.sub(u.cur)).lessThan(.5), prev = abs(seg.sub(u.cur.sub(1))).lessThan(.5); vH.assign(select(cur, 1, select(prev, .55, 0)));
+    const behind = A.z.greaterThan(near.negate().mul(.999)).and(B.z.greaterThan(near.negate().mul(.999)));
+    return select(behind, vec4(0, 0, 2, 1), c.add(vec4(off.div(half).mul(c.w), 0, 0)));
+  })();
+  m.fragmentNode = Fn(() => {
+    const d = abs(vD), core = smoothstep(u.w.mul(.5).add(.5), u.w.mul(.5).sub(.5), d), glow = exp(d.div(u.gw.mul(.45)).pow(2).negate()).mul(.22);
+    const k = u.op.mul(min(u.glow, 1.5)).mul(vH.mul(.5).add(.7)), a = clamp(max(core, glow).mul(k), 0, 1);   // blended, not added: where links cross they don't pile up into white
+    return vec4(mix(vC, mix(vC, vec3(1), .5), core), a);
+  })();
+  const mesh = layer(new THREE.Mesh(g, m), scene, 3); mesh.u = u; mesh.buf = { pa, pb, col, sq }; return mesh;
 })();
 
 /* markers: the autopilot target ring, your ship on the map, and the screenshot that can float in 3D */

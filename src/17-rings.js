@@ -31,18 +31,18 @@ const HALO = (() => {
   };
   build(LOOK.ringWidth ?? .1);
   const _m = new THREE.Matrix4(), _q = new Q4(), _s = new V3(), _z = new V3(0, 0, 1), _d = new V3(), live = [], pool = Array.from({ length: HALO_N }, () => ({ i: -1, c: new V3(), r: 1, c0: 0, done: false }));
-  const best = []; let fade = new Map();
+  const best = []; let fade = new Map(), minTs = Infinity;   // minTs: seconds until you pass through the nearest ring you can't miss
   function update(dt) {
     const L = LOOK; if (!L.rings || S.mode !== 'fly') { mesh.count = 0; live.length = 0; return } if (tw !== (L.ringWidth ?? .1)) build(L.ringWidth ?? .1);
     u.spark.value = L.ringSparkle ?? 1; u.holo.value = L.ringHolo ?? 1; u.br.value = L.ringBright ?? .55;
     best.length = 0; const px = player.pos.x, py = player.pos.y, pz = player.pos.z;   // the nearest few, by straight distance
     for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - px, dy = P[i * 3 + 1] - py, dz = P[i * 3 + 2] - pz, d2 = dx * dx + dy * dy + dz * dz; if (best.length < HALO_N) { best.push([d2, i]); best.sort((a, b) => a[0] - b[0]) } else if (d2 < best[HALO_N - 1][0]) { best[HALO_N - 1] = [d2, i]; best.sort((a, b) => a[0] - b[0]) } }
     const v = player.vel, vv = v.lengthSq(), pred = L.ringPredict ?? .7, col = L.ringCollapse ?? .85, pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360));
-    live.length = 0; let n = 0;
+    live.length = 0; let n = 0; minTs = Infinity;
     for (const [, i] of best) {
       const h = pool[n], R = starR(i) * (L.ringSize ?? 1.6), c = starPos(i, h.c), dist = Math.sqrt(Math.max(1, camera.position.distanceToSquared(c))), rpx = R * pxK / dist;
       if (h.i !== i) { h.i = i; h.done = false; h.c0 = 0 }
-      let k = 0; if (vv > 1) { _d.copy(c).sub(player.pos); const ts = _d.dot(v) / vv, miss = _d.addScaledVector(v, -ts).length(); if (ts > 0 && ts < pred && miss < R * 1.15) k = 1 - ts / pred }   // about to pass through: how close (0..1)
+      let k = 0; h.ts = Infinity; if (vv > 1) { _d.copy(c).sub(player.pos); const ts = _d.dot(v) / vv, miss = _d.addScaledVector(v, -ts).length(); if (ts > 0 && ts < pred && miss < R * 1.15) { k = 1 - ts / pred; if (!h.done && TA[i] === 1) { h.ts = ts; minTs = Math.min(minTs, ts) } } }   // about to pass through: how close (0..1), and in how long
       h.c0 = Math.max(h.c0 * Math.exp(-3 * dt), k); const e = h.c0 * h.c0 * (3 - 2 * h.c0);
       if (e > 0) { _d.copy(v).normalize(); const along = _d.dot(_s.copy(c).sub(player.pos)); c.lerp(_s.copy(player.pos).addScaledVector(_d, along), e) }   // slides onto your course
       h.r = R * (1 - col * e); const gone = h.done ? (fade.get(i) ?? 1) : 1; if (h.done) fade.set(i, Math.max(0, gone - dt * 4));
@@ -54,8 +54,19 @@ const HALO = (() => {
     if (fade.size > 40) fade = new Map([...fade].slice(-20));
     mesh.count = live.length; if (live.length) { mesh.instanceMatrix.needsUpdate = true; geo.attributes.hCol.needsUpdate = geo.attributes.hA.needsUpdate = true }
   }
-  return { update, live, u };
+  return { update, live, u, get ts() { return minTs } };
 })();
+/* bullet time: once a ring can't be missed, all of time slows, exponentially, to all but a standstill as you pass through it,
+   then winds back up just as it slowed */
+const slowmo = { k: 1, after: 1e9,
+  step(rdt) {
+    const L = LOOK, amt = L.rings ? L.ringSlow ?? 1 : 0; this.after += rdt; if (amt <= 0) { this.k = 1; return }
+    const lo = Math.max(.005, L.ringSlowMin ?? .04), tau = Math.max(.02, L.ringSlowIn ?? .22), pred = L.ringPredict ?? .7, f = x => lo + (1 - lo) * x;
+    let k = 1; const ts = HALO.ts; if (ts < pred) k = f(Math.min(1, (1 - Math.exp(-ts / tau)) / (1 - Math.exp(-pred / tau))));   // the nearer the pass, the slower
+    k = Math.min(k, f(1 - Math.exp(-this.after / Math.max(.02, L.ringSlowOut ?? .3))));   // and after it, back up to speed
+    this.k = 1 - amt * (1 - k);
+  },
+};
 function collectSound(v = 1) {   // two quick rising notes, bright and glassy, with a soft whoosh under them
   if (!AC || AC.state !== 'running' || !master) return; const t = AC.currentTime + .005;
   [0, 7, 12].forEach((st, k) => { const f = 880 * Math.pow(2, st / 12), o = AC.createOscillator(), g = AC.createGain(); o.type = k ? 'sine' : 'triangle'; o.frequency.setValueAtTime(f * .985, t + k * .055); o.frequency.exponentialRampToValueAtTime(f, t + k * .055 + .03); g.gain.setValueAtTime(0, t + k * .055); g.gain.linearRampToValueAtTime(.18 * v / (1 + k * .5), t + k * .055 + .006); g.gain.exponentialRampToValueAtTime(.0001, t + k * .055 + .55); o.connect(g); g.connect(master); o.start(t + k * .055); o.stop(t + k * .055 + .6) });
@@ -63,8 +74,9 @@ function collectSound(v = 1) {   // two quick rising notes, bright and glassy, w
   const bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = 'bandpass'; bp.Q.value = 1.2; bp.frequency.setValueAtTime(600, t); bp.frequency.exponentialRampToValueAtTime(3200, t + .35); g.gain.value = .12 * v; n.buffer = b; n.connect(bp); bp.connect(g); g.connect(master); n.start(t);
 }
 function collect(i) {
+  slowmo.after = 0;
   if (lockI === i) { lockI = -1; auto = null }   // through it: the camera's free again
-  player.vel.multiplyScalar(1 + Math.max(0, LOOK.ringBurst ?? .25)); engineLook.burst = Math.max(engineLook.burst || 0, 1.3); ringPop = 1; boostK = Math.max(boostK, LOOK.ringBoost ?? .8); collectSound(GOT[i] ? .6 : 1);   // a festive kick: speed, a burst of light from the engine, the boost look   // a kick: speed, the engine flaring, a bright little sound
+  player.vel.multiplyScalar(1 + Math.max(0, LOOK.ringBurst ?? .25)); engineLook.peak = Math.max(engineLook.peak || 0, 1.3); ringPop = 1; boostK = Math.max(boostK, LOOK.ringBoost ?? .8); collectSound(GOT[i] ? .6 : 1);   // a festive kick: speed, a burst of light from the engine, the boost look   // a kick: speed, the engine flaring, a bright little sound
   gotCard = { i, t: LOOK.ringCard ?? 7 }; showCard(i);
   buzz(18);
   if (GOT[i]) return; GOT[i] = 1; gotN++; stars.aGot.needsUpdate = true;
