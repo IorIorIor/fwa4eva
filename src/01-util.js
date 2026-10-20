@@ -26,3 +26,7 @@ function canvasTex(w, h, paint) { const c = document.createElement('canvas'); c.
 function radialTex(size, stops) { return canvasTex(size, size, (g, s) => { const gr = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2); stops.forEach(([o, c]) => gr.addColorStop(o, c)); g.fillStyle = gr; g.fillRect(0, 0, s, s) }) }
 // a text node that only touches the DOM when its value changes
 function liveText(el) { let v = null; return s => { if (s !== v) { v = s; el.textContent = s } } }
+
+// loading progress for the ring round Start (0…1), reported as each stage of the page comes up
+const loadProg = v => { try { window.__introProgress && window.__introProgress(v) } catch (e) { } };
+loadProg(.08);

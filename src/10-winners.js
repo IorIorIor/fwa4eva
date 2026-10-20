@@ -2,6 +2,7 @@
    Far away each winner is a point-spread function (a white-hot core in a halo of its colour). Close up the
    nearest few become real suns, and the exotic ones are built from the sandbox objects. */
 const COL = new Float32Array(N * 3), ALPHA = new Float32Array(N), TA = new Float32Array(N).fill(1);
+loadProg(.45);
 const stars = (() => {
   const geo = quads(N, { aP: [P, 3], aSize: [SIZE, 1], aType: [TYPE, 1] });
   geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(COL, 3).setUsage(THREE.DynamicDrawUsage));

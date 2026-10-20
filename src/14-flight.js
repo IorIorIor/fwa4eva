@@ -95,7 +95,7 @@ function updatePlayer(dt) {
   else if (!auto && (gasOn || (L.follow && lockI < 0))) steerTo = aimQ(_rf.set(0, 0, -1).applyQuaternion(rig.q));                // the nose follows the reticle
   else if (auto && p.vel.lengthSq() > 4) steerTo = aimQ(p.vel.clone().normalize());
   let turnAmt = 0;
-  if (steerTo) { const ang = p.base.angleTo(steerTo); if (!auto && pedal) turnAmt = sstep(ang, .06, .5); if (ang > 1e-4) { const rate = L.turnRate * (1 - L.turnHeavy * sstep(sp0, 3000, 800000)); p.base.slerp(steerTo, Math.min(1, rate * dt / ang)) } }
+  if (steerTo) { const ang = p.base.angleTo(steerTo); if (!auto && pedal) turnAmt = sstep(ang, .06, .5); if (ang > 1e-4) { const rate = L.turnRate * (1 - L.turnHeavy * sstep(sp0, 3000, 800000)) * (1 + (L.turnSlow ?? 2.5) * (1 - sstep(sp0, 40, 4000))); p.base.slerp(steerTo, Math.min(1, rate * dt / ang)) } }
   fwd.set(0, 0, -1).applyQuaternion(p.base);
   const braking = fw < 0;
   // W drives along the nose; boost on its own keeps the course you're already on

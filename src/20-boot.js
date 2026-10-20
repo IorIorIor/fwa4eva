@@ -67,7 +67,7 @@ if (coarse) $('skipHint').hidden = true;   // touch: the opening just plays
   Object.entries(EXO_KINDS).forEach(([k, K], j) => { const b = K.build(K.P, EXO_SHARED[k] ??= {}); b.obj.scale.setScalar(.02); b.obj.position.set((j - 4) * 60, 0, -900).applyQuaternion(camera.quaternion).add(camera.position); warm.add(b.obj) });
   bodies.mesh.count = 1; bodies.mesh.setMatrixAt(0, new THREE.Matrix4().compose(new V3(0, 0, -900).applyQuaternion(camera.quaternion).add(camera.position), new Q4(), new V3(10, 10, 10)));
   const bar = $('introBar'), steps = 3;
-  for (let s = 0; s < steps; s++) { pipeline.render(); if (window.__introProgress) window.__introProgress((s + 1) / steps); else bar.style.strokeDashoffset = 1 - (s + 1) / steps; await new Promise(r => setTimeout(r, 30)) }
+  for (let s = 0; s < steps; s++) { pipeline.render(); loadProg(.6 + .38 * (s + 1) / steps); if (!window.__introProgress) bar.style.strokeDashoffset = 1 - (s + 1) / steps; await new Promise(r => setTimeout(r, 30)) }
   scene.remove(warm); bodies.mesh.count = 0;
 }
 function begin(withSound, e) {

@@ -327,3 +327,4 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 #pilots .pr i{width:10px;height:10px;background:var(--c)}
 #pilots .pr span{color:var(--dim)}
 #pilots .none{display:block;color:var(--dim);cursor:default;line-height:1.5}
+#intro .ring circle{transition:stroke-dashoffset .5s ease}

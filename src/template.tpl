@@ -18,15 +18,10 @@
 (() => { const r = (a, b) => a + Math.random() * (b - a); let t = r(.15, .35);
   document.querySelectorAll('#intro .flk').forEach(e => { const go = !!e.closest('.go'); e.style.setProperty('--fk', 'flk' + (1 + (Math.random() * 3 | 0))); e.style.setProperty('--fd', r(.55, 1.2).toFixed(2) + 's'); e.style.setProperty('--fdl', (go ? r(0, .35) : (t += r(.1, .45))).toFixed(2) + 's') }) })();
 </script>
-<script>/* the ring round Start: once the splash has flickered on it always creeps to about a quarter on its own, then follows
-   the real loading the rest of the way (never faster than a steady sweep), and only when it closes does Start appear */
-(() => { const c = document.getElementById('introBar'), t0 = performance.now() + 1500; let shown = 0, real = 0, last = performance.now();
-  window.__introProgress = v => { real = Math.max(real, v) };
-  const f = now => { const dt = Math.min(.1, (now - last) / 1000); last = now; const t = (now - t0) / 1000;
-    const target = t <= 0 ? 0 : real >= 1 && shown >= .245 ? 1 : Math.min(.25 * (1 - Math.exp(-t / 2.4)) + .75 * Math.min(real, .99) * Math.min(1, shown / .25), .999);
-    shown += Math.max(-1, Math.min(dt * (target > .25 ? .55 : .2), target - shown)); c.style.strokeDashoffset = 1 - shown;
-    if (shown >= .999) { document.body.classList.add('ready'); return } requestAnimationFrame(f) };
-  requestAnimationFrame(f) })();
+<script>/* the ring round Start shows the loading as it happens; when it closes, Start appears inside it */
+(() => { const c = document.getElementById('introBar'); let v0 = 0;
+  window.__introProgress = v => { v = Math.max(v0, Math.min(1, v)); v0 = v; c.style.strokeDashoffset = 1 - v; if (v >= 1) setTimeout(() => document.body.classList.add('ready'), 600) };
+  requestAnimationFrame(() => window.__introProgress(.04)) })();
 </script>
 <div id="skipHint" aria-hidden="true">Esc to skip</div>
 <script type="module">

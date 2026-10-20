@@ -45,5 +45,6 @@ const finalNode = Fn(() => {
   c.addAssign(fract(sin(dot(vUv.mul(vec2(1733, 977)), vec2(12.9898, 78.233)).add(fract(U.now).mul(91.7))).mul(43758.5453)).sub(.5).mul(PU.grain));
   return vec4(clamp(c, 0, 1), 1);
 })();
+loadProg(.6);
 const pipeline = new THREE.RenderPipeline(renderer); pipeline.outputColorTransform = false; pipeline.outputNode = finalNode;
 function setPassScales() { volPass.setResolutionScale(LOOK.volRes); softPass.setResolutionScale(LOOK.softRes); hazePass.setResolutionScale(LOOK.softRes); U.minSoft.value = 1 / LOOK.softRes }
