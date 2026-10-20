@@ -221,7 +221,7 @@ function updateHover(dt) {
     hoverT = 0; const map = S.mode === 'map', aim = !map && (locked() || coarse), hx = aim ? innerWidth / 2 : mouse.x, hy = aim ? innerHeight / 2 : mouse.y;
     let h = -1, R = null;
     if (map) { if (mouse.in && !down && booted && !tween) { const r = mapHover(hx, hy); h = r.i; R = r.ring } }   // the map points at rings, and at winners once you're close
-    else { if ((aim || mouse.in) && !down && booted) h = pick(hx, hy); if (h >= 0 && starPx(h, Math.max(1, camera.position.distanceTo(starPos(h, tmp)))) < 2.5) h = -1 }   // label once it's a few px across
+    else { if ((aim || mouse.in) && !down && booted) h = pick(hx, hy); if (h >= 0) { const dd = Math.max(1, camera.position.distanceTo(starPos(h, tmp))); if (dd > (LOOK.hoverDist ?? 4e5) || starPx(h, dd) < (LOOK.hoverPx ?? 2.5)) h = -1 } }   // close enough, and a few px across
     if (!down) hovPick = h; if (h === openI) h = -1;   // a click can only take a star you've just hovered
     if (h >= 0 && h !== lastHov) { starPos(h, tmp).project(camera); tingle(galOf(D[h].year), h, Math.max(-1, Math.min(1, tmp.x))) } lastHov = h;
     if (R && (!lastRing || lastRing.y !== R.y)) tingle(galOf(R.yr), 5000 + Math.round(R.y * 12), Math.max(-1, Math.min(1, hx / innerWidth * 2 - 1)));
