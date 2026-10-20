@@ -10,7 +10,7 @@ const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist:
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
 const camRel = new V3(0, .8, 3.4), camRelV = new V3(), prevVel = new V3();
-let worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
+let idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
 function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
@@ -84,9 +84,9 @@ function updatePlayer(dt) {
   if (rl) p.base.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), rl * 2.2 * dt)).normalize();   // A/D roll the ship itself; the camera stays level
   const prevF = _hf.set(0, 0, -1).applyQuaternion(p.base), prevR = _hr.set(1, 0, 0).applyQuaternion(p.base), sp0 = p.vel.length();
   // boost: Shift or Space. A short tank that drains while boosting and refills when you don't.
-  const wantB = (keys.shift || keys[' '] || touchBoost) && !auto;
+  const pressB = (keys.shift || keys[' '] || touchBoost) && !auto; if (!pressB) boostSpent = false; const wantB = pressB && !boostSpent;   // run it dry and it stays off, refilling, until you press boost again
   if (wantB && boostE > 0) { if (!boosting) { camRelV.add(_sd.set(0, .15, 2.2)); boostWhoosh() } boosting = true; boostE *= Math.exp(-3 * dt / Math.max(.5, L.boostTime)); if (boostE < .05) boostE = 0 }   // eased: it drains fast at first, then ever slower
-  else { if (boosting && boostE <= 0) buzz([22, 50, 22]); boosting = false; boostE += (1 - boostE) * (1 - Math.exp(-3 * dt / Math.max(.5, L.boostRecharge))); if (boostE > .995) boostE = 1 }   // and refills the same way, slowing as it tops up
+  else { if (boosting && boostE <= 0) { buzz([22, 50, 22]); boostSpent = true } boosting = false; boostE += (1 - boostE) * (1 - Math.exp(-3 * dt / Math.max(.5, L.boostRecharge))); if (boostE > .995) boostE = 1 }   // and refills the same way, slowing as it tops up
   gasOn = fw > 0; const pedal = gasOn || boosting;
   // the nose turns toward its target keeping the ship's own roll (so A/D rolls stick)
   const shipUp = _su.set(0, 1, 0).applyQuaternion(p.base), aimQ = d => lookAtQ(d, Math.abs(shipUp.dot(d)) > .995 ? _su2.set(0, 1, 0).applyQuaternion(rig.q) : shipUp, _hq);
@@ -191,6 +191,8 @@ function updateCamera(dt) {
   if (S.mode === 'fly') {
     const sp = player.vel.length(), pull = 1 + L.speedPull * (sstep(sp, 40, 3000) * .6 + sstep(Math.log10(Math.max(1, sp)), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) * 1.4) + boostK * .45;   // the second part follows the FOV's curve: they widen and pull back together
     tmp2.set(0, rig.dist * L.camHeight * Math.sqrt(pull), rig.dist * pull);                 // where the camera wants to sit, in the ship's frame (rising as it pulls back, so the arrow's face stays in view)
+    { idleT = thrusting || boosting ? 0 : idleT + dt; const w = sstep(idleT, L.camRestAfter ?? 1, (L.camRestAfter ?? 1) + (L.camRestTime ?? 5)); camRest += ((thrusting || boosting ? 0 : w) - camRest) * Math.min(1, dt * (thrusting || boosting ? 2 : .6));   // left alone, the camera drifts in very slowly until the ship fills a share of the view
+      if (camRest > 1e-3) { const d = SHIP_LEN / (2 * (L.camRestFill ?? .2) * Math.tan(camera.fov * Math.PI / 360)); tmp2.setLength(tmp2.length() + (Math.min(tmp2.length(), d) - tmp2.length()) * camRest); tmp2.y *= 1 - .6 * camRest } }   // and drops lower, so the ship sits nearer the middle
     if (camNear > 0) { if (booted && thrusting) camNearGo = true; if (camNearGo) { camNear = Math.max(0, camNear - dt / 3.5); if (!camNear) camNearGo = false } tmp2.lerp(INTRO_END, ease(camNear)) }   // after the intro the camera stays close until your first push
     const k = 60 / Math.max(.15, L.elastic), c = 2 * Math.sqrt(k) * .62;                    // underdamped: a little overshoot
     camRelV.addScaledVector(tmp2.sub(camRel), k * dt).multiplyScalar(Math.exp(-c * dt));

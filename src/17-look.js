@@ -6,7 +6,7 @@ function applyLook() {
   U.rc1.value.setHSL(L.radHue1, L.radSat, .6); U.rc2.value.setHSL(L.radHue2, L.radSat * .85, .5); U.rc3.value.setHSL(L.radHue3, L.radSat, .5);
   PU.film.value = L.film ? 1 : 0; PU.vig.value = L.vignette; PU.grain.value = L.grain; PU.black.value = L.blackPt; PU.con.value = L.contrast; PU.sat.value = L.sat; PU.cool.value = L.cool;
   // sprite nebulae, lanes, category nebulae
-  const NU = NEB_U; NU.neb.value = L.nebGlow; NU.cloud.value = L.nebCloud; NU.fil.value = L.nebFil; NU.soft.value = L.nebSoft; NU.contrast.value = L.nebContrast; NU.hot.value = L.nebHot; NU.sat.value = L.nebSat; NU.scale.value = L.nebSize;
+  const NU = NEB_U; NU.neb.value = L.nebGlow; NU.cloud.value = L.nebCloud; NU.fil.value = L.nebFil; NU.soft.value = L.nebSoft; NU.contrast.value = L.nebContrast; NU.hot.value = L.nebHot; NU.sat.value = L.nebSat; NU.scale.value = L.nebSize; NU.det.value = L.nebDetail ?? 0; NU.dsz.value = L.nebDetailSize ?? 4; NU.dsh.value = L.nebDetailSharp ?? 1;
   NU.hue.value = L.nebHue; NU.edge.value = L.nebEdge; NU.bright.value = L.nebBright; NU.alphaMax.value = L.nebAlphaMax; NU.sizeVar.value = L.nebSizeVar; NU.pulse.value = L.nebPulse; NU.radOn.value = L.nebRadial; NU.flatY.value = L.nebHeight; NU.nearK.value = L.nebNear; NU.drift.value = L.nebDrift; NU.mono.value = L.mono;
   const nebHome = L.nebScreen ? hazeScene : softScene; if (nebula.parent !== nebHome) nebHome.add(nebula);   // "screen" clouds join the soft-clipped haze
   nebula.visible = lanes.visible = !!L.nebula; nebula.geometry.instanceCount = Math.min(NEB_A.n + NEB_B.n, Math.round(640 * L.nebCount));

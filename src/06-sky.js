@@ -82,9 +82,11 @@ function cloudLayer(fields, u, frag, { blend = 'add', target = softScene, order 
   return layer(new THREE.Mesh(geo, m), target, order);
 }
 const cloudU = (o = {}) => ({ scale: uniform(1), flatY: uniform(1), nearK: uniform(1), drift: uniform(0), sizeVar: uniform(1), pulse: uniform(0), radOn: uniform(1), ...o });
-const NEB_U = cloudU({ neb: uniform(1), mono: uniform(0), cloud: uniform(1), fil: uniform(1), soft: uniform(1), contrast: uniform(1), hot: uniform(1), sat: uniform(1), hue: uniform(0), edge: uniform(1), bright: uniform(1), alphaMax: uniform(1) });
+const NEB_U = cloudU({ det: uniform(0), dsz: uniform(4), dsh: uniform(1), neb: uniform(1), mono: uniform(0), cloud: uniform(1), fil: uniform(1), soft: uniform(1), contrast: uniform(1), hot: uniform(1), sat: uniform(1), hue: uniform(0), edge: uniform(1), bright: uniform(1), alphaMax: uniform(1) });
 const nebula = cloudLayer([NEB_A, NEB_B], NEB_U, ({ vUv, vCol, vCol2, vA, vQ }) => Fn(() => {
-  const u = NEB_U, w = smoothstep(.5, u.soft.mul(-.2).add(.5), length(vQ.sub(.5))), t = texture(nebAtlas, vUv), dn = pow(t.r.mul(w), u.contrast), fil = t.g.mul(w);
+  const u = NEB_U, w = smoothstep(.5, u.soft.mul(-.2).add(.5), length(vQ.sub(.5))), t = texture(nebAtlas, vUv);
+  const dq = vec3(vUv.mul(u.dsz.mul(8)), 0), det = pow(noise3(dq).mul(.65).add(noise3(dq.mul(2.3).add(5.1)).mul(.35)).mul(1.5).sub(.15).max(0), u.dsh);   // fine detail: two octaves of noise breaking each cloud up
+  const dn = pow(t.r.mul(w).mul(mix(1, det, u.det)), u.contrast), fil = t.g.mul(w);
   const c = mix(vCol2, vCol, smoothstep(u.edge.mul(.15), .85, dn)).add(vec3(1, .95, .9).mul(fil).mul(.4).mul(u.hot)).toVar();
   c.assign(hueRot(c, u.hue.mul(6.2832))); c.assign(mix(vec3(luma(c)), c, u.sat).mul(u.bright)); c.assign(monoTint(c, u.mono));
   const al = min(u.alphaMax, dn.mul(.32).mul(u.cloud).add(fil.mul(.22).mul(u.fil)).mul(vA).mul(u.neb));
@@ -132,7 +134,7 @@ const arcs = (() => {
   g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(s.length * 3), 3)); g.setAttribute('aS', new THREE.Float32BufferAttribute(s, 1)); g.setAttribute('aSide', new THREE.Float32BufferAttribute(side, 1)); g.setIndex(idx);
   packInstances(g, n, I);
   g.instanceCount = n;
-  const u = { len: uniform(.3), spin: uniform(1), op: uniform(0), rim: uniform(0), cold: uniform(new C3(.62, .76, 1)), armW: uniform(1), pxW: uniform(.001), width: uniform(1.2), blur: uniform(.3), warm: uniform(0), vari: uniform(1), core: uniform(.4), near: uniform(1) };
+  const u = { efade: uniform(0), efar: uniform(300000), eang: uniform(.17), len: uniform(.3), spin: uniform(1), op: uniform(0), rim: uniform(0), cold: uniform(new C3(.62, .76, 1)), armW: uniform(1), pxW: uniform(.001), width: uniform(1.2), blur: uniform(.3), warm: uniform(0), vari: uniform(1), core: uniform(.4), near: uniform(1) };
   const m = skyMat({ side: THREE.DoubleSide }), vA = varyingProperty('float', 'vA'), vRim = varyingProperty('float', 'vRim'), vV = varyingProperty('float', 'vV'), vJ = varyingProperty('float', 'vJ'), vRc = varyingProperty('vec3', 'vRc');
   m.vertexNode = Fn(() => {
     const aS = attribute('aS', 'float'), aSide = attribute('aSide', 'float'), aR = ia('aR', 'float');
@@ -143,8 +145,9 @@ const arcs = (() => {
     const sd0 = cross(tw, toC.div(max(dist, 1))), sl = length(sd0), sd = select(sl.greaterThan(1e-4), sd0.div(sl), vec3(0));
     const spread = u.blur.mul(4).add(1), wpx = u.width.mul(spread);
     wp.addAssign(sd.mul(aSide).mul(wpx).mul(u.pxW).mul(dist));
+    const graze = smoothstep(u.eang, u.eang.mul(.4), abs(dot(toC.div(max(dist, 1)), U.GQ.mul(vec3(0, 1, 0))))), efade = mix(1, smoothstep(u.efar.mul(3), u.efar, dist), graze.mul(u.efade));   // seen rim-on, far arcs fade out
     vV.assign(aSide); vJ.assign(ia('aJ', 'float')); vRim.assign(ia('aRim', 'float')); vRc.assign(radCol(aR));
-    vA.assign(farDim(dist).mul(pow(ia('aB', 'float'), u.vari)).mul(sin(aS.mul(3.14159))).mul(mix(u.op.mul(.3), u.rim.mul(.45), vRim)).div(spread).div(max(1, u.width.mul(.7))).mul(smoothstep(0, u.near.mul(4000), dist)));
+    vA.assign(farDim(dist).mul(efade).mul(pow(ia('aB', 'float'), u.vari)).mul(sin(aS.mul(3.14159))).mul(mix(u.op.mul(.3), u.rim.mul(.45), vRim)).div(spread).div(max(1, u.width.mul(.7))).mul(smoothstep(0, u.near.mul(4000), dist)));
     return cameraProjectionMatrix.mul(cameraViewMatrix.mul(vec4(wp, 1)));
   })();
   m.fragmentNode = Fn(() => {

@@ -210,7 +210,7 @@ function engineLook(dt) {
   const spK = sstep(Math.log(Math.max(150, player.vel.length())), Math.log(150), Math.log(Math.max(300, L.cruiseSpeed))), sp = 1 + (L.flareSpeed ?? 1) * (spK - .3), bu = engineLook.burst * (L.flareBurst ?? 1.2);
   const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2 * Math.max(.3, sp) * (1 + bu * .5);
   fu.spk.value = L.flareSparkle ?? 1; fu.rate.value = L.flareRate ?? 2; fu.glow.value = (L.flareGlow ?? 1) * (1 + bu * 1.5);
-  fu.col.value.copy(_fc); fu.k.value = L.flare * on * vis * Math.max(.3, sp) * (1 + bu); fu.n.value = L.flareSpikes; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px;
+  fu.col.value.copy(_fc); fu.k.value = L.flare * on * vis * Math.max(.3, sp) * (1 + bu); fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px;
   flare.position.copy(mouth).addScaledVector(back, avatar.scale.x * .06); flare.scale.setScalar(px * 2 * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight) * d); flare.visible = S.mode === 'fly' && fu.k.value > .002;
 }
 
@@ -269,7 +269,10 @@ function updateHover(dt) {
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
 }
-function updateBoostUI() { const a = $('boostArc'), show = S.mode === 'fly' && (boosting || boostE < .999); a.style.opacity = show && boostE > .004 ? (boosting ? .95 : .45) : 0; a.style.strokeDashoffset = (1 - boostE) * 138.2 }   // empty means nothing at all, not a dot
+const spdRing = $('spdRing'); let spdR = '';
+function updateBoostUI() {
+  { const top = Math.min(LIGHT * .97, LOOK.topSpeed ?? Infinity), k = Math.min(1, Math.log10(1 + player.vel.length()) / Math.log10(1 + top)), r = (34 - 23.5 * k).toFixed(2); if (r !== spdR) { spdR = r; spdRing.setAttribute('r', r); $('boostArc').setAttribute('r', (+r + 4).toFixed(2)) } }   // the outer ring closes in with speed: at top speed it's the size of the centre circle; the boost arc rides just outside it
+  const a = $('boostArc'), show = S.mode === 'fly' && (boosting || boostE < .999); a.style.opacity = show && boostE > .004 ? (boosting ? .95 : .45) : 0; a.style.strokeDashoffset = (1 - boostE) * 138.2 }   // empty means nothing at all, not a dot
 
 // a tiny readout of the renderer (press the backtick key, or open with ?stats)
 const stats = { el: null, t: 0, n: 0, show(on) { if (on && !this.el) { this.el = document.createElement('div'); this.el.id = 'stats'; document.body.appendChild(this.el) } if (this.el) this.el.hidden = !on; this.on = on } };
@@ -301,7 +304,7 @@ function tick(now) {
   { const d = (fly ? player.pos : camera.position).distanceTo(GC); tdil = L.bhTime ? Math.max(.12, 1 - .88 * Math.exp(-Math.max(0, d - BH.sh) / (BH.sh * 2.5))) : 1; worldT += dt * tdil }
   U.time.value = worldT; U.now.value = now * .001;
   updateLandmarks(dt); updateAndro(); updateTimeRings(dt);
-  { const u = arcs.u; u.len.value = L.arcLen; u.spin.value = L.arcSpin; u.op.value = L.arcs; u.rim.value = L.rim; u.pxW.value = Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight); u.armW.value = L.armWidth; u.width.value = L.arcWidth; u.blur.value = L.arcBlur; u.warm.value = L.arcWarm; u.vari.value = L.arcVar; u.core.value = L.arcCore; u.near.value = L.arcNear;
+  { const u = arcs.u; u.efade.value = L.arcEdgeFade ?? 0; u.efar.value = L.arcEdgeFar ?? 300000; u.eang.value = Math.sin((L.arcEdgeAngle ?? 10) * Math.PI / 180); u.len.value = L.arcLen; u.spin.value = L.arcSpin; u.op.value = L.arcs; u.rim.value = L.rim; u.pxW.value = Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight); u.armW.value = L.armWidth; u.width.value = L.arcWidth; u.blur.value = L.arcBlur; u.warm.value = L.arcWarm; u.vari.value = L.arcVar; u.core.value = L.arcCore; u.near.value = L.arcNear;
     arcs.mesh.geometry.instanceCount = arcs.rimN + Math.floor((arcs.n - arcs.rimN) * L.arcDensity); arcs.mesh.visible = L.arcs > 0 || L.rim > 0 }
   updateShadow();
   document.body.classList.toggle('idle', !!L.hudFade && fly && booted && !document.body.classList.contains('panel-open') && now - lastInput > L.hudIdle * 1000 && cardI < 0 && !touchThrust && !touchBoost && !touchBrake);
@@ -357,8 +360,8 @@ function tick(now) {
       look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3); coreIn += (inside - coreIn) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it
   {   // bloom swells near light speed and follows the core settings; exposure too
     const k = fly ? sstep(beta, .05, .92) * L.bloomBoost : 0, on = L.bloom ? 1 : 0;
-    bloomPass.strength.value = on * (L.bloomStr + (2 - L.bloomStr) * k) * (1 + (L.coreBloom - 1) * coreK); bloomPass.strength.value += on * (engineLook.burst || 0) * (L.flareBurst ?? 1.2) * .35; bloomPass.radius.value = L.bloomRad + (1 - L.bloomRad) * k;
-    bloomPass.threshold.value = Math.min(1, L.bloomThr * (1 - .45 * k) * (1 + (L.coreThr - 1) * coreK));
+    bloomPass.strength.value = on * (L.bloomStr + (2 - L.bloomStr) * k) * (1 + (L.coreBloom - 1) * coreK); bloomPass.strength.value += on * (engineLook.burst || 0) * (L.flareBurst ?? 1.2) * .35 + igniteK * (L.igniteBloom ?? 2.5); igniteK *= Math.exp(-dt / 1.1); bloomPass.radius.value = L.bloomRad + (1 - L.bloomRad) * k;
+    bloomPass.threshold.value = Math.min(1, L.bloomThr * (1 - .45 * k) * (1 + (L.coreThr - 1) * coreK)) * (1 - .6 * Math.min(1, igniteK));   // ignition: more of the frame catches the bloom
     PU.exp.value = L.exposure * (1 + (L.coreExposure - 1) * coreK);
   }
   {   // the core and bulge puffs, raymarched (when switched on)

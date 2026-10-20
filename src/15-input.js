@@ -138,5 +138,6 @@ let magI = -1, magS = 1;
 function aimAssist(dt) {
   let s = 1; magI = -1; if (!booted || introActive) return;
   if (S.mode === 'fly' && LOOK.magnet > 0 && (locked() || coarse) && openA < .3 && !auto) { const Rr = LOOK.magnetR, h = pickNear(innerWidth / 2, innerHeight / 2, Rr); if (h) { magI = h.i; aimAt(starPos(h.i, tmp).sub(camera.position), 1 - Math.exp(-LOOK.magnet * 7 * dt)); s = .35 + .65 * Math.min(1, h.d / h.R) } }
+  if (lockI >= 0) { s = 1; magI = -1 }   // locked on: the reticle holds still
   magS += (s - magS) * Math.min(1, dt * 10); aimRingR(10.5 * magS); crossEl.classList.toggle('mag', magI >= 0);
 }

@@ -9,7 +9,7 @@
   <button class="ibtn" id="sbtn" aria-pressed="true" aria-label="Sound" title="Sound"></button>
 </div>
 
-<svg class="hud" id="cross" viewBox="-90 -90 180 180" aria-hidden="true" hidden><g id="hdg"></g><circle class="ring" id="aimRing" r="10.5"></circle><circle id="boostArc" r="22" pathLength="138.2" transform="rotate(-90)"></circle><circle class="dot" r="1.4"></circle><g id="cmp"></g></svg>
+<svg class="hud" id="cross" viewBox="-90 -90 180 180" aria-hidden="true" hidden><g id="hdg"></g><circle class="ring" id="aimRing" r="10.5"></circle><circle id="spdRing" r="34"></circle><circle id="boostArc" r="22" pathLength="138.2" transform="rotate(-90)"></circle><circle class="dot" r="1.4"></circle><g id="cmp"></g></svg>
 <div class="hud" id="arrive" aria-live="polite"><div class="eyebrow" id="arE"></div><h2 id="arT"></h2><p id="arS"></p></div>
 <div class="hud" id="speed" aria-hidden="true"><b></b><i><i></i></i></div>
 <div id="lockMark" hidden><i></i><i></i><i></i><i></i><b></b></div>

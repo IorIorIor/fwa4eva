@@ -18,6 +18,7 @@ const intro = {
     camera.fov = LOOK.fov; camera.updateProjectionMatrix();
     this.D0 = .503 * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 21);   // the arrow about 21 px tall: a real pointer's size
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
+    INTRO_END.set(0, .55, 2.1).multiplyScalar(LOOK.introDist ?? .5); this.lit = false;   // where the opening ends up: close behind the pointer
     this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
     document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.update(0);
     if (this.at) {   // shift the frame so the pointer's tip, not its middle, sits exactly on the click
@@ -42,7 +43,8 @@ const intro = {
       if (this.at) { const k = 1 - ez, W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }
       veil.material.opacity = 1 - sstep(this.t, .3, .9); veil.scale.setScalar(camera.position.distanceTo(player.pos) + .45);
       const dur = reduceMotion ? 2.5 : this.dur, on = 1 - 1 / dur;   // engine and instruments are fully on a second before the camera lands
-      emitGlow = quint(sstep(this.t, on - .26, on));   // the engine lights during the last of the swing
+      emitGlow = quint(sstep(this.t, on - .26, on));
+      if (!this.lit && this.t >= on - .2) { this.lit = true; igniteK = 1; engineLook.burst = 1.5 }   // ignition: a big bloom that settles   // the engine lights during the last of the swing
       if (this.t >= on - .22 && !this.hud) { this.hud = true; document.body.classList.remove('intro'); flickIn(Math.max(.3, (on - this.t) * dur)) }   // and the instruments flicker in, all landed by then
       if (!booted && this.t >= (reduceMotion ? 1 : on - 2 / dur)) { introActive = false; handOver() }   // yours to fly two seconds before the camera settles; it keeps easing in behind you
       if (this.t >= (reduceMotion ? 1 : on)) this.finish();   // the camera has all but landed: yours to fly (what's left of the move is too small to see)

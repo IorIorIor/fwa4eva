@@ -183,7 +183,7 @@ D.forEach((d, i) => {
     if (!moved) break;
   }
 })(P, N, MIN_SEP);
-const NEB_B = cloudField(1600, armPlace(17500, 2450));
+const NEB_B = cloudField(7040, armPlace(17500, 2450));   // up to 7680 clouds with NEB_A (Cloud count × 640)
 const LANE_B = cloudField(500, armPlace(8750, 1400));
 const starPos = (i, out = new V3()) => out.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
 const starR = i => STAR_R[i] * LOOK.bodySize, stopR = i => starR(i) * LOOK.stopK, dockDist = i => stopR(i) * 1.02;
