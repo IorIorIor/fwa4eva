@@ -116,7 +116,7 @@ const flare = (() => {
     }
     const core = exp(r.div(1.5).pow(2).negate()), bloomIn = exp(r.div(L.mul(.022)).negate()).mul(u.glow), bloomOut = exp(r.div(L.mul(.15).mul(u.glow.sqrt())).negate()).mul(u.glow);
     const c = mix(u.col, vec3(1), .55).mul(spikes.mul(1.1)).add(vec3(1).mul(core.mul(6))).add(mix(u.col, vec3(1), .35).mul(bloomIn.mul(1.1))).add(u.col.mul(bloomOut.mul(.4)));
-    return vec4(c.mul(u.k), 1);
+    return vec4(c.mul(u.k).mul(smoothstep(L, L.mul(.72), r)), 1);   // nothing reaches the sprite's edge: no square
   })();
   const s = new THREE.Sprite(m); s.renderOrder = 6; s.frustumCulled = false; s.u = u; scene.add(s); return s;   // in the main scene, so the bloom catches it; placed at the engine each frame
 })();

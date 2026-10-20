@@ -9,8 +9,13 @@
   <button class="ibtn" id="sbtn" aria-pressed="true" aria-label="Sound" title="Sound"></button>
 </div>
 
-<svg class="hud" id="cross" viewBox="-90 -90 180 180" aria-hidden="true" hidden><g id="hdg"></g><circle class="ring" id="aimRing" r="10.5"></circle><circle id="spdRing" r="34"></circle><circle id="boostArc" r="22" pathLength="138.2" transform="rotate(-90)"></circle><circle class="dot" r="1.4"></circle><g id="cmp"></g></svg>
+<svg class="hud" id="cross" viewBox="-90 -90 180 180" aria-hidden="true" hidden><g id="hdg"></g><circle class="ring" id="aimRing" r="10.5"></circle><circle id="boostArc" r="22" pathLength="138.2" transform="rotate(-90)"></circle><circle class="dot" r="1.4"></circle><g id="cmp"></g></svg>
 <div class="hud" id="arrive" aria-live="polite"><div class="eyebrow" id="arE"></div><h2 id="arT"></h2><p id="arS"></p></div>
+<div class="hud" id="nav" role="search">
+  <div id="navRes" role="listbox" hidden></div>
+  <div class="nrow"><button type="button" id="navPrev" aria-label="Previous winner" title="Previous (←)">‹</button><input type="search" id="navQ" placeholder="Search FWAs" aria-label="Search winners" autocomplete="off" spellcheck="false"><button type="button" id="navNext" aria-label="Next winner" title="Next (→)">›</button><button type="button" id="navFilter" aria-expanded="false" aria-controls="panel">Filter</button></div>
+  <div id="navTl"><button type="button" id="navDay"></button><canvas aria-label="Timeline: scroll or drag to a day"></canvas></div>
+</div>
 <div class="hud" id="speed" aria-hidden="true"><b></b><i><i></i></i></div>
 <div id="lockMark" hidden><i></i><i></i><i></i><i></i><b></b></div>
 <div class="hud" id="gauge"></div>
@@ -39,9 +44,9 @@
     </div>
     <div class="grp"><div class="lbl">Search</div><input type="search" id="q" placeholder="Title or agency"></div>
     <div class="grp"><div class="lbl">Award</div><div class="chips" id="cAward"></div></div>
-    <div class="grp"><div class="lbl">Category</div><div class="chips" id="cCat"></div></div>
+    <div class="grp keep"><div class="lbl">Category</div><div class="chips" id="cCat"></div></div>
     <div class="grp"><div class="lbl">Technology</div><div class="chips" id="cTech"></div></div>
-    <div class="grp"><div class="lbl"><span>Agencies</span><span>each one a constellation</span></div><select id="agency" aria-label="Add an agency constellation"></select><div class="chips" id="cAg"></div></div>
+    <div class="grp keep"><div class="lbl"><span>Agencies</span><span>each one a constellation</span></div><select id="agency" aria-label="Add an agency constellation"></select><div class="chips" id="cAg"></div></div>
     <div class="grp"><div class="lbl">Country</div><select id="country"></select></div>
     <div class="grp"><div class="lbl"><span>Min jury score</span><span id="scTxt">7.0</span></div><input type="range" id="score" min="7" max="9.8" step="0.1" value="7"></div>
     <div class="grp">

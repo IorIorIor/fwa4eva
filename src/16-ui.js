@@ -36,7 +36,7 @@ function applyFilter() {
   const mx = Math.max(1, ...perYear);
   histBtns.forEach((b, k) => { b.style.height = Math.max(2, perYear[k] / mx * 46) + 'px'; b.classList.toggle('on', YEARS[k] >= S.y0 && YEARS[k] <= S.y1 && perYear[k] > 0) });
   $('yrTxt').textContent = S.y0 === S.y1 ? S.y0 : S.y0 + '–' + S.y1;
-  matchCount = c;
+  matchCount = c; window.__navHist?.();   // the navigator's histogram follows the filter (it's built later)
   if (S.mode === 'map') refreshLabels();
   buildConstellation(); if (cardI >= 0) showCard(cardI, true);
 }

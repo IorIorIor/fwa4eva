@@ -206,15 +206,17 @@ function engineLook(dt) {
   const mouth = _te.copy(avatar.userData.tail).multiplyScalar(avatar.scale.x).applyQuaternion(avatar.quaternion).add(avatar.position);
   const back = _d.set(0, 0, 1).applyQuaternion(avatar.quaternion), toCam = _c.copy(camera.position).sub(mouth), d = toCam.length(); toCam.divideScalar(d || 1);
   // speed lengthens and brightens the spikes; pressing thrust sets off a short burst
-  const thrNow = thrusting && booted && S.mode === 'fly'; if (thrNow && !engineLook.was) engineLook.burst = 1; engineLook.was = thrNow; engineLook.burst = (engineLook.burst || 0) * Math.exp(-dt / Math.max(.05, L.flareBurstTime ?? .5));
+  const thrNow = thrusting && booted && S.mode === 'fly', spNow = player.vel.length(); if (thrNow && !engineLook.was) engineLook.burst = Math.max(engineLook.burst || 0, 1 - .85 * sstep(Math.log10(Math.max(1, spNow)), 2, 5.3)); engineLook.was = thrNow;   // a push from standstill kicks hard; at speed only a little
+  if (boosting && !engineLook.wasB) engineLook.burst = Math.max(engineLook.burst || 0, 1.6); engineLook.wasB = boosting;   // boost always booms engineLook.burst = (engineLook.burst || 0) * Math.exp(-dt / Math.max(.05, L.flareBurstTime ?? .5));
   const spK = sstep(Math.log(Math.max(150, player.vel.length())), Math.log(150), Math.log(Math.max(300, L.cruiseSpeed))), sp = 1 + (L.flareSpeed ?? 1) * (spK - .3), bu = engineLook.burst * (L.flareBurst ?? 1.2);
-  const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2 * Math.max(.3, sp) * (1 + bu * .5) * (1 + igniteK * 2.5);   // ignition: a big flash out of the engine
-  fu.spk.value = L.flareSparkle ?? 1; fu.rate.value = L.flareRate ?? 2; fu.glow.value = (L.flareGlow ?? 1) * (1 + bu * 1.5) * (1 + igniteK * 4);
-  fu.col.value.copy(_fc); fu.k.value = L.flare * vis * (on * Math.max(.3, sp) * (1 + bu) + igniteK * (L.igniteBloom ?? 2.5) * 2); fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px;
+  const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2 * Math.max(.3, sp) * (1 + bu * .5) * (1 + igniteK * 1.2);   // ignition: a flash out of the engine
+  fu.spk.value = L.flareSparkle ?? 1; fu.rate.value = L.flareRate ?? 2; fu.glow.value = (L.flareGlow ?? 1) * (1 + bu * 1.5) * (1 + igniteK * 2);
+  fu.col.value.copy(_fc); fu.k.value = L.flare * vis * (on * Math.max(.3, sp) * (1 + bu) + igniteK * (L.igniteBloom ?? 1.5)); fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px;
   flare.position.copy(mouth).addScaledVector(back, avatar.scale.x * .06); flare.scale.setScalar(px * 2 * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight) * d); flare.visible = S.mode === 'fly' && fu.k.value > .002;
 }
 
 /* lock-on marker, reticle and tooltip */
+const TNAV = '<span class="tnav"><b data-n="-1" title="Previous (←)">‹</b><b data-n="1" title="Next (→)">›</b><i>← →</i></span>';   // step through the archive from the star you're on
 const lockMark = $('lockMark');
 function updateLockMark() {
   if (S.mode === 'fly' && lockI >= 0) {
@@ -255,12 +257,12 @@ function updateHover(dt) {
     const d = Math.max(1, camera.position.distanceTo(starPos(pin, tmp))); tmp.project(camera);
     const edge = pin === lockI && pin !== cardI && !coarse && !(tmp.z < 1 && Math.abs(tmp.x) < 1 && Math.abs(tmp.y) < 1);
     if (edge) {   // the star you're locked on is off screen: its card waits at the edge, beside the arrow pointing to it
-      put('p' + pin, tipHTML(pin) + tipMore(pin), false);
+      put('p' + pin, tipHTML(pin) + TNAV + tipMore(pin), false);
       let x = tmp.x, y = tmp.y; if (tmp.z >= 1) { x = -x; y = -y } const m = Math.max(Math.abs(x) / .92, Math.abs(y) / .88, 1e-6); x /= m; y /= m;
       const w = tip.offsetWidth, h = tip.offsetHeight, px = (x * .5 + .5) * innerWidth, py = (-y * .5 + .5) * innerHeight;
       tip.style.left = Math.max(12, Math.min(innerWidth - w - 12, px - (x > 0 ? w + 22 : -22))) + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, py - h / 2)) + 'px';
     } else if (tmp.z < 1 && Math.abs(tmp.x) < 1.3 && Math.abs(tmp.y) < 1.3) {
-      put('p' + pin, tipHTML(pin) + tipMore(pin), pin === cardI);
+      put('p' + pin, tipHTML(pin) + TNAV + tipMore(pin), pin === cardI);
       const rpx = starR(pin) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), full = pin === cardI;   // the star's own radius on screen
       let x = (tmp.x * .5 + .5) * innerWidth + (full ? rpx * .72 : 0), y = (-tmp.y * .5 + .5) * innerHeight - (full ? rpx * .5 : 0);
       if (full && !coarse) { x = 24; y = Math.max(70, (innerHeight - tip.offsetHeight) / 2) }   // the full record waits on the left, still, whatever the camera does
@@ -269,10 +271,10 @@ function updateHover(dt) {
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
 }
-const spdRing = $('spdRing'); let spdR = '';
+let spdR = '';
 function updateBoostUI() {
-  { const top = Math.min(LIGHT * .97, LOOK.topSpeed ?? Infinity), k = Math.min(1, Math.log10(1 + player.vel.length()) / Math.log10(1 + top)), r = (34 - 23.5 * k).toFixed(2); if (r !== spdR) { spdR = r; spdRing.setAttribute('r', r); $('boostArc').setAttribute('r', (+r + 4).toFixed(2)) } }   // the outer ring closes in with speed: at top speed it's the size of the centre circle; the boost arc rides just outside it
-  const a = $('boostArc'), show = S.mode === 'fly' && (boosting || boostE < .999); a.style.opacity = show && boostE > .004 ? (boosting ? .95 : .45) : 0; a.style.strokeDashoffset = (1 - boostE) * 138.2 }   // empty means nothing at all, not a dot
+  { const top = Math.min(LIGHT * .97, LOOK.topSpeed ?? Infinity), k = Math.min(1, Math.log10(1 + player.vel.length()) / Math.log10(1 + top)), r = (22 - 11.5 * k).toFixed(2); if (r !== spdR) { spdR = r; $('boostArc').setAttribute('r', r) } }   // the second circle closes in with speed: at top speed it's the size of the centre circle (its arc is still the boost tank)
+  const a = $('boostArc'), show = S.mode === 'fly' && (boosting || boostE < .999); a.style.opacity = S.mode !== 'fly' ? 0 : show && boostE > .004 ? (boosting ? .95 : .55) : .35; a.style.strokeDashoffset = (1 - boostE) * 138.2 }   // empty means nothing at all, not a dot
 
 // a tiny readout of the renderer (press the backtick key, or open with ?stats)
 const stats = { el: null, t: 0, n: 0, show(on) { if (on && !this.el) { this.el = document.createElement('div'); this.el.id = 'stats'; document.body.appendChild(this.el) } if (this.el) this.el.hidden = !on; this.on = on } };
@@ -355,7 +357,7 @@ function tick(now) {
   updateHover(dt); updateLabels();
   if (fly) gauge.fly(); else gauge.map();
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
-  updatePeers(dt); coach.update(dt);
+  updatePeers(dt); coach.update(dt); nav.update(dt);
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,
       look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3); coreIn += (inside - coreIn) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it
   {   // bloom swells near light speed and follows the core settings; exposure too
