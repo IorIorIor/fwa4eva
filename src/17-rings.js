@@ -23,8 +23,26 @@ function collect(i) {
   if (GOT[i]) return; GOT[i] = 1; gotN++; stars.aGot.needsUpdate = true;
   store.set('sotd-got', JSON.stringify(D.flatMap((d, k) => GOT[k] ? [d.date] : [])));
   const el = $('gotPill'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); rings.show();
-  const nk = CURSORS.findIndex((c, k) => k > 0 && SHIP_UNLOCK(k) === gotN); if (nk > 0) { el.dataset.new = `New ship: ${CURSORS[nk].name}`; el.classList.add('unlock'); setTimeout(() => el.classList.remove('unlock'), 4000) }   // a new pointer unlocked
+  const nk = CURSORS.findIndex((c, k) => k > 0 && SHIP_UNLOCK(k) === gotN), nt = TRAILS.findIndex((c, k) => k > 0 && TRAIL_UNLOCK(k) === gotN);
+  if (nt > 0) { el.dataset.new = `New trail: ${TRAILS[nt].name}`; el.classList.add('unlock'); setTimeout(() => el.classList.remove('unlock'), 4000) }
+  if (nk > 0) { el.dataset.new = `New ship: ${CURSORS[nk].name}`; el.classList.add('unlock'); setTimeout(() => el.classList.remove('unlock'), 4000) }   // a new pointer unlocked
 }
+// unlockable trail colours (the Upgrades panel): slow end and fast end of the trail
+const TRAILS = [
+  { name: 'Your colour', c: null },
+  { name: 'Gold', c: (a, b) => { a.setHSL(.11, 1, .5); b.setHSL(.13, .9, .72) } },
+  { name: 'Ice', c: (a, b) => { a.setHSL(.53, .9, .62); b.setHSL(.55, .5, .88) } },
+  { name: 'Ember', c: (a, b) => { a.setHSL(.01, 1, .5); b.setHSL(.07, 1, .6) } },
+  { name: 'Neon pink', c: (a, b) => { a.setHSL(.91, 1, .58); b.setHSL(.86, 1, .72) } },
+  { name: 'Aurora', c: (a, b) => { a.setHSL(.38, .95, .52); b.setHSL(.47, .9, .62) } },
+  { name: 'Plasma', c: (a, b) => { a.setHSL(.74, 1, .6); b.setHSL(.62, 1, .66) } },
+  { name: 'Ghost', c: (a, b) => { a.setHSL(.62, .15, .82); b.setHSL(.6, .05, .97) } },
+  { name: 'Chrome', c: (a, b, s) => { const g = .55 + .35 * Math.sin(performance.now() * .004 + s * 9); a.setHSL(.6, .25, g); b.setHSL(.58, .35, .9) } },
+  { name: 'Rainbow', c: (a, b, s) => { const h = (performance.now() * .00012 + s * .4) % 1; a.setHSL(h, 1, .58); b.setHSL((h + .08) % 1, 1, .68) } },
+];
+const TRAIL_UNLOCK = k => k * 7;
+let trailK = 0; { const k = +store.get('sotd-trail-k') || 0; if (k > 0 && k < TRAILS.length && gotN >= TRAIL_UNLOCK(k)) trailK = k }
+function setTrail(k) { trailK = k; store.set('sotd-trail-k', String(k)) }
 // the mode switch: the ring button by the sound button (or R) turns the game on and off
 function setRings(on) { LOOK.rings = on ? 1 : 0; saveLook(); $('gbtn').setAttribute('aria-pressed', !!on); $('gbtn').title = on ? 'Rings game on (R)' : 'Rings game off (R)'; rings.show(); const c = document.querySelector('#lk-rings'); if (c) c.checked = !!on }
 $('gbtn').onclick = () => setRings(!LOOK.rings);

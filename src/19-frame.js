@@ -145,7 +145,7 @@ const _flc = new C3(), _amber = new C3(0xffb547), _slowC = new C3(), _fastC = ne
 // W alone lays the usual trail, boost alone a blue one, both together a light neon magenta
 const _cBoost = new C3(), _cBoth = new C3(); let trW = 1, trB = 0;
 function trailColour(sT, b, o, gw = 1, gb = 0) {
-  if (LOOK.trMyHue) { _slowC.setHSL(PILOT_HUE / 360, 1, .55); _fastC.setHSL(PILOT_HUE / 360, .9, .7) } else { _slowC.setHSL(LOOK.trHueSlow / 360, 1, .55); _fastC.setHSL(LOOK.trHueFast / 360, .95, .6) }   // your own pilot colour, the one others see
+  if (trailK > 0) TRAILS[trailK].c(_slowC, _fastC, sT); else if (LOOK.trMyHue) { _slowC.setHSL(PILOT_HUE / 360, 1, .55); _fastC.setHSL(PILOT_HUE / 360, .9, .7) } else { _slowC.setHSL(LOOK.trHueSlow / 360, 1, .55); _fastC.setHSL(LOOK.trHueFast / 360, .95, .6) }   // your own pilot colour, the one others see
   o.copy(_slowC).lerp(_fastC, sT).lerp(_white, sstep(sT, .85, 1) * .35);
   if (gb > .001) { _cBoth.setHSL(.86, 1, .7); o.lerp(_cBoth, .32 * gb).multiplyScalar(1 + .55 * gb) }   // boost: your own colour, with a touch of magenta and brighter
   return o.multiplyScalar(b);
@@ -369,7 +369,7 @@ function tick(now) {
   updateHover(dt); updateLabels();
   if (fly) gauge.fly(); else gauge.map();
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
-  updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt);
+  updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt); musicMap(S.mode === 'map');
   mapK += ((S.mode === 'map' && !tween ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); PU.bgK.value = 1 - (L.mapFade ?? .85) * mapK; bgStars.u.op.value = L.bgStars * (1 - (L.mapFade ?? .85) * mapK);   // the map clears down to the winners once the move ends
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,
       look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3); coreIn += (inside - coreIn) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it

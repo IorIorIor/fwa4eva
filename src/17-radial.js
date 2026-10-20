@@ -119,7 +119,13 @@ const rmenu = (() => {
     const gr = document.createElement('div'); gr.className = 'ships';
     gr.innerHTML = CURSORS.map((c, k) => { const need = SHIP_UNLOCK(k), ok = gotN >= need; return `<button type="button" data-k="${k}" class="${ok ? '' : 'lock'} ${k === shipK ? 'on' : ''}" title="${esc(c.name)}">${svgOf(c)}<span>${ok ? esc(c.name) : need + ' rings'}</span></button>` }).join('');
     gr.onclick = e => { const b = e.target.closest('button'); if (!b || b.classList.contains('lock')) return; setShip(+b.dataset.k); gr.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)) };
-    const note = document.createElement('div'); note.className = 'rk'; note.textContent = `${gotN} rings collected · a new pointer every 5`; body.append(note, gr);
+    const note = document.createElement('div'); note.className = 'rk'; note.textContent = `${gotN} rings collected · a new pointer every 5, a new trail every 7`;
+    const h1 = document.createElement('div'); h1.className = 'rh'; h1.textContent = 'Pointers'; const h2 = document.createElement('div'); h2.className = 'rh'; h2.textContent = 'Trails';
+    const tr = document.createElement('div'); tr.className = 'trails';
+    const sw = k => { if (!k) return `background:hsl(${PILOT_HUE} 100% 60%)`; const a = new C3(), b = new C3(); TRAILS[k].c(a, b, .5); return `background:linear-gradient(90deg,#${a.getHexString()},#${b.getHexString()})` };
+    tr.innerHTML = TRAILS.map((t, k) => { const need = TRAIL_UNLOCK(k), ok = gotN >= need; return `<button type="button" data-k="${k}" class="${ok ? '' : 'lock'} ${k === trailK ? 'on' : ''}"><i style="${sw(k)}"></i><span>${ok ? esc(t.name) : need + ' rings'}</span></button>` }).join('');
+    tr.onclick = e => { const b = e.target.closest('button'); if (!b || b.classList.contains('lock')) return; setTrail(+b.dataset.k); tr.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)) };
+    body.append(note, h1, gr, h2, tr);
   }
   const fmtDayLong = dd => { const t = new Date(DAY0 + dd * 864e5); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}` };
   return { get open() { return open }, get panel() { return !panel.hidden }, get hot() { return hot }, held: false, show, move, choose, sub, close };

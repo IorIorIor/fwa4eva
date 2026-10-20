@@ -1,7 +1,7 @@
 /* ───────────────────────── sound ─────────────────────────
    "An Ending Ascent" on loop; an engine of filtered noise and a soft drone that rises with speed; a hum near the
    outpost; and hovering a star strikes a glass bell in a vast space, the same chord every time for the same star. */
-let AC = null, out = null, master = null, ambBus = null, musicGain = null, ENG = null, hum = null, lastTing = 0;
+let musicFx = null, musicMapOn = null, AC = null, out = null, master = null, ambBus = null, musicGain = null, ENG = null, hum = null, lastTing = 0;
 // the soundtrack starts downloading behind the title card, so it's ready the moment you enter
 const musicEl = (() => { try { const a = new Audio(); a.loop = true; a.preload = TEST_EARLY ? 'none' : 'auto'; a.src = 'an-ending-ascent.mp3'; return a } catch (e) { return null } })();
 let muted = store.get('sotd-muted') === '1';
@@ -27,7 +27,13 @@ function audio() {
       const eng = AC.createGain(); eng.gain.value = LOOK.engine; nG.connect(eng); tG.connect(eng); eng.connect(out); ns.start();
       ENG = { bp, nG, lp, tG, oscs, eng, buf: nb };
     } catch (e) { }
-    try { musicGain = AC.createGain(); musicGain.gain.value = .6 * LOOK.music; AC.createMediaElementSource(musicEl).connect(musicGain); musicGain.connect(out); musicEl.play().catch(() => { }) } catch (e) { }
+    try {
+      musicGain = AC.createGain(); musicGain.gain.value = .6 * LOOK.music; const src = AC.createMediaElementSource(musicEl);
+      // the map's filter: everything through a lowpass that closes (with a little resonance), plus a soft echo that only the map hears
+      const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 20000; lp.Q.value = .7; const dl = AC.createDelay(1), fb = AC.createGain(), wet = AC.createGain(); dl.delayTime.value = .34; fb.gain.value = .38; wet.gain.value = 0;
+      src.connect(lp); lp.connect(musicGain); lp.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(musicGain); musicFx = { lp, wet };
+      musicGain.connect(out); musicEl.play().catch(() => { });
+    } catch (e) { }
     // chimes: their own bus, loud enough to sit clearly over the music: the dry bell up front, a short bright room behind it,
     // and two soft echoes panned left and right
     master = AC.createGain(); master.gain.value = CHIME_K * LOOK.ting; master.connect(out);
@@ -80,3 +86,9 @@ function tingle(dec = 1, seed, pan = 0) {
   }
 }
 canvas.addEventListener('pointerdown', () => { if (booted) audio() }); addEventListener('keydown', () => { if (booted) audio() });
+
+function musicMap(on) {   // map on: the music sinks underwater, slowly; back to flying, it surfaces
+  if (!musicFx || !AC || on === musicMapOn) return; musicMapOn = on; const m = on ? (LOOK.mapMuffle ?? .8) : 0, t = AC.currentTime, T = on ? .9 : .5;
+  musicFx.lp.frequency.setTargetAtTime(20000 * Math.pow(480 / 20000, m), t, T); musicFx.lp.Q.setTargetAtTime(.7 + 5 * m, t, T); musicFx.wet.gain.setTargetAtTime(.32 * m, t, T);
+  musicGain.gain.setTargetAtTime(.6 * LOOK.music * (1 - .3 * m), t, T);
+}
