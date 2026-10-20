@@ -11,14 +11,14 @@ const RM_ICON = {   // tabler icons, as used in the rest of the interface
   ships: '<path d="M7 4l0 13l3.5 -3.5l2.5 6l2 -1l-2.5 -6l5 0z"/>',
   date: '<path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><path d="M8 15h2v2h-2z"/>',
 };
-const RM_FILL = {   // solid versions for the ring's segments
-  filters: '<path d="M3 4h18l-7 8.5v6.5l-4 2v-8.5z"/>',
-  map: '<path d="M3 6.6l5.2-2.6v13.4l-5.2 2.6zM9.6 4l4.8 2.6v13.4l-4.8-2.6zM15.8 6.6l5.2-2.6v13.4l-5.2 2.6z"/>',
-  fly: '<path fill-rule="evenodd" d="M14.6 3.4c3.1-.3 6.3 2.8 6 6-.4 4-4.2 7.4-7.3 9l-1.6 1.6-1.4-3.4-3.4-1.4 1.6-1.6c1.6-3.1 5-6.9 9-7.3zM15 7.6a1.6 1.6 0 1 0 .01 0z"/><path d="M6.2 15.6c-2 .9-3.2 3-3.2 5.4 2.4 0 4.5-1.2 5.4-3.2z"/>',
-  search: '<path fill-rule="evenodd" d="M10 3a7 7 0 1 1 0 14a7 7 0 1 1 0-14zM10 5.6a4.4 4.4 0 1 0 0 8.8a4.4 4.4 0 1 0 0-8.8z"/><path d="M15.2 13.4l6 6-1.8 1.8-6-6z"/>',
-  settings: '<path d="M5 3h2v18h-2zM11 3h2v18h-2zM17 3h2v18h-2z"/><circle cx="6" cy="8" r="2.7"/><circle cx="12" cy="15" r="2.7"/><circle cx="18" cy="6.5" r="2.7"/>',
-  date: '<path fill-rule="evenodd" d="M5.5 5h13a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13a1.5 1.5 0 0 1-1.5-1.5v-13a1.5 1.5 0 0 1 1.5-1.5zM6 10v9h12v-9z"/><path d="M7 2.5h2v4h-2zM15 2.5h2v4h-2zM8 12h3v3h-3z"/>',
-  upgrades: '<path d="M6 3v15l4-4 3 6.5 2.5-1.2-3-6.3h5.5z"/>',
+const RM_FILL = {   // Tabler's own filled icons (v3), for the ring's choices
+  filters: '<path d="M20 3h-16a1 1 0 0 0 -1 1v2.227l.008 .223a3 3 0 0 0 .772 1.795l4.22 4.641v8.114a1 1 0 0 0 1.316 .949l6 -2l.108 -.043a1 1 0 0 0 .576 -.906v-6.586l4.121 -4.12a3 3 0 0 0 .879 -2.123v-2.171a1 1 0 0 0 -1 -1z"/>',
+  map: '<path d="M18.364 4.636a9 9 0 0 1 .203 12.519l-.203 .21l-4.243 4.242a3 3 0 0 1 -4.097 .135l-.144 -.135l-4.244 -4.243a9 9 0 0 1 12.728 -12.728zm-6.364 3.364a3 3 0 1 0 0 6a3 3 0 0 0 0 -6z"/>',
+  fly: '<path d="M11.092 2.581a1 1 0 0 1 1.754 -.116l.062 .116l8.005 17.365c.198 .566 .05 1.196 -.378 1.615a1.53 1.53 0 0 1 -1.459 .393l-7.077 -2.398l-6.899 2.338a1.535 1.535 0 0 1 -1.52 -.231l-.112 -.1c-.398 -.386 -.556 -.954 -.393 -1.556l.047 -.15l7.97 -17.276z"/>',
+  search: '<path d="M14 3.072a8 8 0 0 1 2.617 11.424l4.944 4.943a1.5 1.5 0 0 1 -2.008 2.225l-.114 -.103l-4.943 -4.944a8 8 0 0 1 -12.49 -6.332l-.006 -.285l.005 -.285a8 8 0 0 1 11.995 -6.643z"/>',
+  settings: '<path d="M14.647 4.081a.724 .724 0 0 0 1.08 .448c2.439 -1.485 5.23 1.305 3.745 3.744a.724 .724 0 0 0 .447 1.08c2.775 .673 2.775 4.62 0 5.294a.724 .724 0 0 0 -.448 1.08c1.485 2.439 -1.305 5.23 -3.744 3.745a.724 .724 0 0 0 -1.08 .447c-.673 2.775 -4.62 2.775 -5.294 0a.724 .724 0 0 0 -1.08 -.448c-2.439 1.485 -5.23 -1.305 -3.745 -3.744a.724 .724 0 0 0 -.447 -1.08c-2.775 -.673 -2.775 -4.62 0 -5.294a.724 .724 0 0 0 .448 -1.08c-1.485 -2.439 1.305 -5.23 3.744 -3.745a.722 .722 0 0 0 1.08 -.447c.673 -2.775 4.62 -2.775 5.294 0zm-2.647 4.919a3 3 0 1 0 0 6a3 3 0 0 0 0 -6z"/>',
+  date: '<path d="M16 2a1 1 0 0 1 .993 .883l.007 .117v1h1a3 3 0 0 1 2.995 2.824l.005 .176v12a3 3 0 0 1 -2.824 2.995l-.176 .005h-12a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-12a3 3 0 0 1 2.824 -2.995l.176 -.005h1v-1a1 1 0 0 1 1.993 -.117l.007 .117v1h6v-1a1 1 0 0 1 1 -1zm3 7h-14v9.625c0 .705 .386 1.286 .883 1.366l.117 .009h12c.513 0 .936 -.53 .993 -1.215l.007 -.16v-9.625z"/><path d="M12 12a1 1 0 0 1 .993 .883l.007 .117v3a1 1 0 0 1 -1.993 .117l-.007 -.117v-2a1 1 0 0 1 -.117 -1.993l.117 -.007h1z"/>',
+  upgrades: '<path d="M3.039 4.277l3.904 13.563c.185 .837 .92 1.516 1.831 1.642l.17 .016a2.2 2.2 0 0 0 1.982 -1.006l.045 -.078l1.4 -2.072l4.05 4.05a2.067 2.067 0 0 0 2.924 0l1.047 -1.047c.388 -.388 .606 -.913 .606 -1.461l-.008 -.182a2.067 2.067 0 0 0 -.598 -1.28l-4.047 -4.048l2.103 -1.412c.726 -.385 1.18 -1.278 1.053 -2.189a2.2 2.2 0 0 0 -1.701 -1.845l-13.524 -3.89a1 1 0 0 0 -1.236 1.24z"/>',
 };
 const ico = (k, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RM_ICON[k]}</svg>`;
 const rmenu = (() => {
@@ -57,7 +57,7 @@ const rmenu = (() => {
     let a = Math.atan2(-y, x) * 180 / Math.PI; let best = null, bd = 40; for (const [k, , c] of SEG) { const d = Math.abs(((a - c + 540) % 360) - 180); if (d < bd) { bd = d; best = k } } return best };
   function show(x, y) {
     if (panel.hidden === false) close(); if (style !== ((LOOK.menuSun ?? 1) ? 'sun' : 'wedge')) build();
-    const m = R1 + 16; cx = Math.max(m, Math.min(innerWidth - m, x)); cy = Math.max(m, Math.min(innerHeight - m, y)); vx = vy = 0; px = x; py = y;
+    const m = R1 * 2 + 20; cx = Math.max(m, Math.min(innerWidth - m, x)); cy = Math.max(m, Math.min(innerHeight - m, y)); vx = vy = 0; px = x; py = y;
     const R_ = document.documentElement.style; R_.setProperty('--rmb', (LOOK.menuBlur ?? 8) + 'px'); R_.setProperty('--rmd', LOOK.menuDim ?? .3);
     document.body.classList.add('rm-open', 'rm-ring'); tip.hidden = true;   // other tooltips step aside, and the world behind blurs
     el.style.left = cx + 'px'; el.style.top = cy + 'px'; el.hidden = false; void el.offsetWidth; el.classList.add('in'); open = true; setHot(null); lean();

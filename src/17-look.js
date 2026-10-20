@@ -56,7 +56,7 @@ function saveLook() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_MAP) { st
     const snap = await lookDoc.get(), d = snap.exists && snap.data();
     if (d && d.look && typeof d.look === 'object') {
       Object.keys(d.look).forEach(k => { if (k in LOOK_DEFAULTS && typeof d.look[k] === 'number') LOOK[k] = d.look[k] }); migrateLook(LOOK);
-      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
+      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
     } else saveLook();
   } catch (e) { }
 })();

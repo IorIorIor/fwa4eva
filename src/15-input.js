@@ -1,6 +1,6 @@
 /* ───────────────────────── input ───────────────────────── */
 const keys = {}, mouse = { x: 0, y: 0, in: false };
-let holdT = 0, touchThrust = false, touchBoost = false, touchBrake = false, lockFailed = false, down = null, dragged = false, pinch0 = 0, lastInput = performance.now();
+let freeMouse = false, holdT = 0, touchThrust = false, touchBoost = false, touchBrake = false, lockFailed = false, down = null, dragged = false, pinch0 = 0, lastInput = performance.now();
 const SENS = .0022;
 const locked = () => document.pointerLockElement === canvas;
 function updateLockUI() {
@@ -8,14 +8,14 @@ function updateLockUI() {
   $('cross').toggleAttribute('hidden', !fly);
 }
 document.addEventListener('pointerlockchange', updateLockUI);
-const relock = () => { if (booted && S.mode === 'fly' && !locked() && !lockFailed && !coarse && !rmenu.panel && !document.querySelector('.sheet.open') && document.visibilityState === 'visible') try { quietLock = performance.now(); const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { }) } catch (e) { } };   // a try without a click: if the browser says no, that's no failure
+const relock = () => { if (booted && S.mode === 'fly' && !freeMouse && !locked() && !lockFailed && !coarse && !rmenu.panel && !document.querySelector('.sheet.open') && document.visibilityState === 'visible') try { quietLock = performance.now(); const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { }) } catch (e) { } };   // a try without a click: if the browser says no, that's no failure
 addEventListener('focus', () => setTimeout(relock, 60)); document.addEventListener('visibilitychange', () => setTimeout(relock, 60));   // alt-tab back: the ship takes the mouse again
 // a browser refuses a re-lock for about a second after Esc; that's not a failure, just click again
 // a refusal right after letting go is the browser's re-lock cooldown: click again. Any other refusal (a frame without pointer-lock
 // permission, say) means mouse mode for good, so nobody gets asked to click to fly over and over
 let lockErrs = 0, lastUnlock = 0, quietLock = -1e9; const lockErr = () => { if (performance.now() - quietLock < 1500) return; lockErrs++; if (performance.now() - lastUnlock > 1600 || lockErrs >= 4 || !canvas.requestPointerLock) lockFailed = true; updateLockUI() };
 document.addEventListener('pointerlockerror', lockErr);
-document.addEventListener('pointerlockchange', () => { if (locked()) { lockErrs = 0; lockFailed = false; updateLockUI() } else { lastUnlock = performance.now(); for (const k in keys) keys[k] = false } });
+document.addEventListener('pointerlockchange', () => { if (locked()) { freeMouse = false; lockErrs = 0; lockFailed = false; updateLockUI() } else { lastUnlock = performance.now(); for (const k in keys) keys[k] = false } });
 function requestLock() { if (!canvas.requestPointerLock) { lockErr(); return } try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(lockErr) } catch (e) { lockErr() } }
 // the menu takes the mouse, but the view still drifts a little with it
 document.addEventListener('mousemove', e => { if (rmenu.open) { rmenu.move(e); if (locked() && S.mode === 'fly' && !introActive) rotateRig(-e.movementX * SENS * LOOK.sens * (LOOK.menuSteer ?? .15), -e.movementY * SENS * LOOK.sens * (LOOK.menuSteer ?? .15)); return } if (intro.active && !booted) { intro.mouse(e); return } if (!locked() || S.mode !== 'fly' || introActive) return; rotateRig(-e.movementX * SENS * LOOK.sens, -e.movementY * SENS * LOOK.sens) });
@@ -113,7 +113,8 @@ addEventListener('keydown', e => {
   if (k === 'escape' && tour.on) stopTour();
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }
   if (k === '/') { e.preventDefault(); keys[k] = false; rmenu.sub('search') }   // / searches
-  if ((k === 'arrowleft' || k === 'arrowright') && lockI >= 0 && S.mode === 'fly') { keys[k] = false; e.preventDefault(); if (!e.repeat) navStep(k === 'arrowright' ? 1 : -1, undefined, 'turn') }   // locked on: ← → step to the previous / next winner
+  if ((k === 'arrowleft' || k === 'arrowright') && S.mode === 'fly' && !rmenu.panel) { keys[k] = false; e.preventDefault(); if (!e.repeat) stepByDist(k === 'arrowright' ? 1 : -1) }   // ← a nearer winner, → a farther one (of those in hover reach), locked on or not
+  if (k === 'q' && S.mode === 'fly' && !e.repeat) { if (locked()) { freeMouse = true; document.exitPointerLock() } else { freeMouse = false; if (!lockFailed && !coarse) requestLock() } }   // Q: a plain mouse pointer to click things with (Q again, or a click on the sky, to fly)
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
@@ -127,6 +128,20 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, e => { if (e.pointerId === id) end() })); b.addEventListener('contextmenu', e => e.preventDefault()) }
 
 /* ───────────────────────── picking ───────────────────────── */
+// ← and →: from the winner you're on (or hovering), the next one nearer or farther away, among those hovering could reach:
+// in front of you, on screen, close enough and big enough to show
+function stepByDist(dir) {
+  _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, cand = [];
+  for (let i = 0; i < N; i++) {
+    if (TA[i] < 1) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5 || w > (LOOK.hoverDist ?? 4e5) || starPx(i, w) < (LOOK.hoverPx ?? 2.5)) continue;
+    const X = (e[0] * px + e[4] * py + e[8] * pz + e[12]) / w, Y = (e[1] * px + e[5] * py + e[9] * pz + e[13]) / w; if (Math.abs(X) > 1 || Math.abs(Y) > 1) continue;
+    cand.push([camera.position.distanceTo(starPos(i, tmp)), i]);
+  }
+  if (!cand.length) return; cand.sort((a, b) => a[0] - b[0]);
+  const ref = lockI >= 0 ? lockI : hovI >= 0 ? hovI : magI, k = cand.findIndex(c => c[1] === ref), dRef = ref >= 0 ? camera.position.distanceTo(starPos(ref, tmp)) : -1;
+  let j; if (k >= 0) j = cand[Math.max(0, Math.min(cand.length - 1, k + dir))]; else if (dRef < 0) j = cand[0]; else j = dir > 0 ? cand.find(c => c[0] > dRef) || cand[cand.length - 1] : [...cand].reverse().find(c => c[0] < dRef) || cand[0];
+  if (!j || j[1] === ref) return; focus(j[1]); auto = null; aimFast = .7;
+}
 const _vp = new THREE.Matrix4();
 const pxJS = () => innerHeight * .55 * DPR;                        // CPU twin of the shaders' point-size scale
 const starPx = (i, w) => SIZE[i] * LOOK.starSize * pxJS() / w / DPR;   // a winner's sprite size in CSS pixels at view depth w

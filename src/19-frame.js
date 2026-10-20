@@ -238,7 +238,7 @@ function engineLook(dt) {
 
 /* lock-on marker, reticle and tooltip */
 const fmtDist = v => v < 1000 ? v.toFixed(0) + ' u' : v < 1e6 ? (v / 1000).toFixed(v < 1e4 ? 1 : 0) + 'k u' : (v / 1e6).toFixed(2) + 'M u';
-const TNAV = '<span class="tnav"><b data-n="-1" title="Previous (←)">‹</b><b data-n="1" title="Next (→)">›</b></span>';   // step through the archive from the star you're on
+const TNAV = '<span class="tnav"><b data-n="-1" title="Previous (←)">‹</b><b data-n="1" title="Next (→)">›</b><i class="tdist"></i></span>';   // step through the archive from the star you're on
 const lockMark = $('lockMark');
 function updateLockMark() {
   if (S.mode === 'fly' && lockI >= 0) {
@@ -292,6 +292,7 @@ function updateHover(dt) {
       tip.style.left = x + 'px'; tip.style.top = y + 'px';
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
+  { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = Math.round(camera.position.distanceTo(starPos(+m[1], tmp))).toLocaleString('en') + ' u' }   // how far it is, live, to the unit
 }
 const RET = { ring: $('aimRing'), p: -1 };
 function updateBoostUI(dt = 0) {   // the reticle is a ring and a dot: boosting, the ring draws in and fills until it's all one white dot; it opens again as the boost refills
