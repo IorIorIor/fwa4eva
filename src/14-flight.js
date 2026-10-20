@@ -31,7 +31,7 @@ function lerpLogPolar(out, a, b, c, e) {
 // the map orbits in the galaxy's own frame: phi is measured from the disk's axis, so the map looks down on the disk
 const GAL_UP = new V3(0, 1, 0).applyQuaternion(GQ);
 function orbitPose() { const o = orbit, p = new V3(Math.sin(o.phi) * Math.sin(o.theta), Math.cos(o.phi), Math.sin(o.phi) * Math.cos(o.theta)).applyQuaternion(GQ).multiplyScalar(o.dist).add(o.target); return { p, q: lookQuat(p, o.target, GAL_UP) } }
-const mapPhi = () => (90 - Math.max(5, Math.min(90, LOOK.mapAngle ?? 70))) * Math.PI / 180 + 1e-3;   // 70° above the disk by default
+const mapPhi = () => (90 - Math.max(.5, Math.min(90, LOOK.mapAngle ?? 70))) * Math.PI / 180 + 1e-3;   // 70° above the disk by default
 const mapHomeD = () => (GAL_R0 + GAL_LEN) * 1.6;   // the whole disk, filling the view
 
 function setMode(m) {

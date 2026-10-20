@@ -103,10 +103,10 @@ const avatar = makeAvatar(); avatar.scale.setScalar(.68 * SHIP_K); shipScene.add
 /* the engine flare: a hard white point, a wide bloom round it and thin diffraction spikes, all sized in screen pixels so it
    reads the same at any distance. It sits at the mouth of the hole and only shows while you can see into it. */
 const flare = (() => {
-  const u = { col: uniform(new C3(1, .4, .4)), k: uniform(0), n: uniform(4), turn: uniform(Math.PI / 4), px: uniform(280), spk: uniform(1), rate: uniform(2), glow: uniform(1), half: uniform(0) };
-  const m = new THREE.SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const u = { col: uniform(new C3(1, .4, .4)), k: uniform(0), n: uniform(4), turn: uniform(Math.PI / 4), px: uniform(280), spk: uniform(1), rate: uniform(2), glow: uniform(1), half: uniform(0), q: uniform(840) };
+  const m = new THREE.SpriteNodeMaterial({ transparent: true, depthWrite: false, depthTest: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor });
   m.colorNode = Fn(() => {
-    const p = uv().sub(.5).mul(u.px), r = length(p), L = u.px.mul(.5), spikes = float(0).toVar();
+    const p = uv().sub(.5).mul(u.q), r = length(p), L = u.px.mul(.5), spikes = float(0).toVar();   // the quad (q px) is three times the spikes, so the glow has room to fade out
     for (let j = 0; j < 4; j++) {   // up to four lines through the centre: 2, 4, 6 or 8 spikes
       const a = u.turn.add(float(j * 2 * Math.PI).div(u.n)), dir = vec2(cos(a), sin(a)), along = abs(dot(p, dir)), across = abs(dot(p, vec2(dir.y.negate(), dir.x)));
       const w = along.mul(.006).add(.75), fall = pow(max(0, along.div(j % 2 ? L.mul(u.half.mul(-.5).add(1)) : L).oneMinus()), 2.6);   // with 'half' on, every other line is half as long
@@ -114,11 +114,12 @@ const flare = (() => {
       const tw = sin(U.now.mul(u.rate).mul(1 + j * .37).add(j * 2.1)).mul(.5).add(.5), gl = pow(sin(along.div(L).mul(18).sub(U.now.mul(u.rate).mul(3 + j))).mul(.5).add(.5), 6);
       spikes.addAssign(exp(across.div(w).pow(2).negate()).mul(fall).mul(step(float(j).add(.5), u.n.mul(.5))).mul(u.spk.mul(tw.sub(.6).add(gl.mul(.8))).add(1).max(.15)));
     }
-    const core = exp(r.div(1.5).pow(2).negate()), bloomIn = exp(r.div(L.mul(.022)).negate()).mul(u.glow), bloomOut = exp(r.div(L.mul(.15).mul(u.glow.sqrt())).negate()).mul(u.glow);
+    const core = exp(r.div(1.5).pow(2).negate()), bloomIn = exp(r.div(L.mul(.022)).negate()).mul(u.glow), bloomOut = exp(r.div(L.mul(.15).mul(u.glow.sqrt().min(2.2))).negate()).mul(u.glow.min(3));
     const c = mix(u.col, vec3(1), .55).mul(spikes.mul(1.1)).add(vec3(1).mul(core.mul(6))).add(mix(u.col, vec3(1), .35).mul(bloomIn.mul(1.1))).add(u.col.mul(bloomOut.mul(.4)));
-    return vec4(c.mul(u.k).mul(smoothstep(L, L.mul(.72), r)), 1);   // nothing reaches the sprite's edge: no square
+    const cc = clamp(c.mul(u.k).mul(smoothstep(u.q.mul(.5), u.q.mul(.3), r)), 0, 1);   // nothing reaches the quad's edge
+    return vec4(cc, max(max(cc.r, cc.g), cc.b));   // light on the transparent ship layer: alpha covers the colour
   })();
-  const s = new THREE.Sprite(m); s.renderOrder = 6; s.frustumCulled = false; s.u = u; scene.add(s); return s;   // in the main scene, so the bloom catches it; placed at the engine each frame
+  const s = new THREE.Sprite(m); s.renderOrder = 60; s.frustumCulled = false; s.u = u; shipScene.add(s); return s;   // on the ship's layer, over the arrow; placed at the engine each frame
 })();
 
 /* TRON light trail: emitted only while you thrust. Each point keeps the colour and brightness it was born with,

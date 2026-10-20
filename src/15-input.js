@@ -98,7 +98,7 @@ addEventListener('keydown', e => {
   if (k === 'h') goHome();
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
   if (k === '/') { e.preventDefault(); keys[k] = false; $('navQ').focus() }   // / searches
-  if ((k === 'arrowleft' || k === 'arrowright') && lockI >= 0 && S.mode === 'fly') { keys[k] = false; e.preventDefault(); if (!e.repeat) navStep(k === 'arrowright' ? 1 : -1) }   // locked on: ← → step to the previous / next winner
+  if ((k === 'arrowleft' || k === 'arrowright') && lockI >= 0 && S.mode === 'fly') { keys[k] = false; e.preventDefault(); if (!e.repeat) navStep(k === 'arrowright' ? 1 : -1, undefined, 'turn') }   // locked on: ← → step to the previous / next winner
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
@@ -139,6 +139,7 @@ function pick(x, y) {
 let magI = -1, magS = 1;
 function aimAssist(dt) {
   let s = 1; magI = -1; if (!booted || introActive) return;
+  if (aimFast > 0 && lockI >= 0 && S.mode === 'fly') { aimFast -= dt; aimAt(starPos(lockI, tmp).sub(camera.position), 1 - Math.exp(-12 * dt)) }   // a quick swing onto a star you stepped to
   if (S.mode === 'fly' && LOOK.magnet > 0 && (locked() || coarse) && openA < .3 && !auto) { const Rr = LOOK.magnetR, h = pickNear(innerWidth / 2, innerHeight / 2, Rr); if (h) { magI = h.i; aimAt(starPos(h.i, tmp).sub(camera.position), 1 - Math.exp(-LOOK.magnet * 7 * dt)); s = .35 + .65 * Math.min(1, h.d / h.R) } }
   if (lockI >= 0) { s = 1; magI = -1 }   // locked on: the reticle holds still
   magS += (s - magS) * Math.min(1, dt * 10); aimRingR(10.5 * magS); crossEl.classList.toggle('mag', magI >= 0);

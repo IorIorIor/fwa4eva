@@ -69,7 +69,7 @@ const bodies = (() => {
 const bodyCand = [];
 
 /* constellations: filtered winners joined in date order. Pulses travel from older to newer along each line. */
-const CON_MAX = 1500;
+const CON_MAX = Math.max(1500, N);   // enough segments to chain any filter, date to date
 const AG_PAL = ['#ffb547', '#5ee0b0', '#ff6fae', '#7aa2ff', '#c58bff', '#ffd166', '#6ff0d0', '#ff8a5b'], agCol = new Map();
 const agColor = a => agCol.get(a) || '#ffb547';
 const conPos = new Float32Array(CON_MAX * 2 * 3), conSeq = new Float32Array(CON_MAX * 2), conCol = new Float32Array(CON_MAX * 2 * 3);

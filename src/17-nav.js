@@ -8,10 +8,12 @@ const NAV_DAYS = Math.max(W_DAY[N - 1] + 30, dayIdx(new Date().toISOString().sli
 function flyTo(i) {   // lock on and let the autopilot take you there (on the map: the camera goes)
   if (i < 0) return; focus(i); if (S.mode === 'fly') auto = { i, dest: null };
 }
-function navStep(dir, from = lockI >= 0 ? lockI : cardI >= 0 ? cardI : nav.pick) {   // the next matching winner by date
+let aimFast = 0;   // seconds left of a quick turn onto the locked star
+function navStep(dir, from = lockI >= 0 ? lockI : cardI >= 0 ? cardI : nav.pick, how = 'fly') {   // the next matching winner by date: fly there, or ('turn') just swing round and lock on
   let j = from < 0 ? (dir > 0 ? -1 : N) : from;
   do j += dir; while (j >= 0 && j < N && TA[j] < 1);
-  if (j >= 0 && j < N) { nav.show(W_DAY[j], j); flyTo(j) }
+  if (j < 0 || j >= N) return; nav.show(W_DAY[j], j);
+  if (how === 'turn' && S.mode === 'fly') { focus(j); auto = null; aimFast = .7 } else flyTo(j);
 }
 const nav = (() => {
   const q = $('navQ'), res = $('navRes'), tl = $('navTl'), cv = tl.querySelector('canvas'), g = cv.getContext('2d'), dayEl = $('navDay');
@@ -82,7 +84,7 @@ const nav = (() => {
   $('navPrev').onclick = () => navStep(-1); $('navNext').onclick = () => navStep(1);
   $('navFilter').onclick = () => { togglePanel('panel'); $('navFilter').setAttribute('aria-expanded', $('panel').classList.contains('open')) };
   // the tooltip's ‹ › step on from the star it's showing
-  tip.addEventListener('click', e => { const n = e.target.dataset && e.target.dataset.n; if (!n) return; const m = /^[hp](\d+)/.exec(tipFor); navStep(+n, m ? +m[1] : -1) });
+  tip.addEventListener('click', e => { const n = e.target.dataset && e.target.dataset.n; if (!n) return; const m = /^[hp](\d+)/.exec(tipFor); navStep(+n, m ? +m[1] : -1, 'turn') });   // the star swings to the middle, so the tooltip (and these arrows) land where they were
   addEventListener('resize', draw);
   hist(); show(cur); window.__navHist = () => { hist(); draw() };
   return {

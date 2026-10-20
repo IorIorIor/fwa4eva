@@ -1,5 +1,5 @@
 /* ───────────────────────── every frame ───────────────────────── */
-let coreGlowV = { k: 0, s: 1 };   // the core glow's strength and size, for its volumetric version
+let coreGlowV = { k: 0, s: 1 }, mapK = 0;   // the core glow's strength and size, for its volumetric version
 const _v2 = new THREE.Vector2();
 function resize() { renderer.setSize(innerWidth, innerHeight, false); shipRenderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.getDrawingBufferSize(_v2); U.res.value.copy(_v2); U.dpr.value = _v2.y / Math.max(1, innerHeight) }
 function setDpr(d, force) { d = Math.max(.5, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); shipRenderer.setPixelRatio(d); resize() } }
@@ -209,16 +209,16 @@ function engineLook(dt) {
   const back = _d.set(0, 0, 1).applyQuaternion(avatar.quaternion), toCam = _c.copy(camera.position).sub(mouth), d = toCam.length(); toCam.divideScalar(d || 1);
   // speed lengthens and brightens the spikes; pressing thrust sets off a short burst
   const thrNow = thrusting && booted && S.mode === 'fly', spNow = player.vel.length(); if (thrNow && !engineLook.was) engineLook.burst = Math.max(engineLook.burst || 0, 1 - .85 * sstep(Math.log10(Math.max(1, spNow)), 2, 5.3)); engineLook.was = thrNow;   // a push from standstill kicks hard; at speed only a little
-  if (boosting && !engineLook.wasB) engineLook.burst = Math.max(engineLook.burst || 0, 1.6); engineLook.wasB = boosting;   // boost always booms engineLook.burst = (engineLook.burst || 0) * Math.exp(-dt / Math.max(.05, L.flareBurstTime ?? .5));
+  if (boosting && !engineLook.wasB) engineLook.burst = Math.max(engineLook.burst || 0, 1.1); engineLook.wasB = boosting;   // boost always booms engineLook.burst = (engineLook.burst || 0) * Math.exp(-dt / Math.max(.05, L.flareBurstTime ?? .5));
   const spK = sstep(Math.log(Math.max(150, player.vel.length())), Math.log(150), Math.log(Math.max(300, L.cruiseSpeed))), sp = 1 + (L.flareSpeed ?? 1) * (spK - .3), bu = engineLook.burst * (L.flareBurst ?? 1.2);
   const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2 * Math.max(.3, sp) * (1 + bu * .5) * (1 + igniteK * 1.2);   // ignition: a flash out of the engine
-  fu.spk.value = L.flareSparkle ?? 1; fu.rate.value = L.flareRate ?? 2; fu.glow.value = (L.flareGlow ?? 1) * (1 + bu * 1.5) * (1 + igniteK * 2);
-  fu.col.value.copy(_fc); fu.k.value = L.flare * vis * (on * Math.max(.3, sp) * (1 + bu) + igniteK * (L.igniteBloom ?? 1.5)); fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px;
-  flare.position.copy(mouth).addScaledVector(back, avatar.scale.x * .06); flare.scale.setScalar(px * 2 * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight) * d); flare.visible = S.mode === 'fly' && fu.k.value > .002;
+  fu.spk.value = L.flareSparkle ?? 1; fu.rate.value = L.flareRate ?? 2; fu.glow.value = (L.flareGlow ?? 1) * (1 + bu * .6) * (1 + igniteK * 1.2);
+  fu.col.value.copy(_fc); fu.k.value = L.flare * vis * (on * Math.max(.3, sp) * (1 + bu) + igniteK * (L.igniteBloom ?? 1.5)); fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px; fu.q.value = px * 3;
+  flare.position.copy(mouth).addScaledVector(back, avatar.scale.x * .06); flare.scale.setScalar(px * 3 * 2 * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight) * d); flare.visible = S.mode === 'fly' && fu.k.value > .002;
 }
 
 /* lock-on marker, reticle and tooltip */
-const TNAV = '<span class="tnav"><b data-n="-1" title="Previous (←)">‹</b><b data-n="1" title="Next (→)">›</b><i>← →</i></span>';   // step through the archive from the star you're on
+const TNAV = '<span class="tnav"><b data-n="-1" title="Previous (←)">‹</b><b data-n="1" title="Next (→)">›</b></span>';   // step through the archive from the star you're on
 const lockMark = $('lockMark');
 function updateLockMark() {
   if (S.mode === 'fly' && lockI >= 0) {
@@ -275,7 +275,7 @@ function updateHover(dt) {
 }
 let spdR = '';
 function updateBoostUI() {
-  { const top = Math.min(LIGHT * .97, LOOK.topSpeed ?? Infinity), k = Math.min(1, Math.log10(1 + player.vel.length()) / Math.log10(1 + top)), r = (22 - 11.5 * k).toFixed(2); if (r !== spdR) { spdR = r; $('boostArc').setAttribute('r', r) } }   // the second circle closes in with speed: at top speed it's the size of the centre circle (its arc is still the boost tank)
+  { const top = Math.min(LIGHT * .97, LOOK.topSpeed ?? Infinity), k = Math.pow(Math.min(1, Math.max(0, (Math.log10(1 + player.vel.length()) - 1) / (Math.log10(1 + top) - 1))), .8), r = (22 - 11.5 * k).toFixed(2); if (r !== spdR) { spdR = r; $('boostArc').setAttribute('r', r) } }   // the second circle closes in with speed: at top speed it's the size of the centre circle (its arc is still the boost tank)
   const a = $('boostArc'), show = S.mode === 'fly' && (boosting || boostE < .999); a.style.opacity = S.mode !== 'fly' ? 0 : show && boostE > .004 ? (boosting ? .95 : .55) : .35; a.style.strokeDashoffset = (1 - boostE) * 138.2 }   // empty means nothing at all, not a dot
 
 // a tiny readout of the renderer (press the backtick key, or open with ?stats)
@@ -360,6 +360,7 @@ function tick(now) {
   if (fly) gauge.fly(); else gauge.map();
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
   updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt);
+  mapK += ((S.mode === 'map' && !tween ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); PU.bgK.value = 1 - (L.mapFade ?? .85) * mapK; bgStars.u.op.value = L.bgStars * (1 - (L.mapFade ?? .85) * mapK);   // the map clears down to the winners once the move ends
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,
       look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3); coreIn += (inside - coreIn) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it
   {   // bloom swells near light speed and follows the core settings; exposure too

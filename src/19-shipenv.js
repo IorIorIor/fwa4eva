@@ -9,6 +9,8 @@ const shipEnv = (() => {
   const base = mats.map(m => ({ m, r: m.roughness, mt: m.metalness }));
   const d = new V3(), lp = new V3(), lc = new V3(), sc = new C3(); let t = 1, on = -1;
   const Rg = GAL_R0 + GAL_LEN;
+  // fake reflected stars: fixed sparks scattered over the panorama, brighter the deeper in the star clouds you are
+  const SPARK = Array.from({ length: 260 }, (_, k) => { const r = mulberry32(31 + k); return [(r() * W) | 0, (r() * H) | 0, Math.pow(r(), 3) * 2.5 + .4, r()] });
   function draw() {
     toLocal(player.pos, lp); const h = lp.y, rr0 = Math.hypot(lp.x, lp.z), dc = lp.length(), coreW = Math.atan2(bulgeR * .5, Math.max(dc, 1));
     lc.copy(lp).negate().normalize();   // toward the core, in the galaxy frame
@@ -29,6 +31,11 @@ const shipEnv = (() => {
         const i = (y * W + x) * 4; px[i] = Math.min(255, r * 255); px[i + 1] = Math.min(255, gC * 255); px[i + 2] = Math.min(255, b * 255); px[i + 3] = 255;
       }
     }
+    // how deep in the galaxy you are: in the disk, on an arm, toward the core. More stars glint, and the haze tints it blue
+    const disk = Math.exp(-(h * h) / (2 * Math.pow(4000 + 14000 * Math.exp(-rr0 / 100000), 2))) * (rr0 < Rg * 1.1 ? 1 : 0), arm = Math.exp(-Math.pow(armDist(lp.x, lp.z), 2) * 5), dens = Math.min(1.5, disk * (.35 + .65 * arm) + Math.exp(-dc / (bulgeR * .5)));
+    const sk = dens * (LOOK.shipStars ?? 1), hz = disk * (LOOK.shipHazeBlue ?? 1);
+    for (let i = 0; i < W * H * 4; i += 4) { px[i] = Math.min(255, px[i] + hz * 8); px[i + 1] = Math.min(255, px[i + 1] + hz * 16); px[i + 2] = Math.min(255, px[i + 2] + hz * 46) }
+    if (sk > .01) for (const [x, y, b, t] of SPARK) { if (t > sk) continue; const i = (y * W + x) * 4, v = b * 255 * Math.min(1, sk); px[i] = Math.min(255, px[i] + v * .85); px[i + 1] = Math.min(255, px[i + 1] + v * .92); px[i + 2] = Math.min(255, px[i + 2] + v) }
     g.putImageData(img, 0, 0); tex.needsUpdate = true;
   }
   return {

@@ -7,6 +7,7 @@ const arcPass = pass(arcScene, camera, { depthBuffer: false, samples: 0 });
 const PU = {   // pipeline uniforms
   volOn: uniform(0), hazeScreen: uniform(1), volBlur: uniform(0),
   exp: uniform(1), film: uniform(1), vig: uniform(.45), grain: uniform(.03), ab: uniform(0), beta: uniform(0), black: uniform(0), con: uniform(1), sat: uniform(1), cool: uniform(0),
+  bgK: uniform(1),   // the whole background (gas, haze, arcs) dims to this on the map, leaving the winners and the lines
   edge: uniform(0), edgeA: uniform(.1), edgeB: uniform(.25), nV: uniform(new V3(0, 1, 0)),   // edge-on: how much, the angle band (as sin), the disk normal in view space
   betaC: uniform(0), beam: uniform(1), vV: uniform(new V3(0, 0, -1)), tx: uniform(1), ty: uniform(1),   // the Doppler shift: β, beaming, travel direction (view space), tan of the half FOV
 };
@@ -19,7 +20,7 @@ const bgAt = uv0 => {
   // looking along the disk every soft layer piles up into one white band: rays that graze the plane get dimmed
   const ray = normalize(vec3(uv0.x.mul(2).sub(1).mul(PU.tx), uv0.y.mul(-2).add(1).mul(PU.ty), -1)), ek = PU.edge.mul(smoothstep(PU.edgeA, PU.edgeB, abs(dot(ray, PU.nV))).oneMinus()).oneMinus();
   const s = min(softPass.getTextureNode().sample(uv0).rgb.mul(ek), 1), h = hazePass.getTextureNode().sample(uv0).rgb.mul(ek);
-  return select(PU.hazeScreen.greaterThan(.5), exp(h.negate()).mul(s.oneMinus()).oneMinus(), min(s.add(h), 1)).add(arcPass.getTextureNode().sample(uv0).rgb);   // the arcs add their light on top, as they did in the scene
+  return select(PU.hazeScreen.greaterThan(.5), exp(h.negate()).mul(s.oneMinus()).oneMinus(), min(s.add(h), 1)).add(arcPass.getTextureNode().sample(uv0).rgb).mul(PU.bgK);   // the arcs add their light on top, as they did in the scene
 };
 scene.backgroundNode = bgAt(screenUV);
 const bh = makeBlackHole(bgAt);
