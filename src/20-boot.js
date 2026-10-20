@@ -31,6 +31,7 @@ const intro = {
     this.D0 = .503 * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 21);   // the arrow about 21 px tall: a real pointer's size
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
     INTRO_END.set(0, .55, 2.1).multiplyScalar(LOOK.introDist ?? .5); this.lit = false;   // where the opening ends up: close behind the pointer
+    this.goal = null; this.av.x = this.av.y = 0;
     this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
     document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.p = 1;
     if (LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d()))) {   // first the logo: it sits where the splash's logo was, and the camera dives through it onto the pointer
@@ -48,11 +49,11 @@ const intro = {
       this.tipOff = { x: -tip.x * innerWidth / 2, y: tip.y * innerHeight / 2 }; this.at.x += this.tipOff.x; this.at.y += this.tipOff.y; this.update(0);
     }
   },
-  at: null, tipOff: { x: 0, y: 0 },
+  at: null, goal: null, av: { x: 0, y: 0 }, tipOff: { x: 0, y: 0 },
   mouse(e) {   // during the swing the arrow is still your mouse pointer: it moves with the mouse (the pull fades as the camera settles)
-    if (this.p < 1) return; if (!this.at) this.at = { x: innerWidth / 2, y: innerHeight / 2 };
-    if (document.pointerLockElement) { this.at.x += e.movementX; this.at.y += e.movementY } else { this.at.x = e.clientX + this.tipOff.x; this.at.y = e.clientY + this.tipOff.y }
-    this.at.x = Math.max(0, Math.min(innerWidth, this.at.x)); this.at.y = Math.max(0, Math.min(innerHeight, this.at.y));
+    if (this.p < 1) return; if (!this.at) this.at = { x: innerWidth / 2, y: innerHeight / 2 }; const g = this.goal || (this.goal = { x: this.at.x, y: this.at.y });   // the mouse sets a goal; the arrow springs after it (see update)
+    if (document.pointerLockElement) { g.x += e.movementX; g.y += e.movementY } else { g.x = e.clientX + this.tipOff.x; g.y = e.clientY + this.tipOff.y }
+    g.x = Math.max(0, Math.min(innerWidth, g.x)); g.y = Math.max(0, Math.min(innerHeight, g.y));
   },   // where on screen the pointer starts (the Start button's centre), eased back to the centre as the camera swings
   update(dt) {
     avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = true; avatar.userData.flame.material.opacity = 0;
@@ -68,6 +69,10 @@ const intro = {
       const up = this.upW.copy(this.up0).applyQuaternion(rig.q).lerp(_iu.set(0, 1, 0).applyQuaternion(rig.q), ez).normalize();
       _il.lookAt(_ia.set(0, 0, 0), dir, up); camera.quaternion.setFromRotationMatrix(_il);
       const dur = reduceMotion ? 2.5 : this.dur, on = 1 - 1 / dur;   // engine and instruments are fully on a second before the camera lands
+      if (this.at && this.goal && dt > 0) {   // elastic: a soft spring with a touch of overshoot, so any flick of the mouse reads as one smooth swing
+        const K = 90 * (LOOK.introSpring ?? 1), C = 2 * Math.sqrt(K) * .78, h = Math.min(dt, 1 / 30);
+        for (const a of ['x', 'y']) { this.av[a] += ((this.goal[a] - this.at[a]) * K - this.av[a] * C) * h; this.at[a] += this.av[a] * h }
+      }
       if (this.at) { const k = 1 - sstep(this.t, .12, (reduceMotion ? 1 : on) * .95), W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }   // the pointer still follows your mouse at first, less and less as the camera swings in behind it
       veil.material.opacity = 1 - sstep(this.t, .3, .9); veil.scale.setScalar(camera.position.distanceTo(player.pos) + .45);
       emitGlow = quint(sstep(this.t, on - .26, on));
