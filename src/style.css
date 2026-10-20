@@ -169,7 +169,7 @@ body.idle #cross{opacity:.18}
 #lockMark b{display:none}
 #lockMark.edge i{opacity:.7}
 #lockMark.edge::after{content:"";position:absolute;left:50%;top:50%;width:0;height:0;border-left:7px solid #fff;border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;transform:translate(-50%,-50%) rotate(var(--a)) translateX(18px)}
-#cross.lockon #hdg,#cross.lockon #boostArc{display:none}
+#cross.lockon #hdg{display:none}
 #cross.lockon .ring{r:5px !important;stroke-width:1px;opacity:.9}
 #cross.lockon .dot{r:1px;opacity:1}
 @keyframes lkp{50%{opacity:.6}}
@@ -331,3 +331,4 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 .pm{gap:5px;margin:-2px 0 0 -2px;font-size:9px;color:rgba(255,255,255,.75)}
 .pm i,.pm.edge i{width:4px;height:4px;border:0;background:#fff;box-shadow:none}
 #intro .ring circle{transition:stroke-dashoffset .8s cubic-bezier(.3,.1,.2,1)}
+#tip.dock{transition:none}

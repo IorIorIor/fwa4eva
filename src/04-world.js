@@ -72,7 +72,7 @@ const NEB_PAL = [['#62d6dc', '#2c6fa8'], ['#b9d4f0', '#5a6fd8'], ['#ff4fa3', '#7
 const HAZE = (() => {
   const n = 104000, ctr = new Float32Array(n * 3), ctrP = new V3(), p = new Float32Array(n * 3), c = new Float32Array(n * 3), c2 = new Float32Array(n * 3), sz = new Float32Array(n), col = new C3(), pc = new C3(), pt = new V3();
   for (let i = 0; i < n; i++) {
-    const k = i % NGAL, u = Math.pow(R(), .85) * 1.05, r = GAL_R0 + u * GAL_LEN, s = 10500 + r * .07;
+    const k = i % NGAL, u = Math.pow(R(), .85 * SHAPE.hc) * 1.05, r = GAL_R0 + u * GAL_LEN, s = 10500 + r * .07;
     const arm = (R() * GAL.arms) | 0; galPoint(GAL, arm, u, gauss() * s, gauss() * s / r * .9, gauss() * (1750 + 21000 * Math.exp(-r / 105000)), pt); p.set([pt.x, pt.y, pt.z], i * 3);
     galPoint(GAL, arm, u, 0, 0, 0, ctrP); ctr.set([ctrP.x, ctrP.y, ctrP.z], i * 3);
     col.setHSL(.68 + R() * .12, .6, .25 + R() * .25); c.set([col.r, col.g, col.b], i * 3);

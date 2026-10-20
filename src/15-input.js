@@ -112,7 +112,7 @@ const starPx = (i, w) => SIZE[i] * LOOK.starSize * pxJS() / w / DPR;   // a winn
 function pickNear(x, y, Rr) {
   _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight; let best = -1, bs = 1, bd = 0, bR = Rr;
   for (let i = 0; i < N; i++) {
-    if (TA[i] < 1 || i === lockI) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5 || w > 600000) continue; const spx = starPx(i, w); if (spx < 3) continue;
+    if (TA[i] < 1 || i === lockI) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5 || w > (LOOK.hoverDist ?? 4e5)) continue; const spx = starPx(i, w); if (spx < (LOOK.hoverPx ?? 2.5)) continue;   // aim assist reaches exactly as far as hovering does
     const X = ((e[0] * px + e[4] * py + e[8] * pz + e[12]) / w * .5 + .5) * W, Y = (-(e[1] * px + e[5] * py + e[9] * pz + e[13]) / w * .5 + .5) * H, d = Math.hypot(X - x, Y - y), R_ = Rr + Math.min(Rr * 4, spx * .6), s = d / R_;
     if (s < bs) { bs = s; best = i; bd = d; bR = R_ }
   }

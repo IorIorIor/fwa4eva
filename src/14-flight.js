@@ -122,6 +122,12 @@ function updatePlayer(dt) {
     const lockCap = lockI >= 0 && lockI === nearI ? 4 + g0 * L.approachRate : Infinity;   // a locked star always eases you to a stop beside it
     const capIn = Math.min(nearCap, lockCap) / Math.max(ap, .25), capW = thrusting ? Math.min(nearCap, lockCap) / Math.max(apW, .25) : Infinity;   // strict heading in, four times looser heading out
     const prox = nearI >= 0 ? (1 - sstep(g0, 0, Z * .5)) * L.nearCalm : 0;   // close to a winner the engine is gentle
+    /* orbiting: close to a star you aren't locked onto, its gravity takes over. Sized so a circular orbit at r0 = orbitR × its
+       radius takes orbitT seconds: v0 = 2πr0/T and GM = v0²·r0 = 4π²r0³/T², pulling GM/r² toward it. In there the glide drag
+       is off (orbits keep going), the engine is a gentle orbitThrust × GM/r0² for nudging between orbits, and speed is held
+       under 1.3 × escape velocity √(2GM/r), so you can be captured and can always climb out. ob blends it in at the zone's edge. */
+    let ob = 0, GM = 0, oR = 0;
+    if (L.orbit && nearI >= 0 && lockI !== nearI) { const Rs = starR(nearI), r0 = Rs * L.orbitR, Ro = Rs * Math.max(L.orbitZone, L.orbitR * 1.5); GM = 4 * Math.PI * Math.PI * r0 * r0 * r0 / (L.orbitT * L.orbitT); oR = r0; ob = 1 - sstep(nearCD, Ro * .6, Ro) }
     const T1 = Math.max(1, L.cruiseTime), T2 = Math.max(T1 + 1, L.lightTime), V1 = L.cruiseSpeed, VL = LIGHT * .97;
     const vAt = c => { const t = c * T2; return t <= T1 ? 150 * Math.pow(V1 / 150, t / T1) : V1 * Math.pow(VL / V1, Math.min(1, (t - T1) / (T2 - T1))) };   // cruise = seconds of straight thrust / T2
     const cAt = v => { v = Math.max(150, v); const t = v <= V1 ? T1 * Math.log(v / 150) / Math.log(V1 / 150) : T1 + (T2 - T1) * Math.log(v / V1) / Math.log(VL / V1); return Math.min(1, t / T2) };
@@ -131,17 +137,19 @@ function updatePlayer(dt) {
     if (turnAmt > 0) { const capC = T1 / T2 * Math.min(1, L.steerCap / V1); if (p.cruise > capC) p.cruise -= (p.cruise - capC) * Math.min(1, turnAmt * L.steerSlow * 2.5 * dt) }   // steering bleeds the build-up back to cruise
     const vC = vAt(p.cruise) * (1 + boostK * L.boostTop), spNow = p.vel.length();
     const accel = (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
-    p.vel.addScaledVector(wish, accel * dt);
+    p.vel.addScaledVector(wish, (accel + (GM / (oR * oR || 1) * L.orbitThrust - accel) * ob) * dt);
     if (gasOn) { const vf = p.vel.dot(fwd); tmp.copy(p.vel).addScaledVector(fwd, -vf); p.vel.addScaledVector(tmp, -(1 - Math.exp(-2.8 * dt))) }
-    p.vel.multiplyScalar(Math.exp(-(braking ? 5.5 : thrusting ? .9 : 1 / Math.max(.1, L.glide)) * dt));   // let go and it glides
+    p.vel.multiplyScalar(Math.exp(-(braking ? 5.5 : thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
     const vmax = Math.min(thrusting ? vC : Infinity, turnAmt > 0 ? Math.min(vC, L.steerCap) + Math.max(0, vC - L.steerCap) * (1 - turnAmt) : Infinity);
     { const sp = p.vel.length(); if (sp > vmax) p.vel.setLength(Math.max(vmax, sp * Math.exp(-(thrusting ? 4 : 1 / Math.max(.1, L.glide)) * dt))) }   // eases down, never snaps
     {   // heading into a winner your speed eases down to what it allows (which shrinks as you close in), and never lets you slam in
       const sp = p.vel.length();
-      if (sp > capIn) p.vel.multiplyScalar((capIn + (sp - capIn) * Math.exp(-3 * L.nearBrake * dt)) / sp);
-      if (ap > .5 && gap > 0 && gap < Z * .5) { const s2 = p.vel.length(), tau = gap / Math.max(1, s2 * ap); if (tau < .5 && s2 > 60) p.vel.multiplyScalar(Math.exp(-1.5 / Math.max(.05, tau) * dt)) }
+      const capO = ob > 0 ? Math.sqrt(2 * GM / Math.max(nearCD, 1)) * 1.3 : Infinity, capX = ob > 0 ? capIn + (capO - capIn) * ob : capIn;   // in orbit the cap is escape speed, not the approach limit
+      if (sp > capX) p.vel.multiplyScalar((capX + (sp - capX) * Math.exp(-3 * L.nearBrake * dt)) / sp);
+      if (ob < .5 && ap > .5 && gap > 0 && gap < Z * .5) { const s2 = p.vel.length(), tau = gap / Math.max(1, s2 * ap); if (tau < .5 && s2 > 60) p.vel.multiplyScalar(Math.exp(-1.5 / Math.max(.05, tau) * dt)) }
     }
-    if (nearI >= 0 && !thrusting) {   // let go beside a winner and it gently draws you to the docking distance
+    if (ob > 0) { starPos(nearI, tmp2).sub(p.pos); const r = Math.max(tmp2.length(), 1); p.vel.addScaledVector(tmp2, GM / (r * r * r) * ob * dt) }   // gravity: GM/r² toward the star
+    if (nearI >= 0 && !thrusting && ob < .01) {   // let go beside a winner and it gently draws you to the docking distance
       const w0 = 1 - sstep(nearCD, dockDist(nearI), stopR(nearI) * 2.5), w = w0 * w0;
       if (w > 0) { starPos(nearI, tmp); tmp2.copy(p.pos).sub(tmp).setLength(dockDist(nearI)).add(tmp).sub(p.pos); p.vel.addScaledVector(tmp2, 7 * w * L.wellPull * dt); p.vel.multiplyScalar(Math.exp(-3.5 * w * L.wellPull * dt)) }
     }

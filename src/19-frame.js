@@ -217,7 +217,12 @@ function updateLockMark() {
     lockMark.hidden = false; crossEl.classList.add('lockon'); lockMark.classList.toggle('edge', !on); lockMark.style.setProperty('--a', Math.atan2(-y, x) + 'rad'); lockMark.style.width = lockMark.style.height = px + 'px'; lockMark.style.left = ((x * .5 + .5) * innerWidth) + 'px'; lockMark.style.top = ((-y * .5 + .5) * innerHeight) + 'px';
   } else if (!lockMark.hidden) { lockMark.hidden = true; crossEl.classList.remove('lockon') }
 }
-let hoverT = 0, lastRing = null, hovPick = -1; const tipAt = { x: 0, y: 0 };
+let hoverT = 0, lastRing = null, hovPick = -1;
+// the full record flickers on piece by piece: date, title, screenshot, then each line of details
+function cardFlicker() {
+  const parts = [...tip.querySelectorAll('.td, .tt, canvas.tshot, dl > div, a')]; let t = 0;
+  parts.forEach(e => { e.style.setProperty('--fk', 'flk' + (1 + (Math.random() * 3 | 0))); e.style.setProperty('--fd', (.35 + Math.random() * .3).toFixed(2) + 's'); e.style.setProperty('--fdl', (t += .05 + Math.random() * .06).toFixed(2) + 's'); e.classList.remove('flk-go'); void e.offsetWidth; e.classList.add('flk-go') });
+} const tipAt = { x: 0, y: 0 };
 const ringTip = R => { const n = R.lvl === 2 ? null : perYear[Math.floor(R.y) - 2000] || 0; return tipBox(R.lvl === 2 ? `${MONTHS[R.m]} ${R.yr}` : R.lvl === 0 ? `${R.yr} · five-year mark` : String(R.yr), R.lvl === 2 ? `${MONTHS[R.m]} ${R.yr}` : `${n.toLocaleString('en')} winners`) };
 function updateHover(dt) {
   hoverT += dt; if (hoverT > .06) {
@@ -233,7 +238,9 @@ function updateHover(dt) {
   }
   // what the tooltip shows: a winner you point at; else the one you're beside (opened up into its full record); else your lock
   const map = S.mode === 'map', pin = cardI >= 0 ? cardI : !map && lockI >= 0 ? lockI : -1;
-  const put = (key, html, full) => { if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full) drawCardImg(cardI) } tip.classList.toggle('full', !!full); tip.hidden = false };
+  const put = (key, html, full) => {
+    if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full) { drawCardImg(cardI); cardFlicker() } }
+    tip.classList.toggle('full', !!full); tip.classList.toggle('dock', !!full && !coarse); tip.hidden = false };
   if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (ringHov && pin < 0) { put('r' + ringHov.y, ringTip(ringHov), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (pin >= 0) {
@@ -248,7 +255,8 @@ function updateHover(dt) {
       put('p' + pin, tipHTML(pin) + tipMore(pin), pin === cardI);
       const rpx = starR(pin) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), full = pin === cardI;   // the star's own radius on screen
       let x = (tmp.x * .5 + .5) * innerWidth + (full ? rpx * .72 : 0), y = (-tmp.y * .5 + .5) * innerHeight - (full ? rpx * .5 : 0);
-      if (full) { const w = tip.offsetWidth + 24, h = tip.offsetHeight + 24; if (x + w > innerWidth) x = Math.max(8, (tmp.x * .5 + .5) * innerWidth - rpx * .72 - w); x = Math.max(8, Math.min(innerWidth - w, x)); y = Math.max(60, Math.min(innerHeight - h - 8, y)) }
+      if (full && !coarse) { x = 24; y = Math.max(70, (innerHeight - tip.offsetHeight) / 2) }   // the full record waits on the left, still, whatever the camera does
+      else if (full) { const w = tip.offsetWidth + 24, h = tip.offsetHeight + 24; if (x + w > innerWidth) x = Math.max(8, (tmp.x * .5 + .5) * innerWidth - rpx * .72 - w); x = Math.max(8, Math.min(innerWidth - w, x)); y = Math.max(60, Math.min(innerHeight - h - 8, y)) }
       tip.style.left = x + 'px'; tip.style.top = y + 'px';
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
