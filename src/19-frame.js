@@ -158,12 +158,12 @@ function updateTrail(dt, on) {
   };
   if (thrusting) { trW += ((gasOn ? 1 : 0) - trW) * Math.min(1, dt * 7); trB += ((boosting ? 1 : 0) - trB) * Math.min(1, dt * 7) }
   if (on && thrusting) {
-    if (!curStrand) { curStrand = { pts: [], len: 0, alpha: 1, rel: null }; strands.unshift(curStrand); if (strands.length > 8) strands.pop() }
-    const st = curStrand; st.rel = null; const want = L.trLenCrawl + (L.trLenCruise - L.trLenCrawl) * sstep(sp, 2, 900) + (L.trLenFast - L.trLenCruise) * sstep(sp, 900, 600000);
+    if (!curStrand) { curStrand = { pts: [], len: 0, alpha: 0, rel: null }; strands.unshift(curStrand); if (strands.length > 8) strands.pop() }
+    const st = curStrand; st.rel = null; st.alpha = Math.min(1, st.alpha + dt / Math.max(.01, L.trIn ?? .3)); const want = L.trLenCrawl + (L.trLenCruise - L.trLenCrawl) * sstep(sp, 2, 900) + (L.trLenFast - L.trLenCruise) * sstep(sp, 900, 600000);
     st.len += (want - st.len) * (1 - Math.exp(-(want > st.len ? L.trGrow : L.trShrink) * dt)); emit(st, 1);
   } else if (curStrand) { const st = curStrand; st.rel = (st.rel || 0) + dt; const f = 1 - st.rel / Math.max(.05, L.trRelease); if (f <= 0 || !on || sp < 6) curStrand = null; else emit(st, f * f * (3 - 2 * f)) }   // let go: keep laying trail while it dims, then detach
   const still = sp < 6;
-  for (let i = strands.length - 1; i >= 0; i--) { const st = strands[i]; if (st === curStrand) continue; const r = still ? L.trStill : L.trFade; st.alpha *= Math.exp(-r * .6 * dt); st.len *= Math.exp(-r * .35 * dt); trimStrand(st); if (st.alpha < .02 || st.len < 1 || st.pts.length < 2) strands.splice(i, 1) }
+  for (let i = strands.length - 1; i >= 0; i--) { const st = strands[i]; if (st === curStrand) continue; const r = Math.min(still ? L.trStill : L.trFade, 6.5 / Math.max(.01, L.trOut ?? .45)); st.alpha *= Math.exp(-r * .6 * dt); st.len *= Math.exp(-r * .35 * dt); trimStrand(st); if (st.alpha < .02 || st.len < 1 || st.pts.length < 2) strands.splice(i, 1) }
   let v = 0; const pxW = Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight), O = player.pos; trail.position.copy(O);   // vertices relative to the ship
   // right at the engine the ribbon is as wide as the hole it comes out of, and it widens to its own width over a few ship lengths
   const holeW = HOLE.r * 2 * avatar.scale.x * L.trHead, blend = avatar.scale.x * 22;
@@ -222,7 +222,7 @@ function updateHover(dt) {
     let h = -1, R = null;
     if (map) { if (mouse.in && !down && booted && !tween) { const r = mapHover(hx, hy); h = r.i; R = r.ring } }   // the map points at rings, and at winners once you're close
     else { if ((aim || mouse.in) && !down && booted) h = pick(hx, hy); if (h >= 0 && starPx(h, Math.max(1, camera.position.distanceTo(starPos(h, tmp)))) < 2.5) h = -1 }   // label once it's a few px across
-    hovPick = h; if (h === openI) h = -1;   // a click can only take a star you've just hovered
+    if (!down) hovPick = h; if (h === openI) h = -1;   // a click can only take a star you've just hovered
     if (h >= 0 && h !== lastHov) { starPos(h, tmp).project(camera); tingle(galOf(D[h].year), h, Math.max(-1, Math.min(1, tmp.x))) } lastHov = h;
     if (R && (!lastRing || lastRing.y !== R.y)) tingle(galOf(R.yr), 5000 + Math.round(R.y * 12), Math.max(-1, Math.min(1, hx / innerWidth * 2 - 1)));
     ringHov = R; lastRing = R; if (R) timeRings.u.hi.value = R.y;
