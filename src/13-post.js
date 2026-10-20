@@ -38,7 +38,7 @@ const corePuffs = (() => {
 })();
 // the same puffs (and the bulge's), raymarched instead: a glowing, self-shadowing cloud with the same shape, its grain from noise
 const puffVol = (() => {
-  const u = { cam: uniform(new V3()), E: uniform(1), sB: uniform(1), kB: uniform(0), R: uniform(1), H: uniform(1), kC: uniform(0), f: uniform(1), grain: uniform(.7), fB: uniform(1), gB: uniform(.7), gC: uniform(.7), shB: uniform(1), shC: uniform(1), vB: uniform(0), vC: uniform(0), flB: uniform(0), flC: uniform(0), tB: uniform(.5), tC: uniform(.5), dust: uniform(.6), steps: uniform(32), bh: uniform(BH.sh * 2), tint: uniform(.5) };
+  const u = { cam: uniform(new V3()), E: uniform(1), sB: uniform(1), kB: uniform(0), R: uniform(1), H: uniform(1), kC: uniform(0), f: uniform(1), grain: uniform(.7), fB: uniform(1), gB: uniform(.7), gC: uniform(.7), shB: uniform(1), shC: uniform(1), vB: uniform(0), vC: uniform(0), flB: uniform(0), flC: uniform(0), tB: uniform(.5), tC: uniform(.5), kG: uniform(0), sG: uniform(1), dust: uniform(.6), steps: uniform(32), bh: uniform(BH.sh * 2), tint: uniform(.5) };
   const m = skyMat({ blend: 'premul', side: THREE.BackSide, depthTest: false });
   m.fragmentNode = Fn(() => {
     const ro = u.cam, rd = normalize(positionGeometry.sub(u.cam)).toVar();
@@ -59,7 +59,8 @@ const puffVol = (() => {
         return mix(1, g1, amt).mul(mix(1, n2.mul(1.8).add(.1), fl)) };
       const tintOf = k => select(k.lessThan(.5), mix(vec3(.72, .86, 1.2), vec3(1), k.mul(2)), mix(vec3(1), vec3(1.2, .9, .62), k.sub(.5).mul(2)));
       const grB = grainOf(u.fB, u.gB, u.shB, u.vB, u.flB), grC = grainOf(u.f, u.gC, u.shC, u.vC, u.flC), clr = smoothstep(u.bh, u.bh.mul(2), length(x));
-      const dB = bul.mul(grB), dC = cor.mul(grC), d = dB.add(dC).mul(clr).mul(dw), gr = dB.add(dC).div(bul.add(cor).max(1e-9));
+      const qg = length(x).div(u.sG), glw = exp(qg.mul(qg).mul(-.5)).mul(u.kG).div(u.sG);   // the core's glow: a soft sphere of light
+      const dB = bul.mul(grB), dC = cor.mul(grC).add(glw), d = dB.add(dC).mul(clr).mul(dw), gr = dB.add(dC).div(bul.add(cor).max(1e-9));
       const tc = tintOf(u.tB).mul(dB).add(tintOf(u.tC).mul(dC)).div(dB.add(dC).max(1e-9)).mul(tintOf(u.tint).mul(2).sub(1).max(.3));
       col.addAssign(T.mul(mix(vec3(1, .8, .58), vec3(1, .93, .82), gr.min(1))).mul(tc).mul(d)); T.mulAssign(exp(d.mul(u.dust).negate()));
     });

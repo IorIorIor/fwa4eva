@@ -1,4 +1,5 @@
 /* ───────────────────────── every frame ───────────────────────── */
+let coreGlowV = { k: 0, s: 1 };   // the core glow's strength and size, for its volumetric version
 const _v2 = new THREE.Vector2();
 function resize() { renderer.setSize(innerWidth, innerHeight, false); shipRenderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.getDrawingBufferSize(_v2); U.res.value.copy(_v2); U.dpr.value = _v2.y / Math.max(1, innerHeight) }
 function setDpr(d, force) { d = Math.max(.5, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); shipRenderer.setPixelRatio(d); resize() } }
@@ -328,8 +329,8 @@ function tick(now) {
     b.vrot.value.setFromMatrix4(camera.matrixWorldInverse).multiply(GQ3); b.px.value = camera.projectionMatrix.elements[0]; b.py.value = camera.projectionMatrix.elements[5]; b.t.value = worldT;
     // from far off the shadow hides completely in the core's own light, and the core blooms instead; up close it's all there
     const dGC = camera.position.distanceTo(GC), F0 = BH.rs * (L.bhFar ?? 25), farK = sstep(dGC, F0, F0 * 3);
-    const g = (L.bhGlow ?? 1) * (S.mode === 'map' ? .35 : .8); b.veil.value = farK; coreFlare.material.opacity = farK * Math.min(1, g); coreFlare.material.color.setRGB(1, .93, .82).multiplyScalar(Math.max(1, g)); coreFlare.visible = farK > .002 && g > 0;   // above 1 it brightens rather than just going opaque
-    coreFlare.scale.setScalar(Math.max(BH.rs * 30, dGC * (L.bhGlowSize ?? 5) / 100));
+    const g = (L.bhGlow ?? 1) * (S.mode === 'map' ? .35 : .8); b.veil.value = farK; coreFlare.material.opacity = farK * Math.min(1, g); coreFlare.material.color.setRGB(1, .93, .82).multiplyScalar(Math.max(1, g)); coreFlare.visible = farK > .002 && g > 0 && !L.bhGlowVol;   // above 1 it brightens rather than just going opaque
+    coreFlare.scale.setScalar(Math.max(BH.rs * (L.bhGlowMin ?? 30), dGC * (L.bhGlowSize ?? 5) / 100)); coreGlowV = { k: farK * g, s: Math.max(BH.rs * (L.bhGlowMin ?? 30), dGC * (L.bhGlowSize ?? 5) / 100) * .2 };   // the volumetric one: same strength and size
     { const R = (GAL_R0 + GAL_LEN) * (L.bhPuffR ?? .06), d = L.bhPuffD ?? 1, n = Math.round(Math.min(40, L.bhPuffN ?? 16) * 1000), nr = R * (L.bhPuffNear ?? .5);   // the core's puffs, faded in once you're a little way off
       corePuffs.scale.set(R, R * (L.bhPuffH ?? 1), R); corePuffs.geometry.instanceCount = n; corePuffs.u.sz.value = .03 / d * (L.bhPuffSize ?? 1); puffFx(corePuffs.u, L, 'bhPuff');
       corePuffs.u.op.value = .03 * (L.bhPuffs ?? 1) * Math.sqrt(d) * sstep(dGC, nr, nr * 2) * (S.mode === 'map' ? .5 : 1); corePuffs.visible = (L.bhPuffs ?? 1) > 0 && n > 0 && !L.puffVol }   // a fixed slice of the view, so the bloom reads at any distance
@@ -367,12 +368,12 @@ function tick(now) {
     bloomPass.threshold.value = Math.min(1, L.bloomThr * (1 - .45 * k) * (1 + (L.coreThr - 1) * coreK))
     PU.exp.value = L.exposure * (1 + (L.coreExposure - 1) * coreK);
   }
-  {   // the core and bulge puffs, raymarched (when switched on)
-    const on = !!L.puffVol, pv = puffVol.u; puffVol.mesh.visible = on;
+  {   // the core and bulge puffs, raymarched (when switched on), and the core's glow as a volume
+    const pOn = !!L.puffVol, gOn = !!L.bhGlowVol && coreGlowV.k > .002, on = pOn || gOn, pv = puffVol.u; puffVol.mesh.visible = on;
     if (on) {
-      const R = (GAL_R0 + GAL_LEN) * (L.bhPuffR ?? .06), sB = bulgeR * .42 * (L.bulgePuffSpread ?? 1), E = Math.max(sB * 3.2, R * 1.4), cg = 1 + ((L.coreGlows ?? 1) - 1) * coreIn;
+      const R = (GAL_R0 + GAL_LEN) * (L.bhPuffR ?? .06), sB = bulgeR * .42 * (L.bulgePuffSpread ?? 1), E = Math.max(pOn ? Math.max(sB * 3.2, R * 1.4) : 0, gOn ? coreGlowV.s * 3.5 : 0), cg = 1 + ((L.coreGlows ?? 1) - 1) * coreIn;
       puffVol.mesh.scale.setScalar(E); pv.E.value = E; pv.cam.value.copy(camera.position); puffVol.mesh.worldToLocal(pv.cam.value);
-      pv.sB.value = sB; pv.R.value = R; pv.H.value = L.bhPuffH ?? 1; pv.kB.value = .9 * L.bulge * L.bulgePuffs * L.puffVolGlow * cg; pv.kC.value = .6 * (L.bhPuffs ?? 1) * L.puffVolGlow * cg;
+      pv.sB.value = sB; pv.R.value = R; pv.H.value = L.bhPuffH ?? 1; pv.kB.value = pOn ? .9 * L.bulge * L.bulgePuffs * L.puffVolGlow * cg : 0; pv.kC.value = pOn ? .6 * (L.bhPuffs ?? 1) * L.puffVolGlow * cg : 0; pv.kG.value = gOn ? coreGlowV.k * 1.4 : 0; pv.sG.value = coreGlowV.s;
       const gs = L.puffVolGrainSize ?? 1, cnt = k => Math.cbrt(Math.max(.5, k) / 16), gm = (base, tex) => Math.min(1, base + (tex ?? 0) * (1 - base));   // the particle puffs' sliders steer the volume too
       pv.f.value = 6 * (L.bhPuffD ?? 1) * cnt(L.bhPuffN ?? 16) / R / gs / (L.bhPuffSize ?? 1); pv.fB.value = 6 * (L.bulgePuffD ?? 1) * cnt((L.bulgePuffN ?? 6) * 2.7) / sB / gs / (L.bulgePuffSize ?? 1);
       pv.gC.value = gm(L.puffVolGrain, L.bhPuffTex); pv.gB.value = gm(L.puffVolGrain, L.bulgePuffTex); pv.shC.value = L.bhPuffSoft ?? 1; pv.shB.value = L.bulgePuffSoft ?? 1;
