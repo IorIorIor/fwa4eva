@@ -484,3 +484,22 @@ body.map #gl,body.map #gl.hovering{cursor:pointer!important}   /* on the map the
 .mapnote{display:flex;flex-direction:column;gap:6px;margin:10px 16px 4px;padding:10px 12px;border:1px solid rgba(255,214,140,.5);background:rgba(255,214,140,.07);font-family:var(--mono);font-size:11px;color:var(--ink)}
 .mapnote b{font-weight:400;text-transform:uppercase;letter-spacing:.12em;color:#ffd99a}
 .mapnote .btn{align-self:flex-start}
+
+/* date dials: 3D drums like a watch's date disc. --metal blends from dark glass to brushed metal (steel → gold with --tone) */
+#rmPanel .wheels{-webkit-mask:none;mask:none;height:auto;display:grid;grid-template-columns:1fr 1.3fr 1.3fr;gap:8px;perspective:var(--persp,600px)}
+#rmPanel .wheels::before{display:none}
+#rmPanel .dial{position:relative;height:190px;overflow:hidden;cursor:ns-resize;touch-action:none;user-select:none;border-radius:6px;
+  --steel:#c9ced4;--gold:#e3c27c;--mc:color-mix(in srgb,var(--gold) calc(var(--tone,0) * 100%),var(--steel));
+  background:linear-gradient(180deg,#050506 0%,color-mix(in srgb,var(--mc) calc(var(--metal,.7) * 55%),#16171a) 50%,#050506 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),inset 0 14px 18px -10px #000,inset 0 -14px 18px -10px #000}
+#rmPanel .dial::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:calc(var(--metal,.7) * .5);background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,rgba(0,0,0,.05) 1px 3px)}   /* brushing */
+#rmPanel .drum{position:absolute;inset:0;transform-style:preserve-3d}
+#rmPanel .di{position:absolute;left:0;right:0;top:50%;height:var(--ih);margin-top:calc(var(--ih) / -2);line-height:var(--ih);text-align:center;backface-visibility:hidden;
+  font-family:"FF Good Pro",var(--body);font-size:var(--dfont,22px);font-variant-numeric:tabular-nums;
+  color:color-mix(in srgb,#15171a calc(var(--metal,.7) * 100%),#ffffff);text-shadow:0 1px 0 rgba(255,255,255,calc(var(--metal,.7) * .45)),0 -1px 0 rgba(0,0,0,.35)}
+#rmPanel .di::before{content:"";position:absolute;right:8px;top:0;width:8px;height:1px;background:currentColor;opacity:calc(var(--ticks,1) * .45)}   /* a tick between values */
+#rmPanel .di.on{font-weight:600;color:#fff;text-shadow:0 0 10px rgba(255,255,255,.35),0 1px 1px rgba(0,0,0,.6)}
+/* the window: sapphire glass in a bezel */
+#rmPanel .dial .lens{position:absolute;left:3px;right:3px;top:50%;height:calc(var(--ih) * var(--mag,1.2) + 4px);transform:translateY(-50%);pointer-events:none;border-radius:4px;z-index:2;
+  background:linear-gradient(180deg,rgba(255,255,255,calc(var(--lens,.8) * (.22 - var(--metal,.7) * .16))),rgba(255,255,255,0) 45%,rgba(255,255,255,calc(var(--lens,.8) * .04)));
+  box-shadow:0 0 0 1.5px color-mix(in srgb,var(--mc) 80%,transparent),0 0 0 3px rgba(0,0,0,.6),0 6px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,calc(var(--lens,.8) * .5));opacity:calc(.25 + var(--lens,.8) * .75)}

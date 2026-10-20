@@ -94,13 +94,31 @@ const rmenu = (() => {
     let d = start.getUTCDate(), m = start.getUTCMonth(), y = start.getUTCFullYear();
     const w = document.createElement('div'); w.className = 'wheels'; body.append(w);
     const info = document.createElement('div'); info.className = 'rwin'; body.append(info);
-    const IH = 34, mk = (items, at, set) => {
-      const c = document.createElement('div'); c.className = 'wcol'; c.innerHTML = '<div class="wpad"></div>' + items.map(t => `<div class="wi">${t}</div>`).join('') + '<div class="wpad"></div>'; w.append(c);
-      let cur = at, tm = 0; requestAnimationFrame(() => { c.scrollTop = at * IH; mark() });
-      const mark = () => c.querySelectorAll('.wi').forEach((e, k) => e.classList.toggle('on', k === cur));
-      c.addEventListener('scroll', () => { const k = Math.max(0, Math.min(items.length - 1, Math.round(c.scrollTop / IH))); if (k !== cur) { cur = k; nav.tick(); mark(); set(k) } clearTimeout(tm); tm = setTimeout(update, 120) });
-      c.addEventListener('click', e => { const i = [...c.querySelectorAll('.wi')].indexOf(e.target); if (i >= 0) c.scrollTo({ top: i * IH, behavior: 'smooth' }) });
-      return c;
+    // each wheel is a 3D drum, like the date disc of a watch: numerals on a turning cylinder behind a sapphire window.
+    // Scroll or drag it (it keeps spinning, then settles on a value), or click a value; every value it passes ticks
+    const L = LOOK; w.style.setProperty('--persp', (L.dialPersp ?? 600) + 'px'); w.style.setProperty('--metal', L.dialMetal ?? .7); w.style.setProperty('--tone', L.dialTone ?? 0);
+    w.style.setProperty('--lens', L.dialLens ?? .8); w.style.setProperty('--dfont', (L.dialFont ?? 22) + 'px'); w.style.setProperty('--ticks', L.dialTicks ?? 1); w.style.setProperty('--mag', L.dialMag ?? 1.2);
+    const mk = (items, at, set) => {
+      const col = document.createElement('div'); col.className = 'dial'; const drum = document.createElement('div'); drum.className = 'drum'; col.append(drum); w.append(col);
+      const R = L.dialRadius ?? 90, step = L.dialStep ?? 22, ih = 2 * R * Math.sin(step * Math.PI / 360);
+      col.style.setProperty('--ih', ih.toFixed(1) + 'px');
+      const els = items.map(t => { const e = document.createElement('div'); e.className = 'di'; e.textContent = t; drum.append(e); return e }); const lens = document.createElement('i'); lens.className = 'lens'; col.append(lens);
+      let pos = at, vel = 0, cur = at, raf = 0, drag = null, tm = 0;
+      const render = () => els.forEach((e, i) => { const a = (i - pos) * step; if (Math.abs(a) > 92) { e.style.visibility = 'hidden'; return } e.style.visibility = ''; const f = Math.cos(a * Math.PI / 180);
+        e.style.transform = `rotateX(${(-a).toFixed(2)}deg) translateZ(${R}px)${i === cur ? ` scale(${L.dialMag ?? 1.2})` : ''}`; e.style.opacity = Math.max(0, 1 - (L.dialFade ?? .6) * (1 - f) * 1.6).toFixed(3); e.classList.toggle('on', i === cur) });
+      const settle = () => { clearTimeout(tm); tm = setTimeout(update, 140) };
+      const tick = () => { const k = Math.max(0, Math.min(items.length - 1, Math.round(pos))); if (k !== cur) { cur = k; if ((L.dialSound ?? 1) > 0) nav.tick(); set(k); settle() } };
+      const run = () => {
+        if (!drag) { vel *= L.dialFriction ?? .93; pos += vel; if (pos < 0 || pos > items.length - 1) { vel *= .5; pos += ((pos < 0 ? 0 : items.length - 1) - pos) * .25 }   // rubber band at the ends
+          if (Math.abs(vel) < .03) { const tgt = Math.max(0, Math.min(items.length - 1, Math.round(pos))); pos += (tgt - pos) * (L.dialSpring ?? .22); if (Math.abs(tgt - pos) < .002) { pos = tgt; vel = 0 } } }
+        tick(); render(); raf = (drag || vel || Math.abs(pos - Math.round(pos)) > .002) ? requestAnimationFrame(run) : 0;
+      };
+      const go = () => { if (!raf) raf = requestAnimationFrame(run) };
+      col.addEventListener('wheel', e => { e.preventDefault(); e.stopPropagation(); vel += (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0022; vel = Math.max(-1.6, Math.min(1.6, vel)); go() }, { passive: false });
+      col.addEventListener('pointerdown', e => { e.preventDefault(); drag = { y: e.clientY, t: performance.now(), v: 0, moved: false }; vel = 0; try { col.setPointerCapture(e.pointerId) } catch (er) { } go() });
+      col.addEventListener('pointermove', e => { if (!drag) return; const dy = e.clientY - drag.y, now = performance.now(), dp = -dy / (R * step * Math.PI / 180); if (Math.abs(dy) > 1) drag.moved = true; pos += dp; drag.v = dp / Math.max(1, now - drag.t) * 16; drag.y = e.clientY; drag.t = now });
+      col.addEventListener('pointerup', e => { if (!drag) return; const moved = drag.moved; vel = drag.v; drag = null; if (!moved) { const r = col.getBoundingClientRect(), off = (e.clientY - (r.top + r.height / 2)) / ih; vel = 0; pos += Math.round(off) * .0001; const tgt = Math.max(0, Math.min(items.length - 1, Math.round(pos + off))); const from = pos; let t0 = 0; const anim = () => { t0 += .12; pos = from + (tgt - from) * Math.min(1, 1 - Math.pow(1 - t0, 3)); tick(); render(); if (t0 < 1) requestAnimationFrame(anim) }; anim() } go() });
+      render();
     };
     mk(Array.from({ length: 31 }, (_, k) => k + 1), d - 1, k => { d = k + 1 });
     mk(MONTHS.map(s => s.slice(0, 3)), m, k => { m = k });
