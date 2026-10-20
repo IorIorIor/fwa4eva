@@ -33,7 +33,7 @@ const intro = {
       this.t = Math.min(1, this.t + dt / (reduceMotion ? 2.5 : this.dur));
       // one move: the camera swings from straight overhead round to just above and behind, easing in and out a great deal,
       // and it keeps looking at the ship until, at the very end, it settles into looking ahead past it
-      const ez = quint(sstep(this.t, .02, .98)), w = quint(sstep(this.t, .3, 1));
+      const ez = 1 - Math.pow(1 - Math.pow(Math.min(1, Math.max(0, (this.t - .02) / .96)), 1.4), 4), w = quint(sstep(this.t, .3, 1));
       const b = _ib.copy(INTRO_END).normalize(), ang = Math.acos(b.y), d = Math.exp(Math.log(this.D0) * (1 - ez) + Math.log(INTRO_END.length()) * ez);
       camera.position.copy(_ia.set(0, 1, 0).applyAxisAngle(_ix.set(1, 0, 0), ang * ez).multiplyScalar(d)).applyQuaternion(rig.q).add(player.pos);
       const toShip = _ib.copy(player.pos).sub(camera.position).normalize(), fwd = _ix.set(0, 0, -1).applyQuaternion(rig.q), dir = toShip.lerp(fwd, w).normalize();

@@ -34,11 +34,11 @@ const corePuffs = (() => {
     else { const r = Math.min(1.2, -Math.log(1 - R_() * .96) * .32), a = R_() * Math.PI * 2, h = .02 + .07 * Math.exp(-((r / .35) ** 2)); p.set([Math.cos(a) * r, g() * h, Math.sin(a) * r], i * 3) }   // the disk it thins out into
     cc.setHSL(.08 + R_() * .05, .5, .62 + R_() * .25); c.set([cc.r, cc.g, cc.b], i * 3);
   }
-  const m = softPoints(p, { cols: c, size: .03, op: .03, order: 1 }); m.position.copy(GC); m.quaternion.copy(GQ); return m;
+  const m = softPoints(p, { cols: c, size: .03, op: .03, order: 1, fx: true }); m.position.copy(GC); m.quaternion.copy(GQ); return m;
 })();
 // the same puffs (and the bulge's), raymarched instead: a glowing, self-shadowing cloud with the same shape, its grain from noise
 const puffVol = (() => {
-  const u = { cam: uniform(new V3()), E: uniform(1), sB: uniform(1), kB: uniform(0), R: uniform(1), H: uniform(1), kC: uniform(0), f: uniform(1), grain: uniform(.7), dust: uniform(.6), steps: uniform(32), bh: uniform(BH.sh * 2) };
+  const u = { cam: uniform(new V3()), E: uniform(1), sB: uniform(1), kB: uniform(0), R: uniform(1), H: uniform(1), kC: uniform(0), f: uniform(1), grain: uniform(.7), dust: uniform(.6), steps: uniform(32), bh: uniform(BH.sh * 2), tint: uniform(.5) };
   const m = skyMat({ blend: 'premul', side: THREE.BackSide, depthTest: false });
   m.fragmentNode = Fn(() => {
     const ro = u.cam, rd = normalize(positionGeometry.sub(u.cam)).toVar();
@@ -55,7 +55,7 @@ const puffVol = (() => {
       const cor = exp(dot(qc, qc).mul(-.5)).mul(.45).add(exp(r.div(u.R.mul(.32)).negate()).mul(exp(x.y.div(hD).pow(2).mul(-.5))).mul(.55)).mul(u.kC).div(u.R);
       const gr = mix(1, fbm5(x.mul(u.f)).mul(2.2).sub(.35).max(0), u.grain), clr = smoothstep(u.bh, u.bh.mul(2), length(x));
       const d = bul.add(cor).mul(gr).mul(clr).mul(dw);
-      col.addAssign(T.mul(mix(vec3(1, .8, .58), vec3(1, .93, .82), gr.min(1))).mul(d)); T.mulAssign(exp(d.mul(u.dust).negate()));
+      col.addAssign(T.mul(mix(vec3(1, .8, .58), vec3(1, .93, .82), gr.min(1))).mul(select(u.tint.lessThan(.5), mix(vec3(.72, .86, 1.2), vec3(1), u.tint.mul(2)), mix(vec3(1), vec3(1.2, .9, .62), u.tint.sub(.5).mul(2)))).mul(d)); T.mulAssign(exp(d.mul(u.dust).negate()));
     });
     return vec4(col, T.oneMinus());
   })();

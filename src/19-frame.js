@@ -31,7 +31,7 @@ function updateAndro() {
   andro.visible = ANDRO; dustFil.visible = ANDRO && L.dustLanes > 0; if (!ANDRO) return;
   bulgeSpr.forEach(s => { s.scale.setScalar(bulgeR * 2 * s.userData.k * L.bulgeSize); s.material.opacity = s.userData.o * L.bulge * f * inK(s.scale.x) * cg });
   { const n = Math.round(Math.min(48, L.bulgePuffN ?? 6) * 1000), d = L.bulgePuffD ?? 1, sp = L.bulgePuffSpread ?? 1;   // finer grain: smaller puffs, each a little brighter so the bulge doesn't fade
-    bulgePts.geometry.instanceCount = n; bulgePts.u.sz.value = 9000 / d / sp; bulgePts.u.op.value = .05 * L.bulge * L.bulgePuffs * Math.sqrt(d) * cg;
+    bulgePts.geometry.instanceCount = n; bulgePts.u.sz.value = 9000 / d / sp * (L.bulgePuffSize ?? 1); puffFx(bulgePts.u, L, 'bulgePuff'); bulgePts.u.op.value = .05 * L.bulge * L.bulgePuffs * Math.sqrt(d) * cg;
     bulgePts.scale.setScalar(sp); bulgePts.position.copy(GC).multiplyScalar(1 - sp); bulgePts.visible = L.bulgePuffs > 0 && n > 0 && !L.puffVol }
   const lp = toLocal(camera.position, tmp), rr = Math.hypot(lp.x, lp.z), inG = (1 - sstep(Math.abs(lp.y), L.dustInH * .4, L.dustInH)) * (1 - sstep(rr, GAL_R0 + GAL_LEN, (GAL_R0 + GAL_LEN) * 1.15));
   const du = dustFil.u; du.dust.value = L.dustLanes * (1 - L.dustInFade * inG); du.nearD.value = L.dustNear; du.wid.value = L.dustWidth; du.blur.value = L.dustBlur; du.armW.value = L.armWidth; du.len.value = L.dustLen; du.wig.value = L.dustWiggle; du.rag.value = L.dustRag; du.fib.value = L.dustFibre; du.brk.value = L.dustBreak;
@@ -40,6 +40,7 @@ function updateAndro() {
   outerDisk.u.op.value = L.outerGlow; outerDisk.visible = L.outerGlow > 0;
   SATS.forEach(s => { const fs = farDimJS(camera.position.distanceTo(s.pos)); s.g.visible = s.stars.visible = L.satellites > 0; s.stars.u.op.value = Math.min(1, L.satellites); s.pts.u.op.value = .18 * L.satellites * fs; s.glow.material.opacity = .5 * s.core * L.satellites * fs; s.core.material.opacity = .9 * s.core * L.satellites * fs });
 }
+const puffFx = (u, L, k) => { u.vari.value = L[k + 'Var'] ?? 0; u.soft.value = L[k + 'Soft'] ?? 1; u.tex.value = L[k + 'Tex'] ?? 0; u.texS.value = L[k + 'TexSize'] ?? 3; u.tint.value = L[k + 'Tint'] ?? .5; u.flick.value = L[k + 'Flick'] ?? 0 };
 const _yt = liveText($('youTime'));
 let rulerGoal = THR, rulerTick = 0, mapYrs = 27;
 const RUL_U = { era: ERAS.map(e => e.u1).concat([ERAS[NERA - 1].u0]).filter(x => x > .001), yr: YEARS.map(y => yearU(Date.UTC(y, 0, 1))).filter(x => x > .001) };
@@ -324,7 +325,7 @@ function tick(now) {
     const g = (L.bhGlow ?? 1) * (S.mode === 'map' ? .35 : .8); b.veil.value = farK; coreFlare.material.opacity = farK * Math.min(1, g); coreFlare.material.color.setRGB(1, .93, .82).multiplyScalar(Math.max(1, g)); coreFlare.visible = farK > .002 && g > 0;   // above 1 it brightens rather than just going opaque
     coreFlare.scale.setScalar(Math.max(BH.rs * 30, dGC * (L.bhGlowSize ?? 5) / 100));
     { const R = (GAL_R0 + GAL_LEN) * (L.bhPuffR ?? .06), d = L.bhPuffD ?? 1, n = Math.round(Math.min(40, L.bhPuffN ?? 16) * 1000), nr = R * (L.bhPuffNear ?? .5);   // the core's puffs, faded in once you're a little way off
-      corePuffs.scale.set(R, R * (L.bhPuffH ?? 1), R); corePuffs.geometry.instanceCount = n; corePuffs.u.sz.value = .03 / d;
+      corePuffs.scale.set(R, R * (L.bhPuffH ?? 1), R); corePuffs.geometry.instanceCount = n; corePuffs.u.sz.value = .03 / d * (L.bhPuffSize ?? 1); puffFx(corePuffs.u, L, 'bhPuff');
       corePuffs.u.op.value = .03 * (L.bhPuffs ?? 1) * Math.sqrt(d) * sstep(dGC, nr, nr * 2) * (S.mode === 'map' ? .5 : 1); corePuffs.visible = (L.bhPuffs ?? 1) > 0 && n > 0 && !L.puffVol }   // a fixed slice of the view, so the bloom reads at any distance
   }
   // the open winner: the screenshot can replace the dot; the lock holds until you let go
@@ -366,7 +367,7 @@ function tick(now) {
       const R = (GAL_R0 + GAL_LEN) * (L.bhPuffR ?? .06), sB = bulgeR * .42 * (L.bulgePuffSpread ?? 1), E = Math.max(sB * 3.2, R * 1.4), cg = 1 + ((L.coreGlows ?? 1) - 1) * coreIn;
       puffVol.mesh.scale.setScalar(E); pv.E.value = E; pv.cam.value.copy(camera.position); puffVol.mesh.worldToLocal(pv.cam.value);
       pv.sB.value = sB; pv.R.value = R; pv.H.value = L.bhPuffH ?? 1; pv.kB.value = .9 * L.bulge * L.bulgePuffs * L.puffVolGlow * cg; pv.kC.value = .6 * (L.bhPuffs ?? 1) * L.puffVolGlow * cg;
-      pv.f.value = 6 * (L.bhPuffD ?? 1) / R; pv.grain.value = L.puffVolGrain; pv.dust.value = L.puffVolDust; pv.steps.value = L.puffVolSteps;
+      pv.f.value = 6 * (L.bhPuffD ?? 1) / R / (L.puffVolGrainSize ?? 1); pv.tint.value = L.puffVolTint ?? .5; pv.grain.value = L.puffVolGrain; pv.dust.value = L.puffVolDust; pv.steps.value = L.puffVolSteps;
     }
   }
   {   // volumetric gas

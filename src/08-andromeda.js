@@ -2,17 +2,24 @@
    A big warm bulge, thin brown dust filaments hugging the inside edge of each arm, pink star-forming knots,
    blue star clouds, a soft blue outer disk and two satellite galaxies. */
 // soft round points sized in world units (like PointsMaterial with size attenuation), optionally dimmed with distance
-function softPoints(pos, { cols = null, size, color = 0xffffff, op = 1, far = false, target = softScene, order = 0 }) {
-  const n = pos.length / 3, u = { op: uniform(op), color: uniform(new C3(color)), sz: uniform(size) }, attrs = { aP: [pos, 3] }; if (cols) attrs.aC = [cols, 3];
-  const m = skyMat(), vC = varyingProperty('vec3', 'vC');
+function softPoints(pos, { cols = null, size, color = 0xffffff, op = 1, far = false, target = softScene, order = 0, fx = false }) {   // fx: the puff controls (size variety, edge, texture, tint, brightness variety)
+  const n = pos.length / 3, u = { op: uniform(op), color: uniform(new C3(color)), sz: uniform(size), vari: uniform(0), soft: uniform(1), tex: uniform(0), texS: uniform(3), tint: uniform(.5), flick: uniform(0) }, attrs = { aP: [pos, 3] }; if (cols) attrs.aC = [cols, 3];
+  const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vS = varyingProperty('float', 'vS');
   m.vertexNode = Fn(() => {
     const mv = modelViewMatrix.mul(vec4(ia('aP', 'vec3'), 1)).toVar(), z = mv.z.negate();
     const ws = length(modelWorldMatrix.mul(vec4(1, 0, 0, 0)).xyz);   // points shrink with whatever they're part of (the exotic winners are scaled down)
-    const px = u.sz.mul(ws).mul(U.res.y).mul(.5).div(max(z, 1e-3)).toVar(), minPx = target === scene ? float(1) : U.minSoft;
-    vC.assign((cols ? ia('aC', 'vec3') : vec3(1)).mul(u.color).mul(far ? farDim(z) : 1).mul(min(1, px.div(minPx).mul(px.div(minPx)))));   // never below a pixel; dimmer instead
+    const h = fx ? hash3(ia('aP', 'vec3').mul(.0137).add(ia('aP', 'vec3').mul(91.7))) : float(.5), h2 = fx ? fract(h.mul(73.17)) : float(.5);   // two stable randoms per puff
+    const px = u.sz.mul(ws).mul(U.res.y).mul(.5).div(max(z, 1e-3)).mul(fx ? mix(1, h.mul(1.6).add(.2), u.vari) : 1).toVar(), minPx = target === scene ? float(1) : U.minSoft;
+    const tint = fx ? select(u.tint.lessThan(.5), mix(vec3(.72, .86, 1.2), vec3(1), u.tint.mul(2)), mix(vec3(1), vec3(1.2, .9, .62), u.tint.sub(.5).mul(2))).mul(mix(1, h2.mul(1.7).add(.15), u.flick)) : vec3(1);
+    if (fx) vS.assign(h.mul(17.3));
+    vC.assign((cols ? ia('aC', 'vec3') : vec3(1)).mul(u.color).mul(tint).mul(far ? farDim(z) : 1).mul(min(1, px.div(minPx).mul(px.div(minPx)))));   // never below a pixel; dimmer instead
     return billboardPx(mv, clamp(px, minPx, 1024));
   })();
-  m.fragmentNode = Fn(() => { const a = texture(softDot, uv()).a.mul(u.op); return vec4(vC.mul(a), a) })();
+  m.fragmentNode = Fn(() => {
+    if (!fx) { const a = texture(softDot, uv()).a.mul(u.op); return vec4(vC.mul(a), a) }
+    const a0 = pow(texture(softDot, uv()).a, u.soft), mot = noise3(vec3(uv().mul(u.texS), vS)).mul(1.6).sub(.3).max(0), a = a0.mul(mix(1, mot, u.tex)).mul(u.op);   // mottled: each puff its own bit of noise
+    return vec4(vC.mul(a), a);
+  })();
   const mesh = layer(new THREE.Mesh(quads(n, attrs), m), target, order);
   mesh.u = u; return mesh;
 }
@@ -22,7 +29,7 @@ const bulgeSpr = [[.7, .55], [1.3, .32], [2.4, .14]].map(([k, o]) => { const s =
 const bulgePts = (() => {
   const n = 48000, p = new Float32Array(n * 3), R_ = mulberry32(808), g = gaussOf(R_), q = new V3(), c = new Float32Array(n * 3), cc = new C3();
   for (let i = 0; i < n; i++) { q.set(g(), g() * .55, g()).multiplyScalar(bulgeR * .42); if (q.length() < BH.sh * 2) q.setLength(BH.sh * 2 + R_() * bulgeR * .3); q.applyMatrix4(GM4); p.set([q.x, q.y, q.z], i * 3); cc.setHSL(.08 + R_() * .04, .55, .6 + R_() * .2); c.set([cc.r, cc.g, cc.b], i * 3) }
-  const m = softPoints(p, { cols: c, size: 9000, op: .05, far: true, order: -1 }); andro.add(m); return m;
+  const m = softPoints(p, { cols: c, size: 9000, op: .05, far: true, order: -1, fx: true }); andro.add(m); return m;
 })();
 /* dust filaments: thin dark ribbons following the spiral, mostly on the inner edge of each arm (one instanced mesh) */
 const dustFil = (() => {
