@@ -218,7 +218,7 @@ function updateLockMark() {
   } else if (!lockMark.hidden) { lockMark.hidden = true; crossEl.classList.remove('lockon') }
 }
 let hoverT = 0, lastRing = null, hovPick = -1;
-// the full record flickers on piece by piece: date, title, screenshot, then each line of details
+// the full record fades in piece by piece: date, title, screenshot, then each line of details
 function cardFlicker() {
   const parts = [...tip.querySelectorAll('.td, .tt, canvas.tshot, dl > div, a')]; let t = 0;
   parts.forEach(e => { e.style.setProperty('--fk', 'flk' + (1 + (Math.random() * 3 | 0))); e.style.setProperty('--fd', (.35 + Math.random() * .3).toFixed(2) + 's'); e.style.setProperty('--fdl', (t += .05 + Math.random() * .06).toFixed(2) + 's'); e.classList.remove('flk-go'); void e.offsetWidth; e.classList.add('flk-go') });

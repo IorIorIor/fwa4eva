@@ -44,7 +44,7 @@ const intro = {
       const dur = reduceMotion ? 2.5 : this.dur, on = 1 - 1 / dur;   // engine and instruments are fully on a second before the camera lands
       emitGlow = quint(sstep(this.t, on - .26, on));   // the engine lights during the last of the swing
       if (this.t >= on - .22 && !this.hud) { this.hud = true; document.body.classList.remove('intro'); flickIn(Math.max(.3, (on - this.t) * dur)) }   // and the instruments flicker in, all landed by then
-      if (this.t >= 1) this.finish();   // the moment the camera arrives: engine on, instruments flicker in, yours to fly
+      if (this.t >= 1) this.finish();   // the moment the camera arrives: engine on, instruments fade in, yours to fly
     }
     camera.updateMatrixWorld();
   },
@@ -53,10 +53,9 @@ const intro = {
     camRel.copy(INTRO_END); camRelV.set(0, 0, 0); if (!this.hud) { document.body.classList.remove('intro'); flickIn() } handOver();
   },
 };
-// the instruments flicker on one by one as the opening ends, each with its own pattern and moment
-function flickIn(within = 1.8) {   // every element is fully on within this many seconds
-  const r = (a, b) => a + Math.random() * (b - a);
-  document.querySelectorAll('.hud:not([hidden]), #labels').forEach(e => { e.style.setProperty('--fk', 'flk' + (1 + (Math.random() * 3 | 0))); const fd = r(.45, .75) * within; e.style.setProperty('--fd', fd.toFixed(2) + 's'); e.style.setProperty('--fdl', r(0, within - fd).toFixed(2) + 's'); e.classList.remove('flk-go'); void e.offsetWidth; e.classList.add('flk-go') });
+// the instruments fade in together as the opening ends
+function flickIn(within = 1.8) {   // fully on within this many seconds
+  document.querySelectorAll('.hud:not([hidden]), #labels').forEach(e => { e.style.setProperty('--fd', (within * .8).toFixed(2) + 's'); e.style.setProperty('--fdl', '0s'); e.classList.remove('flk-go'); void e.offsetWidth; e.classList.add('flk-go') });
   setTimeout(() => document.querySelectorAll('.flk-go').forEach(e => e.classList.remove('flk-go')), within * 1000 + 300);
 }
 function handOver() { booted = true; updateLockUI(); region = null; lastInput = performance.now(); coach.start() }

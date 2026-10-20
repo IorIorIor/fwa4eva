@@ -154,20 +154,27 @@ D.forEach((d, i) => {
 (function relax(A, n, min) {
   const m2 = min * min, inv = 1 / min, rad = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { const lx = A[i * 3] - GC.x, ly = A[i * 3 + 1] - GC.y, lz = A[i * 3 + 2] - GC.z, nx = new V3(lx, ly, lz).applyQuaternion(GQI); nx.y = 0; if (SPIRAL) nx.set(-nx.z, 0, nx.x); nx.normalize().applyQuaternion(GQ); rad.set([nx.x, nx.y, nx.z], i * 3) }
-  const damp = (i, f) => { const o = i * 3, k = f[0] * rad[o] + f[1] * rad[o + 1] + f[2] * rad[o + 2]; f[0] -= rad[o] * k * .85; f[1] -= rad[o + 1] * k * .85; f[2] -= rad[o + 2] * k * .85; return f };
+  // cells live in a flat hash (typed arrays, no strings or per-pair arrays); same visiting order as before, so the sky is unchanged
+  let HS = 1; while (HS < n * 2) HS <<= 1; const mask = HS - 1, cx = new Int32Array(n), cy = new Int32Array(n), cz = new Int32Array(n), hb = new Int32Array(n), cnt = new Int32Array(HS + 1), ord = new Int32Array(n);
+  const hash = (x, y, z) => (Math.imul(x, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(z, 83492791)) & mask;
+  const damp = (o, c) => { const k = c[0] * rad[o] + c[1] * rad[o + 1] + c[2] * rad[o + 2]; c[0] -= rad[o] * k * .85; c[1] -= rad[o + 1] * k * .85; c[2] -= rad[o + 2] * k * .85 };
+  const fi = [0, 0, 0], fj = [0, 0, 0];
   for (let it = 0; it < 60; it++) {
-    const grid = new Map(), key = (x, y, z) => x + ',' + y + ',' + z, cell = i => [Math.floor(A[i * 3] * inv), Math.floor(A[i * 3 + 1] * inv), Math.floor(A[i * 3 + 2] * inv)];
-    for (let i = 0; i < n; i++) { const [x, y, z] = cell(i), k = key(x, y, z); let a = grid.get(k); if (!a) grid.set(k, a = []); a.push(i) }
+    cnt.fill(0);
+    for (let i = 0; i < n; i++) { const x = cx[i] = Math.floor(A[i * 3] * inv), y = cy[i] = Math.floor(A[i * 3 + 1] * inv), z = cz[i] = Math.floor(A[i * 3 + 2] * inv); cnt[(hb[i] = hash(x, y, z)) + 1]++ }
+    for (let b = 0; b < HS; b++) cnt[b + 1] += cnt[b];
+    { const fillAt = cnt.slice(0, HS); for (let i = 0; i < n; i++) ord[fillAt[hb[i]]++] = i }   // stable: each bucket keeps ascending i
     let moved = 0;
     for (let i = 0; i < n; i++) {
-      const [x, y, z] = cell(i);
+      const x = Math.floor(A[i * 3] * inv), y = Math.floor(A[i * 3 + 1] * inv), z = Math.floor(A[i * 3 + 2] * inv);   // where i is now (it may have been pushed this pass)
       for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
-        const a = grid.get(key(x + dx, y + dy, z + dz)); if (!a) continue;
-        for (const j of a) {
-          if (j <= i) continue; let ex = A[j * 3] - A[i * 3], ey = A[j * 3 + 1] - A[i * 3 + 1], ez = A[j * 3 + 2] - A[i * 3 + 2]; const d2 = ex * ex + ey * ey + ez * ez;
+        const X = x + dx, Y = y + dy, Z = z + dz, b = hash(X, Y, Z);
+        for (let q = cnt[b], qe = cnt[b + 1]; q < qe; q++) {
+          const j = ord[q]; if (j <= i || cx[j] !== X || cy[j] !== Y || cz[j] !== Z) continue;
+          let ex = A[j * 3] - A[i * 3], ey = A[j * 3 + 1] - A[i * 3 + 1], ez = A[j * 3 + 2] - A[i * 3 + 2]; const d2 = ex * ex + ey * ey + ez * ez;
           if (d2 < m2) {
             let d = Math.sqrt(d2); if (d < 1e-3) { ex = R() - .5; ey = R() - .5; ez = R() - .5; d = Math.hypot(ex, ey, ez) } const push = (min - d) * .5 + .5, f = push / d;
-            const fi = damp(i, [ex * f, ey * f, ez * f]), fj = damp(j, [ex * f, ey * f, ez * f]);
+            fi[0] = fj[0] = ex * f; fi[1] = fj[1] = ey * f; fi[2] = fj[2] = ez * f; damp(i * 3, fi); damp(j * 3, fj);
             A[i * 3] -= fi[0]; A[i * 3 + 1] -= fi[1]; A[i * 3 + 2] -= fi[2]; A[j * 3] += fj[0]; A[j * 3 + 1] += fj[1]; A[j * 3 + 2] += fj[2]; moved++
           }
         }

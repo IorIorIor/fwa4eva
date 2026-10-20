@@ -256,7 +256,8 @@ body.ready #intro .go{visibility:visible;pointer-events:auto;animation:goIn .6s 
 @keyframes flk1{0%{opacity:0}9%{opacity:.75}13%{opacity:0}24%{opacity:.3}31%{opacity:0}47%{opacity:.95}53%{opacity:.1}66%{opacity:1}72%{opacity:.45}80%{opacity:1}}
 @keyframes flk2{0%{opacity:0}14%{opacity:.4}18%{opacity:0}38%{opacity:.85}42%{opacity:.2}58%{opacity:1}63%{opacity:0}70%{opacity:.9}86%{opacity:1}}
 @keyframes flk3{0%{opacity:0}6%{opacity:.25}10%{opacity:0}29%{opacity:.6}35%{opacity:.05}52%{opacity:1}55%{opacity:.3}61%{opacity:1}75%{opacity:.7}82%{opacity:1}}
-#intro .flk,.flk-go{animation:var(--fk,flk1) var(--fd,.9s) steps(1,end) var(--fdl,0s) backwards}
+@keyframes fadeUp{from{opacity:0}to{opacity:1}}
+#intro .flk,.flk-go{animation:fadeUp var(--fd,.9s) ease var(--fdl,0s) backwards}   /* a plain fade, no flicker */
 @media (prefers-reduced-motion:reduce){#intro .flk,.flk-go,body.ready #intro .go{animation:none}}
 body.ready #intro .bar{opacity:0;transition:opacity .5s ease}
 #intro .go .btn{min-width:120px;padding:10px 26px;font-size:11px;letter-spacing:.16em;text-transform:uppercase}
@@ -331,7 +332,7 @@ body.ready #intro .go{pointer-events:auto}
 #introN{opacity:0}
 body.counting #introN{opacity:1}   /* the count only appears once the splash has flickered on and the ring starts drawing */
 body.ready #introN{opacity:0}
-body.ready body.ready #intro .go #enter{opacity:1;transform:scale(1)}
+body.ready #intro .go #enter{opacity:1;transform:scale(1)}
 body.ready #intro .go #enter:hover{transform:scale(1.05)}
 #enterQuiet{position:absolute;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);opacity:0;pointer-events:none;transition:opacity .7s ease .5s}
 body.ready #enterQuiet{opacity:1;pointer-events:auto}
