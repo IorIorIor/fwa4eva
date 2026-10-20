@@ -1,5 +1,6 @@
 <canvas id="gl" aria-label="FWA FOREVER: every FWA winner as a star in one galaxy"></canvas>
 <div id="labels"></div>
+<div id="dayLabels" aria-hidden="true"></div>
 
 <div class="hud" id="brand">
   <div class="seg" role="group" aria-label="View">

@@ -61,4 +61,17 @@ const spiralLine = SPIRAL ? (() => {
   m.colorNode = vec3(.92, .95, 1); m.opacityNode = u.a;
   const mesh = new THREE.Line(g, m); mesh.position.copy(GC); mesh.quaternion.copy(GQ); layer(mesh, scene, 1); mesh.u = u; mesh.visible = false; return mesh;
 })() : null;
+// month dividers along the spiral timeline: a short tick across the line at the start of every month (a longer one each January)
+const monthTicks = SPIRAL ? (() => {
+  const pos = [], side = [], at = u => { const r = GAL_R0 + u * GAL_LEN, th = armPhase(r); return [Math.cos(th) * r, Math.sin(th) * r] };
+  YEARS.forEach(y => { for (let m = 0; m < 12; m++) { const t = Date.UTC(y, m, 1); if (t > Date.now()) return; const u = yearU(t); if (u <= .001) continue;
+    const [x0, z0] = at(u), [x1, z1] = at(u + .0004), tx = x1 - x0, tz = z1 - z0, l = Math.hypot(tx, tz) || 1, nx = -tz / l, nz = tx / l, k = m ? 1 : 2.2;
+    pos.push(x0 - nx * k, 0, z0 - nz * k, x0 + nx * k, 0, z0 + nz * k); side.push(k, k) } });   // unit-length ticks, scaled by the length uniform below
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  const u = { a: uniform(0), len: uniform(1500) }, m = new THREE.LineBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const base = new Float32Array(pos); m.positionNode = positionGeometry; m.colorNode = vec3(.92, .95, 1); m.opacityNode = u.a;
+  const mesh = new THREE.LineSegments(g, m); mesh.position.copy(GC); mesh.quaternion.copy(GQ); layer(mesh, scene, 1); mesh.u = u; mesh.visible = false;
+  mesh.setLen = L => { if (mesh.userData.len === L) return; mesh.userData.len = L; const p = g.attributes.position.array; for (let i = 0; i < p.length; i += 6) { const cx = (base[i] + base[i + 3]) / 2, cz = (base[i + 2] + base[i + 5]) / 2; p[i] = cx + (base[i] - cx) * L; p[i + 2] = cz + (base[i + 2] - cz) * L; p[i + 3] = cx + (base[i + 3] - cx) * L; p[i + 5] = cz + (base[i + 5] - cz) * L } g.attributes.position.needsUpdate = true };
+  return mesh;
+})() : null;
 
