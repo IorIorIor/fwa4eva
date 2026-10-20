@@ -20,6 +20,11 @@ const intro = {
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
     this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
     document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.update(0);
+    if (this.at) {   // shift the frame so the pointer's tip, not its middle, sits exactly on the click
+      camera.clearViewOffset(); camera.updateMatrixWorld(); avatar.updateMatrixWorld(true);
+      const tip = avatar.localToWorld(_ia.set(ARROW.pts[0][0], .7, ARROW.pts[0][1])).project(camera);
+      this.at.x -= tip.x * innerWidth / 2; this.at.y += tip.y * innerHeight / 2; this.update(0);
+    }
   },
   at: null,   // where on screen the pointer starts (the Start button's centre), eased back to the centre as the camera swings
   update(dt) {
@@ -75,7 +80,7 @@ if (coarse) $('skipHint').hidden = true;   // touch: the opening just plays
   scene.remove(warm); bodies.mesh.count = 0;
 }
 function begin(withSound, e) {
-  { const r = $('enter').getBoundingClientRect(); intro.at = r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null }   // the pointer appears right where Start was
+  { const r = $('enter').getBoundingClientRect(); intro.at = e && e.detail && e.clientX ? { x: e.clientX, y: e.clientY } : r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null }   // the pointer appears right where you clicked Start
   if (e && e.pointerType !== 'touch' && e.clientX) { mouse.x = e.clientX; mouse.y = e.clientY; mouse.in = true }   // the pointer is already where you clicked: no second click to wake it
   if (withSound) { setMuted(false); audio() }
   if (!coarse && !lockFailed && !TEST) requestLock();

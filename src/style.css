@@ -328,10 +328,10 @@ body.ready #intro .go{pointer-events:auto}
 #introN{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;pointer-events:none;font-family:var(--mono);color:#fff;font-variant-numeric:tabular-nums;transition:opacity .35s ease}
 #introN b{font-weight:400;font-size:15px;letter-spacing:.06em}
 #introN span{font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+#introN{opacity:0}
+body.counting #introN{opacity:1}   /* the count only appears once the splash has flickered on and the ring starts drawing */
 body.ready #introN{opacity:0}
-#introLoaded{position:absolute;left:0;right:0;top:calc(100% + 16px);text-align:center;white-space:nowrap;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);opacity:0;transition:opacity .7s ease .4s}
-body.ready #introLoaded{opacity:1}
-body.ready #intro .go #enter{opacity:1;transform:scale(1)}
+body.ready body.ready #intro .go #enter{opacity:1;transform:scale(1)}
 body.ready #intro .go #enter:hover{transform:scale(1.05)}
 #enterQuiet{position:absolute;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);opacity:0;pointer-events:none;transition:opacity .7s ease .5s}
 body.ready #enterQuiet{opacity:1;pointer-events:auto}
