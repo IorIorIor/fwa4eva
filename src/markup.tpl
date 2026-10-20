@@ -10,7 +10,7 @@
   <button class="ibtn" id="sbtn" aria-pressed="true" aria-label="Sound" title="Sound"></button>
 </div>
 
-<svg class="hud" id="cross" viewBox="-90 -90 180 180" aria-hidden="true" hidden><g id="hdg"></g><circle class="ring" id="aimRing" r="10.5"></circle><circle id="boostArc" r="22" pathLength="138.2" transform="rotate(-90)"></circle><circle class="dot" r="1.4"></circle><g id="cmp"></g></svg>
+<svg class="hud" id="cross" viewBox="-90 -90 180 180" aria-hidden="true" hidden><g id="hdg"></g><g id="ret"><circle class="ring" id="aimRing" r="34.25"></circle><g class="arcs"><path id="arcL" class="arc" pathLength="100" d="M-32.95 -31.38A45.5 45.5 0 0 0 -32.95 31.38"/><path id="arcR" class="arc" pathLength="100" d="M32.95 -31.38A45.5 45.5 0 0 1 32.95 31.38"/></g><g class="ticks"><line x1="-3.18" y1="-3.18" x2="-9.37" y2="-9.37"/><line x1="3.18" y1="-3.18" x2="9.37" y2="-9.37"/><line x1="3.18" y1="3.18" x2="9.37" y2="9.37"/><line x1="-3.18" y1="3.18" x2="-9.37" y2="9.37"/></g><circle class="dot" r="4.25"></circle><text id="lSPD" class="rl" x="-55" y="0" text-anchor="end">SPD</text><text id="lPWR" class="rl" x="53.5" y="0">PWR</text></g><circle id="boostArc" r="22" pathLength="138.2" transform="rotate(-90)"></circle><g id="cmp"></g></svg>
 <div class="hud" id="arrive" aria-live="polite"><div class="eyebrow" id="arE"></div><h2 id="arT"></h2><p id="arS"></p></div>
 <div class="hud" id="nav" role="search">
   <div id="navRes" role="listbox" hidden></div>

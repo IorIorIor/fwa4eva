@@ -274,10 +274,16 @@ function updateHover(dt) {
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
 }
-let spdR = '';
-function updateBoostUI() {
-  { const top = Math.min(LIGHT * .97, LOOK.topSpeed ?? Infinity), k = Math.pow(Math.min(1, Math.max(0, (Math.log10(1 + player.vel.length()) - 1) / (Math.log10(1 + top) - 1))), .8), r = (22 - 11.5 * k).toFixed(2); if (r !== spdR) { spdR = r; $('boostArc').setAttribute('r', r) } }   // the second circle closes in with speed: at top speed it's the size of the centre circle (its arc is still the boost tank)
-  const a = $('boostArc'), show = S.mode === 'fly' && (boosting || boostE < .999); a.style.opacity = S.mode !== 'fly' ? 0 : show && boostE > .004 ? (boosting ? .95 : .55) : .35; a.style.strokeDashoffset = (1 - boostE) * 138.2 }   // empty means nothing at all, not a dot
+const RET = { L: $('arcL'), R: $('arcR'), sp: $('lSPD'), pw: $('lPWR'), sv: '', bv: '', used: +store.get('sotd-pwr-used') || 0 };
+function updateBoostUI(dt = 0) {   // the reticle's brackets: speed on the left, boost power on the right; their labels until you've boosted 5 s in all
+  const fly = S.mode === 'fly', sp = player.vel.length(), top = Math.min(LIGHT * .97, LOOK.topSpeed ?? Infinity), k = Math.pow(Math.min(1, Math.max(0, (Math.log10(1 + sp) - 1) / (Math.log10(1 + top) - 1))), .8), moving = fly && sp > 25;
+  const arc = (el, v, key) => { const s = v.toFixed(3); if (s === RET[key]) return; RET[key] = s; el.style.strokeDasharray = `${v * 100} 100`; el.style.strokeDashoffset = (-(100 - v * 100) / 2).toFixed(2) };   // grows from its middle
+  arc(RET.L, Math.max(.04, k), 'sv'); RET.L.style.opacity = moving ? .95 : 0;
+  const bShow = fly && (boosting || boostE < .999) && boostE > .004; arc(RET.R, boostE, 'bv'); RET.R.style.opacity = bShow ? (boosting ? 1 : .55) : 0;
+  if (boosting && RET.used < 5) { RET.used += dt; if (RET.used >= 5) store.set('sotd-pwr-used', '5') }
+  const lbl = RET.used < 5 && !crossEl.classList.contains('lockon'); RET.sp.style.opacity = lbl && moving ? .32 : 0; RET.pw.style.opacity = lbl && boosting ? .32 : 0;
+  crossEl.style.setProperty('--rs', LOOK.reticleSize ?? 1);
+}
 
 // a tiny readout of the renderer (press the backtick key, or open with ?stats)
 const stats = { el: null, t: 0, n: 0, show(on) { if (on && !this.el) { this.el = document.createElement('div'); this.el.id = 'stats'; document.body.appendChild(this.el) } if (this.el) this.el.hidden = !on; this.on = on } };
@@ -317,7 +323,7 @@ function tick(now) {
   disc.material.opacity = L.discs * .6 * sstep(camera.position.distanceTo(GC), GAL_LEN * .9, GAL_LEN * 2.6);
   beamPivot.rotation.y += dt * .22; avatar.userData.nav.forEach((b, k) => { b.material.emissiveIntensity = Math.sin(now * .005 + k * 2.1) > .55 ? 3.2 : .25 });
   boostK += ((fly && boosting ? 1 : 0) - boostK) * Math.min(1, dt * (boosting ? 6 : 2));
-  updateTrail(dt, fly && !!L.trail); trail.visible = fly && !!L.trail && trail.userData.used > 1; updateEngine(); updateBoostUI();
+  updateTrail(dt, fly && !!L.trail); trail.visible = fly && !!L.trail && trail.userData.used > 1; updateEngine(); updateBoostUI(dt);
   if (fly && booted) { if (player.vel.length() < 1 && !auto) { shipStill += dt; if (shipStill > 3 && !shipSaved) { shipSaved = true; store.set('sotd-ship', JSON.stringify({ p: player.pos.toArray(), q: player.base.toArray(), r: rig.q.toArray() })) } } else { shipStill = 0; shipSaved = false } }
   if (fly) { updateCompass(); const r = regionOf(player.pos); if (r !== region) { region = r; if (L.cards && booted) arrive(r) } } else if (region !== null) { region = null; $('arrive').classList.remove('show') }
   constellation.u.op.value += ((conOn ? 1 : 0) - constellation.u.op.value) * Math.min(1, dt * 3); constellation.visible = constellation.u.op.value > .01;
