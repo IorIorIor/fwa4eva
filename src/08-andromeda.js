@@ -49,7 +49,7 @@ const dustFil = (() => {
   })();
   const h1 = x => fract(sin(x.mul(127.1)).mul(43758.5)), n1 = x => { const i = floor(x), f = fract(x), e = f.mul(f).mul(f.mul(-2).add(3)); return mix(h1(i), h1(i.add(1)), e) };
   m.fragmentNode = Fn(() => {
-    const prof = exp(vV.mul(vV).negate().mul(mix(3.2, .9, u.blur))).mul(smoothstep(.8, 1, abs(vV)).oneMinus()).div(u.blur.mul(1.2).add(1));
+    const prof = exp(vV.mul(vV).negate().mul(mix(3.2, .9, min(u.blur, 1)))).mul(smoothstep(.8, 1, abs(vV)).oneMinus()).div(u.blur.mul(1.2).add(1));
     const lo = u.brk.mul(.5), brk = smoothstep(lo, lo.add(.4), n1(vS.mul(14).add(vJ.mul(97))).mul(.65).add(n1(vS.mul(41).add(vJ.mul(31))).mul(.35)));
     // ragged, fibrous edges: noise running along the filament (stretched) and across it
     const fb = noise3(vec3(vS.mul(u.fib.mul(70)), vV.mul(u.fib.mul(2.2)), vJ.mul(31))).mul(.65).add(noise3(vec3(vS.mul(u.fib.mul(190)), vV.mul(u.fib.mul(5)), vJ.mul(17).add(3))).mul(.35));
