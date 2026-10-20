@@ -1,4 +1,6 @@
 <title>FWA FOREVER</title>
+<link rel="preload" href="https://ioriorior.github.io/fwa4eva-data/archive.json" as="fetch" crossorigin="anonymous">
+<link rel="preconnect" href="https://ioriorior.github.io" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">

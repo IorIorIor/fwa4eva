@@ -36,3 +36,9 @@ const server = createServer(async (req, res) => {
 const wss = attachRelay(server);
 
 server.listen(PORT, () => console.log(`FWA FOREVER on :${PORT} (relay at /ws)`));
+// warm the compression cache in the background: the big script takes a couple of seconds at brotli quality 11
+import('node:fs/promises').then(async ({ readdir }) => {
+  const walk = async d => (await readdir(d, { withFileTypes: true })).flatMap(e => e.isDirectory() ? [] : [join(d, e.name)]);
+  const files = [...await walk(DIST), ...await walk(join(DIST, 'assets')).catch(() => [])].filter(f => /\.(html|js|css|json|svg)$/.test(f));
+  for (const f of files) for (const enc of ['br', 'gzip']) { await packed(f, enc); await new Promise(r => setImmediate(r)) }
+}).catch(() => { });
