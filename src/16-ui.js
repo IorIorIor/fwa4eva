@@ -225,8 +225,8 @@ const tipMore = i => {
     `</dl>${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">Launch project →</a>` : ''}</div></div>`;
 };
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const tipBox = (top, title) => `<span class="td">${esc(top)}</span><span class="tt">${esc(title)}</span>`;
-const tipHTML = i => { const d = D[i], t = new Date(d.date + 'T00:00:00Z'); return tipBox(`${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`, d.title) };
+const tipBox = (top, title, score) => `<span class="thd"><span class="td"><span>${esc(top)}</span>${score != null ? `<b class="tsc">${esc(score)}</b>` : ''}</span><span class="tt">${esc(title)}</span></span>`;   // the top line runs as wide as the title, the score at its right end
+const tipHTML = i => { const d = D[i], t = new Date(d.date + 'T00:00:00Z'); return tipBox(`${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`, d.title, Math.round(d.score * 10)) };
 
 /* compass: heading ring around the reticle, with core and home markers */
 const CMP = [{ pos: GC, label: 'core', c: '#ffc79a' }, { pos: new V3(0, 0, 0), label: 'home', c: '#ece9ff' }];

@@ -3,7 +3,7 @@
    One module, read top to bottom: data → world → graphics → flight → interface → loop. */
 import * as THREE from 'three/webgpu';
 import {
-  Fn, If, Loop, Break, Discard, select, uniform, attribute, varying, varyingProperty, texture, pass, screenUV, uv,
+  Fn, If, Loop, Break, Discard, select, uniform, attribute, varying, varyingProperty, texture, pass, screenUV, uv, viewportSharedTexture,
   float, vec2, vec3, vec4,
   positionGeometry, positionWorld, normalWorld, modelViewMatrix, modelWorldMatrix, positionView, normalView, positionLocal,
   cameraPosition, cameraViewMatrix, cameraProjectionMatrix, modelScale, transpose,

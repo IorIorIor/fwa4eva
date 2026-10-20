@@ -238,7 +238,7 @@ function engineLook(dt) {
 
 /* lock-on marker, reticle and tooltip */
 const fmtDist = v => v < 1000 ? v.toFixed(0) + ' u' : v < 1e6 ? (v / 1000).toFixed(v < 1e4 ? 1 : 0) + 'k u' : (v / 1e6).toFixed(2) + 'M u';
-const TNAV = '<span class="tnav"><b data-n="-1" title="Previous (←)">‹</b><b data-n="1" title="Next (→)">›</b><i class="tdist"></i></span>';   // step through the archive from the star you're on
+const TNAV = '<span class="tnav"><b data-n="-1" title="Previous (←)">‹</b><b data-n="1" title="Next (→)">›</b></span>';   // step through the archive from the star you're on
 const lockMark = $('lockMark');
 function updateLockMark() {
   if (S.mode === 'fly' && lockI >= 0) {
@@ -292,16 +292,11 @@ function updateHover(dt) {
       tip.style.left = x + 'px'; tip.style.top = y + 'px';
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
-  { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = fmtDist(camera.position.distanceTo(starPos(+m[1], tmp))) }   // how far it is, live
 }
-const RET = { L: $('arcL'), R: $('arcR'), sp: $('lSPD'), pw: $('lPWR'), sv: '', bv: '', used: +store.get('sotd-pwr-used') || 0 };
-function updateBoostUI(dt = 0) {   // the reticle's brackets: speed on the left, boost power on the right; their labels until you've boosted 5 s in all
-  const fly = S.mode === 'fly', sp = player.vel.length(), top = Math.min(LIGHT * .97, LOOK.topSpeed ?? Infinity), k = Math.pow(Math.min(1, Math.max(0, (Math.log10(1 + sp) - 1) / (Math.log10(1 + top) - 1))), .8), moving = fly && sp > 25;
-  const arc = (el, v, key) => { const s = v.toFixed(3); if (s === RET[key]) return; RET[key] = s; el.style.strokeDasharray = `${v * 100} 100`; el.style.strokeDashoffset = (-(100 - v * 100)).toFixed(2) };   // fills from the bottom up
-  arc(RET.L, Math.max(.04, k), 'sv'); RET.L.style.opacity = moving ? .95 : 0;
-  const bShow = fly && (boosting || boostE < .999); arc(RET.R, 1 - boostE, 'bv'); RET.R.style.opacity = bShow ? (boosting ? 1 : .55) : 0;
-  if (boosting && RET.used < 5) { RET.used += dt; if (RET.used >= 5) store.set('sotd-pwr-used', '5') }
-  const lbl = RET.used < 5 && !crossEl.classList.contains('lockon'); RET.sp.style.opacity = lbl && moving ? .32 : 0; RET.pw.style.opacity = lbl && boosting ? .32 : 0;
+const RET = { ring: $('aimRing'), p: -1 };
+function updateBoostUI(dt = 0) {   // the reticle is a ring and a dot: boosting, the ring draws in and fills until it's all one white dot; it opens again as the boost refills
+  const p = S.mode === 'fly' ? sstep(1 - boostE, 0, 1) : 0; if (Math.abs(p - RET.p) < 1e-3) { crossEl.style.setProperty('--rs', LOOK.reticleSize ?? 1); return } RET.p = p;
+  const r = RET.ring; r.setAttribute('r', (34.25 + (4.25 - 34.25) * p).toFixed(2)); r.style.setProperty('--rfa', (.88 * Math.pow(p, 1.3)).toFixed(3)); r.style.setProperty('--ra', (.4 + .48 * p).toFixed(3));
   crossEl.style.setProperty('--rs', LOOK.reticleSize ?? 1);
 }
 

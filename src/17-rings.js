@@ -5,6 +5,7 @@
 let ringPop = 0, ringIn = -1, gotCard = { i: -1, t: 0 }, gotN = 0;
 for (let i = 0; i < N; i++) gotN += GOT[i];
 function ringCheck(p) {   // called by the flight after it moves you: through the halo (or as it closes on you), it's yours
+  if (LOOK.ringPlay) return;
   for (const h of HALO.live) { if (h.i === ringIn || h.done) continue; if (p.pos.distanceTo(h.c) < h.r * 1.05 || (h.c0 > .97)) { h.done = true; ringIn = h.i; collect(h.i) } }
   if (nearI < 0) return; const d = p.pos.distanceTo(starPos(nearI, tmp)), R = starR(nearI) * (LOOK.ringSize ?? 1.6);
   if (ringIn === nearI) { if (d > R * 1.25) ringIn = -1; return }
@@ -15,14 +16,21 @@ function ringCheck(p) {   // called by the flight after it moves you: through th
 const HALO_N = 6;
 const HALO = (() => {
   let geo = null, tw = -1; const iCol = new Float32Array(HALO_N * 3), iA = new Float32Array(HALO_N);
-  const u = { spark: uniform(1), holo: uniform(1), br: uniform(.55) };
-  const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const u = { spark: uniform(1), holo: uniform(1), br: uniform(.55), refr: uniform(1), disp: uniform(.35), glass: uniform(1), film: uniform(1), filmF: uniform(3), rim: uniform(1) };
+  const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });   // glass: it bends what's behind it (blended, not added)
   m.colorNode = Fn(() => {
     const n = normalize(normalView), v = normalize(positionView.negate()), fr = float(1).sub(abs(dot(n, v))), pl = positionLocal;   // view space: precise this far from the origin
     const hue = fract(atan(pl.y, pl.x).div(6.2832).add(fr.mul(.9)).add(U.now.mul(.06))), rgb = clamp(abs(fract(vec3(hue).add(vec3(0, .667, .333))).mul(6).sub(3)).sub(1), 0, 1);
     const tint = mix(attribute('hCol', 'vec3'), mix(vec3(1), rgb, .85), u.holo), body = tint.mul(fr.mul(1.5).add(.18)).add(vec3(1).mul(pow(fr, 5)).mul(.9)).mul(u.br);
-    const glint = pow(noise3(pl.mul(70).add(vec3(U.now.mul(1.7), U.now.mul(-1.3), 0))), 14).mul(40).mul(u.spark), facet = pow(abs(sin(atan(pl.y, pl.x).mul(48).add(U.now))), 30).mul(.5);
-    return vec4(body.add(vec3(1).mul(glint.add(facet.mul(fr)))).mul(attribute('hA', 'float')), 1);
+    const glint = pow(max(noise3(pl.mul(22).add(vec3(U.now.mul(.7), U.now.mul(-.5), 0))), 0), 24).mul(60).mul(u.spark).mul(fr), facet = pow(abs(sin(atan(pl.y, pl.x).mul(48).add(U.now))), 30).mul(.5);
+    // glass: the sky behind, bent by the tube (more toward its edges) and split into colours like a prism
+    const off = n.xy.mul(u.refr.mul(.06)).mul(fr.mul(.8).add(.2)), ca = off.mul(u.disp);
+    const bg = vec3(viewportSharedTexture(screenUV.add(off.add(ca))).r, viewportSharedTexture(screenUV.add(off)).g, viewportSharedTexture(screenUV.add(off.sub(ca))).b);
+    // thin-film colour, like oil on water or a hologram foil: hue runs with the viewing angle round the tube
+    const fh = fract(fr.mul(u.filmF).add(atan(pl.y, pl.x).div(6.2832).mul(2)).add(U.now.mul(.04))), film = clamp(abs(fract(vec3(fh).add(vec3(0, .667, .333))).mul(6).sub(3)).sub(1), 0, 1).mul(pow(fr, 1.5)).mul(u.film);
+    const lit = body.add(vec3(1).mul(glint.add(facet.mul(fr)))).add(film.mul(.8)).add(vec3(1).mul(pow(fr, 8)).mul(u.rim)), hA = attribute('hA', 'float');
+    const col = mix(lit, bg.mul(1.05).add(lit.mul(.55)), u.glass);
+    return vec4(col, clamp(hA.mul(mix(fr.mul(.8).add(.2), 1, u.glass)), 0, 1));
   })();
   let mesh = null;
   const build = w => {   // a fresh mesh whenever the thickness changes
@@ -34,19 +42,20 @@ const HALO = (() => {
   const best = []; let fade = new Map(), minTs = Infinity;   // minTs: seconds until you pass through the nearest ring you can't miss
   function update(dt) {
     const L = LOOK; if (!L.rings || S.mode !== 'fly') { mesh.count = 0; live.length = 0; return } if (tw !== (L.ringWidth ?? .1)) build(L.ringWidth ?? .1);
-    u.spark.value = L.ringSparkle ?? 1; u.holo.value = L.ringHolo ?? 1; u.br.value = L.ringBright ?? .55;
+    u.spark.value = L.ringSparkle ?? 1; u.holo.value = L.ringHolo ?? 1; u.br.value = L.ringBright ?? .55; u.refr.value = L.ringRefract ?? 1; u.disp.value = L.ringDisperse ?? .35; u.glass.value = L.ringGlass ?? 1; u.film.value = L.ringFilm ?? 1; u.filmF.value = L.ringFilmBands ?? 3; u.rim.value = L.ringRim ?? 1;
     best.length = 0; const px = player.pos.x, py = player.pos.y, pz = player.pos.z;   // the nearest few, by straight distance
     for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - px, dy = P[i * 3 + 1] - py, dz = P[i * 3 + 2] - pz, d2 = dx * dx + dy * dy + dz * dz; if (best.length < HALO_N) { best.push([d2, i]); best.sort((a, b) => a[0] - b[0]) } else if (d2 < best[HALO_N - 1][0]) { best[HALO_N - 1] = [d2, i]; best.sort((a, b) => a[0] - b[0]) } }
-    const v = player.vel, vv = v.lengthSq(), pred = L.ringPredict ?? .7, col = L.ringCollapse ?? .85, pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360));
+    const v = player.vel, vv = v.lengthSq(), pred = L.ringPredict ?? .7, pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360));
     live.length = 0; let n = 0; minTs = Infinity;
     for (const [, i] of best) {
       const h = pool[n], R = starR(i) * (L.ringSize ?? 1.6), c = starPos(i, h.c), dist = Math.sqrt(Math.max(1, camera.position.distanceToSquared(c))), rpx = R * pxK / dist;
       if (h.i !== i) { h.i = i; h.done = false; h.c0 = 0 }
-      let k = 0; h.ts = Infinity; if (vv > 1) { _d.copy(c).sub(player.pos); const ts = _d.dot(v) / vv, miss = _d.addScaledVector(v, -ts).length(); if (ts > 0 && ts < pred && miss < R * 1.15) { k = 1 - ts / pred; if (!h.done && TA[i] === 1) { h.ts = ts; minTs = Math.min(minTs, ts) } } }   // about to pass through: how close (0..1), and in how long
+      const play = L.ringPlay && n === 0; if (play) { c.set(0, 0, -R * (L.ringPlayDist ?? 5)).applyQuaternion(camera.quaternion).add(camera.position); h.done = false }   // playground: the nearest winner's ring, held in front of you
+      let k = 0; h.ts = Infinity; if (vv > 1 && !play) { _d.copy(c).sub(player.pos); const ts = _d.dot(v) / vv, miss = _d.addScaledVector(v, -ts).length(); if (ts > 0 && ts < pred && miss < R * 1.15) { k = 1 - ts / pred; if (!h.done && TA[i] === 1) { h.ts = ts; minTs = Math.min(minTs, ts) } } }   // about to pass through: how close (0..1), and in how long
       h.c0 = Math.max(h.c0 * Math.exp(-3 * dt), k); const e = h.c0 * h.c0 * (3 - 2 * h.c0);
       if (e > 0) { _d.copy(v).normalize(); const along = _d.dot(_s.copy(c).sub(player.pos)); c.lerp(_s.copy(player.pos).addScaledVector(_d, along), e) }   // slides onto your course
-      h.r = R * (1 - col * e); const gone = h.done ? (fade.get(i) ?? 1) : 1; if (h.done) fade.set(i, Math.max(0, gone - dt * 4));
-      const a = sstep(rpx, 14, 34) * gone; if (a <= .005 || h.r < 1e-3) { n++; continue }
+      h.r = R; const gone = h.done ? (fade.get(i) ?? 1) : 1; if (h.done) fade.set(i, Math.max(0, gone - dt * 4));
+      const a = play ? 1 : sstep(rpx, 14, 34) * gone; if (a <= .005 || h.r < 1e-3) { n++; continue }
       _q.setFromUnitVectors(_z, _s.copy(player.pos).sub(c).normalize()); mesh.setMatrixAt(live.length, _m.compose(c, _q, _s.setScalar(h.r)));
       const got = GOT[i], j = live.length * 3; iCol[j] = got ? 1 : COL[i * 3]; iCol[j + 1] = got ? .86 : COL[i * 3 + 1]; iCol[j + 2] = got ? .58 : COL[i * 3 + 2]; iA[live.length] = a * (got ? 1.3 : 1);
       live.push(h); n++;
@@ -57,14 +66,16 @@ const HALO = (() => {
   // the portal: inside the nearest ring, its winner's screenshot, set back behind the ring like a window into another room.
   // Each pixel follows your line of sight through the disc onto a plane some way behind it, so as you move the picture
   // shifts behind the opening. It starts loading a little before the ring appears
-  const pt = { tex: texture(placeholderShot(D[0])), depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85) };
+  const pt = { cur: placeholderShot(D[0]), taps: [], depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85), lens: uniform(.6), ca: uniform(.5) };
   const pm = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
   pm.colorNode = Fn(() => {
     const X = modelViewMatrix.mul(vec4(1, 0, 0, 0)).xyz, Y = modelViewMatrix.mul(vec4(0, 1, 0, 0)).xyz, O = modelViewMatrix.mul(vec4(0, 0, 0, 1)).xyz, r = length(X), Xn = X.div(r), Yn = normalize(Y), Nn = cross(Xn, Yn);   // the disc's own axes, in view space (precise this far out)
     const Pp = O.sub(Nn.mul(pt.depth.mul(r))), dir = normalize(positionView), t = dot(Pp, Nn).div(dot(dir, Nn)), loc = dir.mul(t).sub(Pp);
-    const S = pt.size.mul(r), uvI = vec2(dot(loc, Xn).div(S).mul(.5).add(.5), dot(loc, Yn).div(S.div(1.6)).mul(.5).add(.5));
-    const inside = step(0, uvI.x).mul(step(uvI.x, 1)).mul(step(0, uvI.y)).mul(step(uvI.y, 1)), img = pt.tex.sample(uvI).rgb.mul(inside);
-    const rr = length(positionGeometry.xy), rim = smoothstep(.55, 1, rr);   // shadowed toward the rim (depth), lit by the ring's glow right at the edge
+    const rr = length(positionGeometry.xy), rim = smoothstep(.55, 1, rr), S = pt.size.mul(r), q0 = vec2(dot(loc, Xn).div(S), dot(loc, Yn).div(S.div(1.6)));
+    // the edge acts like thick glass: the picture bulges outward near the rim and its colours fringe apart
+    const bulge = pt.lens.mul(pow(rr, 4)).mul(.35), fr = pt.ca.mul(pow(rr, 4)).mul(.04), at = k => q0.mul(float(1).sub(bulge.add(k))).mul(.5).add(.5);
+    const inside = uvI => step(0, uvI.x).mul(step(uvI.x, 1)).mul(step(0, uvI.y)).mul(step(uvI.y, 1));
+    const uR = at(fr), uG = at(0), uB = at(fr.negate()), tap = uv => { const t = texture(pt.cur, uv); pt.taps.push(t); return t }, img = vec3(tap(uR).r.mul(inside(uR)), tap(uG).g.mul(inside(uG)), tap(uB).b.mul(inside(uB)));   // keep the sampling nodes, so a new winner's picture can be swapped in   // shadowed toward the rim (depth), lit by the ring's glow right at the edge
     const c = img.mul(pt.dark).mul(rim.mul(.75).oneMinus()).add(pt.glow.mul(pow(rr, 6)).mul(.35)).add(mix(pt.glow, vec3(1), .5).mul(smoothstep(.93, .995, rr)).mul(.6));
     return vec4(c, pt.a.mul(smoothstep(1, .97, rr)));
   })();
@@ -72,21 +83,21 @@ const HALO = (() => {
   let pI = -1; const _pm = new THREE.Matrix4(), _up = new V3();
   function portalUpdate(dt) {
     const L = LOOK; if (!(L.ringPortal ?? 1) || !L.rings || S.mode !== 'fly') { portal.visible = false; return }
-    let near = -1; if (best.length) { const i = best[0][1], R = starR(i) * (L.ringSize ?? 1.6), dist = Math.sqrt(best[0][0]), pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360)); if (R * pxK / dist > (L.ringPortalPre ?? 4)) near = i }   // a little before the ring shows
-    if (near >= 0 && near !== pI) { pI = near; pt.tex.value = shot(D[near]); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
+    let near = -1; if (best.length) { const i = best[0][1], R = starR(i) * (L.ringSize ?? 1.6), dist = Math.sqrt(best[0][0]), pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360)); if (R * pxK / dist > (L.ringPortalPre ?? 4) || L.ringPlay) near = i }   // a little before the ring shows
+    if (near >= 0 && near !== pI) { pI = near; pt.cur = shot(D[near]); pt.taps.forEach(t => t.value = pt.cur); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
     const h = live.find(x => x.i === pI); if (!h || near < 0) { portal.visible = false; return }
-    const k = live.indexOf(h); pt.a.value = iA[k] / (GOT[pI] ? 1.3 : 1); pt.depth.value = L.ringPortalDepth ?? .8; pt.size.value = L.ringPortalSize ?? 1.25; pt.dark.value = L.ringPortalBright ?? .85;
-    _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(player.pos, h.c, _up); portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5); portal.matrix.multiply(_m.makeScale(k, k, 1)) }   // just inside the ring's tube, so the ring still frames it portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005;
+    const k = live.indexOf(h); pt.a.value = iA[k] / (GOT[pI] ? 1.3 : 1); pt.depth.value = L.ringPortalDepth ?? .8; pt.size.value = L.ringPortalSize ?? 1.25; pt.dark.value = L.ringPortalBright ?? .85; pt.lens.value = L.ringPortalLens ?? .6; pt.ca.value = L.ringPortalCA ?? .5;
+    _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(player.pos, h.c, _up); portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5); portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005;   // just inside the ring's tube, so the ring still frames it
   }
   const update0 = update; function updateAll(dt) { update0(dt); portalUpdate(dt) }
-  return { update: updateAll, live, u, get ts() { return minTs } };
+  return { update: updateAll, live, u, portal, pt, get ts() { return minTs } };
 })();
 /* bullet time: once a ring can't be missed, all of time slows, exponentially, to all but a standstill as you pass through it,
    then winds back up just as it slowed */
 const slowmo = { k: 1, after: 1e9,
   step(rdt) {
-    const L = LOOK, amt = L.rings ? L.ringSlow ?? 1 : 0; this.after += rdt; if (amt <= 0) { this.k = 1; return }
-    const lo = Math.max(.005, L.ringSlowMin ?? .04), tau = Math.max(.02, L.ringSlowIn ?? .22), pred = L.ringPredict ?? .7, f = x => lo + (1 - lo) * x;
+    const L = LOOK, amt = L.rings ? L.ringSlow ?? 1 : 0; this.after += rdt; if (amt <= 0 || L.ringPlay) { this.k = 1; return }
+    const lo = Math.max(.005, L.ringSlowMin ?? .04), tau = Math.max(.02, L.ringSlowIn ?? .12), pred = Math.min(L.ringPredict ?? .7, L.ringSlowFrom ?? .3), f = x => lo + (1 - lo) * x;
     let k = 1; const ts = HALO.ts; if (ts < pred) k = f(Math.min(1, (1 - Math.exp(-ts / tau)) / (1 - Math.exp(-pred / tau))));   // the nearer the pass, the slower
     k = Math.min(k, f(1 - Math.exp(-this.after / Math.max(.02, L.ringSlowOut ?? .3))));   // and after it, back up to speed
     this.k = 1 - amt * (1 - k);

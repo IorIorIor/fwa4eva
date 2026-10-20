@@ -59,13 +59,13 @@ const rmenu = (() => {
     if (panel.hidden === false) close(); if (style !== ((LOOK.menuSun ?? 1) ? 'sun' : 'wedge')) build();
     const m = R1 + 16; cx = Math.max(m, Math.min(innerWidth - m, x)); cy = Math.max(m, Math.min(innerHeight - m, y)); vx = vy = 0; px = x; py = y;
     const R_ = document.documentElement.style; R_.setProperty('--rmb', (LOOK.menuBlur ?? 8) + 'px'); R_.setProperty('--rmd', LOOK.menuDim ?? .3);
-    document.body.classList.add('rm-open'); tip.hidden = true;   // other tooltips step aside, and the world behind blurs
+    document.body.classList.add('rm-open', 'rm-ring'); tip.hidden = true;   // other tooltips step aside, and the world behind blurs
     el.style.left = cx + 'px'; el.style.top = cy + 'px'; el.hidden = false; void el.offsetWidth; el.classList.add('in'); open = true; setHot(null); lean();
     segs.find(s => s.dataset.k === 'map').querySelector('text').textContent = S.mode === 'map' ? 'Fly' : 'Map';
     segs.find(s => s.dataset.k === 'map').querySelector('.ri').innerHTML = RM_FILL[S.mode === 'map' ? 'fly' : 'map'];
     dot.hidden = true; clearTimeout(settleT); el.classList.remove('settled'); settleT = setTimeout(() => el.classList.add('settled'), 450);   // no pointer at all: the direction you nudge picks
   }
-  function hide() { document.body.classList.toggle('rm-open', !panel.hidden && !!which); open = false; el.classList.remove('in'); setTimeout(() => { if (!open) el.hidden = true }, 220); setHot(null) }
+  function hide() { document.body.classList.remove('rm-ring'); document.body.classList.toggle('rm-open', !panel.hidden && !!which); open = false; el.classList.remove('in'); setTimeout(() => { if (!open) el.hidden = true }, 220); setHot(null) }
   function move(e) {   // captured pointer: a dot you steer inside the ring; free pointer: wherever the pointer is
     const dx = locked() ? e.movementX : e.clientX - px, dy = locked() ? e.movementY : e.clientY - py; px = e.clientX; py = e.clientY;
     vx += dx; vy += dy; const r = Math.hypot(vx, vy), lim = 10; if (r > lim) { vx *= lim / r; vy *= lim / r } setHot(pickAt(vx, vy)); lean();   // kept on a short leash, so turning to another segment takes only a flick

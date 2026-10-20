@@ -399,7 +399,7 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 #radial .rs text{fill:#e9e9e6;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;text-anchor:middle;transition:fill .15s}
 #radial.settled .rs{transition-delay:0s}
 #radial.in .rs.hot{transform:scale(1.045)}   /* the picked segment swells, just a touch */
-body.rm-open,body.rm-open *{cursor:none!important}
+body.rm-ring,body.rm-ring *{cursor:none!important}
 #radial .rs.hot path{fill:#fff}
 #radial .rs.hot .ri{color:#000}
 #radial .rs.hot text{fill:#000}
@@ -454,7 +454,7 @@ body.rm-open,body.rm-open *{cursor:none!important}
 /* the reticle (Figma: regular / hover / lock). A grey ring and a dot; the left bracket is your speed, the right one your
    boost power, each only while it matters; over a star in reach the ring draws in and four ticks close round the dot; locked on, only the ticks */
 #ret{transform:scale(var(--rs,1));transform-origin:0 0}
-#cross .ring{fill:none;stroke:rgba(255,255,255,.4);stroke-width:calc(1.3px / var(--rs,1));transform-box:fill-box;transform-origin:center;transition:transform .22s cubic-bezier(.2,1.2,.3,1),opacity .2s}
+#cross .ring{fill:rgba(255,255,255,var(--rfa,0));stroke:rgba(255,255,255,var(--ra,.4));stroke-width:calc(1.3px / var(--rs,1));transform-box:fill-box;transform-origin:center;transition:transform .22s cubic-bezier(.2,1.2,.3,1),opacity .2s}
 #cross .dot{fill:rgba(255,255,255,.88);transition:opacity .2s}
 #cross .arcs{transform-origin:0 0;transition:transform .22s cubic-bezier(.2,1.2,.3,1),opacity .2s}
 #cross .arc{fill:none;stroke:rgba(255,255,255,.9);stroke-width:calc(1.6px / var(--rs,1));stroke-linecap:butt;stroke-dasharray:0 100;opacity:0;transition:opacity .3s}
@@ -516,3 +516,8 @@ body.map #gl,body.map #gl.hovering{cursor:pointer!important}   /* on the map the
 #rmPanel .dial .lens{position:absolute;left:3px;right:3px;top:50%;height:calc(var(--ih) * var(--mag,1.2) + 4px);transform:translateY(-50%);pointer-events:none;border-radius:4px;z-index:2;
   background:linear-gradient(180deg,rgba(255,255,255,calc(var(--lens,.8) * (.22 - var(--metal,.7) * .16))),rgba(255,255,255,0) 45%,rgba(255,255,255,calc(var(--lens,.8) * .04)));
   box-shadow:0 0 0 1.5px color-mix(in srgb,var(--mc) 80%,transparent),0 0 0 3px rgba(0,0,0,.6),0 6px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,calc(var(--lens,.8) * .5));opacity:calc(.25 + var(--lens,.8) * .75)}
+
+#cross .arcs,#cross .rl{display:none}   /* the reticle is just the ring and the dot now */
+#tip .thd{display:inline-grid;justify-items:stretch}
+#tip .td{display:flex;justify-content:space-between;gap:14px}
+#tip .td .tsc{font-weight:500;color:#fff}

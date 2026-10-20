@@ -130,21 +130,28 @@ function holeMesh() {   // inside: a turbine. Fan blades on the floor of the tub
   const mesh = new THREE.Mesh(new THREE.CircleGeometry(HOLE.r, 40), m); mesh.u = u; return mesh;
 }   // flat: the tip points exactly where you're going (the chase camera sits high enough to see the face)
 // one set of materials for every ship, worn: very fine scuffs, hairline scratches and rub marks in the metal (roughness)
-const SCUFF = (() => {
-  const S = 512, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), R = mulberry32(5150);
-  g.fillStyle = 'rgb(128,128,128)'; g.fillRect(0, 0, S, S);
-  for (let i = 0; i < 2600; i++) { const v = R() < .5 ? 160 + R() * 60 : 70 + R() * 40; g.fillStyle = `rgba(${v | 0},${v | 0},${v | 0},${.05 + R() * .08})`; g.fillRect(R() * S, R() * S, 1 + R() * 2, 1 + R() * 2) }   // pitting
-  for (let i = 0; i < 260; i++) {   // hairline scratches, mostly along one grain
-    const x = R() * S, y = R() * S, a = (R() < .7 ? .35 : R() * Math.PI) + (R() - .5) * .3, l = 6 + Math.pow(R(), 2.5) * 140, v = R() < .65 ? 210 : 60;
-    g.strokeStyle = `rgba(${v},${v},${v},${.08 + R() * .22})`; g.lineWidth = .4 + R() * .9; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * l * .5 + (R() - .5) * 6, y + Math.sin(a) * l * .5 + (R() - .5) * 6, x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
-  }
-  for (let i = 0; i < 18; i++) { const x = R() * S, y = R() * S, r = 6 + R() * 26, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(190,190,190,.10)'); gr.addColorStop(1, 'rgba(190,190,190,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2) }   // a few soft rub marks
-  const rough = new THREE.CanvasTexture(c); rough.wrapS = rough.wrapT = THREE.RepeatWrapping; rough.repeat.set(.11, .11); return { rough };
+const SCUFF = (() => {   // worn metal, drawn once at 1024²: a roughness map (light = duller) and a matching bump map (dark = cut in)
+  const S = 1024, mk = () => { const c = document.createElement('canvas'); c.width = c.height = S; return c }, cr = mk(), cb = mk(), r = cr.getContext('2d'), b = cb.getContext('2d'), R = mulberry32(5150);
+  r.fillStyle = 'rgb(120,120,120)'; r.fillRect(0, 0, S, S); b.fillStyle = 'rgb(128,128,128)'; b.fillRect(0, 0, S, S);
+  { const n = document.createElement('canvas'); n.width = n.height = 16; const ng = n.getContext('2d'); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const v = 100 + R() * 56 | 0; ng.fillStyle = `rgb(${v},${v},${v})`; ng.fillRect(x, y, 1, 1) }
+    r.globalAlpha = .55; r.imageSmoothingEnabled = true; r.drawImage(n, 0, 0, S, S); r.globalAlpha = 1 }   // uneven wear: some areas duller than others
+  const line = (ctx, x, y, a, l, w, col, bend = 0) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + Math.cos(a) * l * .5 - Math.sin(a) * bend, y + Math.sin(a) * l * .5 + Math.cos(a) * bend, x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke() };
+  const GRAIN = .32;
+  for (let i = 0; i < 14000; i++) { const x = R() * S, y = R() * S, l = 10 + R() * 70, v = R() < .5 ? 150 : 95; line(r, x, y, GRAIN + (R() - .5) * .04, l, .35 + R() * .5, `rgba(${v},${v},${v},${.05 + R() * .07})`) }   // brushed grain
+  for (let i = 0; i < 2200; i++) { const x = R() * S, y = R() * S, a = R() < .6 ? GRAIN + (R() - .5) * .5 : R() * Math.PI, l = 4 + Math.pow(R(), 3) * 220, w = .3 + R() * .7, al = .1 + R() * .35;   // hairlines, every way
+    line(r, x, y, a, l, w, `rgba(225,225,225,${al})`, (R() - .5) * l * .15); line(b, x, y, a, l, w, `rgba(60,60,60,${al})`, 0) }
+  for (let k = 0; k < 70; k++) { const cx = R() * S, cy = R() * S, a = R() * Math.PI, rr = 10 + R() * 45, n = 20 + R() * 60 | 0;   // rub marks: a patch of short parallel scratches
+    for (let i = 0; i < n; i++) { const t = R(), d = (R() - .5) * 2 * rr, x = cx + Math.cos(a + 1.57) * d + (R() - .5) * rr, y = cy + Math.sin(a + 1.57) * d + (R() - .5) * rr, l = 3 + R() * rr * .8; line(r, x, y, a + (R() - .5) * .12, l, .3 + t * .5, `rgba(210,210,210,${.08 + R() * .2})`); line(b, x, y, a, l, .4, 'rgba(80,80,80,.25)') } }
+  for (let i = 0; i < 70; i++) { const x = R() * S, y = R() * S, a = R() * Math.PI, l = 30 + R() * 260, bend = (R() - .5) * 40;   // a few real gouges: a cut with burred edges
+    line(r, x, y, a, l, 2.2, 'rgba(235,235,235,.5)', bend); line(r, x, y, a, l, .8, 'rgba(70,70,70,.7)', bend); line(b, x, y, a, l, 2.4, 'rgba(170,170,170,.6)', bend); line(b, x, y, a, l, 1, 'rgba(20,20,20,.9)', bend) }
+  for (let i = 0; i < 9000; i++) { const x = R() * S, y = R() * S, z = .6 + R() * 1.6, v = R() < .5 ? 200 : 60; r.fillStyle = `rgba(${v},${v},${v},${.06 + R() * .12})`; r.fillRect(x, y, z, z); if (R() < .3) { b.fillStyle = 'rgba(40,40,40,.35)'; b.fillRect(x, y, z, z) } }   // pitting and specks
+  const tex = (c, srgb) => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(.11, .11); t.anisotropy = 8; if (srgb) t.colorSpace = THREE.NoColorSpace; return t };
+  return { rough: tex(cr), bump: tex(cb) };
 })();
 const SHIP_MAT = {
-  white: new THREE.MeshPhysicalMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: .32, roughness: .5, metalness: .05, roughnessMap: SCUFF.rough, clearcoat: 0, clearcoatRoughness: .1 }),   // clear lacquer over the paint: that's what carries the reflections
-  black: new THREE.MeshPhysicalMaterial({ color: 0x0a0a0c, roughness: .55, metalness: .25, roughnessMap: SCUFF.rough, clearcoat: 0, clearcoatRoughness: .1 }),
-  rim: new THREE.MeshStandardMaterial({ color: 0x6c6c74, emissive: 0xffffff, emissiveIntensity: .05, roughness: .6, metalness: .1, roughnessMap: SCUFF.rough }),
+  white: new THREE.MeshPhysicalMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: .32, roughness: .5, metalness: .05, roughnessMap: SCUFF.rough, bumpMap: SCUFF.bump, bumpScale: .35, clearcoat: 0, clearcoatRoughness: .1, clearcoatRoughnessMap: SCUFF.rough }),   // clear lacquer over the paint: that's what carries the reflections
+  black: new THREE.MeshPhysicalMaterial({ color: 0x0a0a0c, roughness: .5, metalness: .6, roughnessMap: SCUFF.rough, bumpMap: SCUFF.bump, bumpScale: .35, clearcoat: 0, clearcoatRoughness: .1, clearcoatRoughnessMap: SCUFF.rough }),
+  rim: new THREE.MeshStandardMaterial({ color: 0x6c6c74, emissive: 0xffffff, emissiveIntensity: .05, roughness: .45, metalness: .75, roughnessMap: SCUFF.rough, bumpMap: SCUFF.bump, bumpScale: .35 }),
 };
 function makeAvatar(geo = ARROW) {
   const g = new THREE.Group(), body = new THREE.Group(), M = SHIP_MAT;

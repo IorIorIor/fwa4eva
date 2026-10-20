@@ -38,9 +38,21 @@ const shipEnv = (() => {
     if (sk > .01) for (const [x, y, b, t] of SPARK) { if (t > sk) continue; const i = (y * W + x) * 4, v = b * 255 * Math.min(1, sk); px[i] = Math.min(255, px[i] + v * .85); px[i + 1] = Math.min(255, px[i + 1] + v * .92); px[i + 2] = Math.min(255, px[i + 2] + v) }
     g.putImageData(img, 0, 0); tex.needsUpdate = true;
   }
+  // the ship layer's lights come from where the light really is: a key light from the galaxy's core, the disk's glow from
+  // below (or above), a faint cool rim from behind; no fixed sun overhead
+  const LT = { hemi: shipScene.children.find(o => o.isHemisphereLight), key: shipScene.children.find(o => o.isDirectionalLight), rim: shipScene.children.filter(o => o.isDirectionalLight)[1] }, _lp = new V3(), _ld = new V3();
+  function lights() {
+    const L = LOOK; if (!(L.shipLightReal ?? 1)) { LT.hemi.position.set(0, 1, 0); LT.hemi.color.set(0xb8b0ff); LT.hemi.groundColor.set(0x1a1430); LT.rim.position.copy(rimLight.position); LT.key.position.copy(sunLight.position); LT.key.intensity = sunLight.intensity; LT.rim.intensity = rimLight.intensity; LT.hemi.intensity = 1.1 * Math.PI; return }
+    toLocal(player.pos, _lp); const dc = _lp.length(), toCore = _ld.copy(GC).sub(player.pos).normalize(), h = _lp.y, rr = Math.hypot(_lp.x, _lp.z), Rg = GAL_R0 + GAL_LEN;
+    LT.key.position.copy(toCore); LT.key.intensity = Math.PI * (L.shipCoreLight ?? 1.2) * (.35 + .65 * Math.exp(-dc / (Rg * .6)));   // the core: brighter the nearer you are
+    const disk = Math.exp(-Math.abs(h) / (Rg * .25)) * (rr < Rg * 1.2 ? 1 : .3); LT.hemi.position.set(0, h >= 0 ? 1 : -1, 0).applyQuaternion(GQ);   // the disk lights the side of the ship that faces it
+    LT.hemi.color.setRGB(.05, .05, .08); LT.hemi.groundColor.setRGB(.45, .55, 1); LT.hemi.intensity = Math.PI * (.35 + 1.1 * disk) * (L.shipDiskLight ?? 1);
+    LT.rim.position.copy(toCore).negate(); LT.rim.intensity = Math.PI * .35;
+  }
   return {
     update(dt) {
-      const k = LOOK.shipReflect ?? 1, gl = LOOK.shipGloss ?? .5, key = k + ',' + gl; if (key !== on) { on = key; base.forEach(({ m, r, mt }) => { m.envMap = k > 0 ? tex : null; m.envMapIntensity = k * 2.5; m.roughness = r * (1 - .6 * Math.min(1, k * gl)); m.metalness = Math.max(mt, .35 * Math.min(1, k)); if (m.isMeshPhysicalMaterial) { m.clearcoat = Math.min(1, k); m.clearcoatRoughness = .02 + .3 * (1 - gl) } m.needsUpdate = true }) }   // the lacquer (clearcoat) mirrors the panorama sharply; gloss tightens it
+      if (LT.hemi && LT.key && LT.rim) lights();
+      const k = LOOK.shipReflect ?? 1, gl = LOOK.shipGloss ?? .5, sc = LOOK.shipScuff ?? 1, key = k + ',' + gl + ',' + sc; if (key !== on) { on = key; base.forEach(({ m, r, mt }) => { m.envMap = k > 0 ? tex : null; m.envMapIntensity = k * 2.5; m.roughness = r * (1 - .6 * Math.min(1, k * gl)); m.metalness = Math.max(mt, .35 * Math.min(1, k)); if (m.isMeshPhysicalMaterial) { m.clearcoat = Math.min(1, k); m.clearcoatRoughness = .02 + .3 * (1 - gl) } if (m.bumpMap) m.bumpScale = .35 * sc; m.needsUpdate = true }) }   // the lacquer (clearcoat) mirrors the panorama sharply; gloss tightens it
       if (k > 0 && (t -= dt) <= 0) { t = .5; draw() }
     },
   };
