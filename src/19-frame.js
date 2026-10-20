@@ -295,6 +295,7 @@ function tick(now) {
   if (player.vel.lengthSq() > 1) U.vdir.value.copy(player.vel).normalize(); else U.vdir.value.set(0, 0, -1).applyQuaternion(rig.q);
   U.beta.value = Math.min(.995, beta * L.relativity); PU.betaC.value = Math.min(.8, beta * L.shift); PU.beam.value = L.beaming;
   PU.vV.value.copy(U.vdir.value).transformDirection(camera.matrixWorldInverse); PU.ty.value = Math.tan(camera.fov * Math.PI / 360); PU.tx.value = PU.ty.value * camera.aspect;
+  PU.nV.value.set(0, 1, 0).applyQuaternion(GQ).transformDirection(camera.matrixWorldInverse); PU.edge.value = L.edgeDim; { const a = Math.sin(L.edgeAngle * Math.PI / 180); PU.edgeA.value = a; PU.edgeB.value = Math.min(1, Math.max(a * 1.05 + .002, a * L.edgeSoft)) }
   stars.u.far.value = fly ? 1 : 0;
   { const d = (fly ? player.pos : camera.position).distanceTo(GC); tdil = L.bhTime ? Math.max(.12, 1 - .88 * Math.exp(-Math.max(0, d - BH.sh) / (BH.sh * 2.5))) : 1; worldT += dt * tdil }
   U.time.value = worldT; U.now.value = now * .001;
