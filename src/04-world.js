@@ -188,6 +188,7 @@ D.forEach((d, i) => {
 })(P, N, MIN_SEP);
 const NEB_B = cloudField(7040, armPlace(17500, 2450));   // up to 7680 clouds with NEB_A (Cloud count × 640)
 const LANE_B = cloudField(500, armPlace(8750, 1400));
+const LANE_C = (() => { const s0 = R.state(); R.state(5150); const f = cloudField(1930, armPlace(8750, 1400)); R.state(s0); return f })();   // more dark clouds (count up to 10), drawn from their own seed so nothing else moves
 const starPos = (i, out = new V3()) => out.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
 const starR = i => STAR_R[i] * LOOK.bodySize, stopR = i => starR(i) * LOOK.stopK, dockDist = i => stopR(i) * 1.02;
 

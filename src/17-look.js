@@ -10,7 +10,7 @@ function applyLook() {
   NU.hue.value = L.nebHue; NU.edge.value = L.nebEdge; NU.bright.value = L.nebBright; NU.alphaMax.value = L.nebAlphaMax; NU.sizeVar.value = L.nebSizeVar; NU.pulse.value = L.nebPulse; NU.radOn.value = L.nebRadial; NU.flatY.value = L.nebHeight; NU.nearK.value = L.nebNear; NU.drift.value = L.nebDrift; NU.mono.value = L.mono;
   const nebHome = L.nebScreen ? hazeScene : softScene; if (nebula.parent !== nebHome) nebHome.add(nebula);   // "screen" clouds join the soft-clipped haze
   nebula.visible = lanes.visible = !!L.nebula; nebula.geometry.instanceCount = Math.min(NEB_A.n + NEB_B.n, Math.round(640 * L.nebCount));
-  { const U_ = LANE_U; U_.lane.value = L.lanes; U_.scale.value = L.laneSize; U_.flatY.value = L.laneHeight; U_.nearK.value = L.laneNear; U_.detail.value = L.laneDetail; U_.dscale.value = L.laneScale; U_.contrast.value = L.laneContrast; U_.thin.value = L.laneThin; U_.soft.value = L.laneSoft; U_.warm.value = L.laneWarm; U_.amax.value = L.laneMax } lanes.geometry.instanceCount = Math.min(LANE_A.n + LANE_B.n, Math.round(270 * L.laneCount));
+  { const U_ = LANE_U; U_.lane.value = L.lanes; U_.scale.value = L.laneSize; U_.flatY.value = L.laneHeight; U_.nearK.value = L.laneNear; U_.detail.value = L.laneDetail; U_.dscale.value = L.laneScale; U_.contrast.value = L.laneContrast; U_.thin.value = L.laneThin; U_.soft.value = L.laneSoft; U_.warm.value = L.laneWarm; U_.amax.value = L.laneMax } lanes.geometry.instanceCount = Math.min(LANE_A.n + LANE_B.n + LANE_C.n, Math.round(270 * L.laneCount));
   coreGlow.material.color.copy(new C3(1, 1, 1).lerp(new C3(.75, .85, 1), L.mono));
   vol.u.core.value.copy(mcol(NEB_PAL[0][0], L.mono)); vol.u.edge.value.copy(mcol(NEB_PAL[0][1], L.mono));
   // haze
@@ -51,7 +51,7 @@ function saveLook() { if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify
     const snap = await lookDoc.get(), d = snap.exists && snap.data();
     if (d && d.look && typeof d.look === 'object') {
       Object.keys(d.look).forEach(k => { if (k in LOOK_DEFAULTS && typeof d.look[k] === 'number') LOOK[k] = d.look[k] }); migrateLook(LOOK);
-      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
+      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
     } else saveLook();
   } catch (e) { }
 })();
@@ -99,6 +99,7 @@ function renderLook() {
     if (title === 'Galaxy') { const pv = document.createElement('div'); pv.className = 'gprev'; pv.innerHTML = '<canvas width="520" height="520" aria-label="Preview of the galaxy shape from these settings"></canvas><span>Preview: shape changes take effect when you rebuild</span>'; bodyEl.appendChild(pv); prevCv = pv.querySelector('canvas'); prevSoon() }
     hd.onclick = () => { const o = sec.classList.toggle('open'); hd.setAttribute('aria-expanded', o); const i = openSecs.indexOf(title); if (o && i < 0) openSecs.push(title); if (!o && i >= 0) openSecs.splice(i, 1); store.set('sotd-look-open', JSON.stringify(openSecs)) };
     rows.forEach(([k, label, type, def, min, max, step]) => {
+      if (ANDRO ? label.includes('(Generic)') : label.includes('(Andromeda)') || /^dust/.test(k)) return;   // only the settings for the galaxy you're in
       if (type === 'b') { const w = document.createElement('div'); w.className = 'gsw'; w.innerHTML = `<span>${label}</span><button class="btn" type="button">Rebuild</button>`; w.querySelector('button').onclick = () => { saveLookNow(); setTimeout(() => location.reload(), 350) }; bodyEl.appendChild(w); return }
       if (type === 'c') {
         const w = document.createElement('div'); w.className = 'gsw'; w.innerHTML = `<span>${label}</span><div class="seg"><button data-s="generic" aria-pressed="${!ANDRO}">Generic</button><button data-s="andromeda" aria-pressed="${ANDRO}">Andromeda</button></div>`;

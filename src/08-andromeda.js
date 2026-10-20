@@ -32,8 +32,8 @@ const bulgePts = (() => {
   const m = softPoints(p, { cols: c, size: 9000, op: .05, far: true, order: -1, fx: true }); andro.add(m); return m;
 })();
 /* dust filaments: thin dark ribbons following the spiral, mostly on the inner edge of each arm (one instanced mesh) */
-const dustFil = (() => {
-  const n = 7000, SEG = 10, R_ = mulberry32(909), K = ['aR0', 'aOf', 'aTh0', 'aLen', 'aW', 'aA', 'aY', 'aJ', 'aK'], A = Object.fromEntries(K.map(k => [k, new Float32Array(n)]));
+function makeDustFil(n, seed) {
+  const SEG = 10, R_ = mulberry32(seed), K = ['aR0', 'aOf', 'aTh0', 'aLen', 'aW', 'aA', 'aY', 'aJ', 'aK'], A = Object.fromEntries(K.map(k => [k, new Float32Array(n)]));
   for (let i = 0; i < n; i++) {
     const arm = i % ARMS, u = .08 + Math.pow(R_(), .8) * .95, r = GAL_R0 + u * GAL_LEN, sd = 7700 + r * .045, inner = R_() < .72;
     const off = inner ? -(sd * (.7 + R_() * .6)) : (R_() - .5) * sd * 5, th = arm * 2 * Math.PI / ARMS + armPhase(r) + (R_() - .5) * .06, len = (.04 + R_() * .16) * (inner ? 1 : .6), w = (500 + R_() * 2200) * (1 - u * .3), a = (.4 + R_() * .6) * (inner ? 1 : .55), y = (R_() - .5) * 900, j = R_();
@@ -44,13 +44,14 @@ const dustFil = (() => {
   for (let k = 0; k < SEG; k++) { const p = k * 2; idx.push(p, p + 1, p + 2, p + 1, p + 3, p + 2) }
   g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(s.length * 3), 3)); g.setAttribute('aS', new THREE.Float32BufferAttribute(s, 1)); g.setAttribute('aSd', new THREE.Float32BufferAttribute(sd, 1)); g.setIndex(idx);
   packInstances(g, n, Object.fromEntries(K.map(k => [k, [A[k], 1]]))); g.instanceCount = n; g.userData.n = n;
-  const u = { dust: uniform(1), nearD: uniform(20000), wid: uniform(1), blur: uniform(0), armW: uniform(1), c: uniform(new C3(.1, .055, .035)), len: uniform(1), wig: uniform(.3), rag: uniform(.6), fib: uniform(1), brk: uniform(.45) };
+  const u = { dust: uniform(1), nearD: uniform(20000), wid: uniform(1), blur: uniform(0), armW: uniform(1), c: uniform(new C3(.1, .055, .035)), len: uniform(1), wig: uniform(.3), rag: uniform(.6), fib: uniform(1), brk: uniform(.45), rot: uniform(0), rs: uniform(1), ro: uniform(0), tw: uniform(0), yo: uniform(0) };   // rot/rs/ro/tw/yo: move the layer to fit the spiral (turn, radial scale, radial shift, extra winding, height)
   const m = skyMat({ blend: 'alpha', side: THREE.DoubleSide }), vN = varyingProperty('float', 'vN'), vV = varyingProperty('float', 'vV'), vS = varyingProperty('float', 'vS'), vA = varyingProperty('float', 'vA'), vJ = varyingProperty('float', 'vJ');
   m.vertexNode = Fn(() => {
     const aS = attribute('aS', 'float'), aSd = attribute('aSd', 'float'), len = ia('aLen', 'float').mul(u.len), aJ = ia('aJ', 'float');
-    const th = ia('aTh0', 'float').add(aS.mul(len)), r = ia('aR0', 'float').add(ia('aOf', 'float').mul(u.armW)).mul(exp(aS.mul(len).div(ia('aK', 'float'))));   // follows the arm's local winding
+    const r = ia('aR0', 'float').add(ia('aOf', 'float').mul(u.armW)).mul(exp(aS.mul(len).div(ia('aK', 'float')))).mul(u.rs).add(u.ro);   // follows the arm's local winding
+    const th = ia('aTh0', 'float').add(aS.mul(len)).add(u.rot).add(u.tw.mul(log(max(r, 1000).div(GAL_R0))));
     const rr = r.add(aSd.mul(ia('aW', 'float')).mul(.5).mul(u.wid).mul(u.blur.mul(2).add(1))).add(sin(aS.mul(len).mul(90).add(aJ.mul(40))).mul(ia('aW', 'float')).mul(u.wig));   // a slow meander
-    const w = fromGal(vec3(cos(th).mul(rr), ia('aY', 'float'), sin(th).mul(rr))).toVar();
+    const w = fromGal(vec3(cos(th).mul(rr), ia('aY', 'float').add(u.yo), sin(th).mul(rr))).toVar();
     vN.assign(smoothstep(u.nearD.mul(.3), u.nearD, distance(cameraPosition, w))); vV.assign(aSd); vS.assign(aS); vA.assign(ia('aA', 'float')); vJ.assign(ia('aJ', 'float'));
     return cameraProjectionMatrix.mul(cameraViewMatrix.mul(vec4(w, 1)));
   })();
@@ -64,7 +65,8 @@ const dustFil = (() => {
     return vec4(u.c, clamp(prof.mul(rag).mul(brk).mul(sin(vS.mul(3.14159))).mul(vA).mul(u.dust).mul(.8).mul(vN), 0, .92));
   })();
   const mesh = layer(new THREE.Mesh(g, m), scene, 1); mesh.u = u; return mesh;
-})();
+}
+const dustFil = makeDustFil(7000, 909), dustFil2 = makeDustFil(7000, 4242);   // a second layer, moved and tuned on its own
 /* pink star-forming knots on the arms, blue star clouds in the outer disk */
 const knotPts = (() => {
   const mk = (n, u0, u1, cols, size, op, spread, seed) => {

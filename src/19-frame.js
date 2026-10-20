@@ -43,14 +43,17 @@ function updateAndro() {
   coreGlow.material.opacity = L.core * .22 * f * inK(coreGlow.scale.x) * cg; haze.u.op.value = L.haze * L.hazeBright * cg;
   wallSky.mesh.position.copy(camera.position); wallSky.u.op.value = L.wallpaper ? L.wallBlue : 0; wallSky.mesh.visible = !!L.wallpaper;
   sparkle.mesh.position.copy(camera.position); sparkle.u.op.value = L.wallpaper ? L.sparkle : 0; sparkle.mesh.visible = !!L.wallpaper && L.sparkle > 0;
-  andro.visible = ANDRO; dustFil.visible = ANDRO && L.dustLanes > 0; if (!ANDRO) return;
+  andro.visible = ANDRO; dustFil.visible = ANDRO && L.dustLanes > 0; dustFil2.visible = ANDRO && L.dust2 > 0; if (!ANDRO) return;
   bulgeSpr.forEach(s => { s.scale.setScalar(bulgeR * 2 * s.userData.k * L.bulgeSize); s.material.opacity = s.userData.o * L.bulge * f * inK(s.scale.x) * cg });
   { const n = Math.round(Math.min(48, L.bulgePuffN ?? 6) * 1000), d = L.bulgePuffD ?? 1, sp = L.bulgePuffSpread ?? 1;   // finer grain: smaller puffs, each a little brighter so the bulge doesn't fade
     bulgePts.geometry.instanceCount = n; bulgePts.u.sz.value = 9000 / d / sp * (L.bulgePuffSize ?? 1); puffFx(bulgePts.u, L, 'bulgePuff'); bulgePts.u.op.value = .05 * L.bulge * L.bulgePuffs * Math.sqrt(d) * cg;
     bulgePts.scale.setScalar(sp); bulgePts.position.copy(GC).multiplyScalar(1 - sp); bulgePts.visible = L.bulgePuffs > 0 && n > 0 && !L.puffVol }
   const lp = toLocal(camera.position, tmp), rr = Math.hypot(lp.x, lp.z), inG = (1 - sstep(Math.abs(lp.y), L.dustInH * .4, L.dustInH)) * (1 - sstep(rr, GAL_R0 + GAL_LEN, (GAL_R0 + GAL_LEN) * 1.15));
-  const du = dustFil.u; du.dust.value = L.dustLanes * (1 - L.dustInFade * inG); du.nearD.value = L.dustNear; du.wid.value = L.dustWidth; du.blur.value = L.dustBlur; du.armW.value = L.armWidth; du.len.value = L.dustLen; du.wig.value = L.dustWiggle; du.rag.value = L.dustRag; du.fib.value = L.dustFibre; du.brk.value = L.dustBreak;
-  du.c.value.setRGB(.1, .055, .035).lerp(_dustBlack, L.dustDark); dustFil.geometry.instanceCount = Math.round(dustFil.geometry.userData.n * L.dustCount);
+  [[dustFil, 'dust', L.dustLanes], [dustFil2, 'dust2', L.dust2]].forEach(([m, p, amt]) => {   // both filament layers; the second has its own amount, count, width, blur and placement
+    const du = m.u, o = k => L[p + k] ?? (p === 'dust' ? 0 : L['dust' + k]); du.dust.value = amt * (1 - L.dustInFade * inG); du.nearD.value = L.dustNear; du.wid.value = o('Width'); du.blur.value = o('Blur'); du.armW.value = L.armWidth; du.len.value = o('Len'); du.wig.value = L.dustWiggle; du.rag.value = L.dustRag; du.fib.value = L.dustFibre; du.brk.value = L.dustBreak;
+    du.rot.value = (L[p + 'Rot'] ?? 0) * Math.PI / 180; du.rs.value = L[p + 'Scale'] ?? 1; du.ro.value = L[p + 'Shift'] ?? 0; du.tw.value = L[p + 'Twist'] ?? 0; du.yo.value = L[p + 'Y'] ?? 0;
+    du.c.value.setRGB(.1, .055, .035).lerp(_dustBlack, L.dustDark); m.geometry.instanceCount = Math.round(m.geometry.userData.n * Math.min(1, o('Count')));
+  });
   knotPts.knots.u.op.value = .5 * L.knots; knotPts.knots.visible = L.knots > 0; knotPts.clouds.u.op.value = .16 * L.starClouds; knotPts.clouds.visible = L.starClouds > 0;
   outerDisk.u.op.value = L.outerGlow; outerDisk.visible = L.outerGlow > 0;
   SATS.forEach(s => { const fs = farDimJS(camera.position.distanceTo(s.pos)); s.g.visible = s.stars.visible = L.satellites > 0; s.stars.u.op.value = Math.min(1, L.satellites); s.pts.u.op.value = .18 * L.satellites * fs; s.glow.material.opacity = .5 * s.core * L.satellites * fs; s.core.material.opacity = .9 * s.core * L.satellites * fs });
@@ -77,7 +80,7 @@ function updateTimeRings(dt) {
     const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = fr ? 1 : ringFarK; mapLvl[1] = fr ? inside : 0; mapLvl[2] = 0; mapStars = 0;
   }
   const show = map || fr || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0;   // with the single spiral, the spiral itself is the timeline ruler.visible = timeRings.mesh.visible && !SPIRAL;   // the spiral carries its own dates
-  if (monthTicks) { monthTicks.visible = map && (L.mapMonths ?? 1) > 0; monthTicks.u.a.value = .55 * (L.mapMonths ?? 1) * (1 - sstep(mapYrs, L.mapMonthYrs ?? 8, (L.mapMonthYrs ?? 8) * 1.7)); monthTicks.setLen(L.mapTickLen ?? 1500) }   // month dividers once a few years fill the view
+  if (monthTicks) { monthTicks.visible = map && (L.mapMonths ?? 1) + (L.mapYearLines ?? 1) > 0; monthTicks.u.a.value = .55 * (L.mapMonths ?? 1) * (1 - sstep(mapYrs, L.mapMonthYrs ?? 8, (L.mapMonthYrs ?? 8) * 1.7)); monthTicks.u.ya.value = .6 * (L.mapYearLines ?? 1); monthTicks.setLen(L.mapTickLen ?? 1500, Math.max((L.mapTickLen ?? 1500) * 2.2, L.mapYearLen ?? 24000)) }   // month dividers once a few years fill the view
   if (spiralLine) { spiralLine.visible = show; spiralLine.u.a.value = (map ? .55 : .5 * ringFarK + (fr ? .35 : 0)) * Math.max(.3, Math.min(2, L.eraRings || 1)) }
   u.era.value = .3 * L.eraRings * mapLvl[0] * (map ? 1.3 : 1); u.yr.value = .13 * L.ringYear * mapLvl[1] * (map ? 1.4 : 1); u.mo.value = .1 * L.ringMonth * mapLvl[2] * (map ? 1.3 : 1);
   u.moR.value = map ? orbit.dist * 1.4 : L.monthRange; u.armOnly.value = SPIRAL ? 1 : L.ringArms; u.y0.value = S.y0; u.y1.value = S.y1;
@@ -139,11 +142,11 @@ function updateStreaks(dt) {
   su.disp.value.addScaledVector(v, dt); ['x', 'y', 'z'].forEach(k => { su.disp.value[k] %= 2 * SL_H }); streaks.position.copy(player.pos);
   su.len.value = Math.min(SL_H * .8, sp * .04 * L.streakLen); if (sp > 1e-3) su.dir.value.copy(v).divideScalar(sp);
   const lp = toLocal(player.pos, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
-  const disk = (1 - sstep(Math.abs(lp.y), L.streakInH * .4, L.streakInH)) * (1 - sstep(rr, Rr * .95, Rr * 1.2)), da = armDist(lp.x, lp.z) / armWAt(rr), arm = Math.exp(-da * da * 5 / (L.armWidth * L.armWidth));
+  const g = L.streakRamp ?? .8, disk = (1 - sstep(Math.abs(lp.y), L.streakInH * .4 * (1 - g), L.streakInH)) * (1 - sstep(rr, Rr * (1.1 - .85 * g), Rr * 1.1)) ** (1 + g), da = armDist(lp.x, lp.z) / armWAt(rr), arm = Math.exp(-da * da * 5 / (L.armWidth * L.armWidth));
   const core = Math.exp(-Math.pow(rr / (Rr * .22), 2)) * (1 - sstep(Math.abs(lp.y), Rr * .08, Rr * .25));
   streakDens = Math.max(disk * (.08 + .92 * arm), core);   // straight from where you are: it thins toward the edge of the disk and is gone past it
   streaks.geometry.setDrawRange(0, Math.floor(Math.min(SL_N, SL_N / 3 * L.streakAmt * streakDens)) * 2);
-  su.op.value += (sstep(sp, 150, 4000) * .32 * L.streakBright * Math.min(1, streakDens * 3) - su.op.value) * Math.min(1, dt * 6);
+  su.op.value += (sstep(sp, 150, 4000) * .32 * L.streakBright * Math.min(1, streakDens * (3 - 2.4 * g)) - su.op.value) * Math.min(1, dt * 6);
   const mu = motes.u, B = L.moteBox * SHIP_K; mu.box.value = B; mu.size.value = L.moteSize * SHIP_K; mu.follow.value = L.moteFollow; mu.core.value = L.moteCore; mu.sB.value = bulgeR * .42 * (L.bulgePuffSpread ?? 1) * L.moteCoreReach; mu.bhR.value = BH.rs * Math.max(3.5, L.bhDiskOut); mu.bhZ.value = L.moteBhZone; mu.bhH.value = L.moteBhH;
   mu.op.value += ((1 - sstep(sp, 3000, 60000)) * 1.3 * L.moteBright - mu.op.value) * Math.min(1, dt * 6);
   toLocal(camera.position, tmp); tmp.set(-tmp.z, 0, tmp.x); if (tmp.lengthSq() > 1) tmp.normalize().applyQuaternion(GQ);   // orbital direction here

@@ -93,12 +93,12 @@ const nebula = cloudLayer([NEB_A, NEB_B], NEB_U, ({ vUv, vCol, vCol2, vA, vQ }) 
   return vec4(c.mul(al), al);
 })());
 const LANE_U = cloudU({ lane: uniform(.6), detail: uniform(.6), dscale: uniform(1), contrast: uniform(1.2), thin: uniform(.1), soft: uniform(1), warm: uniform(.3), amax: uniform(.9) });
-const lanes = cloudLayer([LANE_A, LANE_B], LANE_U, ({ vUv, vA, vQ }) => Fn(() => {
+const lanes = cloudLayer([LANE_A, LANE_B, LANE_C], LANE_U, ({ vUv, vA, vQ }) => Fn(() => {
   const u = LANE_U, q = vQ.sub(.5), sd = vA.mul(37.1), f = u.dscale.mul(7);
   // the soft atlas blob, broken up by two octaves of finer noise into fibres and holes, then thinned and sharpened
   const fib = noise3(vec3(q.mul(f), sd)).mul(.6).add(noise3(vec3(q.mul(f.mul(2.7)).add(4.1), sd.add(9))).mul(.4));
   const base = texture(nebAtlas, vUv).r.mul(smoothstep(.5, u.soft.mul(-.18).add(.48), length(q)));
-  const dn = pow(smoothstep(u.thin, 1, base.mul(mix(1, fib.mul(1.7), u.detail))), u.contrast);
+  const dn = pow(smoothstep(u.thin, 1, base.mul(mix(1, fib.mul(1.7), min(u.detail, 1))).mul(pow(fib.mul(1.7), max(u.detail.sub(1), 0).mul(.35)))), u.contrast);   // past 1 the fibres keep cutting deeper
   return vec4(mix(vec3(.012, .008, .02), vec3(.075, .042, .024), u.warm), clamp(dn.mul(.8).mul(vA).mul(u.lane), 0, u.amax));
 })(), { blend: 'alpha', order: -1 });
 /* the galaxy core's glow, seen from afar */

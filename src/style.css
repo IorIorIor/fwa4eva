@@ -48,7 +48,7 @@ button{cursor:pointer}
 .lsec:first-child{border-top:0}
 .lhd{display:flex;justify-content:space-between;align-items:center;width:calc(100% + 20px);margin:4px -10px;background:none;border:0;border-radius:10px;padding:9px 10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);text-align:left;transition:background .15s,color .15s}
 .lhd:hover{color:var(--ink);background:rgba(255,255,255,.05)}
-.lsec.open>.lhd{color:var(--void);background:var(--ink)}
+.lsec.open>.lhd{color:var(--void);background:var(--ink);position:sticky;top:0;z-index:2}   /* an open section's title sticks to the top while you scroll its sliders */
 .lsec.open>.lhd svg{stroke:var(--void)}
 .lhd svg{width:10px;height:10px;fill:none;stroke:var(--dim);stroke-width:1.2;transition:transform .2s}
 .lsec.open .lhd svg{transform:rotate(180deg)}
@@ -400,7 +400,7 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 #radial .rs.hot path{fill:#fff}
 #radial .rs.hot .ri{color:#000}
 #radial .rs.hot text{fill:#000}
-#rmDot{position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.6);pointer-events:none}
+#rmDot{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-3.2px 0 0 -10.3px;pointer-events:none}#rmDot svg{display:block;width:100%;height:100%;overflow:visible}#rmDot[hidden]{display:none}   /* the pointing hand, fingertip on the spot */
 #rmPanel{left:50%;top:50%;width:min(440px,calc(100vw - 32px));max-height:min(620px,calc(100vh - 120px));display:flex;flex-direction:column;transform:translate(-50%,-50%) scale(.94);opacity:0;transition:opacity .22s ease,transform .3s cubic-bezier(.2,1.2,.3,1);background:rgba(18,18,20,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.14);color:#e9e9e6;z-index:31}
 #rmPanel.in{opacity:1;transform:translate(-50%,-50%)}
 #rmPanel header{display:flex;align-items:center;gap:10px;padding:14px 14px 12px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
@@ -457,9 +457,11 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 #cross .arc{fill:none;stroke:#e2e2e2;stroke-width:1.6;stroke-linecap:butt;stroke-dasharray:0 100;opacity:0;transition:opacity .3s}
 #cross .ticks{stroke:#dcdcdc;stroke-width:1.6;stroke-linecap:butt;opacity:0;transform-origin:0 0;transform:scale(.7);transition:opacity .18s,transform .22s cubic-bezier(.2,1.2,.3,1)}
 #cross .rl{font-family:var(--mono);font-size:9px;letter-spacing:.72px;fill:#fff;opacity:0;dominant-baseline:middle;transition:opacity .4s}
-#cross.on .ring,#cross.mag .ring{transform:scale(.861)}
-#cross.on .arcs,#cross.mag .arcs{transform:scale(.863)}
-#cross.on .ticks,#cross.mag .ticks{opacity:1;transform:scale(1.19)}
+#cross.on .ring,#cross.mag .ring{transform:scale(.595);stroke:#dcdcdc;stroke-width:2.2}   /* hover (Figma 17-148): ring pulls in tight and turns light, the arcs follow it in */
+#cross.on .arcs,#cross.mag .arcs{transform:scale(.66)}
+#cross.on .arc,#cross.mag .arc{stroke-width:2.4}
+#cross .ring{transition:transform .22s cubic-bezier(.2,1.2,.3,1),opacity .2s,stroke .2s,stroke-width .22s}
+#cross .arc{transition:opacity .3s,stroke-width .22s}
 #cross.lockon .ring,#cross.lockon .arcs,#cross.lockon .dot,#cross.lockon .rl{opacity:0}
 #cross.lockon .ticks{opacity:1;transform:scale(1)}
 

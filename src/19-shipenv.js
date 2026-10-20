@@ -7,7 +7,7 @@ const shipEnv = (() => {
   const tex = new THREE.CanvasTexture(c); tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
   const mats = []; avatar.traverse(o => { const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; ms.forEach(m => { if (m.isMeshStandardMaterial && !mats.includes(m)) mats.push(m) }) });
   const base = mats.map(m => ({ m, r: m.roughness, mt: m.metalness }));
-  const d = new V3(), lp = new V3(), lc = new V3(), sc = new C3(); let t = 1, on = -1;
+  const d = new V3(), lp = new V3(), lc = new V3(), sc = new C3(); let t = 1, on = '';
   const Rg = GAL_R0 + GAL_LEN;
   // fake reflected stars: fixed sparks scattered over the panorama, brighter the deeper in the star clouds you are
   const SPARK = Array.from({ length: 260 }, (_, k) => { const r = mulberry32(31 + k); return [(r() * W) | 0, (r() * H) | 0, Math.pow(r(), 3) * 2.5 + .4, r()] });
@@ -40,7 +40,7 @@ const shipEnv = (() => {
   }
   return {
     update(dt) {
-      const k = LOOK.shipReflect ?? 1; if (k !== on) { on = k; base.forEach(({ m, r, mt }) => { m.envMap = k > 0 ? tex : null; m.envMapIntensity = k; m.roughness = r * (1 - .6 * Math.min(1, k * (LOOK.shipGloss ?? .5))); m.metalness = Math.max(mt, .35 * Math.min(1, k)); m.needsUpdate = true }) }
+      const k = LOOK.shipReflect ?? 1, gl = LOOK.shipGloss ?? .5, key = k + ',' + gl; if (key !== on) { on = key; base.forEach(({ m, r, mt }) => { m.envMap = k > 0 ? tex : null; m.envMapIntensity = k * 2.5; m.roughness = r * (1 - .6 * Math.min(1, k * gl)); m.metalness = Math.max(mt, .35 * Math.min(1, k)); if (m.isMeshPhysicalMaterial) { m.clearcoat = Math.min(1, k); m.clearcoatRoughness = .02 + .3 * (1 - gl) } m.needsUpdate = true }) }   // the lacquer (clearcoat) mirrors the panorama sharply; gloss tightens it
       if (k > 0 && (t -= dt) <= 0) { t = .5; draw() }
     },
   };

@@ -45,11 +45,11 @@ const rmenu = (() => {
     el.style.left = cx + 'px'; el.style.top = cy + 'px'; el.hidden = false; void el.offsetWidth; el.classList.add('in'); open = true; setHot(null);
     segs.find(s => s.dataset.k === 'map').querySelector('text').textContent = S.mode === 'map' ? 'Fly' : 'Map';
     segs.find(s => s.dataset.k === 'map').querySelector('.ri').innerHTML = RM_FILL[S.mode === 'map' ? 'fly' : 'map'];
-    dot.hidden = !locked(); dot.style.transform = 'translate(-50%,-50%)';
+    dot.hidden = !locked(); dot.style.transform = 'none';
   }
   function hide() { document.body.classList.toggle('rm-open', !panel.hidden && !!which); open = false; el.classList.remove('in'); setTimeout(() => { if (!open) el.hidden = true }, 220); setHot(null) }
   function move(e) {   // captured pointer: a dot you steer inside the ring; free pointer: wherever the pointer is
-    if (locked()) { vx += e.movementX; vy += e.movementY; const r = Math.hypot(vx, vy), lim = R1 * .95; if (r > lim) { vx *= lim / r; vy *= lim / r } dot.style.transform = `translate(calc(-50% + ${vx}px), calc(-50% + ${vy}px))`; setHot(pickAt(vx, vy)) }
+    if (locked()) { vx += e.movementX; vy += e.movementY; const r = Math.hypot(vx, vy), lim = R1 * .95; if (r > lim) { vx *= lim / r; vy *= lim / r } dot.style.transform = `translate(${vx}px, ${vy}px)`; setHot(pickAt(vx, vy)) }
     else setHot(pickAt(e.clientX - cx, e.clientY - cy));
   }
   function choose(k = hot) {

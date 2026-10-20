@@ -142,8 +142,8 @@ const SCUFF = (() => {
   const rough = new THREE.CanvasTexture(c); rough.wrapS = rough.wrapT = THREE.RepeatWrapping; rough.repeat.set(.11, .11); return { rough };
 })();
 const SHIP_MAT = {
-  white: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: .32, roughness: .5, metalness: .05, roughnessMap: SCUFF.rough }),
-  black: new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: .55, metalness: .25, roughnessMap: SCUFF.rough }),
+  white: new THREE.MeshPhysicalMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: .32, roughness: .5, metalness: .05, roughnessMap: SCUFF.rough, clearcoat: 0, clearcoatRoughness: .1 }),   // clear lacquer over the paint: that's what carries the reflections
+  black: new THREE.MeshPhysicalMaterial({ color: 0x0a0a0c, roughness: .55, metalness: .25, roughnessMap: SCUFF.rough, clearcoat: 0, clearcoatRoughness: .1 }),
   rim: new THREE.MeshStandardMaterial({ color: 0x6c6c74, emissive: 0xffffff, emissiveIntensity: .05, roughness: .6, metalness: .1, roughnessMap: SCUFF.rough }),
 };
 function makeAvatar(geo = ARROW) {
