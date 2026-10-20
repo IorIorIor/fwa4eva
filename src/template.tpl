@@ -1,5 +1,10 @@
 <title>FWA FOREVER</title>
-<meta name="description" content="Every FWA winner as a star in one galaxy you can fly through.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:title" content="FWA FOREVER">
+<meta property="og:image" content="/share.png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 %%FONT%%

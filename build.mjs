@@ -19,6 +19,6 @@ for (const spec of ['three/webgpu', 'three']) out = out.replaceAll(`from "${spec
 mkdirSync(OUT, { recursive: true });
 writeFileSync(join(OUT, 'app.js'), js);
 writeFileSync(join(OUT, 'index.html'), pageHtml({ inline: out }));
-const mp3 = join(ROOT, 'public', 'an-ending-ascent.mp3'); if (existsSync(mp3)) copyFileSync(mp3, join(OUT, 'an-ending-ascent.mp3'));
+for (const f of ['an-ending-ascent.mp3', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'share.png']) { const src = join(ROOT, 'public', f); if (existsSync(src)) copyFileSync(src, join(OUT, f)) }
 execSync('npx eslint --quiet dist-single/app.js', { cwd: ROOT, stdio: 'inherit' });
 console.log(`built dist-single/: ${(js.length / 1024).toFixed(0)} KB of source, lint clean`);
