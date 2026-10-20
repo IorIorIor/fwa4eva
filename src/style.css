@@ -439,3 +439,13 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 #gotPill b{font-family:"FF Good Pro",var(--body);font-weight:400;font-size:20px;color:#fff;letter-spacing:0;margin-right:2px}
 #gotPill.pop b{animation:gotPop .6s cubic-bezier(.2,1.4,.3,1)}
 @keyframes gotPop{0%{color:#ffd99a;text-shadow:0 0 14px #ffcf80}100%{color:#fff;text-shadow:none}}
+
+#rmPanel .ships{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+#rmPanel .ships button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:#e9e9e6;cursor:pointer;font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;text-align:center}
+#rmPanel .ships svg{width:38px;height:38px;overflow:visible}
+#rmPanel .ships button:hover{background:#fff;color:#000}
+#rmPanel .ships button.on{border-color:#fff;background:rgba(255,255,255,.14)}
+#rmPanel .ships button.lock{opacity:.35;cursor:default}
+#rmPanel .ships button.lock:hover{background:rgba(255,255,255,.04);color:#e9e9e6}
+#rmPanel .rk{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.06em}
+#gotPill.unlock::after{content:attr(data-new);display:block;margin-top:4px;font-family:var(--mono);font-size:11px;color:#ffd99a;letter-spacing:.08em;text-transform:uppercase}

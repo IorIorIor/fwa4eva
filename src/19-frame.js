@@ -203,7 +203,7 @@ let thrS = 0; const _fc = new C3();
 function engineLook(dt) {
   const L = LOOK; thrS += (((thrusting || holdSp >= 0) && booted && S.mode === 'fly' ? (thrusting ? 1 : .35 + .5 * sstep(Math.log10(Math.max(1, holdSp)), 2, 5.5)) : 0) - thrS) * Math.min(1, dt * 6);
   const on = emitGlow * (.42 + .58 * thrS + .3 * boostK); trailColour(.4, 1, _fc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0);
-  const h = avatar.userData.hole; h.col.value.copy(_fc); h.on.value = on;
+  const h = avatar.userData.hole; h.col.value.copy(_fc); h.on.value = on; h.spin.value += dt * (1.2 + 26 * thrS + 30 * boostK);   // the turbine spins up with the engine
   const em = avatar.userData.emit; em.material.color.copy(_fc); em.material.opacity = Math.min(1, on * .85);
   const mouth = _te.copy(avatar.userData.tail).multiplyScalar(avatar.scale.x).applyQuaternion(avatar.quaternion).add(avatar.position);
   const back = _d.set(0, 0, 1).applyQuaternion(avatar.quaternion), toCam = _c.copy(camera.position).sub(mouth), d = toCam.length(); toCam.divideScalar(d || 1);
