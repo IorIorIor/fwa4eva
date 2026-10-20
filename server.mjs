@@ -4,8 +4,7 @@
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, normalize, extname } from 'node:path';
-import { randomBytes } from 'node:crypto';
-import { WebSocketServer } from 'ws';
+import { attachRelay } from './relay.mjs';
 import { ROOT } from './shell.mjs';
 
 const DIST = join(ROOT, 'dist'), PORT = +process.env.PORT || 8787;
@@ -23,25 +22,6 @@ const server = createServer(async (req, res) => {
   } catch (e) { res.writeHead(500); res.end() }
 });
 
-/* the relay */
-const MAX_PILOTS = 200, MAX_MSG = 1024, MIN_GAP = 40;   // bytes per message, ms between messages from one pilot
-const wss = new WebSocketServer({ server, path: '/ws', maxPayload: MAX_MSG });
-const num = (a, n) => Array.isArray(a) && a.length === n && a.every(Number.isFinite);
-wss.on('connection', ws => {
-  if (wss.clients.size > MAX_PILOTS) return ws.close(1013, 'full');
-  ws.id = randomBytes(6).toString('hex'); ws.last = 0; ws.alive = true; ws.state = null;
-  for (const c of wss.clients) if (c !== ws && c.state) ws.send(c.state);   // everyone already flying shows up at once
-  ws.on('pong', () => { ws.alive = true });
-  ws.on('message', raw => {
-    const now = Date.now(); if (now - ws.last < MIN_GAP) return; ws.last = now;
-    let m; try { m = JSON.parse(raw) } catch { return }
-    const s = m && m.t === 'p' && m.s; if (!s || !num(s.p, 3) || !num(s.q, 4)) return;   // only well-formed positions travel
-    const out = JSON.stringify({ t: 'p', id: ws.id, s: { p: s.p, q: s.q, v: num(s.v, 3) ? s.v : [0, 0, 0], h: Number.isFinite(s.h) ? s.h : 0, m: s.m === 'map' ? 'map' : 'fly', th: (s.th | 0) & 3 } });
-    ws.state = out;
-    for (const c of wss.clients) if (c !== ws && c.readyState === 1) c.send(out);
-  });
-  ws.on('close', () => { const out = JSON.stringify({ t: 'x', id: ws.id }); for (const c of wss.clients) if (c.readyState === 1) c.send(out) });
-});
-setInterval(() => { for (const ws of wss.clients) { if (!ws.alive) { ws.terminate(); continue } ws.alive = false; ws.ping() } }, 20000);   // drop dead connections
+const wss = attachRelay(server);
 
 server.listen(PORT, () => console.log(`FWA FOREVER on :${PORT} (relay at /ws)`));
