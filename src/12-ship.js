@@ -81,7 +81,7 @@ const CURSORS = [
   { name: 'Cell', parts: [CP.rect(7, 0, 13, 20), CP.rect(0, 7, 20, 13)], tip: [10, 0], tail: [10, 19] },
   { name: 'Vertical text', parts: [CP.rect(1.5, 9, 18.5, 11), CP.rect(0, 5.5, 1.8, 14.5), CP.rect(18.2, 5.5, 20, 14.5)], tip: [20, 10], tail: [1, 10] },
 ];
-const SHIP_UNLOCK = k => k * 5;   // rings needed for each pointer
+const SHIP_UNLOCK = k => 0;   // rings needed for each pointer: all unlocked for now (was k * 5)
 function cursorGeo(def) {   // rotate so the tip leads and the tail trails along the axis, centre it, scale to ship units
   const k = .36, d = [def.tail[0] - def.tip[0], def.tail[1] - def.tip[1]], ax = Math.atan2(d[0], d[1]), rot = ([x, y]) => [x * Math.cos(ax) - y * Math.sin(ax), x * Math.sin(ax) + y * Math.cos(ax)];
   const parts = def.parts.map(p => Array.isArray(p) ? { o: p, h: [] } : p), outer = parts.flatMap(p => p.o).map(rot);
@@ -176,7 +176,7 @@ function setShip(k) {   // swap the ship's shape in place (same group, same mate
 /* the engine flare: a hard white point, a wide bloom round it and thin diffraction spikes, all sized in screen pixels so it
    reads the same at any distance. It sits at the mouth of the hole and only shows while you can see into it. */
 const flare = (() => {
-  const u = { col: uniform(new C3(1, .4, .4)), k: uniform(0), n: uniform(4), turn: uniform(Math.PI / 4), px: uniform(280), spk: uniform(1), rate: uniform(2), glow: uniform(1), half: uniform(0), q: uniform(840), ig: uniform(0) };
+  const u = { col: uniform(new C3(1, .4, .4)), k: uniform(0), n: uniform(4), turn: uniform(Math.PI / 4), px: uniform(280), spk: uniform(1), rate: uniform(2), glow: uniform(1), half: uniform(0), q: uniform(840), ig: uniform(0), pop: uniform(0) };
   const m = new THREE.SpriteNodeMaterial({ transparent: true, depthWrite: false, depthTest: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor });
   m.colorNode = Fn(() => {
     const p = uv().sub(.5).mul(u.q), r = length(p), L = u.px.mul(.5), spikes = float(0).toVar();   // the quad (q px) is three times the spikes, so the glow has room to fade out
@@ -188,7 +188,7 @@ const flare = (() => {
       spikes.addAssign(exp(across.div(w).pow(2).negate()).mul(fall).mul(step(float(j).add(.5), u.n.mul(.5))).mul(u.spk.mul(tw.sub(.6).add(gl.mul(.8))).add(1).max(.15)));
     }
     spikes.mulAssign(u.ig.mul(1.5).add(1));   // ignition: the spikes flare
-    const core = exp(r.div(1.5).pow(2).negate()).mul(u.ig.mul(8).add(1)), bloomIn = exp(r.div(L.mul(.022)).negate()).mul(u.glow), bloomOut = exp(r.div(L.mul(.15).mul(u.glow.sqrt().min(2.2))).negate()).mul(u.glow.min(3));
+    const core = exp(r.div(1.5).pow(2).negate()).mul(u.ig.mul(8).add(1)), bloomIn = exp(r.div(L.mul(.022)).negate()).mul(u.glow), bloomOut = exp(r.div(L.mul(.15).mul(u.glow.sqrt().min(2.2)).mul(u.pop.add(1))).negate()).mul(u.glow.min(3).add(u.pop.mul(3)));   // pop: a ring collected, the engine bursts with light
     const c = mix(u.col, vec3(1), .55).mul(spikes.mul(1.1)).add(vec3(1).mul(core.mul(6))).add(mix(u.col, vec3(1), .35).mul(bloomIn.mul(1.1))).add(u.col.mul(bloomOut.mul(.4)));
     const cc = clamp(c.mul(u.k).mul(smoothstep(u.q.mul(.5), u.q.mul(.3), r)), 0, 1);   // nothing reaches the quad's edge
     return vec4(cc, max(max(cc.r, cc.g), cc.b));   // light on the transparent ship layer: alpha covers the colour

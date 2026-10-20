@@ -212,9 +212,9 @@ function engineLook(dt) {
   const thrNow = thrusting && booted && S.mode === 'fly', spNow = player.vel.length(); if (thrNow && !engineLook.was) engineLook.burst = Math.max(engineLook.burst || 0, 1 - .85 * sstep(Math.log10(Math.max(1, spNow)), 2, 5.3)); engineLook.was = thrNow;   // a push from standstill kicks hard; at speed only a little
   if (boosting && !engineLook.wasB) engineLook.burst = Math.max(engineLook.burst || 0, 1.1); engineLook.wasB = boosting;   // boost always booms engineLook.burst = (engineLook.burst || 0) * Math.exp(-dt / Math.max(.05, L.flareBurstTime ?? .5));
   const spK = sstep(Math.log(Math.max(150, player.vel.length())), Math.log(150), Math.log(Math.max(300, L.cruiseSpeed))), sp = 1 + (L.flareSpeed ?? 1) * (spK - .3), bu = engineLook.burst * (L.flareBurst ?? 1.2);
-  const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2 * Math.max(.3, sp) * (1 + bu * .5);
+  const vis = sstep(back.dot(toCam), -.05, .3), fu = flare.u, px = L.flareLen * 2 * Math.max(.3, sp) * (1 + bu * .5) * (1 + ringPop * 2 * (L.ringPopSize ?? 1));
   fu.spk.value = L.flareSparkle ?? 1; fu.rate.value = L.flareRate ?? 2; fu.glow.value = (L.flareGlow ?? 1) * (1 + bu * .6);
-  fu.col.value.copy(_fc); fu.k.value = L.flare * vis * Math.max(on * Math.max(.3, sp) * (1 + bu), igniteK * .6); fu.ig.value = igniteK * (L.igniteBloom ?? 1.5);   // ignition flares the point and spikes only fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px; fu.q.value = px * 3;
+  fu.col.value.copy(_fc); fu.k.value = L.flare * vis * Math.max(on * Math.max(.3, sp) * (1 + bu), igniteK * .6, ringPop * (L.ringPop ?? 1)); fu.ig.value = igniteK * (L.igniteBloom ?? 1.5); fu.pop.value = ringPop * (L.ringPop ?? 1);   // ignition flares the point and spikes only fu.n.value = L.flareSpikes; fu.half.value = L.flareHalf ? 1 : 0; fu.turn.value = L.flareTurn * Math.PI / 180; fu.px.value = px; fu.q.value = px * 3;
   flare.position.copy(mouth).addScaledVector(back, avatar.scale.x * .06); flare.scale.setScalar(px * 3 * 2 * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight) * d); flare.visible = S.mode === 'fly' && fu.k.value > .002;
 }
 
