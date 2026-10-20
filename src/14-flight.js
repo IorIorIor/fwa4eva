@@ -127,7 +127,7 @@ function updatePlayer(dt) {
        is off (orbits keep going), the engine is a gentle orbitThrust × GM/r0² for nudging between orbits, and speed is held
        under 1.3 × escape velocity √(2GM/r), so you can be captured and can always climb out. ob blends it in at the zone's edge. */
     let ob = 0, GM = 0, oR = 0;
-    if (L.orbit && nearI >= 0 && lockI !== nearI) { const Rs = starR(nearI), r0 = Rs * L.orbitR, Ro = Rs * Math.max(L.orbitZone, L.orbitR * 1.5); GM = 4 * Math.PI * Math.PI * r0 * r0 * r0 / (L.orbitT * L.orbitT); oR = r0; ob = 1 - sstep(nearCD, Ro * .6, Ro) }
+    if (L.orbit && nearI >= 0 && lockI !== nearI) { const Rs = starR(nearI), r0 = Rs * L.orbitR, Ro = Rs * Math.max(L.orbitZone, L.orbitR * 1.5); GM = 4 * Math.PI * Math.PI * r0 * r0 * r0 / (L.orbitT * L.orbitT); oR = r0; ob = 1 - sstep(nearCD, Ro * .6, Ro); if (thrusting) { starPos(nearI, tmp2).sub(p.pos).normalize(); ob *= 1 - sstep(-wish.dot(tmp2), .2, .7) } }   // pushing away from the star breaks orbit: full engine, out you go
     const T1 = Math.max(1, L.cruiseTime), T2 = Math.max(T1 + 1, L.lightTime), V1 = L.cruiseSpeed, VL = LIGHT * .97;
     const vAt = c => { const t = c * T2; return t <= T1 ? 150 * Math.pow(V1 / 150, t / T1) : V1 * Math.pow(VL / V1, Math.min(1, (t - T1) / (T2 - T1))) };   // cruise = seconds of straight thrust / T2
     const cAt = v => { v = Math.max(150, v); const t = v <= V1 ? T1 * Math.log(v / 150) / Math.log(V1 / 150) : T1 + (T2 - T1) * Math.log(v / V1) / Math.log(VL / V1); return Math.min(1, t / T2) };
