@@ -266,9 +266,9 @@ function arrive(r) {
 /* instruments: built once, then only the values change */
 const gauge = (() => {
   const el = $('gauge'), row = (k, inner, cls) => `<div class="row ${cls}"><span>${k}</span>${inner}</div>`;
-  el.innerHTML = row('Speed', '<b data-v="speed"></b>', 'f') + row('Cruise', '<i class="bar"><i data-v="cruise"></i></i>', 'f') + row('Sector', '<b data-v="sector"></b>', 'f') + row('Time', '<b data-v="time"></b>', 'f t') + `<div class="row f"><span data-v="lockK"></span><b data-v="lockV"></b></div>` +
+  el.innerHTML = row('Cruise', '<i class="bar"><i data-v="cruise"></i></i>', 'f') + row('Sector', '<b data-v="sector"></b>', 'f') + row('Time', '<b data-v="time"></b>', 'f t') + `<div class="row f"><span data-v="lockK"></span><b data-v="lockV"></b></div>` +
     row('Eras', `<b>${NERA}</b>`, 'm') + row('Sites', '<b data-v="sites"></b>', 'm') + row('Constellations', '<b data-v="cons"></b>', 'm');
-  const q = k => el.querySelector(`[data-v="${k}"]`), T = {}; ['speed', 'sector', 'time', 'lockK', 'lockV', 'sites', 'cons'].forEach(k => T[k] = liveText(q(k)));
+  const q = k => el.querySelector(`[data-v="${k}"]`), T = {}; T.speed = liveText($('speed')); ['sector', 'time', 'lockK', 'lockV', 'sites', 'cons'].forEach(k => T[k] = liveText(q(k)));
   const bar = q('cruise'), timeRow = el.querySelector('.row.t'); let bw = '', tShow = null, mode = '';
   const setMode = m => { if (mode === m) return; mode = m; el.querySelectorAll('.row').forEach(r => r.hidden = !r.classList.contains(m === 'fly' ? 'f' : 'm')); tShow = null };
   return {

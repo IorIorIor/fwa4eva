@@ -12,6 +12,7 @@
 <svg class="hud" id="cross" viewBox="-90 -90 180 180" aria-hidden="true" hidden><g id="hdg"></g><circle class="ring" id="aimRing" r="10.5"></circle><circle id="boostArc" r="22" pathLength="138.2" transform="rotate(-90)"></circle><circle class="dot" r="1.4"></circle><g id="cmp"></g></svg>
 <div class="hud" id="arrive" aria-live="polite"><div class="eyebrow" id="arE"></div><h2 id="arT"></h2><p id="arS"></p></div>
 <div class="hud" id="lock" hidden>Click to fly</div>
+<div class="hud" id="speed" aria-hidden="true"></div>
 <div id="lockMark" hidden><i></i><i></i><i></i><i></i><b></b></div>
 <div class="hud" id="gauge"></div>
 <div class="hud" id="legend" hidden></div>
@@ -22,7 +23,7 @@
   <div class="lsave"><button class="btn" id="lookCopy">Copy settings</button><span id="lookMsg" role="status"></span><textarea id="lookOut" readonly hidden aria-label="Current settings"></textarea></div>
   <div class="scroll" id="lookBody"></div>
 </aside>
-<button class="hud" id="thrust">Hold to thrust</button>
+<button class="hud" id="boost" aria-label="Boost"><span>Boost</span><i></i></button><button class="hud" id="thrust">Thrust</button>
 
 <aside class="hud sheet" id="panel" aria-label="Filters" inert>
   <header><div id="count">0<small>sites</small></div><button class="btn" id="reset">Reset</button></header>

@@ -1,6 +1,6 @@
 /* ───────────────────────── input ───────────────────────── */
 const keys = {}, mouse = { x: 0, y: 0, in: false };
-let touchThrust = false, lockFailed = false, down = null, dragged = false, pinch0 = 0, lastInput = performance.now();
+let touchThrust = false, touchBoost = false, lockFailed = false, down = null, dragged = false, pinch0 = 0, lastInput = performance.now();
 const SENS = .0022;
 const locked = () => document.pointerLockElement === canvas;
 function updateLockUI() {
@@ -101,7 +101,7 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
-{ const thr = $('thrust'), set = v => { touchThrust = v; thr.classList.toggle('on', v) }; thr.addEventListener('pointerdown', e => { e.preventDefault(); thr.setPointerCapture(e.pointerId); set(true); navigator.vibrate?.(8) }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => thr.addEventListener(t, () => set(false))); thr.addEventListener('contextmenu', e => e.preventDefault()) }   // captured, so a thumb sliding off keeps thrusting
+[['thrust', v => touchThrust = v], ['boost', v => touchBoost = v]].forEach(([id, to]) => { const b = $(id), set = v => { to(v); b.classList.toggle('on', v) }; b.addEventListener('pointerdown', e => { e.preventDefault(); set(true); navigator.vibrate?.(8); try { b.setPointerCapture(e.pointerId) } catch { } }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => set(false))); b.addEventListener('contextmenu', e => e.preventDefault()) });   // captured, so a thumb sliding off keeps going
 
 /* ───────────────────────── picking ───────────────────────── */
 const _vp = new THREE.Matrix4();

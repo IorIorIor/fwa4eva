@@ -261,7 +261,8 @@ function updateHover(dt) {
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
 }
-function updateBoostUI() { const a = $('boostArc'), show = S.mode === 'fly' && (boosting || boostE < .999); a.style.opacity = show && boostE > .004 ? (boosting ? .95 : .45) : 0; a.style.strokeDashoffset = (1 - boostE) * 138.2 }   // empty means nothing at all, not a dot
+const boostTank = $('boost').querySelector('i');
+function updateBoostUI() { const a = $('boostArc'), show = S.mode === 'fly' && (boosting || boostE < .999); a.style.opacity = show && boostE > .004 ? (boosting ? .95 : .45) : 0; a.style.strokeDashoffset = (1 - boostE) * 138.2; boostTank.style.transform = `scaleX(${boostE.toFixed(3)})` }   // empty means nothing at all, not a dot
 
 // a tiny readout of the renderer (press the backtick key, or open with ?stats)
 const stats = { el: null, t: 0, n: 0, show(on) { if (on && !this.el) { this.el = document.createElement('div'); this.el.id = 'stats'; document.body.appendChild(this.el) } if (this.el) this.el.hidden = !on; this.on = on } };
@@ -295,7 +296,7 @@ function tick(now) {
   { const u = arcs.u; u.len.value = L.arcLen; u.spin.value = L.arcSpin; u.op.value = L.arcs; u.rim.value = L.rim; u.pxW.value = Math.tan(camera.fov * Math.PI / 360) / Math.max(1, innerHeight); u.armW.value = L.armWidth; u.width.value = L.arcWidth; u.blur.value = L.arcBlur; u.warm.value = L.arcWarm; u.vari.value = L.arcVar; u.core.value = L.arcCore; u.near.value = L.arcNear;
     arcs.mesh.geometry.instanceCount = arcs.rimN + Math.floor((arcs.n - arcs.rimN) * L.arcDensity); arcs.mesh.visible = L.arcs > 0 || L.rim > 0 }
   updateShadow();
-  document.body.classList.toggle('idle', !!L.hudFade && fly && booted && !document.body.classList.contains('panel-open') && now - lastInput > L.hudIdle * 1000 && cardI < 0);
+  document.body.classList.toggle('idle', !!L.hudFade && fly && booted && !document.body.classList.contains('panel-open') && now - lastInput > L.hudIdle * 1000 && cardI < 0 && !touchThrust && !touchBoost);
   conT += dt * L.pulse; constellation.u.t.value = conT;
   disc.material.opacity = L.discs * .6 * sstep(camera.position.distanceTo(GC), GAL_LEN * .9, GAL_LEN * 2.6);
   beamPivot.rotation.y += dt * .22; avatar.userData.nav.forEach((b, k) => { b.material.emissiveIntensity = Math.sin(now * .005 + k * 2.1) > .55 ? 3.2 : .25 });

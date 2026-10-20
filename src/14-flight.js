@@ -84,7 +84,7 @@ function updatePlayer(dt) {
   if (rl) p.base.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), rl * 2.2 * dt)).normalize();   // A/D roll the ship itself; the camera stays level
   const prevF = _hf.set(0, 0, -1).applyQuaternion(p.base), prevR = _hr.set(1, 0, 0).applyQuaternion(p.base), sp0 = p.vel.length();
   // boost: Shift or Space. A short tank that drains while boosting and refills when you don't.
-  const wantB = (keys.shift || keys[' ']) && !auto;
+  const wantB = (keys.shift || keys[' '] || touchBoost) && !auto;
   if (wantB && boostE > 0) { if (!boosting) { camRelV.add(_sd.set(0, .15, 2.2)); boostWhoosh() } boosting = true; boostE = Math.max(0, boostE - dt / Math.max(.5, L.boostTime)) }
   else { boosting = false; boostE = Math.min(1, boostE + dt / Math.max(.5, L.boostRecharge)) }
   gasOn = fw > 0; const pedal = gasOn || boosting;
