@@ -100,7 +100,14 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
-[['thrust', v => touchThrust = v], ['boost', v => touchBoost = v], ['brake', v => touchBrake = v]].forEach(([id, to]) => { const b = $(id), set = v => { to(v); b.classList.toggle('on', v) }; b.addEventListener('pointerdown', e => { e.preventDefault(); set(true); buzz(8); try { b.setPointerCapture(e.pointerId) } catch { } }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => set(false))); b.addEventListener('contextmenu', e => e.preventDefault()) });   // captured, so a thumb sliding off keeps going
+[['brake', v => touchBrake = v]].forEach(([id, to]) => { const b = $(id), set = v => { to(v); b.classList.toggle('on', v) }; b.addEventListener('pointerdown', e => { e.preventDefault(); set(true); buzz(8); try { b.setPointerCapture(e.pointerId) } catch { } }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => set(false))); b.addEventListener('contextmenu', e => e.preventDefault()) });   // captured, so a thumb sliding off keeps braking
+// thrust: hold to fly; the button grows into a track above your thumb, and sliding up it to the top boosts
+{ const b = $('thrust'); let y0 = 0, id = -1;
+  const slide = k => { b.style.setProperty('--k', k.toFixed(3)); const on = k > .92; if (on !== touchBoost) { touchBoost = on; b.classList.toggle('boost', on); if (on) buzz(14) } };
+  const end = () => { if (id < 0) return; id = -1; touchThrust = false; b.classList.remove('on'); slide(0) };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; y0 = e.clientY; touchThrust = true; b.classList.add('on'); slide(0); buzz(8); try { b.setPointerCapture(id) } catch { } });
+  b.addEventListener('pointermove', e => { if (e.pointerId !== id) return; const span = Math.max(40, Math.min(232, innerHeight * .46) - 76); slide(Math.min(1, Math.max(0, (y0 - e.clientY) / span))) });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, e => { if (e.pointerId === id) end() })); b.addEventListener('contextmenu', e => e.preventDefault()) }
 
 /* ───────────────────────── picking ───────────────────────── */
 const _vp = new THREE.Matrix4();
