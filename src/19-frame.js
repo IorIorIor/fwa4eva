@@ -355,7 +355,7 @@ function tick(now) {
     const on = !!L.volumetric, u = vol.u; vol.mesh.visible = on; PU.volOn.value = on ? 1 : 0;
     if (on) {
       u.cam.value.copy(camera.position); vol.mesh.worldToLocal(u.cam.value);
-      u.glow.value = L.volGlow; u.dust.value = L.volDust; u.steps.value = L.volSteps; u.noise.value = L.volNoise; u.wispLo.value = L.volWispLo; u.wispHi.value = Math.max(L.volWispLo + .02, L.volWispHi); u.warp.value = L.volWarp; u.armK.value = L.volArmK; u.thick.value = L.volThick;
+      u.glow.value = L.volGlow; u.dust.value = L.volDust; u.steps.value = L.volSteps; u.noise.value = L.volNoise; u.wispLo.value = L.volWispLo; u.wispHi.value = Math.max(L.volWispLo + (L.volEdge ?? .02), L.volWispHi); u.janim.value = L.volJitterMove ? 1 : 0; PU.volBlur.value = (L.volSmooth ?? 0) / LOOK.volRes;   // a hard wisp edge pops on and off as the clouds move: volEdge keeps it soft u.warp.value = L.volWarp; u.armK.value = L.volArmK; u.thick.value = L.volThick;
       u.coreV.value = L.volCore; u.dustT.value = L.volDustT; u.emAbs.value = L.volEmAbs; u.flow.value = L.volFlow; u.inner.value = L.volInner; u.outer.value = L.volOuter; u.opMax.value = L.volOpMax; u.coreMix.value = L.volColMix; u.wispGain.value = L.volWisp; u.base.value = L.volBase; u.detail.value = L.volDetail; u.satV.value = L.volSat; u.contrast.value = L.volContrast;
       vol.mesh.scale.y = VOL_S * VOL_H * L.volHeight; u.spin.value = L.arcSpin * L.volSpin; u.armW.value = L.armWidth;
     }

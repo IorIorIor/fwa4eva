@@ -159,9 +159,10 @@ const arcs = (() => {
 /* volumetric gas (optional): the disk as an ellipsoid we raymarch through: spiral-arm emission with domain-warped
    noise, plus absorbing dust (Beer–Lambert). Rendered at reduced resolution behind everything else. */
 const VOL_S = GAL_R0 + GAL_LEN * 1.12, VOL_H = .2;
+const ign = px => fract(float(52.9829189).mul(fract(dot(px, vec2(.06711056, .00583715)))));
 const vol = (() => {
   const u = { bh: uniform(1), cam: uniform(new V3()), core: uniform(new C3(NEB_PAL[0][0])), edge: uniform(new C3(NEB_PAL[0][1])), glow: uniform(1), dust: uniform(1), steps: uniform(28), noise: uniform(1), spin: uniform(1),
-    wispLo: uniform(0), wispHi: uniform(0), warp: uniform(0), armK: uniform(0), thick: uniform(0), coreV: uniform(0), dustT: uniform(0), emAbs: uniform(0), flow: uniform(0), inner: uniform(0), outer: uniform(0), opMax: uniform(0), coreMix: uniform(0), wispGain: uniform(0), base: uniform(0), detail: uniform(3), satV: uniform(0), contrast: uniform(1), armW: uniform(1) };
+    wispLo: uniform(0), wispHi: uniform(0), janim: uniform(0), warp: uniform(0), armK: uniform(0), thick: uniform(0), coreV: uniform(0), dustT: uniform(0), emAbs: uniform(0), flow: uniform(0), inner: uniform(0), outer: uniform(0), opMax: uniform(0), coreMix: uniform(0), wispGain: uniform(0), base: uniform(0), detail: uniform(3), satV: uniform(0), contrast: uniform(1), armW: uniform(1) };
   const fbmL = Fn(([p_, detail]) => {
     const p = vec3(p_).toVar(), s = float(0).toVar(), a = float(.5).toVar(), nm = float(0).toVar();
     Loop(5, ({ i }) => { If(float(i).greaterThanEqual(detail), () => { Break() }); s.addAssign(a.mul(noise3(p))); nm.addAssign(a); p.assign(p.mul(2.11).add(vec3(1.7, 9.2, 3.1))); a.mulAssign(.5) });
@@ -173,7 +174,7 @@ const vol = (() => {
     const ro = u.cam, rd = normalize(positionGeometry.sub(u.cam)).toVar();
     const b = dot(ro, rd), c = dot(ro, ro).sub(1), disc = b.mul(b).sub(c); Discard(disc.lessThan(0));
     const sq = sqrt(disc), t0 = max(0, b.negate().sub(sq)), t1 = b.negate().add(sq); Discard(t1.lessThanEqual(t0));
-    const ds = t1.sub(t0).div(u.steps).toVar(), t = t0.add(ds.mul(hash3(vec3(screenUV.mul(U.res), fract(U.now).mul(91))))).toVar();
+    const ds = t1.sub(t0).div(u.steps).toVar(), t = t0.add(ds.mul(ign(screenUV.mul(U.res).add(floor(U.now.mul(60)).mul(u.janim).mul(5.588238))))).toVar();   // interleaved gradient noise: an even, fine grain instead of white noise; it holds still unless "grain moves" is on
     const col = vec3(0).toVar(), T = float(1).toVar();
     Loop(64, ({ i }) => {
       If(float(i).greaterThanEqual(u.steps).or(T.lessThan(.02)), () => { Break() });
