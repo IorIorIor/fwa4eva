@@ -94,7 +94,7 @@ function cloudField(count, place, pal) {
   return { n, off, sc, c1, c2, rot, al, tl };
 }
 const armPlace = (spread, ys) => (pt, i, sc, al) => {
-  const u = Math.pow(R(), .8), r = GAL_R0 + u * GAL_LEN, sd = spread + r * .05;
+  const u = Math.pow(R(), .5 * Math.pow(2.4, 1 - 2 * SHAPE.nebOut)), r = GAL_R0 + u * GAL_LEN, sd = spread + r * .05;   // nebOut .5 spreads them evenly over the disk's area, lower gathers them in, higher pushes them out
   galPoint(GAL, (R() * GAL.arms) | 0, u, gauss() * sd, gauss() * sd / r * .8, gauss() * (ys + 14000 * Math.exp(-r / 87500)), pt); sc[i] = (35000 + R() * 105000) * (1 - u * .35); al[i] = .35 + R() * .5
 };
 const NEB_A = cloudField(640, armPlace(17500, 2450));
