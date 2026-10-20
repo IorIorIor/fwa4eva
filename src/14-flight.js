@@ -189,7 +189,7 @@ function updatePlayer(dt) {
 function updateCamera(dt) {
   const L = LOOK;
   if (S.mode === 'fly') {
-    const sp = player.vel.length(), pull = 1 + L.speedPull * (sstep(sp, 40, 3000) * .6 + sstep(sp, 3000, 1.5e6) * 1.4) + boostK * .45;
+    const sp = player.vel.length(), pull = 1 + L.speedPull * (sstep(sp, 40, 3000) * .6 + sstep(Math.log10(Math.max(1, sp)), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) * 1.4) + boostK * .45;   // the second part follows the FOV's curve: they widen and pull back together
     tmp2.set(0, rig.dist * L.camHeight * Math.sqrt(pull), rig.dist * pull);                 // where the camera wants to sit, in the ship's frame (rising as it pulls back, so the arrow's face stays in view)
     if (camNear > 0) { if (booted && thrusting) camNearGo = true; if (camNearGo) { camNear = Math.max(0, camNear - dt / 3.5); if (!camNear) camNearGo = false } tmp2.lerp(INTRO_END, ease(camNear)) }   // after the intro the camera stays close until your first push
     const k = 60 / Math.max(.15, L.elastic), c = 2 * Math.sqrt(k) * .62;                    // underdamped: a little overshoot
