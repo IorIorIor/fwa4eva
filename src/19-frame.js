@@ -37,7 +37,7 @@ function updateAndro() {
   du.c.value.setRGB(.1, .055, .035).lerp(_dustBlack, L.dustDark); dustFil.geometry.instanceCount = Math.round(dustFil.geometry.userData.n * L.dustCount);
   knotPts.knots.u.op.value = .5 * L.knots; knotPts.knots.visible = L.knots > 0; knotPts.clouds.u.op.value = .16 * L.starClouds; knotPts.clouds.visible = L.starClouds > 0;
   outerDisk.u.op.value = L.outerGlow; outerDisk.visible = L.outerGlow > 0;
-  SATS.forEach(s => { const fs = farDimJS(camera.position.distanceTo(s.pos)); s.g.visible = L.satellites > 0; s.pts.u.op.value = .35 * L.satellites * fs; s.glow.material.opacity = .5 * s.core * L.satellites * fs; s.core.material.opacity = .9 * s.core * L.satellites * fs });
+  SATS.forEach(s => { const fs = farDimJS(camera.position.distanceTo(s.pos)); s.g.visible = s.stars.visible = L.satellites > 0; s.stars.u.op.value = Math.min(1, L.satellites); s.pts.u.op.value = .18 * L.satellites * fs; s.glow.material.opacity = .5 * s.core * L.satellites * fs; s.core.material.opacity = .9 * s.core * L.satellites * fs });
 }
 const _yt = liveText($('youTime'));
 let rulerGoal = THR, rulerTick = 0, mapYrs = 27;

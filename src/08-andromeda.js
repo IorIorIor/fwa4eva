@@ -75,12 +75,26 @@ const outerDisk = (() => {
   m.fragmentNode = Fn(() => { const r = length(positionGeometry.xz).div(Rr), a = smoothstep(.2, .5, r).mul(smoothstep(.55, 1, r).oneMinus()).mul(farDim(vD)); return vec4(u.c.mul(a).mul(.16).mul(u.op), 1) })();
   const mesh = new THREE.Mesh(g, m); mesh.position.copy(GC); mesh.quaternion.copy(GQ); mesh.renderOrder = -3; mesh.frustumCulled = false; andro.add(mesh); mesh.u = u; return mesh;
 })();
-/* two satellite galaxies: a compact bright one near the disk (like M32) and a big diffuse one (like M110) */
-const SATS = [{ name: 'M32', local: new V3(.42, .16, -.22).multiplyScalar(GAL_R0 + GAL_LEN), r: 26000, n: 2600, core: 1, stretch: 1.25 }, { name: 'M110', local: new V3(-.95, -.3, .85).multiplyScalar(GAL_R0 + GAL_LEN), r: 80000, n: 4500, core: .35, stretch: 2.4 }].map((d, k) => {
+/* two satellite galaxies: a compact bright one near the disk (like M32) and a big diffuse one (like M110). Each is a swarm of
+   crisp little stars, old and warm, crowding toward the middle, over a faint glow of the ones too small to resolve */
+function satStars(n, r, stretch, seed) {
+  const R_ = mulberry32(seed), p = new Float32Array(n * 3), b = new Float32Array(n), u = { op: uniform(1) }, m = skyMat({ blend: 'alpha' });
+  for (let i = 0; i < n; i++) { const z = R_() * 2 - 1, a = R_() * 6.283, q = Math.sqrt(1 - z * z), rr = r * Math.pow(R_(), 2.2); p.set([q * Math.cos(a) * rr * stretch, z * rr, q * Math.sin(a) * rr], i * 3); b[i] = Math.pow(R_(), 4) }
+  const vC = varyingProperty('vec3', 'vC'), vB = varyingProperty('float', 'vB');
+  m.vertexNode = Fn(() => {
+    const mv = modelViewMatrix.mul(vec4(ia('aP', 'vec3'), 1)).toVar(), br = ia('aB', 'float');
+    vB.assign(mix(.18, 1, br).mul(farDim(mv.z.negate()))); vC.assign(mix(vec3(1, .82, .62), vec3(1, .96, .9), br));
+    return billboardPx(mv, br.mul(1.8).add(1.1).mul(U.dpr.mul(.5).add(.5)));
+  })();
+  m.fragmentNode = Fn(() => { const d = radial().mul(.5); Discard(d.greaterThan(.5)); return vec4(vC.mul(vB), u.op.mul(vB).mul(smoothstep(.5, .15, d))) })();
+  const mesh = layer(new THREE.Mesh(quads(n, { aP: [p, 3], aB: [b, 1] }), m), scene, -48); mesh.u = u; mesh.matrixAutoUpdate = false; return mesh;
+}
+const SATS = [{ name: 'M32', local: new V3(.42, .16, -.22).multiplyScalar(GAL_R0 + GAL_LEN), r: 26000, n: 2600, ns: 9000, core: 1, stretch: 1.25 }, { name: 'M110', local: new V3(-.95, -.3, .85).multiplyScalar(GAL_R0 + GAL_LEN), r: 80000, n: 4500, ns: 16000, core: .35, stretch: 2.4 }].map((d, k) => {
   const g = new THREE.Group(); g.position.copy(d.local).applyMatrix4(GM4); g.rotation.set(.3 * k, 1.1 * k, .4); andro.add(g); const R_ = mulberry32(77 + k), n = d.n, p = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { const z = R_() * 2 - 1, a = R_() * 6.283, q = Math.sqrt(1 - z * z), rr = d.r * Math.pow(R_(), 1.6); p.set([q * Math.cos(a) * rr * d.stretch, z * rr, q * Math.sin(a) * rr], i * 3) }
   const pts = softPoints(p, { size: d.r * .09, color: 0xfff0dc, op: .35 }); g.add(pts);
   const glow = spriteGlow(softDot, 0xfff3e0, 1, .5 * d.core, softScene, 0); glow.scale.set(d.r * 3 * d.stretch, d.r * 3, 1);
   const core = spriteGlow(softDot, 0xffffff, d.r * .8, .9 * d.core, softScene, 0); g.add(glow, core);
-  return { ...d, g, pos: g.position.clone(), pts, glow, core };
+  const stars = satStars(d.ns, d.r, d.stretch, 91 + k); andro.updateMatrixWorld(true); stars.matrix.copy(g.matrixWorld);   // crisp, so they live in the full-resolution scene, placed where the group is
+  return { ...d, g, pos: g.position.clone(), pts, glow, core, stars };
 });
