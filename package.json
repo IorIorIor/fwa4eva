@@ -9,7 +9,8 @@
     "build": "vite build",
     "start": "node server.mjs",
     "preview": "npm run build && npm start",
-    "build:single": "node build.mjs"
+    "build:single": "node build.mjs",
+    "data": "node -e \"const fs=require('fs');fs.rmSync('public/data',{recursive:true,force:true});fs.mkdirSync('public/data',{recursive:true});fs.copyFileSync('../fwa4eva-data/archive.json','public/data/archive.json');fs.cpSync('../fwa4eva-data/shots','public/data/shots',{recursive:true})\""
   },
   "dependencies": {
     "three": "0.184.0",

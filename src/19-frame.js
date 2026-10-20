@@ -142,9 +142,9 @@ function updateStreaks(dt) {
   su.disp.value.addScaledVector(v, dt); ['x', 'y', 'z'].forEach(k => { su.disp.value[k] %= 2 * SL_H }); streaks.position.copy(player.pos);
   su.len.value = Math.min(SL_H * .8, sp * .04 * L.streakLen); if (sp > 1e-3) su.dir.value.copy(v).divideScalar(sp);
   const lp = toLocal(player.pos, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
-  const g = L.streakRamp ?? .8, disk = (1 - sstep(Math.abs(lp.y), L.streakInH * .4 * (1 - g), L.streakInH)) * (1 - sstep(rr, Rr * (1.1 - .85 * g), Rr * 1.1)) ** (1 + g), da = armDist(lp.x, lp.z) / armWAt(rr), arm = Math.exp(-da * da * 5 / (L.armWidth * L.armWidth));
+  const g = L.streakRamp ?? .8, da = armDist(lp.x, lp.z) / (armWAt(rr) / (SHAPE.widen + 1)), sw = Math.max(.02, L.streakSpine ?? .45), arm = Math.exp(-((da / sw) ** 2)), hy = Math.exp(-((lp.y / Math.max(1000, L.streakInH)) ** 2)), disk = hy * (1 - sstep(rr, Rr * 1.02, Rr * 1.3));   // thickest along the spiral's spine, thinning the further you are from it (across, above or below)
   const core = Math.exp(-Math.pow(rr / (Rr * .22), 2)) * (1 - sstep(Math.abs(lp.y), Rr * .08, Rr * .25));
-  streakDens = Math.max(disk * (.08 + .92 * arm), core);   // straight from where you are: it thins toward the edge of the disk and is gone past it
+  streakDens = Math.max(disk * (arm * (1 - .15 * g) + .15 * (1 - g) + .04), core);
   streaks.geometry.setDrawRange(0, Math.floor(Math.min(SL_N, SL_N / 3 * L.streakAmt * streakDens)) * 2);
   su.op.value += (sstep(sp, 150, 4000) * .32 * L.streakBright * Math.min(1, streakDens * (3 - 2.4 * g)) - su.op.value) * Math.min(1, dt * 6);
   const mu = motes.u, B = L.moteBox * SHIP_K; mu.box.value = B; mu.size.value = L.moteSize * SHIP_K; mu.follow.value = L.moteFollow; mu.core.value = L.moteCore; mu.sB.value = bulgeR * .42 * (L.bulgePuffSpread ?? 1) * L.moteCoreReach; mu.bhR.value = BH.rs * Math.max(3.5, L.bhDiskOut); mu.bhZ.value = L.moteBhZone; mu.bhH.value = L.moteBhH;
@@ -270,10 +270,16 @@ function updateHover(dt) {
   }
   // what the tooltip shows: a winner you point at; else the one you're beside (opened up into its full record); else your lock
   const map = S.mode === 'map', pin = cardI >= 0 ? cardI : !map && lockI >= 0 ? lockI : -1;
-  const put = (key, html, full) => {
-    if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full) { drawCardImg(cardI); cardFlicker() } }
-    tip.classList.toggle('full', !!full); tip.classList.toggle('dock', !!full && !coarse); tip.hidden = false };
-  if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI) + TNAV, false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
+  const put = (key, html, full, side) => {
+    if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full && !side) { drawCardImg(cardI); cardFlicker() } }
+    tip.classList.toggle('full', !!full); tip.classList.toggle('side', !!side); tip.classList.remove('dock'); tip.hidden = false };
+  const PI = HALO.pInfo;
+  if (PI.on && !map && S.mode === 'fly' && hovI < 0) {   // a ring up close: its full record floats just right of the portal (the portal itself shows the picture)
+    put('q' + PI.i, tipHTML(PI.i) + TNAV + tipMore(PI.i), true, true); tmp.copy(PI.c).project(camera);
+    const d = Math.max(1, camera.position.distanceTo(PI.c)), rpx = PI.r * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = (tmp.x * .5 + .5) * innerWidth + rpx * 1.08 + 18, y = (-tmp.y * .5 + .5) * innerHeight - h / 2; if (x + w > innerWidth - 12) x = (tmp.x * .5 + .5) * innerWidth - rpx * 1.08 - 18 - w;
+    tip.style.left = Math.max(12, Math.min(innerWidth - w - 12, x)) + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, y)) + 'px';
+  } else if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI) + TNAV, false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (ringHov && pin < 0) { put('r' + ringHov.y, ringTip(ringHov), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (pin >= 0) {
     const d = Math.max(1, camera.position.distanceTo(starPos(pin, tmp))); tmp.project(camera);
@@ -287,12 +293,12 @@ function updateHover(dt) {
       put('p' + pin, tipHTML(pin) + TNAV + tipMore(pin), pin === cardI);
       const rpx = starR(pin) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), full = pin === cardI;   // the star's own radius on screen
       let x = (tmp.x * .5 + .5) * innerWidth + (full ? rpx * .72 : 0), y = (-tmp.y * .5 + .5) * innerHeight - (full ? rpx * .5 : 0);
-      if (full && !coarse) { x = 24; y = 64; tip.style.setProperty('--cs', Math.max(.5, Math.min(LOOK.cardScale ?? 1.7, (innerHeight - 64 - 130) / Math.max(1, tip.offsetHeight), innerWidth * .5 / Math.max(1, tip.offsetWidth))).toFixed(3)) }   // the full record: top left, as big as the screen allows   // the full record waits on the left, still, whatever the camera does
-      else if (full) { const w = tip.offsetWidth + 24, h = tip.offsetHeight + 24; if (x + w > innerWidth) x = Math.max(8, (tmp.x * .5 + .5) * innerWidth - rpx * .72 - w); x = Math.max(8, Math.min(innerWidth - w, x)); y = Math.max(60, Math.min(innerHeight - h - 8, y)) }
+      if (full) {   // the full record sits beside the star (no more docking it top left)
+        const w = tip.offsetWidth + 24, h = tip.offsetHeight + 24; if (x + w > innerWidth) x = Math.max(8, (tmp.x * .5 + .5) * innerWidth - rpx * .72 - w); x = Math.max(8, Math.min(innerWidth - w, x)); y = Math.max(60, Math.min(innerHeight - h - 8, y)) }
       tip.style.left = x + 'px'; tip.style.top = y + 'px';
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
-  { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = Math.round(camera.position.distanceTo(starPos(+m[1], tmp))).toLocaleString('en') + ' u' }   // how far it is, live, to the unit
+  { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = Math.round(camera.position.distanceTo(starPos(+m[1], tmp))).toLocaleString('en') }   // how far it is, live, to the unit
 }
 const RET = { ring: $('aimRing'), p: -1 };
 function updateBoostUI(dt = 0) {   // the reticle is a ring and a dot: boosting, the ring draws in and fills until it's all one white dot; it opens again as the boost refills
@@ -376,7 +382,7 @@ function tick(now) {
     if (gotCard.t > 0 && S.mode === 'fly') open = gotCard.i;   // a ring you just flew through keeps its record open a while
     showCard(open);
   }
-  { let ch = false; for (let i = 0; i < N; i++) { const t = i === openI && L.shot3d ? TA[i] * (1 - Math.min(1, openA * 2)) : TA[i], d = t - ALPHA[i]; if (Math.abs(d) > .002) { ALPHA[i] += d * Math.min(1, dt * (i === openI ? 20 : 8)); ch = true } } if (ch) stars.aAlpha.needsUpdate = true }
+  { let ch = false; const nowMs = performance.now(); for (let i = 0; i < N; i++) { const t = ringHide.size && ringHide.get(i) > nowMs ? 0 : i === openI && L.shot3d ? TA[i] * (1 - Math.min(1, openA * 2)) : TA[i], d = t - ALPHA[i]; if (Math.abs(d) > .002) { ALPHA[i] += d * Math.min(1, dt * (i === openI ? 20 : 8)); ch = true } } if (ch) stars.aAlpha.needsUpdate = true }
   const ringI = auto && auto.i >= 0 && auto.i !== openI ? auto.i : -1;
   updateLockMark();
   targetRing.visible = ringI >= 0; if (ringI >= 0) { starPos(ringI, targetRing.position); targetRing.quaternion.copy(camera.quaternion); targetRing.scale.setScalar(Math.max(CR[ringI] * 1.6, camera.position.distanceTo(targetRing.position) * .03) * (1 + .05 * Math.sin(now * .005))) }

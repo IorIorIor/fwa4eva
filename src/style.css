@@ -522,3 +522,4 @@ body.map #gl,body.map #gl.hovering{cursor:pointer!important}   /* on the map the
 #tip .td{display:flex;justify-content:space-between;gap:14px}
 #tip .td .tsc{font-weight:500;color:#fff}
 @media (min-width:760px){body.map #panel{left:max(16px,env(safe-area-inset-left,0px));right:auto}}   /* on the map the filters sit on the left, next to an open Look panel on the right */
+#tip.side .tshot{display:none}   /* beside a portal: the portal already shows the picture */

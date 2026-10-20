@@ -22,7 +22,7 @@ function applyLook() {
   setBH(L.bhMass); U.bhClear.value = BH.sh * 1.5; vol.u.bh.value = BH.sh * 1.05 / VOL_S;
   bh.mesh.scale.setScalar(RP * BH.rs); bh.shadow.scale.setScalar(BH.sh * .985);
   { const b = bh.u; b.rin.value = 3; b.rout.value = Math.max(3.5, L.bhDiskOut); b.br.value = L.bhDisk * 8; b.hot.value = L.bhHot; b.warm.value = L.bhWarm ?? 0; b.spin.value = L.bhSpin; b.halo.value = L.bhHalo / .75; b.dop.value = L.bhDoppler; b.lens.value = L.bhLens; b.steps.value = Math.round(L.bhSteps) }
-  const su = stars.u; su.sharp.value = L.starSharp; su.coreW.value = L.starCore; su.haloW.value = L.starHalo; su.fall.value = L.starFall; su.spikes.value = L.starSpikes; su.white.value = L.starWhite; su.twink.value = L.starTwinkle; su.size.value = L.starSize; su.glow.value = L.starGlow; su.flare.value = L.flares ? 1 : 0;
+  const su = stars.u; su.shine.value = L.awardShine ?? 1; su.sharp.value = L.starSharp; su.coreW.value = L.starCore; su.haloW.value = L.starHalo; su.fall.value = L.starFall; su.spikes.value = L.starSpikes; su.white.value = L.starWhite; su.twink.value = L.starTwinkle; su.size.value = L.starSize; su.glow.value = L.starGlow; su.flare.value = L.flares ? 1 : 0;
   constellation.u.glow.value = L.lineGlow; constellation.u.w.value = L.conWidth ?? 2; constellation.u.gw.value = L.conGlowW ?? 10;
   avatar.userData.nav.forEach(b => b.visible = !!L.nav); beamPivot.visible = !!L.search;
   $('cmp').style.display = L.compass ? '' : 'none'; $('hdg').style.display = L.heading ? '' : 'none'; $('gauge').style.visibility = L.gauge ? '' : 'hidden';
@@ -56,7 +56,7 @@ function saveLook() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_MAP) { st
     const snap = await lookDoc.get(), d = snap.exists && snap.data();
     if (d && d.look && typeof d.look === 'object') {
       Object.keys(d.look).forEach(k => { if (k in LOOK_DEFAULTS && typeof d.look[k] === 'number') LOOK[k] = d.look[k] }); migrateLook(LOOK);
-      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
+      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
     } else saveLook();
   } catch (e) { }
 })();

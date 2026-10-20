@@ -10,7 +10,7 @@ const stars = (() => {
   geo.setAttribute('aGot', new THREE.InstancedBufferAttribute(GOT, 1).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(COL, 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aAlpha', new THREE.InstancedBufferAttribute(ALPHA, 1).setUsage(THREE.DynamicDrawUsage));
-  const u = { coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
+  const u = { coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), shine: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
   const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vA = varyingProperty('float', 'vA'), vT = varyingProperty('float', 'vT'), vPs = varyingProperty('float', 'vPs'), vDot = varyingProperty('float', 'vDot'), vRing = varyingProperty('float', 'vRing'), vRon = varyingProperty('float', 'vRon'), vPx = varyingProperty('float', 'vPx'), vGot = varyingProperty('float', 'vGot');
   m.vertexNode = Fn(() => {
     const ab = aberrate(ia('aP', 'vec3')), al = ia('aAlpha', 'float');
@@ -43,6 +43,14 @@ const stars = (() => {
       const fall = smoothstep(.03, .5, d).oneMinus(), rays = r1.mul(.75).add(r2.mul(.45)).mul(fall).mul(fall), cx = d.sub(.14).mul(24), cor = exp(cx.mul(cx).negate()).mul(.55);
       col.addAssign(mix(vC, vec3(1, .94, .82), .6).mul(rays.add(cor)).add(vec3(1, .9, .7).mul(core).mul(.8))); a.addAssign(rays.add(cor));
     });
+    // the month's and the year's best shine: a slow-turning twinkle that flares now and then (stronger for the year's), with a shimmer of colour round the core
+    If(u.shine.greaterThan(0).and(vT.greaterThan(.5)), () => {
+      const yr = step(1.5, vT), ph = fract(vC.r.mul(17.3).add(vC.b.mul(5.1))).mul(6.28), fl = pow(sin(U.now.mul(mix(.9, 1.4, yr)).add(ph)).mul(.5).add(.5), 6).mul(mix(.8, 1.6, yr)).add(mix(.25, .5, yr));
+      const an = atan(p.y, p.x).add(U.now.mul(mix(.12, -.2, yr))), nR = mix(4, 8, yr), rays = pow(abs(cos(an.mul(nR.div(2)))), mix(60, 90, yr)).mul(pow(max(0, d.mul(2).oneMinus()), 1.5));
+      const hue = fract(an.div(6.2832).add(U.now.mul(.05))), rgb = clamp(abs(fract(vec3(hue).add(vec3(0, .667, .333))).mul(6).sub(3)).sub(1), 0, 1), dq = d.sub(.11).mul(30), irid = exp(dq.mul(dq).negate()).mul(mix(.25, .6, yr));
+      const sh = rays.mul(fl).mul(u.shine).mul(mix(1, 1.8, yr)), ir = irid.mul(u.shine).mul(fl.mul(.5).add(.5));
+      col.addAssign(vec3(1, .97, .9).mul(sh).add(mix(vec3(1), rgb, .8).mul(ir))); a.addAssign(sh.add(ir));
+    });
     col.mulAssign(mix(1, .62, u.sharp.mul(smoothstep(3, 16, vPs).oneMinus())));   // tiny stars stay crisp, below the bloom threshold
     // the far-off dot: a flat, near-white disc that fills its pixel instead of a point-spread too small to land on one
     const dotA = smoothstep(.5, .32, d), dotC = mix(vC, vec3(1), .7).mul(mix(1.05, .85, u.far));   // on the map every winner is a full white pixel
@@ -50,7 +58,7 @@ const stars = (() => {
     // the ring: a crisp band (never under a pixel) with a soft glow, its colour until collected, then warm white and brighter
     If(vRon.greaterThan(.001), () => {
       const rf = r.mul(vPs.div(vPx)), px1 = float(2.4).div(vPx), w = max(vRing.mul(u.rw), px1), dd = rf.sub(vRing).div(w), band = exp(dd.mul(dd).negate());
-      const gl = exp(rf.sub(vRing).div(vRing.mul(.45).add(px1)).pow(2).negate()).mul(.35), g = vGot;
+      const gl = exp(sq(rf.sub(vRing).div(vRing.mul(.45).add(px1))).negate()).mul(.35), g = vGot;
       const rc = mix(mix(vC, vec3(1), .25), mix(vC, vec3(1, .88, .62), .7).mul(u.gotGlow), g), ra = band.add(gl.mul(mix(1, u.gotGlow, g)));
       col.assign(mix(col, rc.mul(band.mul(1.3).add(gl)), vRon)); a.assign(mix(a, ra, vRon));
     });

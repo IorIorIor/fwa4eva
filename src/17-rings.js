@@ -2,7 +2,7 @@
    With "rings" on every winner is a ring the size of its star. Fly through one and it's collected: it turns warm white
    and glows, you lose a little speed, a chime rings and its record opens for a few seconds. Collected winners are kept in
    this browser; the count sits at the top. */
-let ringPop = 0, ringIn = -1, gotCard = { i: -1, t: 0 }, gotN = 0;
+const ringHide = new Map(); let ringPop = 0, ringIn = -1, gotCard = { i: -1, t: 0 }, gotN = 0;
 for (let i = 0; i < N; i++) gotN += GOT[i];
 function ringCheck(p) {   // called by the flight after it moves you: through the halo (or as it closes on you), it's yours
   if (LOOK.ringPlay) return;
@@ -51,9 +51,8 @@ const HALO = (() => {
       const h = pool[n], R = starR(i) * (L.ringSize ?? 1.6), c = starPos(i, h.c), dist = Math.sqrt(Math.max(1, camera.position.distanceToSquared(c))), rpx = R * pxK / dist;
       if (h.i !== i) { h.i = i; h.done = false; h.c0 = 0 }
       const play = L.ringPlay && n === 0; if (play) { c.set(0, 0, -R * (L.ringPlayDist ?? 5)).applyQuaternion(camera.quaternion).add(camera.position); h.done = false }   // playground: the nearest winner's ring, held in front of you
-      let k = 0; h.ts = Infinity; if (vv > 1 && !play) { _d.copy(c).sub(player.pos); const ts = _d.dot(v) / vv, miss = _d.addScaledVector(v, -ts).length(); if (ts > 0 && ts < pred && miss < R * 1.15) { k = 1 - ts / pred; if (!h.done && TA[i] === 1) { h.ts = ts; minTs = Math.min(minTs, ts) } } }   // about to pass through: how close (0..1), and in how long
+      let k = 0; h.ts = Infinity; if (vv > 1 && !play) { _d.copy(c).sub(player.pos); const ts = _d.dot(v) / vv, miss = _d.addScaledVector(v, -ts).length(); if (ts > 0 && ts < Math.max(pred, L.ringSlowFrom ?? .5) && miss < R * 1.15) { k = Math.max(0, 1 - ts / pred); if (!h.done && TA[i] === 1) { h.ts = ts; minTs = Math.min(minTs, ts) } } }   // about to pass through: how close (0..1), and in how long
       h.c0 = Math.max(h.c0 * Math.exp(-3 * dt), k); const e = h.c0 * h.c0 * (3 - 2 * h.c0);
-      if (e > 0) { _d.copy(v).normalize(); const along = _d.dot(_s.copy(c).sub(player.pos)); c.lerp(_s.copy(player.pos).addScaledVector(_d, along), e) }   // slides onto your course
       h.r = R; const gone = h.done ? (fade.get(i) ?? 1) : 1; if (h.done) fade.set(i, Math.max(0, gone - dt * 4));
       const a = play ? 1 : sstep(rpx, 14, 34) * gone; if (a <= .005 || h.r < 1e-3) { n++; continue }
       _q.setFromUnitVectors(_z, _s.copy(player.pos).sub(c).normalize()); mesh.setMatrixAt(live.length, _m.compose(c, _q, _s.setScalar(h.r)));
@@ -80,26 +79,26 @@ const HALO = (() => {
     return vec4(c, pt.a.mul(smoothstep(1, .97, rr)));
   })();
   const portal = new THREE.Mesh(new THREE.CircleGeometry(1, 96), pm); portal.frustumCulled = false; portal.renderOrder = 2; portal.visible = false; portal.matrixAutoUpdate = false; shipScene.add(portal);   // on the ship's layer: the galaxy's glows and star clouds are drawn after the scene and would speckle over the picture
-  let pI = -1; const _pm = new THREE.Matrix4(), _up = new V3();
+  let pI = -1; const _pm = new THREE.Matrix4(), _up = new V3(), pInfo = { on: false, i: -1, c: new V3(), r: 1 };   // where the portal is, for the record that floats beside it
   function portalUpdate(dt) {
-    const L = LOOK; if (!(L.ringPortal ?? 1) || !L.rings || S.mode !== 'fly') { portal.visible = false; return }
+    const L = LOOK; pInfo.on = false; if (!(L.ringPortal ?? 1) || !L.rings || S.mode !== 'fly') { portal.visible = false; return }
     let near = -1; if (best.length) { const i = best[0][1], R = starR(i) * (L.ringSize ?? 1.6), dist = Math.sqrt(best[0][0]), pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360)); if (R * pxK / dist > (L.ringPortalPre ?? 4) || L.ringPlay) near = i }   // a little before the ring shows
-    if (near >= 0 && near !== pI) { pI = near; pt.cur = shot(D[near]); pt.taps.forEach(t => t.value = pt.cur); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
+    if (near >= 0 && (near !== pI || texCache.get(near) !== pt.cur)) { pI = near; pt.cur = shot(D[near]); pt.taps.forEach(t => t.value = pt.cur); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
     const h = live.find(x => x.i === pI); if (!h || near < 0) { portal.visible = false; return }
     const k = live.indexOf(h); pt.a.value = iA[k] / (GOT[pI] ? 1.3 : 1); pt.depth.value = L.ringPortalDepth ?? .8; pt.size.value = L.ringPortalSize ?? 1.25; pt.dark.value = L.ringPortalBright ?? .85; pt.lens.value = L.ringPortalLens ?? .6; pt.ca.value = L.ringPortalCA ?? .5;
-    _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(player.pos, h.c, _up); portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5); portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005;   // just inside the ring's tube, so the ring still frames it
+    _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(player.pos, h.c, _up); portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5); portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005; Object.assign(pInfo, { on: portal.visible && !h.done, i: pI, r: h.r }); pInfo.c.copy(h.c);   // just inside the ring's tube, so the ring still frames it
   }
   const update0 = update; function updateAll(dt) { update0(dt); portalUpdate(dt) }
-  return { update: updateAll, live, u, portal, pt, get ts() { return minTs } };
+  return { update: updateAll, live, u, portal, pt, pInfo, get ts() { return minTs } };
 })();
 /* bullet time: once a ring can't be missed, all of time slows, exponentially, to all but a standstill as you pass through it,
    then winds back up just as it slowed */
 const slowmo = { k: 1, after: 1e9,
   step(rdt) {
     const L = LOOK, amt = L.rings ? L.ringSlow ?? 1 : 0; this.after += rdt; if (amt <= 0 || L.ringPlay) { this.k = 1; return }
-    const lo = Math.max(.005, L.ringSlowMin ?? .04), tau = Math.max(.02, L.ringSlowIn ?? .12), pred = Math.min(L.ringPredict ?? .7, L.ringSlowFrom ?? .3), f = x => lo + (1 - lo) * x;
-    let k = 1; const ts = HALO.ts; if (ts < pred) k = f(Math.min(1, (1 - Math.exp(-ts / tau)) / (1 - Math.exp(-pred / tau))));   // the nearer the pass, the slower
-    k = Math.min(k, f(1 - Math.exp(-this.after / Math.max(.02, L.ringSlowOut ?? .3))));   // and after it, back up to speed
+    const lo = Math.max(.005, L.ringSlowMin ?? .06), F = Math.max(.05, L.ringSlowFrom ?? .5), ts = HALO.ts;
+    let k = ts < F ? Math.pow(lo, 1 - ts / F) : 1;   // exponential: each moment nearer the pass, time runs a fixed share slower, down to all but still as you go through
+    k = Math.min(k, lo * Math.exp(this.after * Math.log(1 / lo) / Math.max(.05, L.ringSlowOut ?? .8)));   // and after it, back up just as it slowed
     this.k = 1 - amt * (1 - k);
   },
 };
@@ -113,7 +112,7 @@ function collect(i) {
   slowmo.after = 0;
   if (lockI === i) { lockI = -1; auto = null }   // through it: the camera's free again
   player.vel.multiplyScalar(1 + Math.max(0, LOOK.ringBurst ?? .25)); engineLook.peak = Math.max(engineLook.peak || 0, 1.3); ringPop = 1; boostK = Math.max(boostK, LOOK.ringBoost ?? .8); collectSound(GOT[i] ? .6 : 1);   // a festive kick: speed, a burst of light from the engine, the boost look   // a kick: speed, the engine flaring, a bright little sound
-  gotCard = { i, t: LOOK.ringCard ?? 7 }; showCard(i);
+  ringHide.set(i, performance.now() + (LOOK.ringBallDelay ?? 1) * 1000);   // the star itself comes back only a moment after you're through
   buzz(18);
   if (GOT[i]) return; GOT[i] = 1; gotN++; stars.aGot.needsUpdate = true;
   store.set('sotd-got', JSON.stringify(D.flatMap((d, k) => GOT[k] ? [d.date] : [])));

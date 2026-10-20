@@ -192,7 +192,7 @@ const flare = (() => {
       const w = along.mul(.006).add(.75), fall = pow(max(0, along.div(j % 2 ? L.mul(u.half.mul(-.5).add(1)) : L).oneMinus()), 2.6);   // with 'half' on, every other line is half as long
       // sparkle: each line twinkles on its own beat, and glints run out along it
       const tw = sin(U.now.mul(u.rate).mul(1 + j * .37).add(j * 2.1)).mul(.5).add(.5), gl = pow(sin(along.div(L).mul(18).sub(U.now.mul(u.rate).mul(3 + j))).mul(.5).add(.5), 6);
-      spikes.addAssign(exp(across.div(w).pow(2).negate()).mul(fall).mul(step(float(j).add(.5), u.n.mul(.5))).mul(u.spk.mul(tw.sub(.6).add(gl.mul(.8))).add(1).max(.15)));
+      spikes.addAssign(exp(sq(across.div(w)).negate()).mul(fall).mul(step(float(j).add(.5), u.n.mul(.5))).mul(u.spk.mul(tw.sub(.6).add(gl.mul(.8))).add(1).max(.15)));
     }
     spikes.mulAssign(u.ig.mul(1.5).add(1));   // ignition: the spikes flare
     const core = exp(r.div(1.5).pow(2).negate()).mul(u.ig.mul(8).add(1)), bloomIn = exp(r.div(L.mul(.022)).negate()).mul(u.glow), bloomOut = exp(r.div(L.mul(.15).mul(u.glow.sqrt().min(2.2)).mul(u.pop.add(1))).negate()).mul(u.glow.min(3).add(u.pop.mul(3)));   // pop: a ring collected, the engine bursts with light
@@ -247,7 +247,7 @@ const motes = (() => {
     const dens = disk.mul(smoothstep(-.12, .02, uu)).mul(smoothstep(.98, 1.12, uu).oneMinus()).mul(arm.mul(.85).add(.15));
     // core mode: thicker toward the middle of the bulge; close to the black hole only in a thin sheet along its disk
     const r3 = length(l), zone = smoothstep(u.bhR.mul(u.bhZ), u.bhR.mul(u.bhZ).mul(.6), r3), bulgeD = exp(r3.div(u.sB).pow(2).mul(-.5));
-    const sheet = exp(l.y.div(u.bhR.mul(u.bhH)).pow(2).negate()).mul(smoothstep(u.bhR.mul(1.6), u.bhR.mul(.9), rr)).mul(smoothstep(u.bhR.mul(.12), u.bhR.mul(.25), rr));
+    const sheet = exp(sq(l.y.div(u.bhR.mul(u.bhH))).negate()).mul(smoothstep(u.bhR.mul(1.6), u.bhR.mul(.9), rr)).mul(smoothstep(u.bhR.mul(.12), u.bhR.mul(.25), rr));
     const densC = mix(bulgeD, sheet, zone);
     const edge = smoothstep(.55, 1, max(max(abs(rel.x), abs(rel.y)), abs(rel.z)).div(B)).oneMinus();
     const mv = vec4(cameraViewMatrix.mul(vec4(rel, 0)).xyz, 1).toVar();

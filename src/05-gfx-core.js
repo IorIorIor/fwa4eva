@@ -109,6 +109,7 @@ function quads(n, attrs) {
   packInstances(g, n, attrs); g.instanceCount = n; return g;
 }
 const ia = (name, type) => attribute(name, type);
+const sq = x => x.mul(x);   // x², safe for negatives (WGSL's pow(x, 2) isn't)
 // clip position of a quad corner around a centre, sized in device pixels
 const billboardPx = (mv, px) => { const clip = cameraProjectionMatrix.mul(mv); return clip.add(vec4(positionGeometry.xy.mul(px).mul(clip.w).mul(vec2(2).div(U.res)), 0, 0)) };
 // clip position of a quad corner around a centre, sized in world units (a camera-facing sprite)

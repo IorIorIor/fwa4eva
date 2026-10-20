@@ -12,11 +12,11 @@ const IDB = {
 };
 await IDB.open();
 // the real archive: a list of every winner plus one image per winner, kept in its own repo (IorIorIor/fwa4eva-data) and
-// served by GitHub Pages. ?data=<base url> points elsewhere. The list comes up front; images only when you get near a star.
-const DATA_BASE = (QS.get('data') || 'https://ioriorior.github.io/fwa4eva-data/').replace(/\/?$/, '/');
+// copied into public/data. ?data=<base url> points elsewhere. The list comes up front; images only when you get near a star.
+const DATA_BASE = (QS.get('data') || 'data/').replace(/\/?$/, '/');   // shipped with the page (the data repo is private, so its own site can't serve it); `npm run data` copies it over from ../fwa4eva-data
 const LOCAL_IMPORT = await IDB.get('kv', 'records');
 const REMOTE = Array.isArray(LOCAL_IMPORT) && LOCAL_IMPORT.length ? null : await (async () => {
-  for (const url of [DATA_BASE + 'archive.json', 'fwa-archive.json']) {   // the data site, else the copy that ships with the page
+  for (const url of [DATA_BASE + 'archive.json']) {
     try { const ac = new AbortController(), to = setTimeout(() => ac.abort(), 8000), r = await fetch(url, { signal: ac.signal }); clearTimeout(to); if (!r.ok) continue; const rows = normalizeRows(await r.json()); if (rows.length) return rows } catch (e) { }
   }
   return null;

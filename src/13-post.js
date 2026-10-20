@@ -53,7 +53,7 @@ const puffVol = (() => {
       const r = length(x.xz), qb = vec3(x.x, x.y.div(.55), x.z).div(u.sB), qc = vec3(x.x, x.y.div(u.H.mul(.7).max(.01)), x.z).div(u.R.mul(.2));
       const hD = u.R.mul(exp(r.div(u.R.mul(.35)).pow(2).negate()).mul(.07).add(.02)).mul(u.H).max(1);
       const bul = exp(dot(qb, qb).mul(-.5)).mul(u.kB).div(u.sB);
-      const cor = exp(dot(qc, qc).mul(-.5)).mul(.45).add(exp(r.div(u.R.mul(.32)).negate()).mul(exp(x.y.div(hD).pow(2).mul(-.5))).mul(.55)).mul(u.kC).div(u.R);
+      const cor = exp(dot(qc, qc).mul(-.5)).mul(.45).add(exp(r.div(u.R.mul(.32)).negate()).mul(exp(sq(x.y.div(hD)).mul(-.5))).mul(.55)).mul(u.kC).div(u.R);
       // each part keeps its own puff settings: grain size (size, detail, count), mottling (texture), edge (crisp), size variety, brightness variety, colour
       const grainOf = (f, amt, sh, vr, fl) => { const n = fbm5(x.mul(f)), n2 = noise3(x.mul(f.mul(.43)).add(7.7)), g0 = pow(n.mul(2.2).sub(.35).max(0), sh);
         const g1 = mix(g0, pow(noise3(x.mul(f.mul(2.6)).add(3.3)).mul(2).sub(.4).max(0), sh), vr.mul(n2));   // size variety: some places finer

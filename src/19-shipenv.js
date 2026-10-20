@@ -52,7 +52,8 @@ const shipEnv = (() => {
   return {
     update(dt) {
       if (LT.hemi && LT.key && LT.rim) lights();
-      const k = LOOK.shipReflect ?? 1, gl = LOOK.shipGloss ?? .5, sc = LOOK.shipScuff ?? 1, key = k + ',' + gl + ',' + sc; if (key !== on) { on = key; base.forEach(({ m, r, mt }) => { m.envMap = k > 0 ? tex : null; m.envMapIntensity = k * 2.5; m.roughness = r * (1 - .6 * Math.min(1, k * gl)); m.metalness = Math.max(mt, .35 * Math.min(1, k)); if (m.isMeshPhysicalMaterial) { m.clearcoat = Math.min(1, k); m.clearcoatRoughness = .02 + .3 * (1 - gl) } if (m.bumpMap) m.bumpScale = .35 * sc; m.needsUpdate = true }) }   // the lacquer (clearcoat) mirrors the panorama sharply; gloss tightens it
+      // wh: the white paint glows a little of its own, so it reads white, not grey, whatever the light
+      const k = LOOK.shipReflect ?? 1, gl = LOOK.shipGloss ?? .5, sc = LOOK.shipScuff ?? 1, wh = LOOK.shipWhite ?? .75, key = k + ',' + gl + ',' + sc + ',' + wh; SHIP_MAT.white.emissiveIntensity = wh; if (key !== on) { on = key; base.forEach(({ m, r, mt }) => { m.envMap = k > 0 ? tex : null; m.envMapIntensity = k * 2.5; m.roughness = r * (1 - .6 * Math.min(1, k * gl)); m.metalness = Math.max(mt, .35 * Math.min(1, k)); if (m.isMeshPhysicalMaterial) { m.clearcoat = Math.min(1, k); m.clearcoatRoughness = .02 + .3 * (1 - gl) } if (m.bumpMap) m.bumpScale = .35 * sc; m.needsUpdate = true }) }   // the lacquer (clearcoat) mirrors the panorama sharply; gloss tightens it
       if (k > 0 && (t -= dt) <= 0) { t = .5; draw() }
     },
   };

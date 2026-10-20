@@ -10,7 +10,7 @@ const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist:
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
 const camRel = new V3(0, .8, 3.4).multiplyScalar(SHIP_SC), camRelV = new V3(), prevVel = new V3();
-let turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
+let thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
 function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
@@ -95,7 +95,7 @@ function updatePlayer(dt) {
     rollHeld = !!rl;
     if (barrel) { const T = Math.max(.15, L.rollBarrelTime ?? .5), e0 = ease(Math.min(1, barrel.t / T)); barrel.t += dt; const e1 = ease(Math.min(1, barrel.t / T)); dr += barrel.d * 2 * Math.PI * (e1 - e0); if (barrel.t >= T) barrel = null }
     if (dr) { p.base.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), dr)).normalize(); camRollTo += dr * (L.rollCam ?? 0) }
-    { const K = L.rollCamSpring ?? 14, C = 2 * Math.sqrt(K) * (L.rollCamDamp ?? .55); camRollV += (camRollTo * K - camRollV * C) * Math.min(dt, 1 / 30); const d = camRollV * dt; camRollTo -= d; if (Math.abs(d) > 1e-6) rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), d)).normalize() }   // rollCam: the view (and the horizon) follows your roll on a spring, catching up all the way
+    { const K = L.rollCamSpring ?? 3.5, C = 2 * Math.sqrt(K) * (L.rollCamDamp ?? .9); camRollV += (camRollTo * K - camRollV * C) * Math.min(dt, 1 / 30); const d = camRollV * dt; camRollTo -= d; if (Math.abs(d) > 1e-6) rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), d)).normalize() }   // rollCam: the view (and the horizon) follows your roll on a spring, catching up all the way
   }
   const prevF = _hf.set(0, 0, -1).applyQuaternion(p.base), prevR = _hr.set(1, 0, 0).applyQuaternion(p.base), sp0 = p.vel.length();
   // boost: Shift or Space. A short tank that drains while boosting and refills when you don't.
@@ -154,7 +154,8 @@ function updatePlayer(dt) {
     else p.cruise = Math.max(0, p.cruise - dt / Math.max(.2, L.glide));
     if (turnAmt > 0) { const capC = T1 / T2 * Math.min(1, L.steerCap / V1); if (p.cruise > capC) p.cruise -= (p.cruise - capC) * Math.min(1, turnAmt * L.steerSlow * 2.5 * dt) }   // steering bleeds the build-up back to cruise
     const vC = vAt(p.cruise) * (1 + boostK * L.boostTop), spNow = p.vel.length();
-    const accel = (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
+    thrT = pedal ? thrT + dt : 0; const accIn = Math.pow(Math.min(1, thrT / Math.max(.02, L.accelIn ?? .35)), L.accelCurve ?? 3);   // a quick, heavy wind-up: the push builds from nothing to full over a moment
+    const accel = accIn * (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
     p.vel.addScaledVector(wish, (accel + (GM / (oR * oR || 1) * L.orbitThrust - accel) * ob) * (1 - .5 * obT) * dt);   // and accelerate half as hard
     if (gasOn) { const vf = p.vel.dot(course); tmp.copy(p.vel).addScaledVector(course, -vf); p.vel.addScaledVector(tmp, -(1 - Math.exp(-2.8 * dt))) }
     p.vel.multiplyScalar(Math.exp(-((thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - brakeK) + (L.brakeStr ?? 5.5) * brakeK) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)

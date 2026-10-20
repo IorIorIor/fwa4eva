@@ -129,19 +129,13 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, e => { if (e.pointerId === id) end() })); b.addEventListener('contextmenu', e => e.preventDefault()) }
 
 /* ───────────────────────── picking ───────────────────────── */
-// ← and →: from the winner you're on (or hovering), the next one nearer or farther away, among those hovering could reach:
-// in front of you, on screen, close enough and big enough to show
+// ← and →: every winner by distance from you. With nothing locked either key goes to the nearest one, wherever it is;
+// from the one you're locked on, ← steps to the next nearer and → to the next farther
 function stepByDist(dir) {
-  _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, cand = [];
-  for (let i = 0; i < N; i++) {
-    if (TA[i] < 1) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5 || w > (LOOK.hoverDist ?? 4e5) || starPx(i, w) < (LOOK.hoverPx ?? 2.5)) continue;
-    const X = (e[0] * px + e[4] * py + e[8] * pz + e[12]) / w, Y = (e[1] * px + e[5] * py + e[9] * pz + e[13]) / w; if (Math.abs(X) > 1 || Math.abs(Y) > 1) continue;
-    cand.push([camera.position.distanceTo(starPos(i, tmp)), i]);
-  }
+  const cand = [], pp = player.pos; for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z; cand.push([dx * dx + dy * dy + dz * dz, i]) }
   if (!cand.length) return; cand.sort((a, b) => a[0] - b[0]);
-  const ref = lockI >= 0 ? lockI : hovI >= 0 ? hovI : magI, k = cand.findIndex(c => c[1] === ref), dRef = ref >= 0 ? camera.position.distanceTo(starPos(ref, tmp)) : -1;
-  let j; if (k >= 0) j = cand[Math.max(0, Math.min(cand.length - 1, k + dir))]; else if (dRef < 0) j = cand[0]; else j = dir > 0 ? cand.find(c => c[0] > dRef) || cand[cand.length - 1] : [...cand].reverse().find(c => c[0] < dRef) || cand[0];
-  if (!j || j[1] === ref) return; focus(j[1]); auto = null; aimFast = .7;
+  const k = lockI >= 0 ? cand.findIndex(c => c[1] === lockI) : -1, j = k < 0 ? cand[0] : cand[Math.max(0, Math.min(cand.length - 1, k + dir))];
+  if (!j || j[1] === lockI) return; focus(j[1]); auto = null; aimFast = .7;
 }
 const _vp = new THREE.Matrix4();
 const pxJS = () => innerHeight * .55 * DPR;                        // CPU twin of the shaders' point-size scale
