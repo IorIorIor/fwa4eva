@@ -128,11 +128,12 @@ const trail = (() => {
   [['position', trPos, 3], ['aT', trT, 1], ['aV', trV, 1], ['aC', trC, 3], ['aA', trA, 1]].forEach(([n, a, c]) => g.setAttribute(n, new THREE.BufferAttribute(a, c).setUsage(THREE.DynamicDrawUsage)));
   const u = { core: uniform(1), glow: uniform(1), taper: uniform(1.35), shim: uniform(.08), nearA: uniform(4), nearB: uniform(30) }, m = skyMat({ side: THREE.DoubleSide });
   const vT = varying(attribute('aT', 'float')), vV = varying(attribute('aV', 'float')), vC = varying(attribute('aC', 'vec3'));
-  const vA = varying(attribute('aA', 'float').mul(smoothstep(u.nearA, u.nearB, modelViewMatrix.mul(vec4(positionGeometry, 1)).z.negate())));
+  const vA = varying(clamp(attribute('aA', 'float'), 0, 1).mul(smoothstep(u.nearA, u.nearB.max(u.nearA.add(.001)), modelViewMatrix.mul(vec4(positionGeometry, 1)).z.negate())));
   m.fragmentNode = Fn(() => {
     const core = exp(vV.mul(vV).mul(-38)), halo = exp(vV.mul(vV).mul(-3.5)), along = pow(max(0, vT.oneMinus()), u.taper);
     const flick = u.shim.oneMinus().add(u.shim.mul(sin(vT.mul(240).sub(U.now.mul(30)))));
-    return vec4(vC.mul(halo).mul(.85).mul(u.glow).add(mix(vC, vec3(1), .75).mul(core).mul(1.6).mul(u.core)).mul(along).mul(flick).mul(vA), 1);
+    const c = vC.mul(halo).mul(.85).mul(u.glow).add(mix(vC, vec3(1), .75).mul(core).mul(1.6).mul(u.core)).mul(along).mul(max(flick, 0)).mul(vA);
+    return vec4(clamp(c, 0, 8), 0);   // added light only: never darker than what's behind it
   })();
   const mesh = layer(new THREE.Mesh(g, m), scene, 0); mesh.u = u; return mesh;
 })();

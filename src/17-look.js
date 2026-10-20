@@ -49,6 +49,38 @@ function saveLook() { store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { 
   } catch (e) { }
 })();
 
+/* a quick top-down sketch of the galaxy's shape from the sliders as they stand now, so you can see a change before
+   rebuilding: the winners (up to 5000 of them, by their real dates) on the arms or the single spiral, coloured by era */
+let prevCv = null, prevQ = 0;
+function galPreview() {
+  if (!prevCv || !prevCv.isConnected) return; const L = LOOK, cv = prevCv, g = cv.getContext('2d'), W = cv.width, H = cv.height; if (!g) return;
+  const num = (k, d, lo, hi) => { const v = +L[k]; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d };
+  const sp = !!L.spiral, arms = sp ? 1 : Math.round(num('armCount', 4, 2, 8)), wind = num(ANDRO ? 'armWindA' : 'armWindG', 3.1, .6, 6), lock = sp ? 0 : num('armLock', 1, 0, 1), beat = num('armBeat', 1, .25, 2);
+  const r0 = num('armStart', 70000, 15000, 300000) * (sp ? num('spiralHole', 1.5, .3, 4) : 1), out = 850000 * (sp ? num('spiralSize', .85, .4, 1.2) : 1), len = out - r0;
+  const G = num('spiralGap', 2.4, .3, 6), lg = Math.log(G), flat = Math.abs(lg) < 1e-3, tw = 2 * Math.PI * 5.4 * num('spiralTurns', 1, .5, 2);
+  const rho = t => flat ? t : G * (1 - Math.pow(G, -t)) / (G - 1), tauOf = u => { const c = Math.max(0, Math.min(1, u)); return flat ? c : -Math.log(1 - c * (G - 1) / G) / lg };
+  const yU = t => sp ? rho(1 - tFrac(t)) : Math.pow(1 - tFrac(t), .62);
+  const r25 = r0 + yU(Date.UTC(2025, 0, 1)) * len, x25 = Math.log(r25), x00 = Math.log(out), ph25 = wind * Math.log(r25 / r0), d = beat * 2 * Math.PI / arms, h = .12;
+  const phase = r => {
+    if (sp) return tw * tauOf((r - r0) / len);
+    const x = Math.log(Math.max(r, r0 * .5)), base = wind * (x - Math.log(r0)); if (!lock) return base;
+    const u = Math.max(0, Math.min(1, (r - r0) / len)), E = 5.4 * (1 - Math.pow(u, 1 / .62)), mid = ph25 + (5 - E) * d, o = ph25 + 5 * d + wind * (x - x00);
+    const w1 = sstep(x, x25 - h, x25 + h), w2 = sstep(x, x00 - h, x00 + h); return base + (((base + (mid - base) * w1) * (1 - w2) + o * w2) - base) * lock;
+  };
+  const bw = num('starBandW', 1, .1, 4), ba = num('starAlong', 1, .1, 4), rnd = mulberry32(7), gs = () => { let a = 0; for (let k = 0; k < 4; k++) a += rnd(); return (a - 2) * 1.73 };
+  const K = (Math.min(W, H) / 2 - 6) / 900000, cx = W / 2, cy = H / 2, cols = ['#7fb2ff', '#62d6dc', '#b06bff', '#ff4fa3', '#ffb36b', '#fff1d6'];
+  g.fillStyle = '#05050a'; g.fillRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; [r0, out].forEach(r => { g.beginPath(); g.arc(cx, cy, r * K, 0, 7); g.stroke() });
+  if (sp) { g.strokeStyle = 'rgba(255,255,255,.28)'; g.beginPath(); for (let k = 0; k <= 600; k++) { const r = r0 + rho(k / 600) * len, a = phase(r); k ? g.lineTo(cx + Math.cos(a) * r * K, cy + Math.sin(a) * r * K) : g.moveTo(cx + Math.cos(a) * r * K, cy + Math.sin(a) * r * K) } g.stroke() }
+  const n = Math.min(5000, N), step = N / n;
+  for (let j = 0; j < n; j++) {
+    const i = Math.floor(j * step), dd = D[i], u = yU(dd.t), r = r0 + u * len, s = 7700 + r * .045, arm = (rnd() * arms) | 0;
+    const dr = sp ? gs() * s * .7 * bw : gs() * s * .2 * bw, dth = sp ? gs() * .1 * ba * s / r : gs() * 1.1 * ba * s / r, rr = Math.max(r0 * .3, r + dr), a = arm * 2 * Math.PI / arms + phase(rr) + dth;
+    g.fillStyle = cols[Math.max(0, Math.min(5, Math.floor((dd.year - 2000) / 5)))]; g.fillRect(cx + Math.cos(a) * rr * K - .6, cy + Math.sin(a) * rr * K - .6, 1.3, 1.3);
+  }
+  g.fillStyle = '#000'; g.beginPath(); g.arc(cx, cy, 2.5, 0, 7); g.fill();
+}
+const prevSoon = () => { if (prevQ) return; prevQ = requestAnimationFrame(() => { prevQ = 0; galPreview() }) };
 function renderLook() {
   const body = $('lookBody'); body.innerHTML = '';
   let openSecs = store.json('sotd-look-open', []); if (!Array.isArray(openSecs)) openSecs = [];
@@ -56,6 +88,7 @@ function renderLook() {
     const sec = document.createElement('div'); sec.className = 'lsec' + (openSecs.includes(title) ? ' open' : '');
     const hd = document.createElement('button'); hd.className = 'lhd'; hd.type = 'button'; hd.innerHTML = `<span>${title}</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5"/></svg>`; hd.setAttribute('aria-expanded', sec.classList.contains('open'));
     const bodyEl = document.createElement('div'); bodyEl.className = 'lbody'; sec.append(hd, bodyEl);
+    if (title === 'Galaxy') { const pv = document.createElement('div'); pv.className = 'gprev'; pv.innerHTML = '<canvas width="520" height="520" aria-label="Preview of the galaxy shape from these settings"></canvas><span>Preview: shape changes take effect when you rebuild</span>'; bodyEl.appendChild(pv); prevCv = pv.querySelector('canvas'); prevSoon() }
     hd.onclick = () => { const o = sec.classList.toggle('open'); hd.setAttribute('aria-expanded', o); const i = openSecs.indexOf(title); if (o && i < 0) openSecs.push(title); if (!o && i >= 0) openSecs.splice(i, 1); store.set('sotd-look-open', JSON.stringify(openSecs)) };
     rows.forEach(([k, label, type, def, min, max, step]) => {
       if (type === 'b') { const w = document.createElement('div'); w.className = 'gsw'; w.innerHTML = `<span>${label}</span><button class="btn" type="button">Rebuild</button>`; w.querySelector('button').onclick = () => { saveLookNow(); setTimeout(() => location.reload(), 350) }; bodyEl.appendChild(w); return }
@@ -64,11 +97,11 @@ function renderLook() {
         w.onclick = e => { const st = e.target.dataset && e.target.dataset.s; if (!st || st === STYLE) return; store.set('sotd-galaxy', st); saveLookNow(); setTimeout(() => location.reload(), 350) }; bodyEl.appendChild(w); return
       }
       if (type === 'x') { const w = document.createElement('div'); w.className = 'gsw'; w.innerHTML = `<span>${label}</span><button class="btn" type="button">Run</button>`; w.querySelector('button').onclick = () => runBench(); bodyEl.appendChild(w); return }
-      if (type === 'tr') { const l = document.createElement('label'); l.className = 'tg'; l.innerHTML = `<span>${label}</span><input type="checkbox" id="lk-${k}" ${LOOK[k] ? 'checked' : ''}>`; l.querySelector('input').onchange = e => { LOOK[k] = e.target.checked ? 1 : 0; saveLookNow(); setTimeout(() => location.reload(), 350) }; bodyEl.appendChild(l); return }   // switches that rebuild the galaxy
+      if (type === 'tr') { const l = document.createElement('label'); l.className = 'tg'; l.innerHTML = `<span>${label}</span><input type="checkbox" id="lk-${k}" ${LOOK[k] ? 'checked' : ''}>`; l.querySelector('input').onchange = e => { LOOK[k] = e.target.checked ? 1 : 0; saveLook(); prevSoon() }; bodyEl.appendChild(l); return }   // shape switches: previewed now, applied on rebuild
       if (type === 't') { const l = document.createElement('label'); l.className = 'tg'; l.innerHTML = `<span>${label}</span><input type="checkbox" id="lk-${k}" ${LOOK[k] ? 'checked' : ''}>`; l.querySelector('input').onchange = e => { LOOK[k] = e.target.checked ? 1 : 0; saveLook(); applyLook() }; bodyEl.appendChild(l); return }
       const w = document.createElement('div'); w.className = 'lk'; const dec = step < .01 ? 3 : step < 1 ? 2 : 0;
       w.innerHTML = `<label for="lk-${k}">${label}</label><output id="lko-${k}">${(+LOOK[k]).toFixed(dec)}</output><input type="range" id="lk-${k}" min="${min}" max="${max}" step="${step}" value="${LOOK[k]}">`;
-      w.querySelector('input').oninput = e => { LOOK[k] = +e.target.value; w.querySelector('output').textContent = LOOK[k].toFixed(dec); saveLook(); applyLook() }; bodyEl.appendChild(w)
+      w.querySelector('input').oninput = e => { LOOK[k] = +e.target.value; w.querySelector('output').textContent = LOOK[k].toFixed(dec); saveLook(); applyLook(); if (title === 'Galaxy') prevSoon() }; bodyEl.appendChild(w)
     });
     body.appendChild(sec)
   });

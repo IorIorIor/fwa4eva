@@ -16,6 +16,8 @@ const bgAt = uv0 => {
 };
 scene.backgroundNode = bgAt(screenUV);
 const bh = makeBlackHole(bgAt);
+// the core's glare, seen from far off: a broad hot glow over the black hole that the bloom spreads wide
+const coreFlare = (() => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: new C3(1, .93, .82), blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true, opacity: 0 })); s.position.copy(GC); s.renderOrder = 5; s.frustumCulled = false; scene.add(s); return s })();
 const scenePass = pass(scene, camera, { samples: 4 });
 const sceneTex = scenePass.getTextureNode();
 const bloomPass = bloom(sceneTex.min(1), .45, .4, .72);

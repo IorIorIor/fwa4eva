@@ -293,7 +293,10 @@ function tick(now) {
   {
     const b = bh.u, rs = BH.rs; b.cam.value.copy(camera.position).sub(GC).applyQuaternion(GQI).divideScalar(rs); b.rot.value.copy(GQI3);
     b.vrot.value.setFromMatrix4(camera.matrixWorldInverse).multiply(GQ3); b.px.value = camera.projectionMatrix.elements[0]; b.py.value = camera.projectionMatrix.elements[5]; b.t.value = worldT;
-    b.veil.value = .55 * sstep(camera.position.distanceTo(GC), Math.max(60000, BH.rs * 4), Math.max(600000, BH.rs * 40));   // the farther off, the more of the core's glow lies in front of it
+    // from far off the shadow hides completely in the core's own light, and the core blooms instead; up close it's all there
+    const dGC = camera.position.distanceTo(GC), F0 = BH.rs * (L.bhFar ?? 25), farK = sstep(dGC, F0, F0 * 3);
+    b.veil.value = farK; coreFlare.material.opacity = farK * (L.bhGlow ?? 1); coreFlare.visible = farK > .002;
+    coreFlare.scale.setScalar(Math.max(BH.rs * 30, dGC * .09));   // a fixed slice of the view, so the bloom reads at any distance
   }
   // the open winner: the screenshot can replace the dot; the lock holds until you let go
   openI = -1; openA = 0;

@@ -39,9 +39,15 @@ const intro = {
   },
   finish() {
     if (!this.active) return; this.active = introActive = false; veil.visible = false; emitGlow = 1;
-    camRel.copy(INTRO_END); camRelV.set(0, 0, 0); document.body.classList.remove('intro'); handOver();
+    camRel.copy(INTRO_END); camRelV.set(0, 0, 0); document.body.classList.remove('intro'); flickIn(); handOver();
   },
 };
+// the instruments flicker on one by one as the opening ends, each with its own pattern and moment
+function flickIn() {
+  const r = (a, b) => a + Math.random() * (b - a);
+  document.querySelectorAll('.hud:not([hidden]), #labels').forEach(e => { e.style.setProperty('--fk', 'flk' + (1 + (Math.random() * 3 | 0))); e.style.setProperty('--fd', r(.5, 1.1).toFixed(2) + 's'); e.style.setProperty('--fdl', r(0, .7).toFixed(2) + 's'); e.classList.remove('flk-go'); void e.offsetWidth; e.classList.add('flk-go') });
+  setTimeout(() => document.querySelectorAll('.flk-go').forEach(e => e.classList.remove('flk-go')), 2200);
+}
 function handOver() { booted = true; updateLockUI(); region = null; lastInput = performance.now(); coach.start() }
 
 // restore the ship where it was last parked, facing the core otherwise
