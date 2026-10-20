@@ -127,7 +127,7 @@ function updateStreaks(dt) {
   streakDens = Math.max(disk * (.08 + .92 * arm), core);   // straight from where you are: it thins toward the edge of the disk and is gone past it
   streaks.geometry.setDrawRange(0, Math.floor(Math.min(SL_N, SL_N / 3 * L.streakAmt * streakDens)) * 2);
   su.op.value += (sstep(sp, 150, 4000) * .32 * L.streakBright * Math.min(1, streakDens * 3) - su.op.value) * Math.min(1, dt * 6);
-  const mu = motes.u, B = L.moteBox * SHIP_K; mu.box.value = B; mu.size.value = L.moteSize * SHIP_K; mu.follow.value = L.moteFollow;
+  const mu = motes.u, B = L.moteBox * SHIP_K; mu.box.value = B; mu.size.value = L.moteSize * SHIP_K; mu.follow.value = L.moteFollow; mu.core.value = L.moteCore; mu.sB.value = bulgeR * .42 * (L.bulgePuffSpread ?? 1) * L.moteCoreReach; mu.bhR.value = BH.rs * Math.max(3.5, L.bhDiskOut); mu.bhZ.value = L.moteBhZone; mu.bhH.value = L.moteBhH;
   mu.op.value += ((1 - sstep(sp, 3000, 60000)) * 1.3 * L.moteBright - mu.op.value) * Math.min(1, dt * 6);
   toLocal(camera.position, tmp); tmp.set(-tmp.z, 0, tmp.x); if (tmp.lengthSq() > 1) tmp.normalize().applyQuaternion(GQ);   // orbital direction here
   mu.flow.value.addScaledVector(tmp, L.moteDrift * SHIP_K * dt * tdil); ['x', 'y', 'z'].forEach(k => { mu.flow.value[k] %= 2 * B; mu.camMod.value[k] = camera.position[k] % (2 * B) });

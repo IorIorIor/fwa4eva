@@ -153,17 +153,21 @@ const shadowMesh = (() => {
 const MOTE_N = 8000;
 const motes = (() => {
   const a = new Float32Array(MOTE_N * 3), r = new Float32Array(MOTE_N); for (let i = 0; i < MOTE_N; i++) { a[i * 3] = Math.random() * 2 - 1; a[i * 3 + 1] = Math.random() * 2 - 1; a[i * 3 + 2] = Math.random() * 2 - 1; r[i] = Math.random() }
-  const u = { box: uniform(600), camMod: uniform(new V3()), flow: uniform(new V3()), size: uniform(1), op: uniform(.5), follow: uniform(1) }, m = skyMat(), vA = varyingProperty('float', 'vA'), vC = varyingProperty('vec3', 'vC');
+  const u = { box: uniform(600), camMod: uniform(new V3()), flow: uniform(new V3()), size: uniform(1), op: uniform(.5), follow: uniform(1), core: uniform(1), sB: uniform(1), bhR: uniform(1), bhZ: uniform(4), bhH: uniform(.08) }, m = skyMat(), vA = varyingProperty('float', 'vA'), vC = varyingProperty('vec3', 'vC');
   m.vertexNode = Fn(() => {
     const B = u.box, rel = mod(ia('aP', 'vec3').mul(B).add(u.flow).sub(u.camMod).add(B), B.mul(2)).sub(B).toVar(), aR = ia('aR', 'float');
     const l = toGal(cameraPosition.add(rel)), rr = length(l.xz), uu = rr.sub(GAL_R0).div(GAL_LEN);
     const da = armDaT(l.x, l.z), arm = exp(da.mul(da).mul(-5));
     const th = exp(rr.div(-120000)).mul(14000).add(4000), disk = exp(l.y.mul(l.y).negate().div(th.mul(th).mul(2)));
     const dens = disk.mul(smoothstep(-.12, .02, uu)).mul(smoothstep(.98, 1.12, uu).oneMinus()).mul(arm.mul(.85).add(.15));
+    // core mode: thicker toward the middle of the bulge; close to the black hole only in a thin sheet along its disk
+    const r3 = length(l), zone = smoothstep(u.bhR.mul(u.bhZ), u.bhR.mul(u.bhZ).mul(.6), r3), bulgeD = exp(r3.div(u.sB).pow(2).mul(-.5));
+    const sheet = exp(l.y.div(u.bhR.mul(u.bhH)).pow(2).negate()).mul(smoothstep(u.bhR.mul(1.6), u.bhR.mul(.9), rr)).mul(smoothstep(u.bhR.mul(.12), u.bhR.mul(.25), rr));
+    const densC = mix(bulgeD, sheet, zone);
     const edge = smoothstep(.55, 1, max(max(abs(rel.x), abs(rel.y)), abs(rel.z)).div(B)).oneMinus();
     const mv = vec4(cameraViewMatrix.mul(vec4(rel, 0)).xyz, 1).toVar();
     const ps = aR.mul(3.4).add(1.6).mul(u.size).mul(pxScale).div(max(mv.z.negate(), 1)).toVar();
-    vA.assign(u.op.mul(edge).mul(mix(1, dens, u.follow)).mul(aR.mul(.7).add(.3)).mul(min(1, ps)));
+    vA.assign(u.op.mul(edge).mul(mix(1, mix(dens, densC, u.core), u.follow)).mul(aR.mul(.7).add(.3)).mul(min(1, ps)));
     vC.assign(mix(vec3(1, .8, .6), vec3(.66, .77, 1), smoothstep(0, .55, uu)));
     return billboardPx(mv, clamp(ps, .8, 14));
   })();
