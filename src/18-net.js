@@ -2,7 +2,7 @@
    Everyone who has this page open right now flies in the same sky. Each pilot shares where they are a few times a
    second through the page's room (presence only: nothing is stored, nothing to sign up for) and sees everyone else
    as a cursor with a trail in that pilot's own colour. Without a room the sky is simply yours. */
-const PILOT_HUE = (() => { let h = parseInt(store.get('sotd-hue'), 10); if (!(h >= 0 && h < 360)) { h = Math.floor(Math.random() * 360); store.set('sotd-hue', String(h)) } return h })();
+let PILOT_HUE = (() => { let h = parseInt(store.get('sotd-hue'), 10); if (!(h >= 0 && h < 360)) { h = Math.floor(Math.random() * 360); store.set('sotd-hue', String(h)) } return h })();
 Net.self.hue = PILOT_HUE;
 const PEER_N = 160, _pc = new C3(), _pd = new V3(), _ps = new V3(), _pe = new V3();
 function peerViz(hue) {
@@ -11,18 +11,19 @@ function peerViz(hue) {
   const pos = new Float32Array(PEER_N * 6), cl = new Float32Array(PEER_N * 6), geo = new THREE.BufferGeometry(), idx = [];
   for (let k = 0; k < PEER_N - 1; k++) { const a = k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2) } geo.setIndex(idx);
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('color', new THREE.BufferAttribute(cl, 3).setUsage(THREE.DynamicDrawUsage)); geo.setDrawRange(0, 0);
-  const tr = layer(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })), scene, 0);
+  const tr = layer(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })), trailScene, 0);
   const dot = youMark.clone(); dot.material = youMark.material.clone(); dot.material.color.copy(col); scene.add(dot);
   return { g, tr, pos, cl, dot, col, hue, mk: null, pts: [], cur: null, tgt: new V3(), vel: new V3(), q: new Q4(), at: 0, th: 0, mode: 'fly', fade: 0 };
 }
 function peerUpdate(p) {
   const s = p.presence, ok = a => Array.isArray(a) && a.every(Number.isFinite); if (!s || !ok(s.p) || s.p.length !== 3) return;   // untrusted: take only well-formed numbers
   let v = Net.peers.get(p.peer); if (!v) { const h = Number.isFinite(+s.h) ? ((+s.h % 360) + 360) % 360 : 0; v = peerViz(h); Net.peers.set(p.peer, v) }
+  if (Number.isFinite(+s.h)) { const h = ((+s.h % 360) + 360) % 360; if (Math.abs(h - v.hue) > .5) { v.hue = h; v.col.setHSL(h / 360, 1, .6); v.g.userData.flame.material.color.copy(v.col); v.g.userData.hole.col.value.copy(v.col); v.g.userData.emit.material.color.copy(v.col); v.dot.material.color.copy(v.col) } }
   v.tgt.fromArray(s.p); if (ok(s.v) && s.v.length === 3) v.vel.fromArray(s.v); if (ok(s.q) && s.q.length === 4) v.q.fromArray(s.q).normalize();
   v.at = performance.now(); v.th = (s.th | 0) & 3; v.mode = s.m === 'map' ? 'map' : 'fly';
   if (!v.cur || v.cur.distanceTo(v.tgt) > 5e5) { v.cur = v.tgt.clone(); v.pts.length = 0; v.g.quaternion.copy(v.q) }   // new, or jumped home
 }
-function peerDrop(id) { const v = Net.peers.get(id); if (!v) return; scene.remove(v.g, v.tr, v.dot); v.tr.geometry.dispose(); if (v.mk) v.mk.remove(); Net.peers.delete(id); pilotList() }
+function peerDrop(id) { const v = Net.peers.get(id); if (!v) return; scene.remove(v.g, v.dot); trailScene.remove(v.tr); v.tr.geometry.dispose(); if (v.mk) v.mk.remove(); Net.peers.delete(id); pilotList() }
 /* two transports, same messages. On claude.ai the artifact's room (signed-in viewers); anywhere else a tiny WebSocket relay
    served beside the page at /ws (server.mjs: no accounts, it only passes positions between whoever is connected). */
 const NET_URL = (() => { if (QS.get('relay')) return QS.get('relay'); if (!/^https?:$/.test(location.protocol) || /claude(usercontent)?\.(ai|com)$/.test(location.hostname)) return null; return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws' })();
@@ -45,7 +46,9 @@ function wsConnect(tries) {
   let ws; try { ws = new WebSocket(NET_URL) } catch (e) { return }
   ws.onopen = () => { Net.ws = ws; tries = 0; netLive() };
   ws.onmessage = e => {
-    let m; try { m = JSON.parse(e.data) } catch (_) { return } if (!m || typeof m.id !== 'string') return;
+    let m; try { m = JSON.parse(e.data) } catch (_) { return }
+    if (m && m.t === 'hi' && Number.isFinite(m.h)) { PILOT_HUE = ((m.h % 360) + 360) % 360; Net.self.hue = PILOT_HUE; return }   // the relay deals out colours spread round the wheel, so no two pilots match
+    if (!m || typeof m.id !== 'string') return;
     if (m.t === 'p' && m.s && typeof m.s === 'object') peerUpdate({ peer: 'w:' + m.id, presence: m.s }); else if (m.t === 'x') peerDrop('w:' + m.id);
   };
   ws.onclose = () => { if (Net.ws === ws) Net.ws = null; Net.enabled = false; [...Net.peers.keys()].filter(k => k.startsWith('w:')).forEach(peerDrop); setTimeout(() => wsConnect(tries + 1), Math.min(30000, 1500 * 2 ** Math.min(tries, 5))) };   // back off and try again

@@ -22,6 +22,7 @@ const scenePass = pass(scene, camera, { samples: 4 });
 const sceneTex = scenePass.getTextureNode();
 const bloomPass = bloom(sceneTex.min(1), .45, .4, .72);
 const bloomTex = bloomPass.getTextureNode();
+const trailPass = pass(trailScene, camera, { samples: 4 }), trailTex = trailPass.getTextureNode();
 const finalNode = Fn(() => {
   const vUv = screenUV, uv0 = vUv;
   const S = p => min(min(sceneTex.sample(p).rgb, 1).add(bloomTex.sample(p).rgb), 1);
@@ -41,6 +42,7 @@ const finalNode = Fn(() => {
   const fc = c.mul(c.mul(2.51).add(.03)).div(c.mul(c.mul(2.43).add(.59)).add(.14)); c.assign(mix(min(c, 1), fc, PU.film));
   c.assign(pow(max(vec3(0), c.sub(PU.black).div(PU.black.oneMinus())), vec3(PU.con)));            // true blacks, then contrast
   const lu = dot(c, vec3(.2126, .7152, .0722)); c.assign(mix(vec3(lu), c, PU.sat)); c.assign(mix(c, lu.mul(vec3(.78, .9, 1.12)), PU.cool));   // grade toward cold
+  { const tc = trailTex.sample(vUv).rgb; c.addAssign(tc.div(max(1, max(max(tc.r, tc.g), tc.b)))) }   // the trails over the graded sky; where they pile up they brighten to full colour, never to white
   c.mulAssign(min(1, PU.vig.add(PU.beta.mul(.45))).mul(smoothstep(PU.beta.mul(-.18).add(.32), .9, r)).oneMinus());
   c.addAssign(fract(sin(dot(vUv.mul(vec2(1733, 977)), vec2(12.9898, 78.233)).add(fract(U.now).mul(91.7))).mul(43758.5453)).sub(.5).mul(PU.grain));
   return vec4(clamp(c, 0, 1), 1);

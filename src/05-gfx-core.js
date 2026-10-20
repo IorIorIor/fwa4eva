@@ -22,6 +22,8 @@ const rimLight = new THREE.DirectionalLight(0x8fa6ff, .9 * Math.PI); rimLight.po
 const shipCanvas = document.createElement('canvas'); shipCanvas.id = 'shipLayer'; shipCanvas.setAttribute('aria-hidden', 'true'); canvas.after(shipCanvas);
 const shipRenderer = new THREE.WebGPURenderer({ canvas: shipCanvas, antialias: true, alpha: true, forceWebGL: QS.has('webgl') });
 await shipRenderer.init(); shipRenderer.highPrecision = true; shipRenderer.setPixelRatio(DPR); shipRenderer.setClearColor(0x000000, 0);
+// trails are drawn on their own and added after the colour grade, so a monochrome look never bleaches a pilot's colour
+const trailScene = new THREE.Scene(); trailScene.background = new THREE.Color(0, 0, 0);
 loadProg(.3);
 const shipScene = new THREE.Scene(); shipScene.add(new THREE.HemisphereLight(0xb8b0ff, 0x1a1430, 1.1 * Math.PI), sunLight.clone(), rimLight.clone());
 

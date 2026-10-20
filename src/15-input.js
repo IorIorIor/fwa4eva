@@ -76,7 +76,8 @@ function ringAt(x, y, lvlOn) {
 function mapHover(x, y) { const i = mapStars > .5 ? pick(x, y) : -1; return i >= 0 ? { i, ring: null } : { i: -1, ring: ringAt(x, y, mapLvl) } }
 function ringZoom(R) {   // dive to the ring at the point you clicked, close enough to pick out single winners
   timeRings.u.hi.value = R.y; timeRings.u.hiA.value = 1;
-  orbit.target.copy(ringPoint((R.r - GAL_R0) / GAL_LEN, SPIRAL ? armPhase(R.r) : R.th, 0));   // on the spiral: where the date sits on it orbit.dist = Math.min(orbit.dist * .5, 70000); const o = orbitPose(); tweenCam(o.p, o.q, 1.6);
+  orbit.target.copy(ringPoint((R.r - GAL_R0) / GAL_LEN, SPIRAL ? armPhase(R.r) : R.th, 0));   // on the spiral: where the date sits on it
+  orbit.dist = Math.min(orbit.dist * .5, 70000); const o = orbitPose(); tweenCam(o.p, o.q, 1.6);
 }
 canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
 canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mouse.in = false });

@@ -8,10 +8,12 @@ export function attachRelay(server) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_MSG });
   // take over only upgrades to /ws, so other sockets on the same server (Vite's live reload) are left alone
   server.on('upgrade', (req, sock, head) => { if (new URL(req.url, 'http://x').pathname === '/ws') wss.handleUpgrade(req, sock, head, ws => wss.emit('connection', ws, req)) });
+  let joins = 0; const hueSeed = Math.random() * 360;
   const num = (a, n) => Array.isArray(a) && a.length === n && a.every(Number.isFinite);
   wss.on('connection', ws => {
     if (wss.clients.size > MAX_PILOTS) return ws.close(1013, 'full');
     ws.id = randomBytes(6).toString('hex'); ws.last = 0; ws.alive = true; ws.state = null;
+    ws.send(JSON.stringify({ t: 'hi', h: Math.round((hueSeed + joins++ * 137.508) % 360) }));   // each pilot's colour: golden-angle steps round the wheel, so pilots online together never share one
     for (const c of wss.clients) if (c !== ws && c.state) ws.send(c.state);   // everyone already flying shows up at once
     ws.on('pong', () => { ws.alive = true });
     ws.on('message', raw => {

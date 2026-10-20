@@ -139,7 +139,8 @@ const _flc = new C3(), _amber = new C3(0xffb547), _slowC = new C3(), _fastC = ne
 // W alone lays the usual trail, boost alone a blue one, both together a light neon magenta
 const _cBoost = new C3(), _cBoth = new C3(); let trW = 1, trB = 0;
 function trailColour(sT, b, o, gw = 1, gb = 0) {
-  if (LOOK.trMyHue) { _slowC.setHSL(PILOT_HUE / 360, 1, .55); _fastC.setHSL(PILOT_HUE / 360, .9, .7) } else { _slowC.setHSL(LOOK.trHueSlow / 360, 1, .55); _fastC.setHSL(LOOK.trHueFast / 360, .95, .6) }   // your own pilot colour, the one others see o.copy(_slowC).lerp(_fastC, sT).lerp(_white, sstep(sT, .85, 1) * .35);
+  if (LOOK.trMyHue) { _slowC.setHSL(PILOT_HUE / 360, 1, .55); _fastC.setHSL(PILOT_HUE / 360, .9, .7) } else { _slowC.setHSL(LOOK.trHueSlow / 360, 1, .55); _fastC.setHSL(LOOK.trHueFast / 360, .95, .6) }   // your own pilot colour, the one others see
+  o.copy(_slowC).lerp(_fastC, sT).lerp(_white, sstep(sT, .85, 1) * .35);
   if (gb > .001) { _cBoost.setHSL(.6, 1, .56 + sT * .1); _cBoth.setHSL(.84, 1, .74); const wW = gw * (1 - gb), wB = gb * (1 - gw), wM = gw * gb, sum = wW + wB + wM || 1; o.multiplyScalar(wW / sum).add(_cBoost.multiplyScalar(wB / sum)).add(_cBoth.multiplyScalar(wM / sum)) }
   return o.multiplyScalar(b);
 }
