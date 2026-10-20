@@ -21,6 +21,17 @@ scene.backgroundNode = bgAt(screenUV);
 const bh = makeBlackHole(bgAt);
 // the core's glare, seen from far off: a broad hot glow over the black hole that the bloom spreads wide
 const coreFlare = (() => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: new C3(1, .93, .82), blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true, opacity: 0 })); s.position.copy(GC); s.renderOrder = 5; s.frustumCulled = false; scene.add(s); return s })();
+// the core's puffs: a small cloud of soft star puffs round the black hole, a bulge in the middle thinning out into a flat
+// disk (built once in unit space; size, height, count and grain are set each frame)
+const corePuffs = (() => {
+  const n = 40000, p = new Float32Array(n * 3), R_ = mulberry32(4242), g = gaussOf(R_), c = new Float32Array(n * 3), cc = new C3();
+  for (let i = 0; i < n; i++) {
+    if (R_() < .45) { p.set([g() * .2, g() * .14, g() * .2], i * 3) }   // the bulge: a squashed ball
+    else { const r = Math.min(1.2, -Math.log(1 - R_() * .96) * .32), a = R_() * Math.PI * 2, h = .02 + .07 * Math.exp(-((r / .35) ** 2)); p.set([Math.cos(a) * r, g() * h, Math.sin(a) * r], i * 3) }   // the disk it thins out into
+    cc.setHSL(.08 + R_() * .05, .5, .62 + R_() * .25); c.set([cc.r, cc.g, cc.b], i * 3);
+  }
+  const m = softPoints(p, { cols: c, size: .03, op: .03, order: 1 }); m.position.copy(GC); m.quaternion.copy(GQ); return m;
+})();
 const scenePass = pass(scene, camera, { samples: 4 });
 const sceneTex = scenePass.getTextureNode();
 const bloomPass = bloom(sceneTex.min(1), .45, .4, .72);

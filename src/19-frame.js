@@ -317,7 +317,10 @@ function tick(now) {
     // from far off the shadow hides completely in the core's own light, and the core blooms instead; up close it's all there
     const dGC = camera.position.distanceTo(GC), F0 = BH.rs * (L.bhFar ?? 25), farK = sstep(dGC, F0, F0 * 3);
     const g = (L.bhGlow ?? 1) * (S.mode === 'map' ? .35 : .8); b.veil.value = farK; coreFlare.material.opacity = farK * Math.min(1, g); coreFlare.material.color.setRGB(1, .93, .82).multiplyScalar(Math.max(1, g)); coreFlare.visible = farK > .002 && g > 0;   // above 1 it brightens rather than just going opaque
-    coreFlare.scale.setScalar(Math.max(BH.rs * 30, dGC * (L.bhGlowSize ?? 5) / 100));   // a fixed slice of the view, so the bloom reads at any distance
+    coreFlare.scale.setScalar(Math.max(BH.rs * 30, dGC * (L.bhGlowSize ?? 5) / 100));
+    { const R = (GAL_R0 + GAL_LEN) * (L.bhPuffR ?? .06), d = L.bhPuffD ?? 1, n = Math.round(Math.min(40, L.bhPuffN ?? 16) * 1000), nr = R * (L.bhPuffNear ?? .5);   // the core's puffs, faded in once you're a little way off
+      corePuffs.scale.set(R, R * (L.bhPuffH ?? 1), R); corePuffs.geometry.instanceCount = n; corePuffs.u.sz.value = .03 / d;
+      corePuffs.u.op.value = .03 * (L.bhPuffs ?? 1) * Math.sqrt(d) * sstep(dGC, nr, nr * 2) * (S.mode === 'map' ? .5 : 1); corePuffs.visible = (L.bhPuffs ?? 1) > 0 && n > 0 }   // a fixed slice of the view, so the bloom reads at any distance
   }
   // the open winner: the screenshot can replace the dot; the lock holds until you let go
   openI = -1; openA = 0;
