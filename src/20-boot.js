@@ -49,7 +49,7 @@ aimAt(GC.clone().sub(HOME_P), 1); player.base.copy(rig.q); player.quat.copy(rig.
 { const sv = store.json('sotd-ship'); if (sv && sv.p && sv.p.every(Number.isFinite)) { player.pos.fromArray(sv.p); player.base.fromArray(sv.q); player.quat.copy(player.base); rig.q.fromArray(sv.r) } }
 camera.position.copy(player.pos).add(new V3(0, .3, 1));
 recolor(); applyFilter(); refreshLabels(); renderLook(); applyLook(); updateLockUI(); Net.connect(); resize();
-if (coarse) $('skipHint').textContent = 'Tap to skip';
+if (coarse) $('skipHint').hidden = true;   // touch: the opening just plays
 
 // warm-up: one exotic of each kind and a sun in view while the first frames compile every pipeline
 {
@@ -64,7 +64,7 @@ function begin(withSound) {
   if (withSound) { setMuted(false); audio() }
   if (!coarse && !lockFailed && !TEST) requestLock();
   $('intro').classList.add('gone'); setTimeout(() => $('intro').hidden = true, 1200);
-  if (!TEST) { intro.start(); const skip = e => { if (e.type === 'keydown' && e.key === 'Escape') return; if (e.type === 'pointerdown') down = null; intro.finish(); removeEventListener('keydown', skip); canvas.removeEventListener('pointerdown', skip) }; setTimeout(() => { addEventListener('keydown', skip); canvas.addEventListener('pointerdown', skip) }, 400) }
+  if (!TEST) { intro.start(); const skip = e => { if (e.key !== 'Escape' && e.key !== ' ') return; intro.finish(); removeEventListener('keydown', skip) }; setTimeout(() => addEventListener('keydown', skip), 400) }   // clicks never skip it; Esc or Space does
   else handOver();
 }
 if (TEST) { $('intro').hidden = true; LOOK.adaptive = 0; handOver() }
