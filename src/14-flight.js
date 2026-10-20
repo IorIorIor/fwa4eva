@@ -10,7 +10,7 @@ const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist:
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
 const camRel = new V3(0, .8, 3.4).multiplyScalar(SHIP_SC), camRelV = new V3(), prevVel = new V3();
-let brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
+let turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
 function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
@@ -104,7 +104,7 @@ function updatePlayer(dt) {
   else if (auto && p.vel.lengthSq() > 4) steerTo = aimQ(p.vel.clone().normalize());
   let turnAmt = 0;
   const obT = L.orbit && !L.rings && nearI >= 0 && lockI !== nearI ? 1 - sstep(nearCD, starR(nearI) * Math.max(L.orbitZone, L.orbitR * 1.5) * .6, starR(nearI) * Math.max(L.orbitZone, L.orbitR * 1.5)) : 0;   // inside a star's gravity
-  if (steerTo) { const ang = p.base.angleTo(steerTo); if (!auto && pedal) turnAmt = sstep(ang, .06, .5); if (ang > 1e-4) { const rate = L.turnRate * (1 - L.turnHeavy * sstep(sp0, 3000, 800000)) * (1 + (L.turnSlow ?? 2.5) * (1 - sstep(sp0, 40, 4000))) * (1 + 9 * obT * (1 - sstep(sp0, 20, 2000))); p.base.slerp(steerTo, Math.min(1, rate * dt / ang)) } }   // in a star's gravity, from a standstill you turn ten times quicker
+  if (steerTo) { const ang = p.base.angleTo(steerTo); if (!auto && pedal) turnAmt = sstep(ang, .06, .5); if (ang > 1e-4) { const rate = L.turnRate * (1 - L.turnHeavy * sstep(sp0, 3000, 800000)) * (1 + (L.turnSlow ?? 2.5) * (1 - sstep(sp0, 40, 4000))) * (1 + 9 * obT * (1 - sstep(sp0, 20, 2000))); const want = rate * Math.min(1, ang / Math.max(.02, L.turnEase ?? .45)); turnW += (want - turnW) * Math.min(1, dt * (L.turnAccel ?? 7)); p.base.slerp(steerTo, Math.min(1, turnW * dt / ang)) } } else turnW *= Math.exp(-8 * dt)   // in a star's gravity, from a standstill you turn ten times quicker; the turn winds up and eases out as the nose lines up
   fwd.set(0, 0, -1).applyQuaternion(p.base);
   const braking = fw < 0; brakeK += ((braking ? 1 : 0) - brakeK) * Math.min(1, dt * (L.brakeEase ?? 3));   // the brake squeezes on and lets go over a moment, never a jolt
   // W drives along the nose; boost on its own keeps the course you're already on

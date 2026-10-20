@@ -16,7 +16,10 @@ await IDB.open();
 const DATA_BASE = (QS.get('data') || 'https://ioriorior.github.io/fwa4eva-data/').replace(/\/?$/, '/');
 const LOCAL_IMPORT = await IDB.get('kv', 'records');
 const REMOTE = Array.isArray(LOCAL_IMPORT) && LOCAL_IMPORT.length ? null : await (async () => {
-  try { const ac = new AbortController(), to = setTimeout(() => ac.abort(), 8000), r = await fetch(DATA_BASE + 'archive.json', { signal: ac.signal }); clearTimeout(to); if (!r.ok) return null; const rows = normalizeRows(await r.json()); return rows.length ? rows : null } catch (e) { return null }
+  for (const url of [DATA_BASE + 'archive.json', 'fwa-archive.json']) {   // the data site, else the copy that ships with the page
+    try { const ac = new AbortController(), to = setTimeout(() => ac.abort(), 8000), r = await fetch(url, { signal: ac.signal }); clearTimeout(to); if (!r.ok) continue; const rows = normalizeRows(await r.json()); if (rows.length) return rows } catch (e) { }
+  }
+  return null;
 })();
 const IMPORTED = REMOTE || LOCAL_IMPORT;
 const shotURL = d => REMOTE && d.shot ? `${DATA_BASE}shots/${d.shot.slice(0, 4)}/${encodeURIComponent(d.shot)}.webp` : null;
@@ -80,14 +83,18 @@ const AWARD_COL = { SOTD: '#a9b8ff', SOTM: '#ffb547', FOTY: '#ff5fa2' };
 
 let D = [];
 const USING_IMPORT = Array.isArray(IMPORTED) && IMPORTED.length > 0;
-if (USING_IMPORT) {
+const realCats = rows => { let h = .07; CATS.length = CAT_COL.length = 0; rows.forEach(d => { if (!CATS.includes(d.category)) { CATS.push(d.category); CAT_COL.push(`hsl(${Math.round((h += .137) % 1 * 360)},75%,68%)`) } }) };   // only the categories the archive really has
+if (USING_IMPORT && !REMOTE) {
   D = IMPORTED.map((r, i) => ({ ...r, i, t: Date.parse(r.date + 'T00:00:00Z'), year: +r.date.slice(0, 4) }));
   let h = .07; CATS.length = CAT_COL.length = 0; D.forEach(d => {   // only the categories the archive really has
     if (!CATS.includes(d.category)) { CATS.push(d.category); CAT_COL.push(`hsl(${Math.round((h += .137) % 1 * 360)},75%,68%)`) }
     d.tech.forEach(t => { if (!TECHS.includes(t)) { TECHS.push(t); TECH_COL[t] = `hsl(${Math.round((h += .137) % 1 * 360)},70%,66%)` } })
   });
 } else {
-  const t0 = Date.UTC(2000, 4, 1), t1 = Date.UTC(2026, 9, 18);
+  // the whole timeline, a winner a day since May 2000. With the real archive (which so far reaches back to May 2024) those
+  // days are exactly FWA's; every earlier day keeps its date but borrows a real winner's title, agency, category, link,
+  // score and screenshot, picked at random (from its own seed, so the rest of the sky doesn't shift)
+  const t0 = Date.UTC(2000, 4, 1), t1 = REMOTE ? Date.parse(REMOTE[0].date + 'T00:00:00Z') - 864e5 : Date.UTC(2026, 9, 18);
   for (let t = t0; t <= t1; t += 864e5) {
     const dt = new Date(t), y = dt.getUTCFullYear();
     const pool = AGENCIES.filter(a => y >= a[2] && y <= a[3]);
@@ -100,10 +107,12 @@ if (USING_IMPORT) {
     const title = (R() < .35 ? 'The ' : '') + TITLE_A[R() * TITLE_A.length | 0] + ' ' + TITLE_B[R() * TITLE_B.length | 0];
     D.push({ i: D.length, t, date: dt.toISOString().slice(0, 10), year: y, title, agency: ag, country: cc, category: cat, tech, award: 'SOTD', score: +(7 + Math.pow(R(), .8) * 2.3).toFixed(2) });
   }
+  if (REMOTE) { const RB = mulberry32(4242); realCats(REMOTE); D.forEach(d => { const r = REMOTE[RB() * REMOTE.length | 0]; Object.assign(d, { title: r.title, agency: r.agency, category: r.category, url: r.url, shot: r.shot, score: r.score, borrowed: true }) }) }
   const byMonth = new Map(); D.forEach(d => { const k = d.date.slice(0, 7); if (!byMonth.has(k) || byMonth.get(k).score < d.score) byMonth.set(k, d) });
   byMonth.forEach(d => { d.award = 'SOTM'; d.score = Math.min(9.6, +(d.score + .3).toFixed(2)) });
   const byYear = new Map(); byMonth.forEach(d => { if (!byYear.has(d.year) || byYear.get(d.year).score < d.score) byYear.set(d.year, d) });
   byYear.forEach(d => { d.award = 'FOTY'; d.score = Math.min(9.8, +(d.score + .2).toFixed(2)) });
+  if (REMOTE) REMOTE.forEach(r => D.push({ ...r, i: D.length, t: Date.parse(r.date + 'T00:00:00Z'), year: +r.date.slice(0, 4) }));   // and then the real ones, exactly
 }
 const N = D.length; window.__introTotal = N; loadProg(.15);
 function resolveShots() { D.forEach(d => { d.shotKey = [d.shot, d.date, slug(d.title), String(d.i)].find(k => k && SHOT_KEYS.has(k)) || null }) }

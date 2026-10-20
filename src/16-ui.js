@@ -290,7 +290,7 @@ const gauge = (() => {
 })();
 
 /* your own archive: a JSON/CSV export and screenshots, kept in this browser */
-$('srcNote').textContent = REMOTE ? `The FWA archive: ${N.toLocaleString('en')} winners so far.` : USING_IMPORT ? `Your imported archive: ${N.toLocaleString('en')} winners, ${SHOT_KEYS.size.toLocaleString('en')} screenshots.` : 'Sample data shaped like FWA\'s archive; titles and screenshots are placeholders.';
+$('srcNote').textContent = REMOTE ? `The FWA archive: ${REMOTE.length.toLocaleString('en')} real winners since ${REMOTE[0].date}; the ${(N - REMOTE.length).toLocaleString('en')} days before that borrow from them.` : USING_IMPORT ? `Your imported archive: ${N.toLocaleString('en')} winners, ${SHOT_KEYS.size.toLocaleString('en')} screenshots.` : 'Sample data shaped like FWA\'s archive; titles and screenshots are placeholders.';
 $('dClear').hidden = !USING_IMPORT && !SHOT_KEYS.size;
 const dStat = (msg, err) => { const e = $('dStat'); e.textContent = msg; e.classList.toggle('err', !!err) };
 async function importData(file) {
