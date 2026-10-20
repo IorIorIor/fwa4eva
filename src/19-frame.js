@@ -145,7 +145,7 @@ const _cBoost = new C3(), _cBoth = new C3(); let trW = 1, trB = 0;
 function trailColour(sT, b, o, gw = 1, gb = 0) {
   if (LOOK.trMyHue) { _slowC.setHSL(PILOT_HUE / 360, 1, .55); _fastC.setHSL(PILOT_HUE / 360, .9, .7) } else { _slowC.setHSL(LOOK.trHueSlow / 360, 1, .55); _fastC.setHSL(LOOK.trHueFast / 360, .95, .6) }   // your own pilot colour, the one others see
   o.copy(_slowC).lerp(_fastC, sT).lerp(_white, sstep(sT, .85, 1) * .35);
-  if (gb > .001) { _cBoost.setHSL(.6, 1, .56 + sT * .1); _cBoth.setHSL(.84, 1, .74); const wW = gw * (1 - gb), wB = gb * (1 - gw), wM = gw * gb, sum = wW + wB + wM || 1; o.multiplyScalar(wW / sum).add(_cBoost.multiplyScalar(wB / sum)).add(_cBoth.multiplyScalar(wM / sum)) }
+  if (gb > .001) { _cBoth.setHSL(.86, 1, .7); o.lerp(_cBoth, .32 * gb).multiplyScalar(1 + .55 * gb) }   // boost: your own colour, with a touch of magenta and brighter
   return o.multiplyScalar(b);
 }
 function trimStrand(st) { const Pp = st.pts; while (Pp.length > 2 && trClock - Pp[Pp.length - 2].t > Pp[Pp.length - 2].life) Pp.pop();   // whatever has outlived its time is gone
@@ -161,8 +161,9 @@ function updateTrail(dt, on) {
     else { const h = st.pts[0]; h.p.copy(eng); h.s = speedT; h.b = bright; h.w = trW; h.k = trB; h.t = trClock; h.life = life }
     trimStrand(st);
   };
-  if (thrusting) { trW += ((gasOn ? 1 : 0) - trW) * Math.min(1, dt * 7); trB += ((boosting ? 1 : 0) - trB) * Math.min(1, dt * 7) }
-  if (on && thrusting) {
+  const laying = thrusting || holdSp >= 0;   // holding X keeps the engine (and its trail) going
+  if (laying) { trW += ((gasOn || holdSp >= 0 ? 1 : 0) - trW) * Math.min(1, dt * 7); trB += ((boosting ? 1 : 0) - trB) * Math.min(1, dt * 7) }
+  if (on && laying) {
     if (!curStrand) { curStrand = { pts: [], len: 0, alpha: 0, rel: null }; strands.unshift(curStrand); if (strands.length > 8) strands.pop() }
     const st = curStrand; st.rel = null; st.alpha = Math.min(1, st.alpha + dt / Math.max(.01, L.trIn ?? .3)); const want = L.trLenCrawl + (L.trLenCruise - L.trLenCrawl) * sstep(sp, 2, 900) + (L.trLenFast - L.trLenCruise) * sstep(sp, 900, 600000);
     st.len += (want - st.len) * (1 - Math.exp(-(want > st.len ? L.trGrow : L.trShrink) * dt)); emit(st, 1);
@@ -199,7 +200,7 @@ function updateTrail(dt, on) {
 /* the engine: the light in the hole, the glow at its mouth and the flare, all in the trail's colour; brighter while you thrust */
 let thrS = 0; const _fc = new C3();
 function engineLook(dt) {
-  const L = LOOK; thrS += ((thrusting && booted && S.mode === 'fly' ? 1 : 0) - thrS) * Math.min(1, dt * 6);
+  const L = LOOK; thrS += (((thrusting || holdSp >= 0) && booted && S.mode === 'fly' ? (thrusting ? 1 : .35 + .5 * sstep(Math.log10(Math.max(1, holdSp)), 2, 5.5)) : 0) - thrS) * Math.min(1, dt * 6);
   const on = emitGlow * (.42 + .58 * thrS + .3 * boostK); trailColour(.4, 1, _fc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0);
   const h = avatar.userData.hole; h.col.value.copy(_fc); h.on.value = on;
   const em = avatar.userData.emit; em.material.color.copy(_fc); em.material.opacity = Math.min(1, on * .85);
@@ -288,7 +289,7 @@ function tick(now) {
   ring2.rotation.y += dt * .05; beacons.forEach((b, k) => { b.material.emissiveIntensity = (Math.sin(now * .003 + k * 1.7) > .6) ? 2 : .2 });
   if (fly && booted) {
     updatePlayer(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat);
-    const fl = avatar.userData.flame; fl.material.opacity += ((thrusting ? .85 : 0) - fl.material.opacity) * Math.min(1, dt * 10); { const fz = .6 + .4 * Math.sin(now * .04) + (thrusting ? .6 + player.cruise * 1.5 : 0); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
+    const fl = avatar.userData.flame; fl.material.opacity += ((thrusting ? .85 : holdSp >= 0 ? .5 : 0) - fl.material.opacity) * Math.min(1, dt * 10); { const fz = .6 + .4 * Math.sin(now * .04) + (thrusting ? .6 + player.cruise * 1.5 : 0); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
     ;
     fl.material.color.copy(trailColour(1, 1, _flc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0).lerp(_amber, gasOn && !boosting ? 1 : 0));   // the flame takes the trail's colour
   } else if (booted) { nearest(camera.position) }   // on the map, the winners right around you become suns as you zoom in
@@ -357,7 +358,7 @@ function tick(now) {
   updateHover(dt); updateLabels();
   if (fly) gauge.fly(); else gauge.map();
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
-  updatePeers(dt); coach.update(dt); nav.update(dt);
+  updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt);
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,
       look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3); coreIn += (inside - coreIn) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it
   {   // bloom swells near light speed and follows the core settings; exposure too
