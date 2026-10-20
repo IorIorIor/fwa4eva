@@ -18,7 +18,7 @@ const timeRings = (() => {
     const aC = attribute('aC', 'float'), aY = attribute('aY', 'float'), p = positionGeometry;
     const d = distance(cameraPosition, positionWorld), near = smoothstep(u.moR.mul(.4), u.moR, d).oneMinus();
     const a = select(aC.lessThan(.5), u.era, select(aC.lessThan(1.5), u.yr, u.mo.mul(near))).toVar();
-    const da = armDaT(p.x, p.z); a.mulAssign(mix(1, exp(da.mul(da).mul(u.armK.negate())), u.armOnly));   // only through the arms (on the spiral: a short notch across it)
+    const da = armDaT(p.x, p.z).div(armWT(length(p.xz))); a.mulAssign(mix(1, exp(da.mul(da).mul(u.armK.negate())), u.armOnly));   // only through the arms (on the spiral: a short notch across it)
     const yr = floor(aY.add(.0001));
     a.mulAssign(mix(.12, 1, step(u.y0.sub(.01), yr).mul(step(yr, u.y1.add(.01)))));   // filtered years stand out as a lit band
     return select(abs(aY.sub(u.hi)).lessThan(.005), max(a, u.hiA.mul(.95)), a);        // the ring under the cursor lights up, all the way round

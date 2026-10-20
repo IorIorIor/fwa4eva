@@ -123,7 +123,7 @@ function updateStreaks(dt) {
   su.disp.value.addScaledVector(v, dt); ['x', 'y', 'z'].forEach(k => { su.disp.value[k] %= 2 * SL_H }); streaks.position.copy(player.pos);
   su.len.value = Math.min(SL_H * .8, sp * .04 * L.streakLen); if (sp > 1e-3) su.dir.value.copy(v).divideScalar(sp);
   const lp = toLocal(player.pos, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
-  const disk = (1 - sstep(Math.abs(lp.y), L.streakInH * .4, L.streakInH)) * (1 - sstep(rr, Rr * .95, Rr * 1.2)), da = armDist(lp.x, lp.z), arm = Math.exp(-da * da * 5 / (L.armWidth * L.armWidth));
+  const disk = (1 - sstep(Math.abs(lp.y), L.streakInH * .4, L.streakInH)) * (1 - sstep(rr, Rr * .95, Rr * 1.2)), da = armDist(lp.x, lp.z) / armWAt(rr), arm = Math.exp(-da * da * 5 / (L.armWidth * L.armWidth));
   const core = Math.exp(-Math.pow(rr / (Rr * .22), 2)) * (1 - sstep(Math.abs(lp.y), Rr * .08, Rr * .25));
   streakDens = Math.max(disk * (.08 + .92 * arm), core);   // straight from where you are: it thins toward the edge of the disk and is gone past it
   streaks.geometry.setDrawRange(0, Math.floor(Math.min(SL_N, SL_N / 3 * L.streakAmt * streakDens)) * 2);

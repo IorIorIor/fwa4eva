@@ -83,6 +83,7 @@ const armPhT = r => {
   return mix(base, mix(mix(base, mid, w1), out, w2), ARM.lock);
 };
 // 0 on an arm's centre line, 1 halfway between arms (local galaxy-frame x, z)
+const armWT = r => SHAPE.widen > 0 ? clamp(r.sub(GAL_R0).div(GAL_LEN), 0, 1).pow(SHAPE.wcurve).mul(SHAPE.widen).add(1) : float(1);   // the shaders' version of armWAt
 const armDaT = (lx, lz) => abs(fract(atan(lz, lx).sub(armPhT(length(vec2(lx, lz)))).mul(ARMS / 6.28318).add(.5)).sub(.5)).mul(2);
 // a blackbody's colour (normalised so the brightest channel is 1); 6600 K is white
 const bbRGB = T => {

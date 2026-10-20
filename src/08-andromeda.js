@@ -37,7 +37,7 @@ const dustFil = (() => {
   for (let i = 0; i < n; i++) {
     const arm = i % ARMS, u = .08 + Math.pow(R_(), .8) * .95, r = GAL_R0 + u * GAL_LEN, sd = 7700 + r * .045, inner = R_() < .72;
     const off = inner ? -(sd * (.7 + R_() * .6)) : (R_() - .5) * sd * 5, th = arm * 2 * Math.PI / ARMS + armPhase(r) + (R_() - .5) * .06, len = (.04 + R_() * .16) * (inner ? 1 : .6), w = (500 + R_() * 2200) * (1 - u * .3), a = (.4 + R_() * .6) * (inner ? 1 : .55), y = (R_() - .5) * 900, j = R_();
-    A.aR0[i] = r; A.aOf[i] = off; A.aTh0[i] = th; A.aLen[i] = len; A.aW[i] = w; A.aA[i] = a; A.aY[i] = y; A.aJ[i] = j; A.aK[i] = Math.max(.5, armSlope(r));
+    A.aR0[i] = r; A.aOf[i] = off * armWAt(r); A.aTh0[i] = th; A.aLen[i] = len; A.aW[i] = w; A.aA[i] = a; A.aY[i] = y; A.aJ[i] = j; A.aK[i] = Math.max(.5, armSlope(r));
   }
   const g = new THREE.InstancedBufferGeometry(), s = [], sd = [], idx = [];
   for (let k = 0; k <= SEG; k++) for (const sg of [-1, 1]) { s.push(k / SEG); sd.push(sg) }

@@ -59,7 +59,10 @@ function armPhase(r) {
   return base + (((base + (mid - base) * w1) * (1 - w2) + out * w2) - base) * ARM.lock;
 }
 const armSlope = r => (armPhase(r * 1.01) - armPhase(r / 1.01)) / (2 * Math.log(1.01));   // dφ/d ln r: how tightly the arm winds here
+// arms widen toward the rim: 1 at the start of the arms, 1 + widen at the rim (shape setting, so fixed once built)
+const armWAt = r => 1 + SHAPE.widen * Math.pow(Math.min(1, Math.max(0, (r - GAL_R0) / GAL_LEN)), SHAPE.wcurve);
 function galPoint(g, arm, u, dr, dth, y, out = new V3()) {
+  const wk = armWAt(GAL_R0 + u * GAL_LEN); dr *= wk; dth *= wk;   // everything placed across an arm spreads wider further out
   const r = Math.max(GAL_R0 * .3, GAL_R0 + u * GAL_LEN + dr), th = arm * 2 * Math.PI / g.arms + armPhase(r) + dth;
   return out.set(Math.cos(th) * r, y, Math.sin(th) * r).applyQuaternion(g.quat).add(g.center);
 }

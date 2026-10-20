@@ -158,7 +158,7 @@ const motes = (() => {
   m.vertexNode = Fn(() => {
     const B = u.box, rel = mod(ia('aP', 'vec3').mul(B).add(u.flow).sub(u.camMod).add(B), B.mul(2)).sub(B).toVar(), aR = ia('aR', 'float');
     const l = toGal(cameraPosition.add(rel)), rr = length(l.xz), uu = rr.sub(GAL_R0).div(GAL_LEN);
-    const da = armDaT(l.x, l.z), arm = exp(da.mul(da).mul(-5));
+    const da = armDaT(l.x, l.z).div(armWT(rr)), arm = exp(da.mul(da).mul(-5));
     const th = exp(rr.div(-120000)).mul(14000).add(4000), disk = exp(l.y.mul(l.y).negate().div(th.mul(th).mul(2)));
     const dens = disk.mul(smoothstep(-.12, .02, uu)).mul(smoothstep(.98, 1.12, uu).oneMinus()).mul(arm.mul(.85).add(.15));
     // core mode: thicker toward the middle of the bulge; close to the black hole only in a thin sheet along its disk
