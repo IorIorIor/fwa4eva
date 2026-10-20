@@ -29,7 +29,9 @@ function updateAndro() {
   sparkle.mesh.position.copy(camera.position); sparkle.u.op.value = L.wallpaper ? L.sparkle : 0; sparkle.mesh.visible = !!L.wallpaper && L.sparkle > 0;
   andro.visible = ANDRO; dustFil.visible = ANDRO && L.dustLanes > 0; if (!ANDRO) return;
   bulgeSpr.forEach(s => { s.scale.setScalar(bulgeR * 2 * s.userData.k * L.bulgeSize); s.material.opacity = s.userData.o * L.bulge * f * inK(s.scale.x) });
-  bulgePts.u.op.value = .05 * L.bulge * L.bulgePuffs; bulgePts.visible = L.bulgePuffs > 0;
+  { const n = Math.round(Math.min(48, L.bulgePuffN ?? 6) * 1000), d = L.bulgePuffD ?? 1, sp = L.bulgePuffSpread ?? 1;   // finer grain: smaller puffs, each a little brighter so the bulge doesn't fade
+    bulgePts.geometry.instanceCount = n; bulgePts.u.sz.value = 9000 / d / sp; bulgePts.u.op.value = .05 * L.bulge * L.bulgePuffs * Math.sqrt(d);
+    bulgePts.scale.setScalar(sp); bulgePts.position.copy(GC).multiplyScalar(1 - sp); bulgePts.visible = L.bulgePuffs > 0 && n > 0 }
   const lp = toLocal(camera.position, tmp), rr = Math.hypot(lp.x, lp.z), inG = (1 - sstep(Math.abs(lp.y), L.dustInH * .4, L.dustInH)) * (1 - sstep(rr, GAL_R0 + GAL_LEN, (GAL_R0 + GAL_LEN) * 1.15));
   const du = dustFil.u; du.dust.value = L.dustLanes * (1 - L.dustInFade * inG); du.nearD.value = L.dustNear; du.wid.value = L.dustWidth; du.blur.value = L.dustBlur; du.armW.value = L.armWidth; du.len.value = L.dustLen; du.wig.value = L.dustWiggle; du.rag.value = L.dustRag; du.fib.value = L.dustFibre; du.brk.value = L.dustBreak;
   du.c.value.setRGB(.1, .055, .035).lerp(_dustBlack, L.dustDark); dustFil.geometry.instanceCount = Math.round(dustFil.geometry.userData.n * L.dustCount);

@@ -3,12 +3,12 @@
    blue star clouds, a soft blue outer disk and two satellite galaxies. */
 // soft round points sized in world units (like PointsMaterial with size attenuation), optionally dimmed with distance
 function softPoints(pos, { cols = null, size, color = 0xffffff, op = 1, far = false, target = softScene, order = 0 }) {
-  const n = pos.length / 3, u = { op: uniform(op), color: uniform(new C3(color)) }, attrs = { aP: [pos, 3] }; if (cols) attrs.aC = [cols, 3];
+  const n = pos.length / 3, u = { op: uniform(op), color: uniform(new C3(color)), sz: uniform(size) }, attrs = { aP: [pos, 3] }; if (cols) attrs.aC = [cols, 3];
   const m = skyMat(), vC = varyingProperty('vec3', 'vC');
   m.vertexNode = Fn(() => {
     const mv = modelViewMatrix.mul(vec4(ia('aP', 'vec3'), 1)).toVar(), z = mv.z.negate();
     const ws = length(modelWorldMatrix.mul(vec4(1, 0, 0, 0)).xyz);   // points shrink with whatever they're part of (the exotic winners are scaled down)
-    const px = float(size).mul(ws).mul(U.res.y).mul(.5).div(max(z, 1e-3)).toVar(), minPx = target === scene ? float(1) : U.minSoft;
+    const px = u.sz.mul(ws).mul(U.res.y).mul(.5).div(max(z, 1e-3)).toVar(), minPx = target === scene ? float(1) : U.minSoft;
     vC.assign((cols ? ia('aC', 'vec3') : vec3(1)).mul(u.color).mul(far ? farDim(z) : 1).mul(min(1, px.div(minPx).mul(px.div(minPx)))));   // never below a pixel; dimmer instead
     return billboardPx(mv, clamp(px, minPx, 1024));
   })();
@@ -20,7 +20,7 @@ const andro = new THREE.Group(); softScene.add(andro);
 const bulgeR = (GAL_R0 + GAL_LEN) * .25;
 const bulgeSpr = [[.7, .55], [1.3, .32], [2.4, .14]].map(([k, o]) => { const s = spriteGlow(softDot, 0xffe2b8, 1, o, softScene, -1); s.userData = { o, k }; s.position.copy(GC); andro.add(s); return s });
 const bulgePts = (() => {
-  const n = 6000, p = new Float32Array(n * 3), R_ = mulberry32(808), g = gaussOf(R_), q = new V3(), c = new Float32Array(n * 3), cc = new C3();
+  const n = 48000, p = new Float32Array(n * 3), R_ = mulberry32(808), g = gaussOf(R_), q = new V3(), c = new Float32Array(n * 3), cc = new C3();
   for (let i = 0; i < n; i++) { q.set(g(), g() * .55, g()).multiplyScalar(bulgeR * .42); if (q.length() < BH.sh * 2) q.setLength(BH.sh * 2 + R_() * bulgeR * .3); q.applyMatrix4(GM4); p.set([q.x, q.y, q.z], i * 3); cc.setHSL(.08 + R_() * .04, .55, .6 + R_() * .2); c.set([cc.r, cc.g, cc.b], i * 3) }
   const m = softPoints(p, { cols: c, size: 9000, op: .05, far: true, order: -1 }); andro.add(m); return m;
 })();
