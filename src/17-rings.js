@@ -54,7 +54,32 @@ const HALO = (() => {
     if (fade.size > 40) fade = new Map([...fade].slice(-20));
     mesh.count = live.length; if (live.length) { mesh.instanceMatrix.needsUpdate = true; geo.attributes.hCol.needsUpdate = geo.attributes.hA.needsUpdate = true }
   }
-  return { update, live, u, get ts() { return minTs } };
+  // the portal: inside the nearest ring, its winner's screenshot, set back behind the ring like a window into another room.
+  // Each pixel follows your line of sight through the disc onto a plane some way behind it, so as you move the picture
+  // shifts behind the opening. It starts loading a little before the ring appears
+  const pt = { tex: texture(placeholderShot(D[0])), depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85) };
+  const pm = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  pm.colorNode = Fn(() => {
+    const X = modelViewMatrix.mul(vec4(1, 0, 0, 0)).xyz, Y = modelViewMatrix.mul(vec4(0, 1, 0, 0)).xyz, O = modelViewMatrix.mul(vec4(0, 0, 0, 1)).xyz, r = length(X), Xn = X.div(r), Yn = normalize(Y), Nn = cross(Xn, Yn);   // the disc's own axes, in view space (precise this far out)
+    const Pp = O.sub(Nn.mul(pt.depth.mul(r))), dir = normalize(positionView), t = dot(Pp, Nn).div(dot(dir, Nn)), loc = dir.mul(t).sub(Pp);
+    const S = pt.size.mul(r), uvI = vec2(dot(loc, Xn).div(S).mul(.5).add(.5), dot(loc, Yn).div(S.div(1.6)).mul(.5).add(.5));
+    const inside = step(0, uvI.x).mul(step(uvI.x, 1)).mul(step(0, uvI.y)).mul(step(uvI.y, 1)), img = pt.tex.sample(uvI).rgb.mul(inside);
+    const rr = length(positionGeometry.xy), rim = smoothstep(.55, 1, rr);   // shadowed toward the rim (depth), lit by the ring's glow right at the edge
+    const c = img.mul(pt.dark).mul(rim.mul(.75).oneMinus()).add(pt.glow.mul(pow(rr, 6)).mul(.35)).add(mix(pt.glow, vec3(1), .5).mul(smoothstep(.93, .995, rr)).mul(.6));
+    return vec4(c, pt.a.mul(smoothstep(1, .97, rr)));
+  })();
+  const portal = new THREE.Mesh(new THREE.CircleGeometry(1, 96), pm); portal.frustumCulled = false; portal.renderOrder = 2; portal.visible = false; portal.matrixAutoUpdate = false; shipScene.add(portal);   // on the ship's layer: the galaxy's glows and star clouds are drawn after the scene and would speckle over the picture
+  let pI = -1; const _pm = new THREE.Matrix4(), _up = new V3();
+  function portalUpdate(dt) {
+    const L = LOOK; if (!(L.ringPortal ?? 1) || !L.rings || S.mode !== 'fly') { portal.visible = false; return }
+    let near = -1; if (best.length) { const i = best[0][1], R = starR(i) * (L.ringSize ?? 1.6), dist = Math.sqrt(best[0][0]), pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360)); if (R * pxK / dist > (L.ringPortalPre ?? 4)) near = i }   // a little before the ring shows
+    if (near >= 0 && near !== pI) { pI = near; pt.tex.value = shot(D[near]); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
+    const h = live.find(x => x.i === pI); if (!h || near < 0) { portal.visible = false; return }
+    const k = live.indexOf(h); pt.a.value = iA[k] / (GOT[pI] ? 1.3 : 1); pt.depth.value = L.ringPortalDepth ?? .8; pt.size.value = L.ringPortalSize ?? 1.25; pt.dark.value = L.ringPortalBright ?? .85;
+    _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(player.pos, h.c, _up); portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5); portal.matrix.multiply(_m.makeScale(k, k, 1)) }   // just inside the ring's tube, so the ring still frames it portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005;
+  }
+  const update0 = update; function updateAll(dt) { update0(dt); portalUpdate(dt) }
+  return { update: updateAll, live, u, get ts() { return minTs } };
 })();
 /* bullet time: once a ring can't be missed, all of time slows, exponentially, to all but a standstill as you pass through it,
    then winds back up just as it slowed */

@@ -36,6 +36,7 @@ const mapHomeD = () => (GAL_R0 + GAL_LEN) * 1.6;   // the whole disk, filling th
 
 function setMode(m) {
   if (m === S.mode) return; S.mode = m; document.body.classList.toggle('map', m === 'map');
+  if (booted && (LOOK.mapFilters ?? 1) && typeof togglePanel === 'function') { const fo = $('panel').classList.contains('open'); if ((m === 'map') !== fo && !(m === 'map' && $('lookPanel').classList.contains('open'))) togglePanel(m === 'map' ? 'panel' : null) }   // the filters are out whenever you're on the map
   $('vFly').setAttribute('aria-pressed', m === 'fly'); $('vMap').setAttribute('aria-pressed', m === 'map');
   player.vel.set(0, 0, 0); player.cruise = 0; auto = null; lockI = -1;
   if (m === 'map') {

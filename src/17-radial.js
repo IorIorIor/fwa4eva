@@ -31,19 +31,36 @@ const rmenu = (() => {
     const [x0, y0] = P(R1, a0 + d1), [x1, y1] = P(R1, a1 - d1), [x2, y2] = P(R0, a1 - d0), [x3, y3] = P(R0, a0 + d0);
     return `M${x0} ${y0}A${R1} ${R1} 0 0 0 ${x1} ${y1}L${x2} ${y2}A${R0} ${R0} 0 0 1 ${x3} ${y3}Z`;
   };
-  svg.innerHTML = SEG.map(([k, label, a], n) => { const [lx, ly] = P(R0 + (R1 - R0) * .58, a);
-    return `<g class="rs" data-k="${k}" style="--n:${n};transform-origin:0 0"><path d="${sector(a, 52)}"/><g transform="translate(${lx} ${ly})"><svg x="-8" y="-15" width="16" height="16" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg><text y="10">${label}</text></g></g>` }).join('');
-  const segs = [...svg.querySelectorAll('.rs')];
+  // two looks: wedges round the press, or 'sun' (a ring of fine rays that stretch toward where you push, with the
+  // choices as white discs round it; the ones you lean toward swell and the picked one shows its name)
+  const TK = 64, RI = 64, ticks = [];
+  let segs = [], style = '';
+  function build() {
+    style = LOOK.menuSun ?? 1 ? 'sun' : 'wedge'; el.classList.toggle('sunm', style === 'sun'); ticks.length = 0;
+    if (style === 'sun') {
+      svg.innerHTML = `<g class="rays">${Array.from({ length: TK }, (_, j) => '<line/>').join('')}</g>` + SEG.map(([k, label, a], n) => { const [lx, ly] = P(RI, a);
+        return `<g class="rs sun" data-k="${k}" style="--n:${n};transform-origin:0 0"><g transform="translate(${lx} ${ly})"><g class="sc"><circle r="12.5"/><svg x="-7.5" y="-7.5" width="15" height="15" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg></g><text y="24">${label}</text></g></g>` }).join('');
+      svg.querySelectorAll('.rays line').forEach((l, j) => ticks.push({ l, a: j / TK * 2 * Math.PI }));
+    } else svg.innerHTML = SEG.map(([k, label, a], n) => { const [lx, ly] = P(R0 + (R1 - R0) * .58, a);
+      return `<g class="rs" data-k="${k}" style="--n:${n};transform-origin:0 0"><path d="${sector(a, 52)}"/><g transform="translate(${lx} ${ly})"><svg x="-8" y="-15" width="16" height="16" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg><text y="10">${label}</text></g></g>` }).join('');
+    segs = [...svg.querySelectorAll('.rs')];
+  }
+  function lean() {   // sun: rays stretch and discs swell toward the way you're pushing
+    if (style !== 'sun') return; const m = Math.min(1, Math.hypot(vx, vy) / 10), am = Math.atan2(vy, vx);
+    for (const t of ticks) { const c = Math.max(0, Math.cos(t.a - am)) * m, r0 = 25, r1 = r0 + 3 + 17 * Math.pow(c, 5); t.l.setAttribute('x1', (Math.cos(t.a) * r0).toFixed(2)); t.l.setAttribute('y1', (Math.sin(t.a) * r0).toFixed(2)); t.l.setAttribute('x2', (Math.cos(t.a) * r1).toFixed(2)); t.l.setAttribute('y2', (Math.sin(t.a) * r1).toFixed(2)); t.l.style.opacity = (.45 + .55 * Math.pow(c, 2)).toFixed(2) }
+    segs.forEach((g, n) => { const a = -SEG[n][2] * Math.PI / 180, c = Math.max(0, Math.cos(a - am)) * m, sc = 1 + .32 * Math.pow(c, 3) + (g.dataset.k === hot ? .3 : 0); g.querySelector('.sc').style.transform = `scale(${sc.toFixed(3)})` });
+  }
+  build();
   let px = 0, py = 0, settleT = 0, homes = [], open = false, cx = 0, cy = 0, vx = 0, vy = 0, hot = null, which = null;
-  const setHot = k => { if (k === hot) return; hot = k; segs.forEach(s => s.classList.toggle('hot', s.dataset.k === k)); if (k) nav.tick() };
+  const setHot = k => { if (k === hot) return; hot = k; segs.forEach(s => s.classList.toggle('hot', s.dataset.k === k)); if (k) nav.tick(); lean() };
   const pickAt = (x, y) => { const r = Math.hypot(x, y); if (r < 1) return null;   // any nudge picks the segment in that direction
     let a = Math.atan2(-y, x) * 180 / Math.PI; let best = null, bd = 40; for (const [k, , c] of SEG) { const d = Math.abs(((a - c + 540) % 360) - 180); if (d < bd) { bd = d; best = k } } return best };
   function show(x, y) {
-    if (panel.hidden === false) close();
+    if (panel.hidden === false) close(); if (style !== ((LOOK.menuSun ?? 1) ? 'sun' : 'wedge')) build();
     const m = R1 + 16; cx = Math.max(m, Math.min(innerWidth - m, x)); cy = Math.max(m, Math.min(innerHeight - m, y)); vx = vy = 0; px = x; py = y;
     const R_ = document.documentElement.style; R_.setProperty('--rmb', (LOOK.menuBlur ?? 8) + 'px'); R_.setProperty('--rmd', LOOK.menuDim ?? .3);
     document.body.classList.add('rm-open'); tip.hidden = true;   // other tooltips step aside, and the world behind blurs
-    el.style.left = cx + 'px'; el.style.top = cy + 'px'; el.hidden = false; void el.offsetWidth; el.classList.add('in'); open = true; setHot(null);
+    el.style.left = cx + 'px'; el.style.top = cy + 'px'; el.hidden = false; void el.offsetWidth; el.classList.add('in'); open = true; setHot(null); lean();
     segs.find(s => s.dataset.k === 'map').querySelector('text').textContent = S.mode === 'map' ? 'Fly' : 'Map';
     segs.find(s => s.dataset.k === 'map').querySelector('.ri').innerHTML = RM_FILL[S.mode === 'map' ? 'fly' : 'map'];
     dot.hidden = true; clearTimeout(settleT); el.classList.remove('settled'); settleT = setTimeout(() => el.classList.add('settled'), 450);   // no pointer at all: the direction you nudge picks
@@ -51,7 +68,7 @@ const rmenu = (() => {
   function hide() { document.body.classList.toggle('rm-open', !panel.hidden && !!which); open = false; el.classList.remove('in'); setTimeout(() => { if (!open) el.hidden = true }, 220); setHot(null) }
   function move(e) {   // captured pointer: a dot you steer inside the ring; free pointer: wherever the pointer is
     const dx = locked() ? e.movementX : e.clientX - px, dy = locked() ? e.movementY : e.clientY - py; px = e.clientX; py = e.clientY;
-    vx += dx; vy += dy; const r = Math.hypot(vx, vy), lim = 10; if (r > lim) { vx *= lim / r; vy *= lim / r } setHot(pickAt(vx, vy));   // kept on a short leash, so turning to another segment takes only a flick
+    vx += dx; vy += dy; const r = Math.hypot(vx, vy), lim = 10; if (r > lim) { vx *= lim / r; vy *= lim / r } setHot(pickAt(vx, vy)); lean();   // kept on a short leash, so turning to another segment takes only a flick
   }
   function choose(k = hot) {
     hide(); if (!k) return;
