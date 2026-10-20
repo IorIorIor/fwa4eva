@@ -152,7 +152,7 @@ const arcs = (() => {
     c.assign(mix(c, vRc, U.rad)); c.assign(mix(c, vec3(.92, .96, 1), vRim.mul(.7))); c.assign(mix(c, vec3(1), u.core.mul(exp(vV.mul(vV).mul(-30)))));
     return vec4(c.mul(vA).mul(prof).mul(2), 1);
   })();
-  const mesh = layer(new THREE.Mesh(g, m), scene, -1);
+  const mesh = layer(new THREE.Mesh(g, m), arcScene, 0);
   return { mesh, u, rimN: ARCS.rimN, n };
 })();
 

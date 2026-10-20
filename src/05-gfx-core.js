@@ -24,6 +24,8 @@ const rimLight = new THREE.DirectionalLight(0x8fa6ff, .9 * Math.PI); rimLight.po
 shipRenderer.highPrecision = true; shipRenderer.setPixelRatio(DPR); shipRenderer.setClearColor(0x000000, 0);
 // trails are drawn on their own and added after the colour grade, so a monochrome look never bleaches a pilot's colour
 const trailScene = new THREE.Scene(); trailScene.background = new THREE.Color(0, 0, 0);
+// the long-exposure arcs (the galaxy's rim streaks among them) render on their own and join the background, so the black hole lenses them
+const arcScene = new THREE.Scene(); arcScene.background = new THREE.Color(0, 0, 0);
 loadProg(.3);
 const shipScene = new THREE.Scene(); shipScene.add(new THREE.HemisphereLight(0xb8b0ff, 0x1a1430, 1.1 * Math.PI), sunLight.clone(), rimLight.clone());
 
