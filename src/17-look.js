@@ -95,7 +95,7 @@ function galPreview() {
 const prevSoon = () => { if (prevQ) return; prevQ = requestAnimationFrame(() => { prevQ = 0; galPreview() }) };
 function renderLook() {
   const body = $('lookBody'); body.innerHTML = '';
-  if (LOOK === LOOK_MAP) { const n = document.createElement('div'); n.className = 'mapnote'; n.innerHTML = '<b>Map look</b><span>You are tuning the map\'s own look. Flying keeps its own.</span><button class="btn" type="button">Start from the flying look</button>'; n.querySelector('button').onclick = () => { LOOK_MAP = LOOK = { ...LOOK_FLY }; saveLook(); renderLook(); applyLook() }; body.appendChild(n) }
+  if (LOOK === LOOK_MAP) { const n = document.createElement('div'); n.className = 'mapnote'; n.innerHTML = '<b>Map look</b><span>You are tuning the map\'s own look. Flying keeps its own.</span><button class="btn" type="button">Start from the flying look</button>'; n.querySelector('button').onclick = () => { LOOK_MAP = LOOK = { ...LOOK_FLY, mapFade: 0 }; saveLook(); renderLook(); applyLook() }; body.appendChild(n) }
   let openSecs = store.json('sotd-look-open', []); if (!Array.isArray(openSecs)) openSecs = [];
   LOOK_DEF.forEach(([title, rows]) => {
     const sec = document.createElement('div'); sec.className = 'lsec' + (openSecs.includes(title) ? ' open' : '');

@@ -523,3 +523,6 @@ body.map #gl,body.map #gl.hovering{cursor:pointer!important}   /* on the map the
 #tip .td .tsc{font-weight:500;color:#fff}
 @media (min-width:760px){body.map #panel{left:max(16px,env(safe-area-inset-left,0px));right:auto}}   /* on the map the filters sit on the left, next to an open Look panel on the right */
 #tip.side .tshot{display:none}   /* beside a portal: the portal already shows the picture */
+body.map .glab.yr.ax:not(.mo){color:#fff;background:rgba(26,20,40,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:3px 6px 2px;font-size:10px;letter-spacing:.06em}   /* year numbers on the map sit in a little box, like the tooltips */
+body.map .glab.yr.ax.maj{font-size:12px;padding:4px 7px 3px}
+#dayLabels span{transition:opacity .35s ease;opacity:0}#dayLabels span.on{opacity:1}

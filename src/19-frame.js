@@ -2,15 +2,15 @@
 let coreGlowV = { k: 0, s: 1 }, mapK = 0;
 // map: tiny day labels beside the winners nearest the camera, once you're close enough (with a zone open: its own winners, nearest the middle of the view)
 const dayLab = (() => {
-  const box = $('dayLabels'), pool = [], cand = [], v = new V3(); let shown = 0;
+  const box = $('dayLabels'), els = new Map(), cand = [], v = new V3();   // one label per winner, so each fades in and out on its own
   return function update() {
-    const L = LOOK, on = S.mode === 'map' && !tween && (L.mapDays ?? 1) > 0 && booted; box.style.setProperty('--dls', (L.mapDaySize ?? 8) + 'px'); box.style.opacity = L.mapDays ?? 1;
-    cand.length = 0; if (on) { const Zo = mapZone.on, R = Zo ? Infinity : (L.mapDayDist ?? 60000) * mapDistK(), R2 = R * R, cp = Zo ? orbit.target : camera.position; for (let i = 0; i < N; i++) { if (TA[i] < 1 || (mapZone.on && (D[i].t < mapZone.t0 || D[i].t >= mapZone.t1))) continue; const dx = P[i * 3] - cp.x, dy = P[i * 3 + 1] - cp.y, dz = P[i * 3 + 2] - cp.z, d2 = dx * dx + dy * dy + dz * dz; if (d2 < R2) cand.push([d2, i]) } cand.sort((a, b) => a[0] - b[0]) }
-    const n = Math.min(cand.length, L.mapDayN ?? 60); let k = 0;
+    const L = LOOK, on = S.mode === 'map' && !(tween && tween.mode) && (L.mapDays ?? 1) > 0 && booted, now = performance.now(); box.style.setProperty('--dls', (L.mapDaySize ?? 8) + 'px'); box.style.opacity = L.mapDays ?? 1;
+    cand.length = 0; if (on) { const R = (L.mapDayDist ?? 60000) * mapDistK(), R2 = R * R, cp = camera.position; for (let i = 0; i < N; i++) { if (TA[i] < 1 || (mapZone.on && (D[i].t < mapZone.t0 || D[i].t >= mapZone.t1))) continue; const dx = P[i * 3] - cp.x, dy = P[i * 3 + 1] - cp.y, dz = P[i * 3 + 2] - cp.z, d2 = dx * dx + dy * dy + dz * dz; if (d2 < R2) cand.push([d2, i]) } cand.sort((a, b) => a[0] - b[0]) }
+    const n = Math.min(cand.length, L.mapDayN ?? 60), seen = new Set();
     for (let c = 0; c < n; c++) { const i = cand[c][1]; v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]).project(camera); if (v.z > 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) continue;
-      let el = pool[k]; if (!el) { el = pool[k] = document.createElement('span'); box.appendChild(el) } const t = new Date(D[i].date + 'T00:00:00Z'), txt = `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()].slice(0, 3)} ${t.getUTCFullYear()}`;
-      if (el.textContent !== txt) el.textContent = txt; el.style.left = ((v.x * .5 + .5) * innerWidth).toFixed(1) + 'px'; el.style.top = ((-v.y * .5 + .5) * innerHeight).toFixed(1) + 'px'; el.hidden = false; k++ }
-    for (let j = k; j < shown; j++) pool[j].hidden = true; shown = k;
+      let el = els.get(i); if (!el) { el = document.createElement('span'); const t = new Date(D[i].date + 'T00:00:00Z'); el.textContent = `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()].slice(0, 3)} ${t.getUTCFullYear()}`; box.appendChild(el); els.set(i, el); void el.offsetWidth }
+      el.style.left = ((v.x * .5 + .5) * innerWidth).toFixed(1) + 'px'; el.style.top = ((-v.y * .5 + .5) * innerHeight).toFixed(1) + 'px'; if (!el.on) { el.on = true; el.classList.add('on') } el.seen = now; seen.add(i) }
+    els.forEach((el, i) => { if (seen.has(i)) return; if (el.on) { el.on = false; el.classList.remove('on') } else if (now - el.seen > 600) { el.remove(); els.delete(i) } else if (on) { v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]).project(camera); el.style.left = ((v.x * .5 + .5) * innerWidth).toFixed(1) + 'px'; el.style.top = ((-v.y * .5 + .5) * innerHeight).toFixed(1) + 'px' } });   // gone ones fade where they are, then go
   };
 })();
 let boostK0 = 0; const shipCam = new THREE.PerspectiveCamera();   // the ship layer's camera: the main one, with a near plane small enough for the tiny ship   // the core glow's strength and size, for its volumetric version
@@ -169,14 +169,15 @@ function trailColour(sT, b, o, gw = 1, gb = 0) {
 }
 function trimStrand(st) { const Pp = st.pts; while (Pp.length > 2 && trClock - Pp[Pp.length - 2].t > Pp[Pp.length - 2].life) Pp.pop();   // whatever has outlived its time is gone
   let acc = 0; for (let k = 1; k < Pp.length; k++) { const d = Pp[k].p.distanceTo(Pp[k - 1].p); if (acc + d >= st.len) { const f = (st.len - acc) / Math.max(d, 1e-6); Pp[k].p.lerpVectors(Pp[k - 1].p, Pp[k].p, f); Pp.length = k + 1; return } acc += d } if (Pp.length > TR_STRAND) Pp.length = TR_STRAND }
+const _tq = new V3(), _tq2 = new V3();
 function updateTrail(dt, on) {
   const L = LOOK, sp = player.vel.length(), lin = Math.max(0, Math.min(1, Math.log10(Math.max(sp, 20) / 20) / Math.max(.1, L.trRef - Math.log10(20)))), speedT = Math.pow(lin, L.trColorCurve);
   trClock += dt; const life = trLife(sp);
   const emit = (st, mul) => {
-    const eng = _te.copy(avatar.userData.tail).multiplyScalar(avatar.scale.x).applyQuaternion(player.quat).add(player.pos), bright = L.trBright * (.75 + speedT * 1.4 * L.trSpeedBoost + .25) * mul, step = Math.max(.4, st.len / (TR_STRAND * .9));
+    const eng = _te.copy(avatar.userData.tail).multiplyScalar(avatar.scale.x).applyQuaternion(player.quat).add(player.pos), bright = L.trBright * (.75 + speedT * 1.4 * L.trSpeedBoost + .25) * mul, step = Math.max(.4, st.len / ((L.trQuality ?? TR_STRAND) * .9));
     const pt = () => ({ p: eng.clone(), s: speedT, b: bright, w: trW, k: trB, t: trClock, life });
     if (st.pts.length < 2) st.pts = [pt(), pt()];   // pts[0] rides the engine; the rest are laid down in space
-    else if (st.pts[1].p.distanceTo(eng) > step) st.pts.unshift(pt());
+    else if (st.pts[1].p.distanceTo(eng) > step || (st.pts.length > 2 && st.pts[1].p.distanceTo(eng) > step * .05 && _tq.copy(eng).sub(st.pts[1].p).normalize().dot(_tq2.copy(st.pts[1].p).sub(st.pts[2].p).normalize()) < Math.cos((L.trBend ?? 4) * Math.PI / 180))) st.pts.unshift(pt());   // a new point every step, and sooner wherever the path bends, so curves stay round
     else { const h = st.pts[0]; h.p.copy(eng); h.s = speedT; h.b = bright; h.w = trW; h.k = trB; h.t = trClock; h.life = life }
     trimStrand(st);
   };
@@ -390,7 +391,7 @@ function tick(now) {
   if (fly) gauge.fly(); else gauge.map();
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
   updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt); musicMap(S.mode === 'map'); mapZone.update(dt); dayLab(); swapLook();
-  if (tween && tween.mode) { const e = ease(Math.min(1, tween.t)); mapK = S.mode === 'map' ? sstep(e, 0, .55) : 1 - sstep(e, .45, 1) } else mapK += ((S.mode === 'map' && !tween ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); PU.bgK.value = 1 - (L.mapFade ?? .85) * mapK; bgStars.u.op.value = L.bgStars * (1 - (L.mapFade ?? .85) * mapK);   // between map and flight the map's dimming follows the camera's move, so the galaxy never flares up while you're still far out; on the map it clears down to the winners
+  if (tween && tween.mode) { const e = ease(Math.min(1, tween.t)); mapK = S.mode === 'map' ? sstep(e, 0, .55) : 1 - sstep(e, .45, 1) } else mapK += ((S.mode === 'map' ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); PU.bgK.value = 1 - (L.mapFade ?? .85) * mapK; bgStars.u.op.value = L.bgStars * (1 - (L.mapFade ?? .85) * mapK);   // between map and flight the map's dimming follows the camera's move, so the galaxy never flares up while you're still far out; on the map it clears down to the winners
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,
       look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3); coreIn += (inside - coreIn) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it
   {   // bloom swells near light speed and follows the core settings; exposure too

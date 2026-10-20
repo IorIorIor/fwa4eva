@@ -17,11 +17,11 @@ const mapZone = (() => {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); g.setAttribute('aS', new THREE.BufferAttribute(aS, 1)); g.setAttribute('aV', new THREE.BufferAttribute(aV, 1)); g.setIndex(idx);
     for (let k = 0; k <= n; k++) { aS[k * 2] = aS[k * 2 + 1] = k / n; aV[k * 2] = -1; aV[k * 2 + 1] = 1 }
     const u = { k: uniform(0) }, m = skyMat({ side: THREE.DoubleSide, depthTest: false }), vS = varying(attribute('aS', 'float')), vV = varying(attribute('aV', 'float'));
-    m.fragmentNode = Fn(() => { const a = u.k.mul(float(1).sub(vV.mul(vV))).mul(smoothstep(0, .05, vS)).mul(smoothstep(1, .95, vS)); return vec4(vec3(.85, .9, 1).mul(a), a) })();
+    m.fragmentNode = Fn(() => { const a = u.k.mul(exp(vV.mul(vV).mul(-3.2)).sub(.04).max(0)).mul(smoothstep(0, .08, vS)).mul(smoothstep(1, .92, vS)); return vec4(vec3(.85, .9, 1).mul(a), a) })();   // soft across, soft at both ends
     const mesh = new THREE.Mesh(g, m); mesh.position.copy(GC); mesh.quaternion.copy(GQ); layer(mesh, scene, 2); mesh.visible = false; mesh.u = u; mesh.key = '';
     mesh.set = (t0, t1, W) => {   // rebuild along [t0, t1)
       const key = t0 + ',' + t1 + ',' + W; if (mesh.key === key) return; mesh.key = key;
-      for (let k = 0; k <= n; k++) { const t = t0 + (t1 - t0) * k / n, p = at(t), q = at(t + 864e5 * 3), tx = q[0] - p[0], tz = q[1] - p[1], l = Math.hypot(tx, tz) || 1, nx = -tz / l * W / 2, nz = tx / l * W / 2, o = k * 6;
+      for (let k = 0; k <= n; k++) { const t = t0 + (t1 - t0) * k / n, p = at(t), q = at(t + 864e5 * 3), tx = q[0] - p[0], tz = q[1] - p[1], l = Math.hypot(tx, tz) || 1, hw = Math.min(W / 2, Math.hypot(p[0], p[1]) * .35), nx = -tz / l * hw, nz = tx / l * hw, o = k * 6;
         pos[o] = p[0] - nx; pos[o + 1] = 0; pos[o + 2] = p[1] - nz; pos[o + 3] = p[0] + nx; pos[o + 4] = 0; pos[o + 5] = p[1] + nz }
       g.attributes.position.needsUpdate = true; g.computeBoundingSphere();
     };
@@ -33,19 +33,22 @@ const mapZone = (() => {
     if (map && !tween && mouse.in && hovPick < 0 && !rmenu.open && (L.mapZones ?? 1)) {
       const g = groundAt(mouse.x, mouse.y);
       if (g) { toLocal(g, _l); let best = -1, bd = Infinity; for (let k = 0; k < SN; k++) { const dx = sx[k] - _l.x, dz = sz[k] - _l.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = k } }
-        if (best >= 0 && Math.sqrt(bd) < W * .75) { const t = st[best], inOpen = Z.on && t >= Z.t0 && t < Z.t1, lvl = Z.on && (Z.lvl === 1 || inOpen) && span(t, 5)[0] === span(Z.t0, 5)[0] ? 1 : 5, [t0, t1, y0] = span(t, lvl);
+        if (best >= 0 && Math.sqrt(bd) < (L.mapZoneHit ?? 22000)) { const t = st[best], inOpen = Z.on && t >= Z.t0 && t < Z.t1, lvl = Z.on && (Z.lvl === 1 || inOpen) && span(t, 5)[0] === span(Z.t0, 5)[0] ? 1 : 5, [t0, t1, y0] = span(t, lvl);
           if (!(Z.on && t0 === Z.t0 && t1 === Z.t1)) Z.hov = { t0: Math.max(t0, tS), t1: Math.min(t1, tE + 864e5), lvl, y0 } } }
     }
     if (Z.hov) hovR.set(Z.hov.t0, Z.hov.t1, W);
-    hovR.u.k.value += ((Z.hov ? .16 * (L.mapZoneGlow ?? 1) : 0) - hovR.u.k.value) * Math.min(1, dt * 8); hovR.visible = map && hovR.u.k.value > .002;
-    actR.u.k.value += ((Z.on && map ? .08 * (L.mapZoneGlow ?? 1) : 0) - actR.u.k.value) * Math.min(1, dt * 6); actR.visible = map && actR.u.k.value > .002;
+    hovR.u.k.value += ((Z.hov ? .085 * (L.mapZoneGlow ?? 1) : 0) - hovR.u.k.value) * Math.min(1, dt * 4); hovR.visible = map && hovR.u.k.value > .002;
+    actR.u.k.value += ((Z.on && map ? .045 * (L.mapZoneGlow ?? 1) : 0) - actR.u.k.value) * Math.min(1, dt * 6); actR.visible = map && actR.u.k.value > .002;
     if (!map && Z.on) Z.clear();
   };
-  Z.open = h => {   // frame the zone: its middle as the target, far enough back to hold all of it
+  Z.open = h => {   // frame the zone: as large as the screen allows, from the angle you're looking at it
     Object.assign(Z, { on: true, t0: h.t0, t1: h.t1, lvl: h.lvl }); actR.set(h.t0, h.t1, LOOK.mapZoneW ?? 70000);
-    let cx = 0, cz = 0, n = 0; for (let k = 0; k < SN; k++) if (st[k] >= h.t0 && st[k] < h.t1) { cx += sx[k]; cz += sz[k]; n++ } if (!n) return; cx /= n; cz /= n;
-    let R = 0; for (let k = 0; k < SN; k++) if (st[k] >= h.t0 && st[k] < h.t1) R = Math.max(R, Math.hypot(sx[k] - cx, sz[k] - cz));
-    orbit.target.set(cx, 0, cz).applyQuaternion(GQ).add(GC); orbit.dist = Math.max(MAP_MIN, (R + (LOOK.mapZoneW ?? 70000) * .5) * 1.15 / Math.tan(LOOK.fov * Math.PI / 360)); const o = orbitPose(); tweenCam(o.p, o.q, 1.3);
+    const pts = []; for (let k = 0; k < SN; k++) if (st[k] >= h.t0 && st[k] < h.t1) pts.push(new V3(sx[k], 0, sz[k]).applyQuaternion(GQ).add(GC)); if (!pts.length) return;
+    const q = orbitPose().q, ax = new V3(1, 0, 0).applyQuaternion(q), ay = new V3(0, 1, 0).applyQuaternion(q), c = new V3(); pts.forEach(p => c.add(p)); c.divideScalar(pts.length);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity; pts.forEach(p => { const d = p.clone().sub(c), x = d.dot(ax), y = d.dot(ay); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y) });
+    c.addScaledVector(ax, (x0 + x1) / 2).addScaledVector(ay, (y0 + y1) / 2);   // centred on the zone as you'll see it
+    const pad = (LOOK.mapZoneW ?? 70000) * .5, th = Math.tan(LOOK.fov * Math.PI / 360), hx = (x1 - x0) / 2 + pad, hy = (y1 - y0) / 2 + pad;
+    orbit.target.copy(c); orbit.dist = Math.max(MAP_MIN, Math.max(hy / th, hx / (th * camera.aspect)) * 1.08); const o = orbitPose(); tweenCam(o.p, o.q, 1.3);
   };
   Z.clear = () => { Z.on = false };
   Z.click = () => { if (Z.hov) { Z.open(Z.hov); return true } if (Z.on) { Z.clear(); return true } return false };   // true: the click was the zone's

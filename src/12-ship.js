@@ -206,7 +206,7 @@ const flare = (() => {
 /* TRON light trail: emitted only while you thrust. Each point keeps the colour and brightness it was born with,
    so the trail records how fast you were going along its length. Vertices are written relative to the ship,
    which keeps them steady however far from home you are. */
-const TR_MAX = 1000, TR_STRAND = 230;
+const TR_MAX = 8000, TR_STRAND = 230;   // room for long, finely drawn trails (points per strand: the trail-quality slider)
 const trPos = new Float32Array(TR_MAX * 6), trT = new Float32Array(TR_MAX * 2), trV = new Float32Array(TR_MAX * 2), trC = new Float32Array(TR_MAX * 6), trA = new Float32Array(TR_MAX * 2);
 for (let k = 0; k < TR_MAX; k++) { trV[k * 2] = 1; trV[k * 2 + 1] = -1 }
 const trail = (() => {

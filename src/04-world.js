@@ -63,7 +63,7 @@ const armSlope = r => (armPhase(r * 1.01) - armPhase(r / 1.01)) / (2 * Math.log(
 const armWAt = r => 1 + SHAPE.widen * Math.pow(Math.min(1, Math.max(0, (r - GAL_R0) / GAL_LEN)), SHAPE.wcurve);
 function galPoint(g, arm, u, dr, dth, y, out = new V3()) {
   const wk = armWAt(GAL_R0 + u * GAL_LEN) / (SHAPE.widen + 1); dr *= wk; dth *= wk;   // everything placed across an arm spreads wider further out (the rim keeps its width, the inner arms draw in)
-  const r = Math.max(GAL_R0 * .3, GAL_R0 + u * GAL_LEN + dr), th = arm * 2 * Math.PI / g.arms + armPhase(r) + dth;
+  const r0 = GAL_R0 + u * GAL_LEN, r = Math.max(GAL_R0 * .3, r0 + dr), th = arm * 2 * Math.PI / g.arms + armPhase(SPIRAL ? r0 : r) + dth;   // on the single spiral a step outward stays at its date (the angle of its own place on the line); with arms it follows the arm
   return out.set(Math.cos(th) * r, y, Math.sin(th) * r).applyQuaternion(g.quat).add(g.center);
 }
 const toLocal = (p, out = new V3()) => out.copy(p).sub(GC).applyQuaternion(GQI);     // galaxy frame: disk in xz
@@ -154,6 +154,7 @@ D.forEach((d, i) => {
 });
 // relax: push winners apart until every pair is at least MIN_SEP apart (a spatial hash keeps this linear). Pushes along
 // the direction that carries the date (the radius; along the arm on the single spiral) are damped, so dates barely move.
+const P0 = P.slice(), _pw = new V3(), _p0 = new V3(), _p1 = new V3();   // where each date put its winner, before spacing
 (function relax(A, n, min) {
   const m2 = min * min, inv = 1 / min, rad = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { const lx = A[i * 3] - GC.x, ly = A[i * 3 + 1] - GC.y, lz = A[i * 3 + 2] - GC.z, nx = new V3(lx, ly, lz).applyQuaternion(GQI); nx.y = 0; if (SPIRAL) nx.set(-nx.z, 0, nx.x); nx.normalize().applyQuaternion(GQ); rad.set([nx.x, nx.y, nx.z], i * 3) }
@@ -186,6 +187,13 @@ D.forEach((d, i) => {
     if (!moved) break;
   }
 })(P, N, MIN_SEP);
+// spacing may nudge a winner, never carry it off: in the disk at most about one band-width from where its date put it (else
+// on the tight inner windings it can land on another year's turn), and a little up or down
+for (let i = 0; i < N; i++) {
+  const o = i * 3; toLocal(_pw.set(P0[o], P0[o + 1], P0[o + 2]), _p0); toLocal(_pw.set(P[o], P[o + 1], P[o + 2]), _p1); const r = Math.hypot(_p0.x, _p0.z), cap = (7700 + r * .045) * .7 * SHAPE.bw * (SPIRAL ? .9 : 3), capY = SHAPE.bh * (2600 + 15000 * SHAPE.ch * Math.exp(-r / 105000)) * 1.5;
+  const dx = _p1.x - _p0.x, dz = _p1.z - _p0.z, dh = Math.hypot(dx, dz), k = dh > cap ? cap / dh : 1, dy = Math.max(-capY, Math.min(capY, _p1.y - _p0.y));
+  _p1.set(_p0.x + dx * k, _p0.y + dy, _p0.z + dz * k).applyQuaternion(GQ).add(GC); P[o] = _p1.x; P[o + 1] = _p1.y; P[o + 2] = _p1.z;
+}
 const NEB_B = cloudField(7040, armPlace(17500, 2450));   // up to 7680 clouds with NEB_A (Cloud count × 640)
 const LANE_B = cloudField(500, armPlace(8750, 1400));
 const LANE_C = (() => { const s0 = R.state(); R.state(5150); const f = cloudField(1930, armPlace(8750, 1400)); R.state(s0); return f })();   // more dark clouds (count up to 10), drawn from their own seed so nothing else moves
