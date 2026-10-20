@@ -219,7 +219,8 @@ function engineLook(dt) {
 }
 
 /* lock-on marker, reticle and tooltip */
-const TNAV = '<span class="tnav"><b data-n="-1" title="Previous (←)">‹</b><b data-n="1" title="Next (→)">›</b></span>';   // step through the archive from the star you're on
+const fmtDist = v => v < 1000 ? v.toFixed(0) + ' u' : v < 1e6 ? (v / 1000).toFixed(v < 1e4 ? 1 : 0) + 'k u' : (v / 1e6).toFixed(2) + 'M u';
+const TNAV = '<span class="tnav"><b data-n="-1" title="Previous (←)">‹</b><b data-n="1" title="Next (→)">›</b><i class="tdist"></i></span>';   // step through the archive from the star you're on
 const lockMark = $('lockMark');
 function updateLockMark() {
   if (S.mode === 'fly' && lockI >= 0) {
@@ -254,7 +255,7 @@ function updateHover(dt) {
   const put = (key, html, full) => {
     if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full) { drawCardImg(cardI); cardFlicker() } }
     tip.classList.toggle('full', !!full); tip.classList.toggle('dock', !!full && !coarse); tip.hidden = false };
-  if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
+  if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI) + TNAV, false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (ringHov && pin < 0) { put('r' + ringHov.y, ringTip(ringHov), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (pin >= 0) {
     const d = Math.max(1, camera.position.distanceTo(starPos(pin, tmp))); tmp.project(camera);
@@ -273,6 +274,7 @@ function updateHover(dt) {
       tip.style.left = x + 'px'; tip.style.top = y + 'px';
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
+  { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = fmtDist(camera.position.distanceTo(starPos(+m[1], tmp))) }   // how far it is, live
 }
 const RET = { L: $('arcL'), R: $('arcR'), sp: $('lSPD'), pw: $('lPWR'), sv: '', bv: '', used: +store.get('sotd-pwr-used') || 0 };
 function updateBoostUI(dt = 0) {   // the reticle's brackets: speed on the left, boost power on the right; their labels until you've boosted 5 s in all

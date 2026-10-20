@@ -11,10 +11,19 @@ const RM_ICON = {   // tabler icons, as used in the rest of the interface
   ships: '<path d="M7 4l0 13l3.5 -3.5l2.5 6l2 -1l-2.5 -6l5 0z"/>',
   date: '<path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><path d="M8 15h2v2h-2z"/>',
 };
+const RM_FILL = {   // solid versions for the ring's segments
+  filters: '<path d="M3 4h18l-7 8.5v6.5l-4 2v-8.5z"/>',
+  map: '<path d="M3 6.6l5.2-2.6v13.4l-5.2 2.6zM9.6 4l4.8 2.6v13.4l-4.8-2.6zM15.8 6.6l5.2-2.6v13.4l-5.2 2.6z"/>',
+  fly: '<path fill-rule="evenodd" d="M14.6 3.4c3.1-.3 6.3 2.8 6 6-.4 4-4.2 7.4-7.3 9l-1.6 1.6-1.4-3.4-3.4-1.4 1.6-1.6c1.6-3.1 5-6.9 9-7.3zM15 7.6a1.6 1.6 0 1 0 .01 0z"/><path d="M6.2 15.6c-2 .9-3.2 3-3.2 5.4 2.4 0 4.5-1.2 5.4-3.2z"/>',
+  search: '<path fill-rule="evenodd" d="M10 3a7 7 0 1 1 0 14a7 7 0 1 1 0-14zM10 5.6a4.4 4.4 0 1 0 0 8.8a4.4 4.4 0 1 0 0-8.8z"/><path d="M15.2 13.4l6 6-1.8 1.8-6-6z"/>',
+  settings: '<path d="M5 3h2v18h-2zM11 3h2v18h-2zM17 3h2v18h-2z"/><circle cx="6" cy="8" r="2.7"/><circle cx="12" cy="15" r="2.7"/><circle cx="18" cy="6.5" r="2.7"/>',
+  date: '<path fill-rule="evenodd" d="M5.5 5h13a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13a1.5 1.5 0 0 1-1.5-1.5v-13a1.5 1.5 0 0 1 1.5-1.5zM6 10v9h12v-9z"/><path d="M7 2.5h2v4h-2zM15 2.5h2v4h-2zM8 12h3v3h-3z"/>',
+  upgrades: '<path d="M6 3v15l4-4 3 6.5 2.5-1.2-3-6.3h5.5z"/>',
+};
 const ico = (k, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RM_ICON[k]}</svg>`;
 const rmenu = (() => {
   const R0 = 70, R1 = 150, GAP = 5;   // inner and outer radius (px), gap between segments (px)
-  const SEG = [['date', 'Date', 220], ['filters', 'Filters', 168], ['map', 'Map', 116], ['ships', 'Ships', 64], ['search', 'Search', 12], ['settings', 'Settings', -40]];   // centre angles, counter-clockwise from the right
+  const SEG = [['date', 'Date', 220], ['filters', 'Filters', 168], ['map', 'Map', 116], ['upgrades', 'Upgrades', 64], ['search', 'Search', 12], ['settings', 'Settings', -40]];   // centre angles, counter-clockwise from the right
   const el = $('radial'), svg = el.querySelector('svg'), dot = $('rmDot'), panel = $('rmPanel'), body = panel.querySelector('.rb');
   const P = (r, a) => [r * Math.cos(a * Math.PI / 180), -r * Math.sin(a * Math.PI / 180)];
   const sector = (a, span) => {   // an annular sector with straight gaps of GAP px either side
@@ -23,7 +32,7 @@ const rmenu = (() => {
     return `M${x0} ${y0}A${R1} ${R1} 0 0 0 ${x1} ${y1}L${x2} ${y2}A${R0} ${R0} 0 0 1 ${x3} ${y3}Z`;
   };
   svg.innerHTML = SEG.map(([k, label, a], n) => { const [lx, ly] = P((R0 + R1) / 2, a);
-    return `<g class="rs" data-k="${k}" style="--n:${n};transform-origin:0 0"><path d="${sector(a, 52)}"/><g transform="translate(${lx} ${ly})"><svg x="-14" y="-30" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="ri">${RM_ICON[k === 'map' ? 'map' : k]}</svg><text y="16">${label}</text></g></g>` }).join('');
+    return `<g class="rs" data-k="${k}" style="--n:${n};transform-origin:0 0"><path d="${sector(a, 52)}"/><g transform="translate(${lx} ${ly})"><svg x="-13" y="-30" width="26" height="26" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg><text y="16">${label}</text></g></g>` }).join('');
   const segs = [...svg.querySelectorAll('.rs')];
   let homes = [], open = false, cx = 0, cy = 0, vx = 0, vy = 0, hot = null, which = null;
   const setHot = k => { if (k === hot) return; hot = k; segs.forEach(s => s.classList.toggle('hot', s.dataset.k === k)); if (k) nav.tick() };
@@ -31,12 +40,14 @@ const rmenu = (() => {
   function show(x, y) {
     if (panel.hidden === false) close();
     const m = R1 + 16; cx = Math.max(m, Math.min(innerWidth - m, x)); cy = Math.max(m, Math.min(innerHeight - m, y)); vx = vy = 0;
+    const R_ = document.documentElement.style; R_.setProperty('--rmb', (LOOK.menuBlur ?? 8) + 'px'); R_.setProperty('--rmd', LOOK.menuDim ?? .3);
+    document.body.classList.add('rm-open'); tip.hidden = true;   // other tooltips step aside, and the world behind blurs
     el.style.left = cx + 'px'; el.style.top = cy + 'px'; el.hidden = false; void el.offsetWidth; el.classList.add('in'); open = true; setHot(null);
     segs.find(s => s.dataset.k === 'map').querySelector('text').textContent = S.mode === 'map' ? 'Fly' : 'Map';
-    segs.find(s => s.dataset.k === 'map').querySelector('.ri').innerHTML = RM_ICON[S.mode === 'map' ? 'fly' : 'map'];
+    segs.find(s => s.dataset.k === 'map').querySelector('.ri').innerHTML = RM_FILL[S.mode === 'map' ? 'fly' : 'map'];
     dot.hidden = !locked(); dot.style.transform = 'translate(-50%,-50%)';
   }
-  function hide() { open = false; el.classList.remove('in'); setTimeout(() => { if (!open) el.hidden = true }, 220); setHot(null) }
+  function hide() { document.body.classList.toggle('rm-open', !panel.hidden && !!which); open = false; el.classList.remove('in'); setTimeout(() => { if (!open) el.hidden = true }, 220); setHot(null) }
   function move(e) {   // captured pointer: a dot you steer inside the ring; free pointer: wherever the pointer is
     if (locked()) { vx += e.movementX; vy += e.movementY; const r = Math.hypot(vx, vy), lim = R1 * .95; if (r > lim) { vx *= lim / r; vy *= lim / r } dot.style.transform = `translate(calc(-50% + ${vx}px), calc(-50% + ${vy}px))`; setHot(pickAt(vx, vy)) }
     else setHot(pickAt(e.clientX - cx, e.clientY - cy));
@@ -54,14 +65,14 @@ const rmenu = (() => {
   const head = (k, title) => { panel.querySelector('.ri').innerHTML = ico(k); panel.querySelector('header b').textContent = title };
   function sub(k) {
     if (locked()) document.exitPointerLock(); hide(); which = k; panel.className = 'hud p-' + k; body.innerHTML = '';
-    if (k === 'search') { head('search', 'Search'); searchPanel() } else if (k === 'date') { head('date', 'Date'); datePanel() } else if (k === 'filters') { head('filter', 'Filters'); filterPanel() } else if (k === 'ships') { head('ships', 'Ships'); shipsPanel() }
-    panel.hidden = false; void panel.offsetWidth; panel.classList.add('in');
+    if (k === 'search') { head('search', 'Search'); searchPanel() } else if (k === 'date') { head('date', 'Date'); datePanel() } else if (k === 'filters') { head('filter', 'Filters'); filterPanel() } else if (k === 'upgrades') { head('ships', 'Upgrades'); shipsPanel() }
+    panel.hidden = false; void panel.offsetWidth; panel.classList.add('in'); document.body.classList.add('rm-open');
   }
   function close() {
     hide(); if (panel.hidden) return; panel.classList.remove('in'); which = null;
     homes.forEach(([g, par, nx]) => par.insertBefore(g, nx)); homes = [];   // the filter groups go home
     const box = $('nav'); if (!box.contains($('navQ'))) { box.querySelector('.nrow').insertBefore($('navQ'), $('navNext')); box.prepend($('navRes')) }
-    setTimeout(() => { if (!which) panel.hidden = true }, 200);
+    document.body.classList.remove('rm-open'); setTimeout(() => { if (!which) panel.hidden = true }, 200);
   }
   panel.querySelector('.x').onclick = close;
   window.__navPicked = close;
@@ -111,5 +122,5 @@ const rmenu = (() => {
     const note = document.createElement('div'); note.className = 'rk'; note.textContent = `${gotN} rings collected · a new pointer every 5`; body.append(note, gr);
   }
   const fmtDayLong = dd => { const t = new Date(DAY0 + dd * 864e5); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}` };
-  return { get open() { return open }, get panel() { return !panel.hidden }, show, move, choose, sub, close };
+  return { get open() { return open }, get panel() { return !panel.hidden }, get hot() { return hot }, held: false, show, move, choose, sub, close };
 })();

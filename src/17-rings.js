@@ -16,6 +16,7 @@ function collectSound(v = 1) {   // two quick rising notes, bright and glassy, w
   const bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = 'bandpass'; bp.Q.value = 1.2; bp.frequency.setValueAtTime(600, t); bp.frequency.exponentialRampToValueAtTime(3200, t + .35); g.gain.value = .12 * v; n.buffer = b; n.connect(bp); bp.connect(g); g.connect(master); n.start(t);
 }
 function collect(i) {
+  if (lockI === i) { lockI = -1; auto = null }   // through it: the camera's free again
   player.vel.multiplyScalar(1 + (LOOK.ringBurst ?? .2)); engineLook.burst = Math.max(engineLook.burst || 0, 1.3); igniteK = Math.max(igniteK, .6); collectSound(GOT[i] ? .6 : 1);   // a kick: speed, the engine flaring, a bright little sound
   gotCard = { i, t: LOOK.ringCard ?? 7 }; showCard(i);
   buzz(18);

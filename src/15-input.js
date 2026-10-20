@@ -1,6 +1,6 @@
 /* ───────────────────────── input ───────────────────────── */
 const keys = {}, mouse = { x: 0, y: 0, in: false };
-let touchThrust = false, touchBoost = false, touchBrake = false, lockFailed = false, down = null, dragged = false, pinch0 = 0, lastInput = performance.now();
+let holdT = 0, touchThrust = false, touchBoost = false, touchBrake = false, lockFailed = false, down = null, dragged = false, pinch0 = 0, lastInput = performance.now();
 const SENS = .0022;
 const locked = () => document.pointerLockElement === canvas;
 function updateLockUI() {
@@ -8,6 +8,8 @@ function updateLockUI() {
   $('cross').toggleAttribute('hidden', !fly);
 }
 document.addEventListener('pointerlockchange', updateLockUI);
+const relock = () => { if (booted && S.mode === 'fly' && !locked() && !lockFailed && !coarse && !rmenu.panel && !document.querySelector('.sheet.open') && document.visibilityState === 'visible') try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { }) } catch (e) { } };
+addEventListener('focus', () => setTimeout(relock, 60)); document.addEventListener('visibilitychange', () => setTimeout(relock, 60));   // alt-tab back: the ship takes the mouse again
 // a browser refuses a re-lock for about a second after Esc; that's not a failure, just click again
 // a refusal right after letting go is the browser's re-lock cooldown: click again. Any other refusal (a frame without pointer-lock
 // permission, say) means mouse mode for good, so nobody gets asked to click to fly over and over
@@ -23,10 +25,16 @@ canvas.addEventListener('pointerdown', e => {
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y) }
   down = { x: e.clientX, y: e.clientY, btn: e.button, shift: e.shiftKey, touch: e.pointerType !== 'mouse' }; dragged = false;
+  // hold (100 ms, no star in reach, not dragging): the radial menu opens round the press
+  clearTimeout(holdT); if (booted && !rmenu.open && !rmenu.panel && e.button === 0 && ptrs.size === 1) holdT = setTimeout(() => {
+    if (!down || dragged) return; const cx = locked() ? innerWidth / 2 : down.x, cy = locked() ? innerHeight / 2 : down.y;
+    const star = S.mode === 'fly' ? (down.touch ? pick(cx, cy) : hovPick) >= 0 || magI >= 0 : (hovPick >= 0 || !!mapHover(cx, cy).ring);
+    if (!star) { rmenu.show(cx, cy); rmenu.held = true }
+  }, LOOK.menuHold ?? 100);
 });
 canvas.addEventListener('pointermove', e => {
   if (e.pointerType === 'mouse') { mouse.x = e.clientX; mouse.y = e.clientY; mouse.in = true }
-  const prev = ptrs.get(e.pointerId); if (!prev || !down) return;
+  const prev = ptrs.get(e.pointerId); if (!prev || !down) return; if (rmenu.open) return;   // the menu is up: the pointer is for it
   const dx = e.clientX - prev.x, dy = e.clientY - prev.y; prev.x = e.clientX; prev.y = e.clientY;
   if (Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 6) dragged = true;
   if (!dragged) return;
@@ -42,16 +50,17 @@ canvas.addEventListener('pointermove', e => {
   }
 });
 const endPtr = e => {
+  clearTimeout(holdT);
   ptrs.delete(e.pointerId); pinch0 = 0;
   if (down && !dragged && e.type === 'pointerup' && booted) {
     const unlock = () => { lockI = -1; if (auto && auto.i >= 0) auto = null };
     const hov = (x, y) => coarse || down.touch ? pick(x, y) : hovPick;   // with a mouse, only the star whose tooltip is showing; touch has no hover, so a tap picks
     const fly = S.mode === 'fly', cx = locked() ? innerWidth / 2 : e.clientX, cy = locked() ? innerHeight / 2 : e.clientY;
-    if (rmenu.open) rmenu.choose();   // the radial menu takes the click (outside it: closes)
+    if (rmenu.open) { if (!rmenu.held || rmenu.hot) rmenu.choose(); rmenu.held = false }   // let go over a segment to pick it; let go in the middle and it stays open for a click
     else if (rmenu.panel) { rmenu.close(); if (fly && !down.touch && !locked() && !lockFailed) requestLock() }
     else if (fly && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it (or just take the pointer back)
-    else if (fly) { const i = hov(cx, cy); if (i >= 0 && i !== lockI) focus(i); else if (i >= 0) unlock(); else if (magI < 0) rmenu.show(cx, cy) }   // a star: lock on (again: let go); nothing in reach: the menu
-    else { const h = mapHover(e.clientX, e.clientY), i = coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (h.ring) ringZoom(h.ring); else rmenu.show(e.clientX, e.clientY) }   // map: a star once you're close, else the ring under the cursor, else the menu
+    else if (fly) { const i = hov(cx, cy); if (i >= 0 && i !== lockI) focus(i); else if (i >= 0) unlock() }   // a star: lock on (again: let go)
+    else { const h = mapHover(e.clientX, e.clientY), i = coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (h.ring) ringZoom(h.ring) }   // map: a star once you're close, else the ring under the cursor, else the menu
   }
   if (!ptrs.size) down = null;
 };

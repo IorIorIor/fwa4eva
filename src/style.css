@@ -462,3 +462,9 @@ body.ready #enterQuiet{opacity:1;pointer-events:auto}
 #cross.on .ticks,#cross.mag .ticks{opacity:1;transform:scale(1.19)}
 #cross.lockon .ring,#cross.lockon .arcs,#cross.lockon .dot,#cross.lockon .rl{opacity:0}
 #cross.lockon .ticks{opacity:1;transform:scale(1)}
+
+#rmVeil{position:fixed;inset:0;z-index:29;pointer-events:none;opacity:0;-webkit-backdrop-filter:blur(var(--rmb,8px));backdrop-filter:blur(var(--rmb,8px));background:rgba(0,0,0,var(--rmd,.3));transition:opacity .25s ease}
+body.rm-open #rmVeil{opacity:1}
+body.rm-open #tip{display:none!important}
+#radial .rs .ri{fill:currentColor;stroke:none}
+#tip .tnav .tdist{font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:rgba(255,255,255,.75);background:rgba(26,20,40,.56);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:4px 8px;align-self:stretch;display:flex;align-items:center}
