@@ -18,7 +18,7 @@ const intro = {
     camera.fov = LOOK.fov; camera.updateProjectionMatrix();
     this.D0 = .503 * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 21);   // the arrow about 21 px tall: a real pointer's size
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
-    this.t = 0; this.glow = 0; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
+    this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
     document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.update(0);
   },
   at: null,   // where on screen the pointer starts (the Start button's centre), eased back to the centre as the camera swings
@@ -36,21 +36,22 @@ const intro = {
       _il.lookAt(_ia.set(0, 0, 0), dir, up); camera.quaternion.setFromRotationMatrix(_il);
       if (this.at) { const k = 1 - ez, W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }
       veil.material.opacity = 1 - sstep(this.t, .3, .9); veil.scale.setScalar(camera.position.distanceTo(player.pos) + .45);
-      emitGlow = quint(sstep(this.t, .7, 1));   // the engine lights during the last of the swing
+      emitGlow = quint(sstep(this.t, .72, 1));   // the engine lights during the last of the swing
+      if (this.t >= .76 && !this.hud) { this.hud = true; document.body.classList.remove('intro'); flickIn((1 - this.t) * (reduceMotion ? 2.5 : this.dur)) }   // and the instruments flicker in, all landing as the camera does
       if (this.t >= 1) this.finish();   // the moment the camera arrives: engine on, instruments flicker in, yours to fly
     }
     camera.updateMatrixWorld();
   },
   finish() {
     if (!this.active) return; this.active = introActive = false; veil.visible = false; emitGlow = 1; camera.clearViewOffset(); this.at = null;
-    camRel.copy(INTRO_END); camRelV.set(0, 0, 0); document.body.classList.remove('intro'); flickIn(); handOver();
+    camRel.copy(INTRO_END); camRelV.set(0, 0, 0); if (!this.hud) { document.body.classList.remove('intro'); flickIn() } handOver();
   },
 };
 // the instruments flicker on one by one as the opening ends, each with its own pattern and moment
-function flickIn() {
+function flickIn(within = 1.8) {   // every element is fully on within this many seconds
   const r = (a, b) => a + Math.random() * (b - a);
-  document.querySelectorAll('.hud:not([hidden]), #labels').forEach(e => { e.style.setProperty('--fk', 'flk' + (1 + (Math.random() * 3 | 0))); e.style.setProperty('--fd', r(.5, 1.1).toFixed(2) + 's'); e.style.setProperty('--fdl', r(0, .7).toFixed(2) + 's'); e.classList.remove('flk-go'); void e.offsetWidth; e.classList.add('flk-go') });
-  setTimeout(() => document.querySelectorAll('.flk-go').forEach(e => e.classList.remove('flk-go')), 2200);
+  document.querySelectorAll('.hud:not([hidden]), #labels').forEach(e => { e.style.setProperty('--fk', 'flk' + (1 + (Math.random() * 3 | 0))); const fd = r(.45, .75) * within; e.style.setProperty('--fd', fd.toFixed(2) + 's'); e.style.setProperty('--fdl', r(0, within - fd).toFixed(2) + 's'); e.classList.remove('flk-go'); void e.offsetWidth; e.classList.add('flk-go') });
+  setTimeout(() => document.querySelectorAll('.flk-go').forEach(e => e.classList.remove('flk-go')), within * 1000 + 300);
 }
 function handOver() { booted = true; updateLockUI(); region = null; lastInput = performance.now(); coach.start() }
 
@@ -78,7 +79,6 @@ function begin(withSound, e) {
   if (withSound) { setMuted(false); audio() }
   if (!coarse && !lockFailed && !TEST) requestLock();
   $('intro').hidden = true;   // straight to black: then only the pointer fades in
-  if (!TEST) { shipCanvas.style.transition = 'none'; shipCanvas.style.opacity = 0; void shipCanvas.offsetWidth; shipCanvas.style.transition = ''; requestAnimationFrame(() => requestAnimationFrame(() => { shipCanvas.style.opacity = 1 })) }
   if (!TEST) { intro.start(); const skip = e => { if (e.key !== 'Escape' && e.key !== ' ') return; intro.finish(); removeEventListener('keydown', skip) }; setTimeout(() => addEventListener('keydown', skip), 400) }   // clicks never skip it; Esc or Space does
   else handOver();
 }

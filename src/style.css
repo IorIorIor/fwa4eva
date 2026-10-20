@@ -310,7 +310,6 @@ body.ready #intro .go #enter:hover{transform:scale(1.05)}
 #enterQuiet{position:absolute;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);opacity:0;pointer-events:none;transition:opacity .7s ease .5s}
 body.ready #enterQuiet{opacity:1;pointer-events:auto}
 #lock{display:none !important}
-#shipLayer{transition:opacity 1.6s ease}
 #skipHint{display:none !important}
 #intro .ring circle{transition:none}
 
