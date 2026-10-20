@@ -78,7 +78,7 @@ const outerDisk = (() => {
 /* two satellite galaxies: a compact bright one near the disk (like M32) and a big diffuse one (like M110). Each is a swarm of
    crisp little stars, old and warm, crowding toward the middle, over a faint glow of the ones too small to resolve */
 function satStars(n, r, stretch, seed) {
-  const R_ = mulberry32(seed), p = new Float32Array(n * 3), b = new Float32Array(n), u = { op: uniform(1) }, m = skyMat({ blend: 'alpha' });
+  const R_ = mulberry32(seed), p = new Float32Array(n * 3), b = new Float32Array(n), u = { op: uniform(1) }, m = skyMat();   // added, not alpha-blended: dim stars over a bright sky used to darken it, so the dense middle went black
   for (let i = 0; i < n; i++) { const z = R_() * 2 - 1, a = R_() * 6.283, q = Math.sqrt(1 - z * z), rr = r * Math.pow(R_(), 2.2); p.set([q * Math.cos(a) * rr * stretch, z * rr, q * Math.sin(a) * rr], i * 3); b[i] = Math.pow(R_(), 4) }
   const vC = varyingProperty('vec3', 'vC'), vB = varyingProperty('float', 'vB');
   m.vertexNode = Fn(() => {
@@ -86,7 +86,7 @@ function satStars(n, r, stretch, seed) {
     vB.assign(mix(.18, 1, br).mul(farDim(mv.z.negate()))); vC.assign(mix(vec3(1, .82, .62), vec3(1, .96, .9), br));
     return billboardPx(mv, br.mul(1.8).add(1.1).mul(U.dpr.mul(.5).add(.5)));
   })();
-  m.fragmentNode = Fn(() => { const d = radial().mul(.5); Discard(d.greaterThan(.5)); return vec4(vC.mul(vB), u.op.mul(vB).mul(smoothstep(.5, .15, d))) })();
+  m.fragmentNode = Fn(() => { const d = radial().mul(.5); Discard(d.greaterThan(.5)); const a = u.op.mul(vB).mul(smoothstep(.5, .15, d)); return vec4(vC.mul(a), a) })();
   const mesh = layer(new THREE.Mesh(quads(n, { aP: [p, 3], aB: [b, 1] }), m), scene, -48); mesh.u = u; mesh.matrixAutoUpdate = false; return mesh;
 }
 const SATS = [{ name: 'M32', local: new V3(.42, .16, -.22).multiplyScalar(GAL_R0 + GAL_LEN), r: 26000, n: 2600, ns: 9000, core: 1, stretch: 1.25 }, { name: 'M110', local: new V3(-.95, -.3, .85).multiplyScalar(GAL_R0 + GAL_LEN), r: 80000, n: 4500, ns: 16000, core: .35, stretch: 2.4 }].map((d, k) => {
