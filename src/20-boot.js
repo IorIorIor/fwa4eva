@@ -10,7 +10,19 @@ const INTRO_END = new V3(0, .55, 2.1), _il = new THREE.Matrix4(), _ia = new V3()
 let camNear = 0, camNearGo = false, emitGlow = 1;
 const quint = x => x < .5 ? 16 * x ** 5 : 1 - Math.pow(-2 * x + 2, 5) / 2;
 const veil = (() => { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 1, side: THREE.BackSide, depthWrite: false })); m.renderOrder = 9999; m.frustumCulled = false; m.visible = false; camera.add(m); return m })();   // blacks out all but the ship
+// the 3D logo the opening flies through: the FWA mark extruded a little, white faces and grey sides, built once.
+// Its origin is the point under the middle of the W (svg 244, 102), where the camera passes through.
+const LOGO_THRU = [244, 102];
+let logo3d = null;
+function makeLogo3d() {
+  const svg = document.querySelector('#logo svg'); if (!svg) return null;
+  const shapes = new SVGLoader().parse(svg.outerHTML).paths.flatMap(p => SVGLoader.createShapes(p));
+  const geo = new THREE.ExtrudeGeometry(shapes, { depth: 149, bevelEnabled: false, curveSegments: 10 }); geo.translate(-LOGO_THRU[0], -LOGO_THRU[1], -149); geo.scale(1, -1, 1);   // svg y points down
+  const face = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: .9, roughness: .4, side: THREE.DoubleSide }), side = new THREE.MeshStandardMaterial({ color: 0x9a9aa4, emissive: 0xffffff, emissiveIntensity: .06, roughness: .5, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geo, [face, side]), g = new THREE.Group(); g.add(mesh); g.userData.mesh = mesh; g.visible = false; shipScene.add(g); return g;
+}
 const intro = {
+  logoAt: null, p: 1, Bs: 0, q0: new Q4(),
   active: false, t: 0, glow: 0, dur: 8, D0: 10, up0: new V3(), upW: new V3(),
   start() {
     // every time: the ship faces the galaxy's core and the camera's frame is the ship's own, so the opening always looks the same
@@ -20,8 +32,17 @@ const intro = {
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
     INTRO_END.set(0, .55, 2.1).multiplyScalar(LOOK.introDist ?? .5); this.lit = false;   // where the opening ends up: close behind the pointer
     this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
-    document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.update(0);
-    if (this.at) {   // shift the frame so the pointer's tip, not its middle, sits exactly on the click
+    document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.p = 1;
+    if (LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d()))) {   // first the logo: it sits where the splash's logo was, and the camera dives through it onto the pointer
+      this.at = null; this.update(0); this.q0.copy(camera.quaternion);
+      const D0 = this.D0, hL = D0 * 2.5, Dv = D0 * 6; this.Bs = Dv + hL - D0;
+      const Wl = this.logoAt.w / innerHeight * 2 * Dv * Math.tan(LOOK.fov * Math.PI / 360);
+      logo3d.position.copy(player.pos).addScaledVector(_iu.set(0, 1, 0).applyQuaternion(rig.q), hL); logo3d.quaternion.copy(this.q0);
+      logo3d.scale.set(Wl / 509, Wl / 509, Wl / 509 * (LOOK.logoDepth ?? .12)); logo3d.visible = true;
+      this.at = { x: this.logoAt.x, y: this.logoAt.y }; this.p = 0;
+    }
+    this.update(0);
+    if (this.at && this.p >= 1) {   // shift the frame so the pointer's tip, not its middle, sits exactly on the click
       camera.clearViewOffset(); camera.updateMatrixWorld(); avatar.updateMatrixWorld(true);
       const tip = avatar.localToWorld(_ia.set(ARROW.pts[0][0], .7, ARROW.pts[0][1])).project(camera);
       this.at.x -= tip.x * innerWidth / 2; this.at.y += tip.y * innerHeight / 2; this.update(0);
@@ -30,6 +51,7 @@ const intro = {
   at: null,   // where on screen the pointer starts (the Start button's centre), eased back to the centre as the camera swings
   update(dt) {
     avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = true; avatar.userData.flame.material.opacity = 0;
+    if (this.p < 1) { this.logoStep(dt); camera.updateMatrixWorld(); return }
     if (this.t < 1) {
       this.t = Math.min(1, this.t + dt / (reduceMotion ? 2.5 : this.dur));
       // one move: the camera swings from straight overhead round to just above and behind, easing in and out a great deal,
@@ -51,7 +73,19 @@ const intro = {
     }
     camera.updateMatrixWorld();
   },
+  // the dive: straight down the axis onto the pointer, through the logo, the FOV flaring wide as you pass it and settling as you land
+  logoStep(dt) {
+    this.p = Math.min(1, this.p + dt / Math.max(.3, LOOK.logoTime ?? 2.6));
+    const x = this.p, e = x * x * x * (x * (x * 6 - 15) + 10), D0 = this.D0, hL = D0 * 2.5, h = D0 + this.Bs * (1 - e);
+    camera.position.copy(player.pos).addScaledVector(_iu.set(0, 1, 0).applyQuaternion(rig.q), h); camera.quaternion.copy(this.q0);
+    const eX = 1 - (hL - D0) / this.Bs, ee = Math.pow(e, Math.log(.5) / Math.log(eX));   // remapped so the FOV peaks as you pass through the logo
+    camera.fov = LOOK.fov + ((LOOK.logoFov ?? 125) - LOOK.fov) * Math.pow(Math.sin(Math.PI * ee), 1.5); camera.updateProjectionMatrix();
+    if (this.at) { const k = 1 - sstep(e, 0, eX * .85), W = innerWidth, H = innerHeight; camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H) }
+    veil.scale.setScalar(h + .45);
+    if (this.p >= 1) { logo3d.visible = false; this.at = null; camera.clearViewOffset(); camera.fov = LOOK.fov; camera.updateProjectionMatrix() }
+  },
   finish() {
+    this.p = 1; if (logo3d) logo3d.visible = false;
     if (!this.active) return; this.active = introActive = false; veil.visible = false; emitGlow = 1; camera.clearViewOffset(); this.at = null;
     camRel.copy(INTRO_END); camRelV.set(0, 0, 0); if (!this.hud) { document.body.classList.remove('intro'); flickIn() } if (!booted) handOver();
   },
@@ -82,6 +116,7 @@ if (coarse) $('skipHint').hidden = true;   // touch: the opening just plays
   scene.remove(warm); bodies.mesh.count = 0;
 }
 function begin(withSound, e) {
+  { const m = document.querySelector('#intro .mark'), r0 = m && m.getBoundingClientRect(); intro.logoAt = r0 && r0.width ? { x: r0.left + r0.width * LOGO_THRU[0] / 509, y: r0.top + r0.height * LOGO_THRU[1] / 149, w: r0.width } : null }   // the 3D logo starts exactly over the splash's
   { const r = $('enter').getBoundingClientRect(); intro.at = e && e.detail && e.clientX ? { x: e.clientX, y: e.clientY } : r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null }   // the pointer appears right where you clicked Start
   if (e && e.pointerType !== 'touch' && e.clientX) { mouse.x = e.clientX; mouse.y = e.clientY; mouse.in = true }   // the pointer is already where you clicked: no second click to wake it
   if (withSound) { setMuted(false); audio() }

@@ -139,7 +139,7 @@ function updatePlayer(dt) {
     const accel = (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
     p.vel.addScaledVector(wish, (accel + (GM / (oR * oR || 1) * L.orbitThrust - accel) * ob) * dt);
     if (gasOn) { const vf = p.vel.dot(fwd); tmp.copy(p.vel).addScaledVector(fwd, -vf); p.vel.addScaledVector(tmp, -(1 - Math.exp(-2.8 * dt))) }
-    p.vel.multiplyScalar(Math.exp(-(braking ? 5.5 : thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
+    p.vel.multiplyScalar(Math.exp(-(braking ? (L.brakeStr ?? 5.5) : thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
     if (keys.x && !thrusting && !braking) { if (holdSp < 0) holdSp = p.vel.length(); p.vel.copy(fwd).multiplyScalar(holdSp); p.cruise = Math.max(p.cruise, cAt(holdSp)) } else holdSp = -1;   // X: hold the speed you have, along the nose
     const vmax = Math.min(thrusting ? vC : Infinity, turnAmt > 0 ? Math.min(vC, L.steerCap) + Math.max(0, vC - L.steerCap) * (1 - turnAmt) : Infinity);
     { const sp = p.vel.length(); if (sp > vmax) p.vel.setLength(Math.max(vmax, sp * Math.exp(-(thrusting ? 4 : 1 / Math.max(.1, L.glide)) * dt))) }   // eases down, never snaps

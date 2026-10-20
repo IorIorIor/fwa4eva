@@ -11,6 +11,7 @@ import {
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 
 THREE.ColorManagement.enabled = false;   // colours are authored as plain sRGB numbers and shown as-is (the look was tuned that way)
 const V3 = THREE.Vector3, Q4 = THREE.Quaternion, C3 = THREE.Color;
