@@ -52,3 +52,22 @@ if (matchMedia('(max-width:760px)').matches) ['panel', 'lookPanel', 'rmPanel'].f
   const up = () => { if (y0 == null) return; y0 = null; el.classList.remove('drag'); el.style.transform = ''; el.style.removeProperty('--dy'); if (dy > 80) { buzz(8); if (id === 'rmPanel') rmenu.close(); else if (el.classList.contains('open')) togglePanel(id) } };
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
 });
+// phones: the FWA logo opens the whole menu, full screen
+const mMenu = (() => {
+  const el = document.createElement('div'); el.id = 'mMenu'; el.hidden = true; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Menu'); document.body.appendChild(el);
+  const nav = $('topnav'), small = () => matchMedia('(max-width:760px)').matches;
+  const close = () => { el.classList.remove('in'); document.body.classList.remove('mm-open'); setTimeout(() => { if (!el.classList.contains('in')) el.hidden = true }, 250) };
+  const open = () => {
+    const items = [...nav.querySelectorAll('button')].map(b => `<button type="button" data-k="${b.dataset.k}" class="${b.classList.contains('on') ? 'on' : ''} ${b.classList.contains('off') ? 'off' : ''}">${b.textContent}</button>`).join('');
+    el.innerHTML = `<button type="button" class="mx" aria-label="Close">×</button><nav>${items}<button type="button" data-k="settings">Settings</button></nav><a href="https://thefwa.com" target="_blank" rel="noopener">thefwa.com</a>`;
+    el.hidden = false; void el.offsetWidth; el.classList.add('in'); document.body.classList.add('mm-open'); buzz(8);
+  };
+  el.addEventListener('pointerdown', e => e.stopPropagation());
+  el.addEventListener('click', e => {
+    if (e.target.closest('.mx') || e.target === el) { close(); return }
+    const b = e.target.closest('nav button'); if (!b) return; close(); const k = b.dataset.k;
+    if (k === 'settings') rmenu.choose('settings'); else { const t = nav.querySelector(`[data-k="${k}"]`); if (t) t.click() }
+  });
+  $('logo').addEventListener('click', e => { if (!small() || !booted) return; e.preventDefault(); el.hidden ? open() : close() });
+  return { open, close };
+})();

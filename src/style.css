@@ -738,3 +738,13 @@ body.paper #tip.mtop{background:rgba(250,250,248,.95)}
   #thrust{left:calc(50% + 70px + 8px)!important;right:auto!important;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
   #tiltBtn{left:calc(50% - 70px - 8px - 52px)!important;bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 }
+/* phones: the full-screen menu behind the logo */
+#mMenu{position:fixed;inset:0;z-index:45;background:rgba(6,6,8,.96);display:flex;flex-direction:column;justify-content:center;padding:calc(70px + env(safe-area-inset-top,0px)) 28px calc(40px + env(safe-area-inset-bottom,0px));opacity:0;transition:opacity .22s ease}
+#mMenu.in{opacity:1}
+#mMenu nav{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+#mMenu nav button{background:none;border:0;padding:6px 0;font-family:"FF Good Pro",var(--body);font-size:34px;line-height:1.1;color:rgba(255,255,255,.62);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#mMenu nav button.on,#mMenu nav button:active{color:#fff}#mMenu nav button.off{color:rgba(255,255,255,.35)}
+#mMenu .mx{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;width:44px;height:44px;background:none;border:0;color:#fff;font-size:30px;line-height:1}
+#mMenu a{margin-top:32px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none}
+body.paper #mMenu{background:rgba(250,250,248,.97)}body.paper #mMenu nav button{color:rgba(0,0,0,.55)}body.paper #mMenu nav button.on{color:#000}body.paper #mMenu .mx{color:#000}
+body.mm-open #logo{z-index:46}   /* the logo stays on top of its menu: tap it again to close */
