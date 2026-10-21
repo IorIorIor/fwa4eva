@@ -242,7 +242,7 @@ function engineLook(dt) {
 
 /* lock-on marker, reticle and tooltip */
 const fmtDist = v => v < 1000 ? v.toFixed(0) + ' u' : v < 1e6 ? (v / 1000).toFixed(v < 1e4 ? 1 : 0) + 'k u' : (v / 1e6).toFixed(2) + 'M u';
-const TNAV = '<span class="tnav"><i class="tdist"></i></span>';   /* (no ‹ › arrows: the arrow keys do that) */   // step through the archive from the star you're on
+const TNAV = '';   /* (no ‹ › arrows: the arrow keys do that) */   // step through the archive from the star you're on
 const lockMark = $('lockMark');
 function updateLockMark() {
   if (S.mode === 'fly' && lockI >= 0) {
@@ -297,7 +297,7 @@ function updateHover(dt) {
       const w = tip.offsetWidth, h = tip.offsetHeight, px = (x * .5 + .5) * innerWidth, py = (-y * .5 + .5) * innerHeight;
       tip.style.left = Math.max(12, Math.min(innerWidth - w - 12, px - (x > 0 ? w + 22 : -22))) + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, py - h / 2)) + 'px';
     } else if (tmp.z < 1 && Math.abs(tmp.x) < 1.3 && Math.abs(tmp.y) < 1.3) {
-      put('p' + pin, tipHTML(pin) + TNAV + (LOOK.rings ? '' : tipMore(pin)), pin === cardI && !LOOK.rings);   // in the rings game the full record only comes with a big portal
+      put('p' + pin, tipHTML(pin) + TNAV + (LOOK.rings && !map ? '' : tipMore(pin)), pin === cardI && (!LOOK.rings || map));   // in the rings game the full record only comes with a big portal
       const rpx = starR(pin) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), full = pin === cardI;   // the star's own radius on screen
       let x = (tmp.x * .5 + .5) * innerWidth + (full ? rpx * .72 : 0), y = (-tmp.y * .5 + .5) * innerHeight - (full ? rpx * .5 : 0);
       if (full) {   // the full record sits beside the star (no more docking it top left)
@@ -389,7 +389,7 @@ function tick(now) {
   {   // the tooltip opens up once the nearest winner is a few pixels across (a little less to stay open, so it doesn't flicker)
     let open = -1;
     if (fly && nearI >= 0 && TA[nearI] === 1) { const rpx = starR(nearI) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(starPos(nearI, tmp)))); if (rpx >= L.tipOpen * (cardI === nearI ? .75 : 1)) open = nearI }
-    else if (!fly && S.sel >= 0 && camera.position.distanceTo(starPos(S.sel, tmp)) < CR[S.sel] * 20) open = S.sel;
+    else if (!fly) { const c = hovI >= 0 ? hovI : cardI; if (c >= 0 && TA[c] === 1) { const rpx = starR(c) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(starPos(c, tmp)))); if (rpx * 2 >= (L.mapTipPx ?? 6) * (cardI === c ? .75 : 1)) open = c } if (open < 0 && S.sel >= 0 && camera.position.distanceTo(starPos(S.sel, tmp)) < CR[S.sel] * 20) open = S.sel }   // on the map: zoomed in close, the winner you point at opens into its full record
     if (gotCard.t > 0 && S.mode === 'fly') open = gotCard.i;   // a ring you just flew through keeps its record open a while
     showCard(open);
   }
