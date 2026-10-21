@@ -37,7 +37,7 @@ const mapZone = (() => {
           if (!(Z.on && t0 === Z.t0 && t1 === Z.t1)) Z.hov = { t0: Math.max(t0, tS), t1: Math.min(t1, tE + 864e5), lvl, y0 } } }
     }
     if (Z.hov) hovR.set(Z.hov.t0, Z.hov.t1, W);
-    hovR.u.k.value += ((Z.hov ? .085 * (L.mapZoneGlow ?? 1) : 0) - hovR.u.k.value) * Math.min(1, dt * 4); hovR.visible = map && hovR.u.k.value > .002;
+    hovR.u.k.value += ((Z.hov ? .085 * (L.mapZoneGlow ?? 1) : 0) - hovR.u.k.value) * Math.min(1, dt * (Z.hov ? 16 : 2.2));   // in quickly, out slowly hovR.visible = map && hovR.u.k.value > .002;
     actR.u.k.value += ((Z.on && map ? .045 * (L.mapZoneGlow ?? 1) : 0) - actR.u.k.value) * Math.min(1, dt * 6); actR.visible = map && actR.u.k.value > .002;
     if (!map && Z.on) Z.clear();
   };

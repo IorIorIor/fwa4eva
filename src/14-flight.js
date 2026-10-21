@@ -10,7 +10,7 @@ const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist:
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
 const camRel = new V3(0, .8, 3.4).multiplyScalar(SHIP_SC), camRelV = new V3(), prevVel = new V3();
-let bankPrev = 0, thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
+let bankCam = 0, bankCamV = 0, bankPrev = 0, thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
 function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
@@ -94,7 +94,7 @@ function updatePlayer(dt) {
   const fw = (keys.w || touchThrust ? 1 : 0) - (keys.s || touchBrake ? 1 : 0), SM = smK(), rl = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);
   {   // A/D roll the ship itself. Options: inertia (it winds up and coasts on), a double-tap barrel roll with a sideways hop, and the camera rolling along
     const steerKeys = !!L.rollSteer;   // switch: A/D turn you left and right, banking into the turn (underside to the outside), instead of rolling
-    turnKey += ((steerKeys ? rl : 0) - turnKey) * Math.min(1, dt * (L.rollSteerEase ?? 5)); if (Math.abs(turnKey) > 1e-4) rotateRig(turnKey * (L.rollSteerRate ?? 1.1) * dt, 0); { const bk = turnKey * (L.rollSteerBank ?? .7); camRollTo += (bk - bankPrev) * (L.rollSteerCam ?? 1); bankPrev = bk }   // the view leans with the ship's bank, on the same soft spring as the roll
+    turnKey += ((steerKeys ? rl : 0) - turnKey) * Math.min(1, dt * (L.rollSteerEase ?? 5)); if (Math.abs(turnKey) > 1e-4) rotateRig(turnKey * (L.rollSteerRate ?? 1.1) * dt, 0); { const bk = turnKey * (L.rollSteerBank ?? .7) * (L.rollSteerCam ?? 1), K = L.rollCamSpring ?? 3.5, C = 2 * Math.sqrt(K) * (L.rollCamDamp ?? .9); bankCamV += ((bk - bankCam) * K - bankCamV * C) * Math.min(dt, 1 / 30); bankCam += bankCamV * dt }   // the view leans with the ship's bank, on the same soft spring as the roll: it only turns the view, the camera stays where it is
     const inr = L.rollInertia ?? 0, wT = (steerKeys ? 0 : rl) * (L.rollSpeed ?? 2.2); rollW += (wT - rollW) * Math.min(1, dt * (inr > 0 ? 1.2 + 30 * (1 - inr) * (1 - inr) : 1e9));
     let dr = rollW * dt;
     if (rl && !rollHeld && L.rollBarrel) { const t = performance.now(); if (rollTap.d === rl && t - rollTap.t < 280) { barrel = { d: rl, t: 0 }; const side = _ax.set(-rl, 0, 0).applyQuaternion(p.base); p.vel.addScaledVector(side, (L.rollHop ?? .35) * Math.max(80, p.vel.length() * .25)) } rollTap = { d: rl, t } }   // double tap: a full barrel roll, hopping sideways
@@ -229,6 +229,7 @@ function updateCamera(dt) {
     tmp.copy(camRel).applyQuaternion(rig.quat).add(player.pos);
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur || 1.2); const e = ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tmp, player.pos, e); else camera.position.lerpVectors(tween.fp, tmp, e); camera.quaternion.copy(tween.fq).slerp(rig.quat, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }
     else { camera.position.copy(tmp); camera.quaternion.copy(rig.quat) }
+    if (Math.abs(bankCam) > 1e-5) camera.quaternion.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), bankCam));   // the bank leans the view in place
     const fov = Math.min(150, L.fov + L.fovKick * sstep(Math.log10(Math.max(1, player.vel.length())), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) + boostK * L.boostFov + ringPop * (L.ringFov ?? 10));   // wider the faster you go
     camera.fov += (fov - camera.fov) * (1 - Math.exp(-4 * dt)); camera.updateProjectionMatrix();
   } else {

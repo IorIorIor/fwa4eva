@@ -14,9 +14,28 @@ function ringCheck(p) {   // called by the flight after it moves you: you get a 
 }
 const _rk = new V3();
 function ringHit(h) {   // through the plane: it's yours, and time starts back up from here
-  slowmo.after = 0; ringIn = h.i;
+  slowmo.after = 0; ringIn = h.i; HALO.pop(h);
   h.done = true; collect(h.i);
 }
+/* the sparks a ring bursts into: white points flung out from its middle, slowing as they go, twinkling out. All on the
+   GPU: each has a direction and a speed, and the shader places it by the burst's age (game time, so bullet time slows them too) */
+const sparks = (() => {
+  const n = 360, d = new Float32Array(n * 3), sp = new Float32Array(n), r = mulberry32(77);
+  for (let i = 0; i < n; i++) { const z = r() * 2 - 1, a = r() * 6.2832, s = Math.sqrt(1 - z * z); d.set([Math.cos(a) * s, z, Math.sin(a) * s], i * 3); sp[i] = Math.pow(r(), 1.8) * .85 + .15 }
+  const u = { o: uniform(new V3()), t: uniform(9), R: uniform(1), sz: uniform(3), life: uniform(1.6), k: uniform(1) }, m = skyMat(), vA = varyingProperty('float', 'vA');
+  m.vertexNode = Fn(() => {
+    const dir = ia('aD', 'vec3'), s = ia('aS', 'float'), tl = u.t.div(u.life), dist = u.R.mul(s).mul(float(1).sub(exp(u.t.mul(-2.6).div(s.add(.3))))), mv = vec4(u.o.add(cameraViewMatrix.mul(vec4(dir, 0)).xyz.mul(dist)), 1);
+    const tw = sin(u.t.mul(s.mul(23).add(9)).add(s.mul(41))).mul(.35).add(.65); vA.assign(sq(max(0, float(1).sub(tl))).mul(tw).mul(u.k).mul(step(tl, 1)));
+    return billboardPx(mv, u.sz.mul(U.dpr).mul(s.mul(.6).add(.7)).mul(float(1).sub(tl.mul(.5))));
+  })();
+  m.fragmentNode = Fn(() => { const q = radial(); Discard(q.greaterThan(1)); const c = exp(q.mul(q).mul(-5)); const k = c.mul(vA).mul(1.6); return vec4(vec3(1, .98, .94).mul(k), min(k, 1)) })();
+  const mesh = new THREE.Mesh(quads(n, { aD: [d, 3], aS: [sp, 1] }), m); mesh.frustumCulled = false; mesh.renderOrder = 3; mesh.visible = false; shipScene.add(mesh);
+  const c = new V3(); let on = false;
+  return {
+    burst(at, R) { if (!(LOOK.ringSpark ?? 1)) return; c.copy(at); u.R.value = R * (LOOK.ringSparkSpread ?? 2.5); u.t.value = 0; u.life.value = LOOK.ringSparkLife ?? 1.6; u.sz.value = LOOK.ringSparkSize ?? 5; u.k.value = LOOK.ringSpark ?? 1; on = true },
+    update(dt) { if (!on) { mesh.visible = false; return } u.t.value += dt; u.o.value.copy(c).applyMatrix4(camera.matrixWorldInverse); mesh.visible = S.mode === 'fly'; if (u.t.value > u.life.value) on = false },   // centre in view space: precise this far out
+  };
+})();
 /* the halos: up close each ring is a real 3D crystal halo, holographic and glinting, turned to face you. It reads your
    course: when you're about to pass through, it starts to shrink and slides onto your path, and collapses on you */
 const HALO_N = 6;
@@ -100,23 +119,29 @@ const HALO = (() => {
     return vec4(cf, pt.a.mul(smoothstep(1, .97, rr)).mul(pt.brk.mul(.6).oneMinus()));
   })();
   const portal = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 48, 48), pm); portal.frustumCulled = false; portal.renderOrder = 2; portal.visible = false; portal.matrixAutoUpdate = false; shipScene.add(portal);   // on the ship's layer: the galaxy's glows and star clouds are drawn after the scene and would speckle over the picture
-  let pI = -1; const _mn = new V3(), _mv = new V3(), _ldp = new V3(), _pm = new THREE.Matrix4(), _up = new V3(), pInfo = { on: false, i: -1, c: new V3(), r: 1 };   // where the portal is, for the record that floats beside it
+  let pI = -1, pop = null; const _mn = new V3(), _mv = new V3(), _ldp = new V3(), _pm = new THREE.Matrix4(), _up = new V3(), pInfo = { on: false, i: -1, c: new V3(), r: 1 };   // where the portal is, for the record that floats beside it
   function portalUpdate(dt) {
     const L = LOOK; pInfo.on = false; if (!(L.ringPortal ?? 1) || !L.rings || S.mode !== 'fly') { portal.visible = false; return }
+    if (pop) {   // through it: the white, fully warped picture shrinks to a point, then bursts into sparks
+      pop.t += dt / Math.max(.05, L.ringShrink ?? .35); const s = Math.pow(Math.max(0, 1 - pop.t), 1.7); pInfo.on = false;
+      portal.matrix.copy(pop.m).multiply(_m.makeScale(s, s, 1)); portal.matrixWorldNeedsUpdate = true; pt.white.value = 1; pt.dis.value = 2.2 * (L.ringMemWarp ?? 1); pt.st.value = 0; pt.brk.value = 0; pt.a.value = 1; portal.visible = s > .002;
+      if (pop.t >= 1) { sparks.burst(pop.c, pop.r); pop = null; portal.visible = false } return;
+    }
     let near = -1; if (best.length) { const i = best[0][1], R = starR(i) * (L.ringSize ?? 1.6), dist = Math.sqrt(best[0][0]), pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360)); if (R * pxK / dist > (L.ringPortalPre ?? 4) || L.ringPlay) near = i }   // a little before the ring shows
     if (near >= 0 && (near !== pI || texCache.get(near) !== pt.cur)) { pI = near; pt.cur = shot(D[near]); pt.taps.forEach(t => t.value = pt.cur); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
-    const h = live.find(x => x.i === pI); if (!h || near < 0) { portal.visible = false; return }
+    const h = live.find(x => x.i === pI); if (!h || near < 0 || h.done) { portal.visible = false; return }   // a ring you've just taken has no picture until it's back
     const k = live.indexOf(h); pt.a.value = iA[k] / (GOT[pI] ? 1.3 : 1); pt.depth.value = L.ringPortalDepth ?? .8; pt.size.value = L.ringPortalSize ?? 1.25; pt.dark.value = L.ringPortalBright ?? .85; pt.lens.value = L.ringPortalLens ?? .6; pt.ca.value = L.ringPortalCA ?? .5;
-    pt.white.value = 0; pt.brk.value = 0; pt.hit.value.set(0, 0); pt.st.value = 0; pt.dis.value = 0; let memA = 1;
+    pt.white.value = 0; pt.brk.value = 0; pt.hit.value.set(0, 0); pt.st.value = 0; pt.dis.value = 0;
     if ((L.ringMembrane ?? 1) && !h.done && !L.ringPlay) {   // the membrane, by how long until you reach it: wobbly far off, clear on the way in, then in the last moment it warps hard and fades as you go through
       const n = h.nSet ? h.n : _mn.copy(player.pos).sub(h.c).normalize(), s = _mv.copy(player.pos).sub(h.c).dot(n), vn = -player.vel.dot(n), tt = vn > 1 && s > 0 ? s / vn : Infinity;
       const tin = Math.max(.05, L.ringMemIn ?? .5), clr = Math.max(tin * 1.2, L.ringMemClear ?? 1.4), near = Math.pow(Math.max(0, 1 - tt / tin), 1.4), far = sstep(tt, clr, clr * 2.2);
-      pt.dis.value = far * (L.ringMemFar ?? .35) + near * 2.2 * (L.ringMemWarp ?? 1); pt.st.value = near * h.r * (L.ringMemBulge ?? .35); memA = 1 - sstep(near, .6, .97);
+      pt.dis.value = far * (L.ringMemFar ?? .35) + near * 2.2 * (L.ringMemWarp ?? 1); pt.st.value = near * h.r * (L.ringMemBulge ?? .35); pt.white.value = sstep(near, .35, .95) * (L.ringMemWhite ?? 1);   // and turns white as it warps
     }
-    _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(h.nSet ? _ldp.copy(h.c).add(h.n) : player.pos, h.c, _up);   /* once committed the portal stays put, facing the way you came */ portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5); portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; pt.a.value *= memA; portal.visible = pt.a.value > .005; Object.assign(pInfo, { on: portal.visible && !h.done, i: pI, r: h.r }); pInfo.c.copy(h.c);   // just inside the ring's tube, so the ring still frames it
+    _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(h.nSet ? _ldp.copy(h.c).add(h.n) : player.pos, h.c, _up);   /* once committed the portal stays put, facing the way you came */ portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5); portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005; Object.assign(pInfo, { on: portal.visible && !h.done, i: pI, r: h.r }); pInfo.c.copy(h.c);   // just inside the ring's tube, so the ring still frames it
   }
-  const update0 = update; function updateAll(dt) { update0(dt); portalUpdate(dt) }
-  return { update: updateAll, live, u, portal, pt, pInfo, get ts() { return minTs } };
+  const update0 = update; function updateAll(dt) { update0(dt); portalUpdate(dt); sparks.update(dt) }
+  const popAt = h => { if (!(LOOK.ringMembrane ?? 1) || !(LOOK.ringPortal ?? 1) || !portal.visible || h.i !== pI) { if (LOOK.ringSpark ?? 1) sparks.burst(h.c, h.r); return } pop = { t: 0, m: portal.matrix.clone(), c: h.c.clone(), r: h.r } };   // no picture showing: straight to the sparks
+  return { update: updateAll, pop: popAt, live, u, portal, pt, pInfo, get ts() { return minTs } };
 })();
 /* bullet time: once a ring can't be missed, all of time slows, exponentially, to all but a standstill as you pass through it,
    then winds back up just as it slowed */
