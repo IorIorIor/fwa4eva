@@ -13,7 +13,7 @@ function flyTo(i) {   // lock on and let the autopilot take you there (on the ma
 let warp = null;
 function startWarp(i) {
   const to = starPos(i, new V3()), from = player.pos.clone(), back = from.clone().sub(to), bl = back.length() || 1;
-  warp = { i, from, to, dest: to.clone().addScaledVector(back, dockDist(i) * 1.5 / bl), t: 0, turn: Math.max(0, LOOK.warpTurn ?? 1.1), dur: Math.max(.6, LOOK.warpTime ?? 2.4), prev: from.clone(), eT: 0 }; auto = null; curStrand = null;
+  warp = { i, from, to, dest: to.clone().addScaledVector(back, dockDist(i) * 1.5 / bl), t: 0, turn: Math.max(0, LOOK.warpTurn ?? 1.1), dur: Math.max(.6, LOOK.warpTime ?? 2.4), prev: from.clone(), eT: 0 }; auto = null; curStrand = null; camHold = null; camRelV.set(0, 0, 0);   // (the opening's waiting camera lets go at once)
 }
 function stepWarp(dt) {
   // first the ship turns to face it (eased, standing still), then it goes: a slow start, very fast in the middle, a long soft arrival
@@ -22,7 +22,7 @@ function stepWarp(dt) {
   const p = Math.min(1, (w.t - w.turn) / w.dur), n = Math.max(1, LOOK.warpEase ?? 4), e = p < .5 ? Math.pow(2 * p, n) / 2 : 1 - Math.pow(2 - 2 * p, n) / 2;
   player.pos.lerpVectors(w.from, w.dest, e);
   player.vel.copy(w.dest).sub(w.from).setLength(LIGHT * .97 * Math.pow(Math.sin(Math.PI * p), 1.5) + 1);   // what the speed effects read: up to light speed and back
-  aimAt(tmp.copy(w.to).sub(player.pos), 1 - Math.exp(-10 * dt)); player.quat.copy(rig.q); player.base.copy(player.quat);
+  if (performance.now() - lastInput > 600) aimAt(tmp.copy(w.to).sub(player.pos), 1 - Math.exp(-3 * dt)); player.quat.copy(rig.q); player.base.copy(player.quat);   // you can look and turn the ship on the way; leave the mouse and it eases back to the star
   if (p >= 1) { player.vel.set(0, 0, 0); warp = null }
 }
 // tours: a list of winners, flown one after another, pausing at each so its record can open. Any thrust or brake ends it

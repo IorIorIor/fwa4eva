@@ -325,7 +325,7 @@ function tick(now) {
   const L = LOOK, fly = S.mode === 'fly';
   ring2.rotation.y += dt * .05; beacons.forEach((b, k) => { b.material.emissiveIntensity = (Math.sin(now * .003 + k * 1.7) > .6) ? 2 : .2 });
   if (fly && booted) {
-    if (warp) stepWarp(dt); else if (!(tween && tween.mode)) updatePlayer(dt);   /* while the view swings between map and flight the ship holds still */ tourUpdate(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat);
+    if (warp) stepWarp(rdt); else if (!(tween && tween.mode)) updatePlayer(dt);   /* while the view swings between map and flight the ship holds still */ tourUpdate(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat);
     const fl = avatar.userData.flame; fl.material.opacity += ((thrusting ? .85 : holdSp >= 0 ? .5 : 0) - fl.material.opacity) * Math.min(1, dt * 10); { const fz = .6 + .4 * Math.sin(now * .04) + (thrusting ? .6 + player.cruise * 1.5 : 0); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
     ;
     fl.material.color.copy(trailColour(1, 1, _flc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0).lerp(_amber, gasOn && !boosting ? 1 : 0));   // the flame takes the trail's colour

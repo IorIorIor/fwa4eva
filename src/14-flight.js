@@ -231,9 +231,9 @@ function updateCamera(dt) {
     if (camNear > 0) { if (booted && thrusting) camNearGo = true; if (camNearGo) { camNear = Math.max(0, camNear - dt / 3.5); if (!camNear) camNearGo = false } tmp2.lerp(INTRO_END, ease(camNear)) }   // after the intro the camera stays close until your first push
     if (camHold) {   // after the opening the camera stays put in space where it landed; once the ship is out at the usual distance it lets go and follows, elastically, from right there
       _cm.copy(camHold.at).sub(player.pos).applyQuaternion(_iq.copy(rig.quat).invert()); camRel.copy(_cm); camRelV.set(0, 0, 0); prevVel.copy(player.vel);
-      idleT = 0; camRest = 0; if (_cm.length() >= Math.hypot(rig.dist * L.camHeight * Math.sqrt(pull), rig.dist * pull) * (LOOK.camLetGo ?? .97)) { camHold = null; camRelV.copy(player.vel).applyQuaternion(_iq).negate() }   // it lets go still at rest in space (moving back past the ship), and the spring takes it from there: no jolt
+      idleT = 0; camRest = 0; if (_cm.length() >= Math.hypot(rig.dist * L.camHeight * Math.sqrt(pull), rig.dist * pull) * (LOOK.camLetGo ?? .97)) { camHold = null; camRelV.copy(player.vel).applyQuaternion(_iq).negate(); const mv = rig.dist * 4; if (camRelV.length() > mv) camRelV.setLength(mv) }   // it lets go still at rest in space (moving back past the ship), and the spring takes it from there: no jolt
     } else {
-    const k = 60 / Math.max(.15, L.elastic), c = 2 * Math.sqrt(k) * .62;                    // underdamped: a little overshoot
+    const k = 60 / Math.max(.15, L.elastic) * (warp ? LOOK.warpCamStiff ?? 6 : 1), c = 2 * Math.sqrt(k) * (warp ? 1 : .62);   // underdamped: a little overshoot (in a warp: much stiffer and damped, so the ship never gets away)
     camRelV.addScaledVector(tmp2.sub(camRel), k * dt).multiplyScalar(Math.exp(-c * dt));
     _sd.copy(player.vel).sub(prevVel).applyQuaternion(_iq.copy(rig.quat).invert()); prevVel.copy(player.vel); const kick = warp ? 0 : Math.min(_sd.length(), 400); if (kick > 1e-3) camRelV.addScaledVector(_sd.setLength(kick), -.06 * L.elastic * SHIP_K * SHIP_SC);   // acceleration kicks the camera back
     camRel.addScaledVector(camRelV, dt); const maxL = rig.dist * pull * 2.2; if (camRel.length() > maxL) camRel.setLength(maxL); }

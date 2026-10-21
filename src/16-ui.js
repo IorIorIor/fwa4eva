@@ -244,7 +244,7 @@ const tipMore = i => {
   const d = D[i], row = (k, v, cls = '') => `<div class="${cls}"><dt>${k}</dt><dd>${v}</dd></div>`;
   return `<div class="tx"><div class="ti"><canvas class="tshot" width="480" height="300"></canvas><dl>` + row('Award', AWARD_LONG[d.award]) + row('Points', Math.round(d.score * 10)) + row('Agency', esc(d.agency)) + row('Category', esc(d.category)) +
     (d.tech.join() === 'Unknown' ? '' : row('Built with', esc(d.tech.join(', ')))) + (d.country === '—' ? '' : row('Country', esc(d.country))) + (chainPos.has(i) ? (p => row('Path', `${p.n + 1} of ${p.len}`))(chainPos.get(i)) : '') +
-    `</dl>${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">Launch project →</a>` : ''}</div></div>`;
+    `</dl></div></div>`;
 };
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const tipBox = (top, title, score, aw) => `<span class="thd"><span class="td"><span>${esc(top)}</span>${aw ? `<em class="taw">${aw}</em>` : ''}${score != null ? `<b class="tsc">${esc(score)}</b>` : ''}</span><span class="tt">${esc(title)}</span></span>`;   // the top line runs as wide as the title, the score at its right end
