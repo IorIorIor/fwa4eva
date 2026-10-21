@@ -4,9 +4,9 @@ let coreGlowV = { k: 0, s: 1 }, mapK = 0;
 const dayLab = (() => {
   const box = $('dayLabels'), els = new Map(), cand = [], v = new V3();   // one label per winner, so each fades in and out on its own
   return function update() {
-    const L = LOOK, on = S.mode === 'map' && !(tween && tween.mode) && !(mapZone.on && mapZone.lvl !== 12) && (L.mapDays ?? 1) > 0 && booted, now = performance.now(); box.style.setProperty('--dls', (L.mapDaySize ?? 8) + 'px'); box.style.opacity = L.mapDays ?? 1;
-    cand.length = 0; if (on) { const R = (L.mapDayDist ?? 60000) * mapDistK(), R2 = R * R, cp = camera.position, zh = mapZone.on ? mapZone : null; for (let i = 0; i < N; i++) { if (TA[i] < 1 || (zh && (D[i].t < zh.t0 || D[i].t >= zh.t1))) continue; const dx = P[i * 3] - cp.x, dy = P[i * 3 + 1] - cp.y, dz = P[i * 3 + 2] - cp.z, d2 = dx * dx + dy * dy + dz * dz; if (zh || d2 < R2) cand.push([d2, i]) }   /* an open (or lit) month shows every winner in it; otherwise only those within reach */ cand.sort((a, b) => a[0] - b[0]) }
-    const n = Math.min(cand.length, mapZone.on ? 400 : L.mapDayN ?? 60), seen = new Set();   // inside an open zone, every winner in it gets its date
+    const L = LOOK, agc = S.agencies.size > 0 && conOn, on = S.mode === 'map' && !(tween && tween.mode) && (agc || !(mapZone.on && mapZone.lvl !== 12)) && (L.mapDays ?? 1) > 0 && booted, now = performance.now(); box.style.setProperty('--dls', (L.mapDaySize ?? 8) + 'px'); box.style.opacity = L.mapDays ?? 1;
+    cand.length = 0; if (on) { const R = (L.mapDayDist ?? 60000) * mapDistK(), R2 = R * R, cp = camera.position, zh = mapZone.on ? mapZone : null; for (let i = 0; i < N; i++) { if (TA[i] < 1 || (!agc && zh && (D[i].t < zh.t0 || D[i].t >= zh.t1))) continue; const dx = P[i * 3] - cp.x, dy = P[i * 3 + 1] - cp.y, dz = P[i * 3 + 2] - cp.z, d2 = dx * dx + dy * dy + dz * dz; if (agc || zh || d2 < R2) cand.push([d2, i]) }   /* an open (or lit) month shows every winner in it; otherwise only those within reach */ cand.sort((a, b) => a[0] - b[0]) }
+    const n = Math.min(cand.length, mapZone.on || agc ? 400 : L.mapDayN ?? 60), seen = new Set();   // inside an open zone, every winner in it gets its date
     const occ = new Set(), cw = (L.mapDaySize ?? 8) * 7, ch = (L.mapDaySize ?? 8) * 1.6;   // declutter: a date only shows where it doesn't land on one already shown
     for (let c = 0; c < n; c++) { const i = cand[c][1]; v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]).project(camera); if (v.z > 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) continue;
       { const gx = Math.floor((v.x * .5 + .5) * innerWidth / cw), gy = Math.floor((-v.y * .5 + .5) * innerHeight / ch), k1 = gx + ',' + gy, k2 = (gx + 1) + ',' + gy; if (occ.has(k1) || occ.has(k2) || occ.has((gx - 1) + ',' + gy)) continue; occ.add(k1) }
@@ -98,6 +98,7 @@ function updateTimeRings(dt) {
     let d = (rulerGoal - ruler.th) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI;
     if (Math.abs(d) > 1e-4) ruler.turn(ruler.th + d * Math.min(1, dt * 3));
   } else if (ruler.th !== THR) { ruler.turn(THR); rulerGoal = THR }
+  { const ag = 1 - (L.agencyDim ?? .85) * conK; if (ag < .999) { if (spiralLine) spiralLine.u.a.value *= ag; if (monthTicks) { monthTicks.u.a.value *= ag; monthTicks.u.ya.value *= ag } ['era', 'yr', 'mo'].forEach(k => { ruler.u[k].value *= ag; u[k].value *= ag }) } }   // an agency's constellation up: the timeline steps back
   // you-are-here ring + date
   const pl = toLocal(player.pos, tmp2), pr = Math.hypot(pl.x, pl.z), inMe = S.mode === 'fly' ? (1 - sstep(Math.abs(pl.y), 40000, 140000)) * (1 - sstep(pr, Rr * 1.01, Rr * 1.08)) * sstep(pr, GAL_R0 * .9, GAL_R0 * 1.2) : 0;
   youRing.scale.setScalar(Math.max(1, pr)); youRing.material.opacity = .4 * L.youRing * inMe; youRing.visible = ringFarK > .01 && inMe > .01 && L.youRing > 0;   // the date still rides along; the ring only with time rings on
