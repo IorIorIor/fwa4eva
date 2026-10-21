@@ -38,7 +38,7 @@ const mapZone = (() => {
           if (!(Z.on && t0 === Z.t0 && t1 === Z.t1)) Z.hov = { t0: Math.max(t0, tS), t1: Math.min(t1, tE + 864e5), lvl, y0 } } }
     }
     if (Z.hov) hovR.set(Z.hov.t0, Z.hov.t1, W);
-    { const h = Z.hov, key = h ? h.t0 + '' : ''; if (key !== tipKey) { tipKey = key; if (h) { const d = new Date(h.t0); tipEl.textContent = h.lvl === 12 ? `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}` : String(d.getUTCFullYear()) } tipEl.classList.toggle('on', !!h) } if (h) tipEl.style.transform = `translate(${(mouse.x + 14).toFixed(0)}px,${(mouse.y + 12).toFixed(0)}px)` }   // a small tag by the pointer: which year (or month) lights up
+    { const h = Z.hov, key = h ? h.t0 + '' : ''; if (key !== tipKey) { tipKey = key; if (h) { zoneBlip((h.t0 - tS) / Math.max(1, tE - tS), mouse.x / innerWidth * 2 - 1); const d = new Date(h.t0); tipEl.textContent = h.lvl === 12 ? `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}` : String(d.getUTCFullYear()) } tipEl.classList.toggle('on', !!h) } if (h) tipEl.style.transform = `translate(${(mouse.x + 14).toFixed(0)}px,${(mouse.y + 12).toFixed(0)}px)` }   // a small tag by the pointer: which year (or month) lights up
     hovR.u.k.value += ((Z.hov ? .085 * (L.mapZoneGlow ?? 1) : 0) - hovR.u.k.value) * Math.min(1, dt * (Z.hov ? 16 : 2.2)); /* in quickly, out slowly */ hovR.visible = map && hovR.u.k.value > .002;
     actR.u.k.value += ((Z.on && map ? .045 * (L.mapZoneGlow ?? 1) : 0) - actR.u.k.value) * Math.min(1, dt * 6); actR.visible = map && actR.u.k.value > .002;
     if (!map && Z.on) Z.clear();

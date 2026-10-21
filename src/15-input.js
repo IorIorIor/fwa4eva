@@ -25,7 +25,7 @@ canvas.addEventListener('pointerdown', e => {
   if (!locked()) try { canvas.setPointerCapture(e.pointerId) } catch (err) { }   // capture throws while the pointer is locked
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y) }
-  down = { x: e.clientX, y: e.clientY, btn: e.button, shift: e.shiftKey, touch: e.pointerType !== 'mouse' }; dragged = false;
+  panV.set(0, 0, 0); down = { x: e.clientX, y: e.clientY, btn: e.button, shift: e.shiftKey, touch: e.pointerType !== 'mouse' }; dragged = false;
   // hold (100 ms, no star in reach, not dragging): the radial menu opens round the press
   clearTimeout(holdT); if (booted && !rmenu.open && !rmenu.panel && e.button === 0 && ptrs.size === 1) holdT = setTimeout(() => {
     if (!down || dragged) return; const cx = locked() ? innerWidth / 2 : down.x, cy = locked() ? innerHeight / 2 : down.y;
@@ -46,13 +46,15 @@ canvas.addEventListener('pointermove', e => {
   if (down.btn === 2 || down.shift) { orbit.theta -= dx * .005 * dk; orbit.phi = orbit.phi > Math.PI / 2 ? Math.max(Math.PI - 1.5, Math.min(Math.PI - .01, orbit.phi + dy * .005 * dk)) : Math.max(.01, Math.min(1.5, orbit.phi - dy * .005 * dk)) }   // right-drag (or Shift) turns the view
   else {   // drag pans: the spot you grabbed stays under the pointer
     const a = groundAt(e.clientX - dx, e.clientY - dy, _pa), b = a && groundAt(e.clientX, e.clientY, _pb);
+    const t0 = orbit.target.clone();
     if (a && b && a.distanceTo(b) < orbit.dist * 4) orbit.target.addScaledVector(a.sub(b), dk);   // slower than the pointer, so the map glides
     else { const k = orbit.dist * .0013 * dk, o = orbitPose(), r = new V3(1, 0, 0).applyQuaternion(o.q), f = new V3(r.z, 0, -r.x); orbit.target.addScaledVector(r, -dx * k).addScaledVector(f, -dy * k) }
+    { const now = performance.now(), sdt = Math.max(.008, (now - panT) / 1000); panT = now; panV.lerp(t0.sub(orbit.target).negate().divideScalar(sdt), .5) }   // how fast you're dragging, for the coast
   }
 });
 const endPtr = e => {
   clearTimeout(holdT);
-  ptrs.delete(e.pointerId); pinch0 = 0;
+  ptrs.delete(e.pointerId); pinch0 = 0; if (performance.now() - panT > 90) panV.set(0, 0, 0);   // held still before letting go: no coast
   if (down && !dragged && e.type === 'pointerup' && booted) {
     const unlock = () => { lockI = -1; if (auto && auto.i >= 0) auto = null };
     const hov = (x, y) => coarse || down.touch ? pick(x, y) : hovPick;   // with a mouse, only the star whose tooltip is showing; touch has no hover, so a tap picks
@@ -116,8 +118,8 @@ addEventListener('keydown', e => {
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }
   if (k === '/') { e.preventDefault(); keys[k] = false; rmenu.sub('search') }   // / searches
   if ((k === 'arrowup' || k === 'arrowdown') && S.mode === 'fly' && !rmenu.panel) { keys[k] = false; e.preventDefault(); if (!e.repeat) setSpeedMode(speedMode + (k === 'arrowup' ? 1 : -1)) }   // ↑ ↓: speed mode
-  if ((k === 'arrowleft' || k === 'arrowright') && S.mode === 'fly' && !rmenu.panel) { keys[k] = false; e.preventDefault(); if (!e.repeat) stepByDist(k === 'arrowright' ? 1 : -1) }   // ← a nearer winner, → a farther one (of those in hover reach), locked on or not
-  if (k === 'q' && S.mode === 'fly' && !e.repeat) { if (locked()) { freeMouse = true; document.exitPointerLock() } else { freeMouse = false; if (!lockFailed && !coarse) requestLock() } }   // Q: a plain mouse pointer to click things with (Q again, or a click on the sky, to fly)
+  if ((k === 'arrowleft' || k === 'arrowright' || k === 'q' || k === 'e') && S.mode === 'fly' && !rmenu.panel && !e.target.closest('input,textarea')) { keys[k] = false; e.preventDefault(); if (!e.repeat) stepByDist(k === 'arrowright' || k === 'e' ? 1 : -1) }   /* Q / ← a nearer winner, E / → a farther one */   // ← a nearer winner, → a farther one (of those in hover reach), locked on or not
+  if (k === 'f' && S.mode === 'fly' && !e.repeat) { if (locked()) { freeMouse = true; document.exitPointerLock() } else { freeMouse = false; if (!lockFailed && !coarse) requestLock() } }   // F: a plain mouse pointer to click things with (F again, or a click on the sky, to fly)
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });

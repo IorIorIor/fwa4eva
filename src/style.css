@@ -545,7 +545,7 @@ body.map #gl,body.map #gl.hovering{cursor:pointer!important}   /* on the map the
 #tip .td .tsc{font-weight:500;color:#fff}
 @media (min-width:760px){body.map #panel{left:max(16px,env(safe-area-inset-left,0px));right:auto}}   /* on the map the filters sit on the left, next to an open Look panel on the right */
 #tip.side .tshot{display:none}   /* beside a portal: the portal already shows the picture */
-.glab.yr.ax:not(.mo){text-shadow:none;color:#fff;background:rgba(26,20,40,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:3px 6px 2px;font-size:10px;letter-spacing:.06em}   /* year numbers sit in a little box, like the tooltips */
+.glab.yr.ax{text-shadow:none;color:#fff;background:rgba(26,20,40,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:3px 6px 2px;font-size:10px;letter-spacing:.06em}   /* year numbers sit in a little box, like the tooltips */
 /* (in flight too: on the white core a bare number blurred into grey) */
 #dayLabels span{transition:opacity .35s ease;opacity:0}#dayLabels span.on{opacity:1}
 body.inverted{background:#fff}body.inverted #labels,body.inverted #dayLabels,body.inverted #cross,body.inverted #lockMark,body.inverted #logo,body.inverted #brand{filter:invert(1) hue-rotate(180deg)}   /* inverted look: the overlays flip with the sky */
@@ -590,3 +590,9 @@ body.inverted #wcmp{filter:invert(1) hue-rotate(180deg)}
 #zoneTip{position:fixed;left:0;top:0;z-index:8;pointer-events:none;padding:3px 7px 2px;background:rgba(26,20,40,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:#fff;opacity:0;transition:opacity .12s}#zoneTip.on{opacity:1}
 body.intro #shipLayer{z-index:55}   /* during the opening the 3D pointer is drawn over the Start button */
 #tip .td .taw{font-style:normal;color:#fff;font-weight:700;letter-spacing:.12em}   /* SOTM / SOTY, between the date and the score */
+.glab.yr.ax.mo{font-size:9px;color:#fff}   /* months boxed like the years */
+#gbtn,#sbtn{display:none}   /* rings and sound live in the menu and on keys now */
+#topnav button{font-family:"FF Good Pro",var(--body);font-size:14px;letter-spacing:.01em;text-transform:none;padding:6px 8px}
+#topnav button.off{color:rgba(255,255,255,.35)}
+#gotPill{top:calc(14px + env(safe-area-inset-top,0px));height:34px;display:flex;align-items:center;gap:4px;font-family:"FF Good Pro",var(--body);font-size:14px;letter-spacing:.01em;color:rgba(255,255,255,.6)}
+#gotPill b{font-size:14px;margin-right:0}   /* the score: small, top right, the same size as the menu */

@@ -39,11 +39,12 @@ const mapPhi = () => mapView().phi;
 const mapFlip = () => { const f = mapView().flip; if (orbit.flip != null && f !== orbit.flip) orbit.theta += Math.PI; orbit.flip = f };   // crossing a pole swings the view round
 const mapHomeD = () => (GAL_R0 + GAL_LEN) * 1.6;   // the whole disk, filling the view
 
+const panV = new V3(); let panT = 0;   // the map's drag speed (world units per second): let go and it coasts on
 function setMode(m) {
   if (m === S.mode) return; S.mode = m; document.body.classList.toggle('map', m === 'map');
   if (booted && (LOOK.mapFilters ?? 1)) { const el = $('panel'), on = m === 'map'; el.classList.toggle('open', on); el.inert = !on; $('fbtn').setAttribute('aria-expanded', on); document.body.classList.toggle('panel-open', on || $('lookPanel').classList.contains('open')) }   // the filters are out whenever you're on the map (docked left, so the Look panel can stay open too)
   $('vFly').setAttribute('aria-pressed', m === 'fly'); $('vMap').setAttribute('aria-pressed', m === 'map');
-  player.vel.set(0, 0, 0); player.cruise = 0; auto = null; lockI = -1;
+  player.vel.set(0, 0, 0); player.cruise = 0; auto = null; lockI = -1; sparks.stop();
   if (m === 'map') {
     if (document.pointerLockElement) document.exitPointerLock();
     // the whole galaxy, seen from the side your ship is on: one continuous pull back and up
@@ -246,6 +247,7 @@ function updateCamera(dt) {
       if (fz.lengthSq() < 1e-4) fz.set(0, 1, 0).applyQuaternion(o.q).projectOnPlane(GAL_UP); r.normalize(); fz.normalize();
       orbit.target.addScaledVector(r, mx * orbit.dist * .6 * dt).addScaledVector(fz, mz * orbit.dist * .6 * dt); if (zq) orbit.dist = Math.max(MAP_MIN, Math.min(4e7, orbit.dist * Math.exp(zq * 1.2 * dt)))
     }
+    if (!down && !tween && panV.lengthSq() > 0) { orbit.target.addScaledVector(panV, dt * (LOOK.mapCoast ?? 1)); panV.multiplyScalar(Math.exp(-dt / Math.max(.02, LOOK.mapCoastTime ?? .45))); if (panV.length() < orbit.dist * .002) panV.set(0, 0, 0) }   // let go of a drag: the map glides on and settles
     if (orbit.ang !== LOOK.mapAngle) { if (orbit.ang != null && !tween) { mapFlip(); const want = orbit.mir ? Math.PI - mapPhi() : mapPhi(); orbit.phi += (want - orbit.phi) * Math.min(1, dt * 6); if (Math.abs(want - orbit.phi) < 1e-3) orbit.ang = LOOK.mapAngle } else if (orbit.ang == null) orbit.ang = LOOK.mapAngle }   // the angle slider tilts the map live
     if (tween && tween.mode) { const v = mapView(); orbit.theta = (LOOK.mapTurn ?? 0) * Math.PI / 180 + (v.flip ? Math.PI : 0); orbit.flip = v.flip; orbit.phi = orbit.mir ? Math.PI - v.phi : v.phi; orbit.ang = LOOK.mapAngle; const o = orbitPose(); tween.tp = o.p; tween.tq = o.q }   // aim at where the map camera really ends up, even as the lens and look (its angle and turn too) blend over to the map's on the way
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur); const e = tween.mode ? easeMode(Math.min(1, tween.t)) : ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tween.tp, tween.c, e); else camera.position.lerpVectors(tween.fp, tween.tp, e); if (tween.mode) { _upB.set(0, 1, 0).applyQuaternion(tween.fq).lerp(GAL_UP, e).normalize(); camera.quaternion.copy(tween.fq).slerp(lookQuat(camera.position, orbit.target, _upB), ease(sstep(tween.t, 0, .4))) } else camera.quaternion.copy(tween.fq).slerp(tween.tq, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }

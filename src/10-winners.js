@@ -1,7 +1,7 @@
 /* ───────────────────────── the winners ─────────────────────────
    Far away each winner is a point-spread function (a white-hot core in a halo of its colour). Close up the
    nearest few become real suns, and the exotic ones are built from the sandbox objects. */
-const COL = new Float32Array(N * 3), ALPHA = new Float32Array(N), TA = new Float32Array(N).fill(1);
+const COL = new Float32Array(N * 3), COLT = new Float32Array(N * 3), ALPHA = new Float32Array(N), TA = new Float32Array(N).fill(1);
 // the game: winners you've flown through (kept in this browser). 1 = collected
 const GOT = new Float32Array(N); { const g = store.json('sotd-got', []); if (Array.isArray(g)) g.forEach(d => { const i = D.findIndex(x => x.date === d); if (i >= 0) GOT[i] = 1 }) }
 loadProg(.45);

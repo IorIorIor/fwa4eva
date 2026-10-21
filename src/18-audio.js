@@ -64,7 +64,7 @@ function updateEngine() {
   ENG.eng.gain.setTargetAtTime(LOOK.engine * (fly ? 1 : LOOK.mapSfx ?? 1), t, .1);
 }
 const ICON_SOUND = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg>', ICON_MUTED = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 8a5 5 0 0 1 1.912 4.934m-1.377 2.602a5 5 0 0 1 -.535 .464"/><path d="M17.7 5a9 9 0 0 1 2.362 11.086m-1.676 2.299a9 9 0 0 1 -.686 .615"/><path d="M9.069 5.054l.431 -.554a.8 .8 0 0 1 1.5 .5v2m0 4v8a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l1.294 -1.664"/><path d="M3 3l18 18"/></svg>';   // Tabler icons (outline)
-function setMuted(m) { muted = m; store.set('sotd-muted', m ? '1' : '0'); const b = $('sbtn'); b.innerHTML = '' + (m ? ICON_MUTED : ICON_SOUND); b.title = m ? 'Sound off' : 'Sound on'; b.setAttribute('aria-pressed', !m); if (out) out.gain.setTargetAtTime(m ? 0 : 1, AC.currentTime, .05) }
+function setMuted(m) { muted = m; store.set('sotd-muted', m ? '1' : '0'); const b = $('sbtn'); b.innerHTML = '' + (m ? ICON_MUTED : ICON_SOUND); b.title = m ? 'Sound off' : 'Sound on'; b.setAttribute('aria-pressed', !m); { const n = $('sndNav'); if (n) { n.textContent = m ? 'Sound off' : 'Sound on'; n.classList.toggle('off', m) } } if (out) out.gain.setTargetAtTime(m ? 0 : 1, AC.currentTime, .05) }
 $('sbtn').onclick = () => { audio(); setMuted(!muted) }; setMuted(muted);
 // hovering a star strikes a small glass bell: two or three notes of a pentatonic chord rolled like a harp, panned to where
 // the star sits on screen. Same star, same chord. Each note: a sine with a bright FM strike that fades into a pure tone.
@@ -82,6 +82,12 @@ function tingle(dec = 1, seed, pan = 0) {
     const oc = AC.createOscillator(), og = AC.createGain(); oc.type = 'sine'; oc.frequency.value = f * 2.01; og.gain.setValueAtTime(0, t); og.gain.linearRampToValueAtTime(v * .18, t + .01); og.gain.exponentialRampToValueAtTime(.0001, t + dur * .6); oc.connect(og); og.connect(pn);
     [car, mod, oc].forEach(o => { o.start(t); o.stop(t + dur + .1) });
   }
+}
+function zoneBlip(f, pan = 0) {   // hovering a year or month on the map: a very soft glassy tick, higher for newer times (f: 0 = oldest, 1 = newest)
+  const L = LOOK, vol = L.zoneSnd ?? .3; if (!vol || !AC || AC.state !== 'running' || !master) return;
+  const t = AC.currentTime + .005, fq = (L.zoneSndBase ?? 520) * Math.pow(2, (L.zoneSndRange ?? 12) * Math.max(0, Math.min(1, f)) / 12), dur = L.zoneSndLen ?? .35, v = .09 * vol;
+  const pn = AC.createStereoPanner(); pn.pan.value = Math.max(-.7, Math.min(.7, pan * .6)); pn.connect(master);
+  [[1, 1], [2.01, .22]].forEach(([m, a]) => { const o = AC.createOscillator(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = fq * m; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * a, t + .008); g.gain.exponentialRampToValueAtTime(.0001, t + dur * (m > 1 ? .5 : 1)); o.connect(g); g.connect(pn); o.start(t); o.stop(t + dur + .05) });
 }
 canvas.addEventListener('pointerdown', () => { if (booted) audio() }); addEventListener('keydown', () => { if (booted) audio() });
 

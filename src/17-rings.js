@@ -78,6 +78,7 @@ const sparks = (() => {
     return out.set(Math.cos(an) * rr, Math.sin(an) * rr, -(L.ringCometAhead ?? .35) + (L.ringCometBack ?? 2.5) * k * s) };
   return {
     mesh, u,
+    stop() { on = false; mesh.visible = false },
     burst() {
       const L = LOOK; if (!(L.ringSpark ?? 1)) return; emit = Math.max(.01, L.ringCometEmit ?? .6); t = 0; on = true;
       const nn = Math.min(n, L.ringCometN ?? 160); for (let i = 0; i < n; i++) tb[i] = i < nn ? emit * i / nn : 1e9;   // born one after another over the emit time

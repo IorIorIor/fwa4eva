@@ -267,7 +267,7 @@ function updateHover(dt) {
     if (map) { if (mouse.in && !down && booted && !tween) { const r = mapHover(hx, hy); h = r.i; R = r.ring } }   // the map points at rings, and at winners once you're close
     else { if ((aim || mouse.in) && !down && booted) h = pick(hx, hy); if (h >= 0) { const dd = Math.max(1, camera.position.distanceTo(starPos(h, tmp))); if (dd > (LOOK.hoverDist ?? 4e5) || starPx(h, dd) < (LOOK.hoverPx ?? 2.5)) h = -1 } }   // close enough, and a few px across
     if (!down) hovPick = h; if (h === openI) h = -1;   // a click can only take a star you've just hovered
-    if (h >= 0 && h !== lastHov) { starPos(h, tmp).project(camera); tingle(galOf(D[h].year), h, Math.max(-1, Math.min(1, tmp.x))) } lastHov = h;
+    lastHov = h;
     if (R && (!lastRing || lastRing.y !== R.y)) tingle(galOf(R.yr), 5000 + Math.round(R.y * 12), Math.max(-1, Math.min(1, hx / innerWidth * 2 - 1)));
     ringHov = R; lastRing = R; if (R) timeRings.u.hi.value = R.y;
     canvas.classList.toggle('hovering', (h >= 0 || !!R) && !aim); crossEl.classList.toggle('on', h >= 0 && aim); hovI = h; tipAt.x = hx; tipAt.y = hy;
@@ -286,7 +286,7 @@ function updateHover(dt) {
       const x = Math.min(right, innerWidth - w - 12);   // always on the right of the ring; with no room, it holds at the right edge   // beside it; once the ring outgrows the screen, held at the edge with the most room
       tip.style.left = x + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, cy - h / 2)) + 'px';
     }
-  } else if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI) + tnav(), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
+  } else if (hovI >= 0 && hovI !== pin) { if (tipFor !== 'h' + hovI) { starPos(hovI, tmp).project(camera); tingle(galOf(D[hovI].year), hovI, Math.max(-1, Math.min(1, tmp.x))) } /* the chime only with its tooltip */ put('h' + hovI, tipHTML(hovI) + tnav(), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (ringHov && pin < 0) { put('r' + ringHov.y, ringTip(ringHov), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (pin >= 0) {
     const d = Math.max(1, camera.position.distanceTo(starPos(pin, tmp))); tmp.project(camera);
@@ -325,7 +325,7 @@ function tick(now) {
   const L = LOOK, fly = S.mode === 'fly';
   ring2.rotation.y += dt * .05; beacons.forEach((b, k) => { b.material.emissiveIntensity = (Math.sin(now * .003 + k * 1.7) > .6) ? 2 : .2 });
   if (fly && booted) {
-    if (warp) stepWarp(dt); else updatePlayer(dt); tourUpdate(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat);
+    if (warp) stepWarp(dt); else if (!(tween && tween.mode)) updatePlayer(dt);   /* while the view swings between map and flight the ship holds still */ tourUpdate(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat);
     const fl = avatar.userData.flame; fl.material.opacity += ((thrusting ? .85 : holdSp >= 0 ? .5 : 0) - fl.material.opacity) * Math.min(1, dt * 10); { const fz = .6 + .4 * Math.sin(now * .04) + (thrusting ? .6 + player.cruise * 1.5 : 0); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
     ;
     fl.material.color.copy(trailColour(1, 1, _flc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0).lerp(_amber, gasOn && !boosting ? 1 : 0));   // the flame takes the trail's colour
@@ -393,7 +393,8 @@ function tick(now) {
     if (gotCard.t > 0 && S.mode === 'fly') open = gotCard.i;   // a ring you just flew through keeps its record open a while
     showCard(open);
   }
-  { let ch = false; const nowMs = performance.now(); for (let i = 0; i < N; i++) { const t = ringHide.size && ringHide.get(i) > nowMs ? 0 : i === openI && L.shot3d ? TA[i] * (1 - Math.min(1, openA * 2)) : TA[i], d = t - ALPHA[i]; if (Math.abs(d) > .002) { ALPHA[i] += d * Math.min(1, dt * (i === openI ? 20 : 8)); ch = true } } if (ch) stars.aAlpha.needsUpdate = true }
+  { let ch = false; const nowMs = performance.now(); for (let i = 0; i < N; i++) { const t = ringHide.size && ringHide.get(i) > nowMs ? 0 : i === openI && L.shot3d ? TA[i] * (1 - Math.min(1, openA * 2)) : TA[i], d = t - ALPHA[i]; if (Math.abs(d) > .002) { ALPHA[i] += d * Math.min(1, i === openI ? dt * 20 : rdt * 3 / Math.max(.05, L.filterFade ?? .6)); ch = true } } if (ch) stars.aAlpha.needsUpdate = true }   /* a filter fades stars in and out */
+  if (recolor.ease) { const k = Math.min(1, rdt * 3 / Math.max(.05, L.filterFade ?? .6)); let mx = 0; for (let j = 0; j < N * 3; j++) { const d = COLT[j] - COL[j]; COL[j] += d * k; mx = Math.max(mx, Math.abs(d)) } if (mx < .003) { COL.set(COLT); recolor.ease = false } stars.aColor.needsUpdate = true }
   const ringI = auto && auto.i >= 0 && auto.i !== openI ? auto.i : -1;
   updateLockMark();
   targetRing.visible = ringI >= 0; if (ringI >= 0) { starPos(ringI, targetRing.position); targetRing.quaternion.copy(camera.quaternion); targetRing.scale.setScalar(Math.max(CR[ringI] * 1.6, camera.position.distanceTo(targetRing.position) * .03) * (1 + .05 * Math.sin(now * .005))) }

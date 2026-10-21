@@ -15,8 +15,8 @@ function recolor() {
     else if (S.colorBy === 'award') _tc.set(AWARD_COL[d.award]);
     else if (S.colorBy === 'tech') _tc.set(TECH_COL[d.tech[0]]);
     else _tc.setHSL(.72 - (d.year - 2000) / 26 * .66, .85, .64);
-    COL[i * 3] = _tc.r; COL[i * 3 + 1] = _tc.g; COL[i * 3 + 2] = _tc.b;
-  }); stars.aColor.needsUpdate = true; renderLegend();
+    COLT[i * 3] = _tc.r; COLT[i * 3 + 1] = _tc.g; COLT[i * 3 + 2] = _tc.b;
+  }); if (!recolor.done) { recolor.done = true; COL.set(COLT); stars.aColor.needsUpdate = true } else recolor.ease = true; /* after the first time the colours ease over (see the frame) */ renderLegend();
 }
 function matches(d) {
   if (d.year < S.y0 || d.year > S.y1) return false;

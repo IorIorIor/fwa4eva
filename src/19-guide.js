@@ -15,14 +15,14 @@ const coach = {
     { t: `Move the ${K('mouse')} to steer`, ok: () => coach.look > 1 },
     { t: `Press ${K('shift')} to boost`, ok: () => boosting && (coach.hold += coach.dt) > .35 },
     { t: `Press ${K('s')} to brake`, ok: () => keys.s && brakeK > .6 },
-    { t: `${K('arrowleft')} ${K('arrowright')} pick the nearest winners`, ok: () => coach.arrow },
-    { t: 'Fly through a ring', s: () => LOOK.rings ? `lock on with ${K('arrowleft')} ${K('arrowright')}, then hold ${K('w')}` : `${K('r')} switches the rings game on`, ok: () => coach.ring },
+    { t: `${K('q')} ${K('e')} pick the nearest winners`, ok: () => coach.arrow },
+    { t: 'Fly through a ring', s: () => LOOK.rings ? `lock on with ${K('q')} ${K('e')}, then hold ${K('w')}` : `${K('r')} switches the rings game on`, ok: () => coach.ring },
     { t: `Press ${K('m')} for the map`, ok: () => S.mode === 'map' },
   ],
   start(again) { if ((TEST && !again) || (!again && (!LOOK.tutorial || store.get('sotd-coach') === '1'))) return; this.again = !!again; this.el = $('coach'); this.list = this.steps(); this.i = 0; this.t = 0; this.done = 0; this.prevQ.copy(rig.q); this.arrow = this.ring = false; this.show() },
   show() {
     const s = this.list[this.i], e = this.el, v = x => typeof x === 'function' ? x() : x || ''; this.look = 0; this.hold = 0; this.arrow = this.ring = false;
-    e.innerHTML = `<span class="td">${this.i + 1} / ${this.list.length}<span class="sk">${coarse ? '' : K('enter') + ' skip'}</span></span><span class="tt">${v(s.t)}</span>` + (s.s ? `<span class="ts">${v(s.s)}</span>` : '');
+    e.innerHTML = `<span class="td">${this.i + 1} / ${this.list.length}</span><span class="tt">${v(s.t)}</span>` + (s.s ? `<span class="ts">${v(s.s)}</span>` : '');
     e.hidden = false; e.classList.remove('done'); if (intro.active) e.classList.add('away'); void e.offsetWidth; e.classList.add('in'); this.kb = [...e.querySelectorAll('kbd')];
   },
   update(dt) {
@@ -36,7 +36,7 @@ const coach = {
   },
   place() {   // it floats just above the ship
     const e = this.el, hide = S.mode !== 'fly' || rmenu.panel || document.body.classList.contains('panel-open'); e.classList.toggle('away', hide); if (hide) return;
-    const p = tmp.copy(player.pos).project(camera), x = Math.max(160, Math.min(innerWidth - 160, (p.x * .5 + .5) * innerWidth)), y = Math.max(90, Math.min(innerHeight - 40, (-p.y * .5 + .5) * innerHeight - 46));
+    const p = tmp.copy(player.pos).project(camera), x = Math.max(160, Math.min(innerWidth - 160, (p.x * .5 + .5) * innerWidth)), y = Math.max(90, Math.min(innerHeight - 40, (-p.y * .5 + .5) * innerHeight - (LOOK.coachUp ?? 90)));
     e.style.left = x.toFixed(1) + 'px'; e.style.top = y.toFixed(1) + 'px';
   },
   skip() { if (this.i < 0 || this.done > 0) return false; this.done = .3; this.el.classList.add('done'); return true },
