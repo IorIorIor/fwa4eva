@@ -242,7 +242,7 @@ function engineLook(dt) {
 
 /* lock-on marker, reticle and tooltip */
 const fmtDist = v => v < 1000 ? v.toFixed(0) + ' u' : v < 1e6 ? (v / 1000).toFixed(v < 1e4 ? 1 : 0) + 'k u' : (v / 1e6).toFixed(2) + 'M u';
-const TNAV = '';   /* (no ‹ › arrows: the arrow keys do that) */   // step through the archive from the star you're on
+const tnav = () => S.mode === 'fly' ? '<span class="tnav"><i class="tdist"></i></span>' : '';   // the distance, live: in flight only   /* (no ‹ › arrows: the arrow keys do that) */   // step through the archive from the star you're on
 const lockMark = $('lockMark');
 function updateLockMark() {
   if (S.mode === 'fly' && lockI >= 0) {
@@ -286,18 +286,18 @@ function updateHover(dt) {
       const x = Math.min(right, innerWidth - w - 12);   // always on the right of the ring; with no room, it holds at the right edge   // beside it; once the ring outgrows the screen, held at the edge with the most room
       tip.style.left = x + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, cy - h / 2)) + 'px';
     }
-  } else if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI) + TNAV, false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
+  } else if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI) + tnav(), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (ringHov && pin < 0) { put('r' + ringHov.y, ringTip(ringHov), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (pin >= 0) {
     const d = Math.max(1, camera.position.distanceTo(starPos(pin, tmp))); tmp.project(camera);
     const edge = pin === lockI && pin !== cardI && !coarse && !(tmp.z < 1 && Math.abs(tmp.x) < 1 && Math.abs(tmp.y) < 1);
     if (edge) {   // the star you're locked on is off screen: its card waits at the edge, beside the arrow pointing to it
-      put('p' + pin, tipHTML(pin) + TNAV + (LOOK.rings ? '' : tipMore(pin)), false);
+      put('p' + pin, tipHTML(pin) + tnav() + (LOOK.rings ? '' : tipMore(pin)), false);
       let x = tmp.x, y = tmp.y; if (tmp.z >= 1) { x = -x; y = -y } const m = Math.max(Math.abs(x) / .92, Math.abs(y) / .88, 1e-6); x /= m; y /= m;
       const w = tip.offsetWidth, h = tip.offsetHeight, px = (x * .5 + .5) * innerWidth, py = (-y * .5 + .5) * innerHeight;
       tip.style.left = Math.max(12, Math.min(innerWidth - w - 12, px - (x > 0 ? w + 22 : -22))) + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, py - h / 2)) + 'px';
     } else if (tmp.z < 1 && Math.abs(tmp.x) < 1.3 && Math.abs(tmp.y) < 1.3) {
-      put('p' + pin, tipHTML(pin) + TNAV + (LOOK.rings && !map ? '' : tipMore(pin)), pin === cardI && (!LOOK.rings || map));   // in the rings game the full record only comes with a big portal
+      put('p' + pin, tipHTML(pin) + tnav() + (LOOK.rings && !map ? '' : tipMore(pin)), pin === cardI && (!LOOK.rings || map));   // in the rings game the full record only comes with a big portal
       const rpx = starR(pin) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), full = pin === cardI;   // the star's own radius on screen
       let x = (tmp.x * .5 + .5) * innerWidth + (full ? rpx * .72 : 0), y = (-tmp.y * .5 + .5) * innerHeight - (full ? rpx * .5 : 0);
       if (full) {   // the full record sits beside the star (no more docking it top left)
