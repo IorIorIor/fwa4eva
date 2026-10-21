@@ -165,7 +165,7 @@ const HALO = (() => {
   const _m = new THREE.Matrix4(), _q = new Q4(), _s = new V3(), _z = new V3(0, 0, 1), _d = new V3(), live = [], pool = Array.from({ length: HALO_N }, () => ({ i: -1, c: new V3(), r: 1, c0: 0, done: false, n: new V3(), ax: new V3(), ay: new V3(), nSet: false, sPrev: 0 }));
   const best = []; let fade = new Map(), minTs = Infinity;   // minTs: seconds until you pass through the nearest ring you can't miss
   function update(dt) {
-    const L = LOOK, ref = S.mode === 'map' ? camera.position : player.pos; if (!L.rings || (S.mode !== 'fly' && !(S.mode === 'map' && (L.mapRings ?? 1)))) { mesh.count = 0; live.length = 0; lens.forEach(m => m.visible = false); clouds.forEach(m => m.visible = false); return } /* on the map too, the rings round you (the camera) */ if (tw !== (L.ringWidth ?? .1)) build(L.ringWidth ?? .1);
+    const L = LOOK, ref = S.mode === 'map' ? camera.position : player.pos; if (!(L.rings || S.mode === 'map') || (S.mode !== 'fly' && !(S.mode === 'map' && (L.mapRings ?? 1)))) { mesh.count = 0; live.length = 0; lens.forEach(m => m.visible = false); clouds.forEach(m => m.visible = false); return } /* on the map too, the rings round you (the camera) */ if (tw !== (L.ringWidth ?? .1)) build(L.ringWidth ?? .1);
     u.spark.value = L.ringSparkle ?? 1; u.holo.value = L.ringHolo ?? 1; u.br.value = L.ringBright ?? .55; u.refr.value = L.ringRefract ?? 1; u.disp.value = L.ringDisperse ?? .35; u.glass.value = L.ringGlass ?? 1; u.film.value = L.ringFilm ?? 1; u.filmF.value = L.ringFilmBands ?? 3; u.rim.value = L.ringRim ?? 1;
     best.length = 0; const px = ref.x, py = ref.y, pz = ref.z;   // the nearest few, by straight distance
     for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - px, dy = P[i * 3 + 1] - py, dz = P[i * 3 + 2] - pz, d2 = dx * dx + dy * dy + dz * dz; if (best.length < HALO_N) { best.push([d2, i]); best.sort((a, b) => a[0] - b[0]) } else if (d2 < best[HALO_N - 1][0]) { best[HALO_N - 1] = [d2, i]; best.sort((a, b) => a[0] - b[0]) } }
@@ -227,7 +227,7 @@ const HALO = (() => {
   const portal = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 48, 48), pm); portal.frustumCulled = false; portal.renderOrder = 2; portal.visible = false; portal.matrixAutoUpdate = false; shipScene.add(portal);   // on the ship's layer: the galaxy's glows and star clouds are drawn after the scene and would speckle over the picture
   let pI = -1, pop = null; const _mn = new V3(), _mv = new V3(), _ldp = new V3(), _pm = new THREE.Matrix4(), _up = new V3(), pInfo = { on: false, i: -1, c: new V3(), r: 1 };   // where the portal is, for the record that floats beside it
   function portalUpdate(dt) {
-    const L = LOOK, ref = S.mode === 'map' ? camera.position : player.pos; pInfo.on = false; if (!(L.ringPortal ?? 1) || !L.rings || (S.mode !== 'fly' && !(S.mode === 'map' && (L.mapRings ?? 1)))) { portal.visible = false; return }
+    const L = LOOK, ref = S.mode === 'map' ? camera.position : player.pos; pInfo.on = false; if (!(L.ringPortal ?? 1) || !(L.rings || S.mode === 'map') || (S.mode !== 'fly' && !(S.mode === 'map' && (L.mapRings ?? 1)))) { portal.visible = false; return }
     if (pop) {   // through it: the white, fully warped picture shrinks to a point, then bursts into sparks
       pop.t += dt / Math.max(.05, L.ringShrink ?? .35); const s = Math.pow(Math.max(0, 1 - pop.t), 1.7); pInfo.on = false;
       portal.matrix.copy(pop.m).multiply(_m.makeScale(s, s, 1)); portal.matrixWorldNeedsUpdate = true; pt.white.value = 1; pt.dis.value = 2.2 * (L.ringMemWarp ?? 1); pt.st.value = 0; pt.brk.value = 0; pt.a.value = 1; portal.visible = s > .002;
@@ -314,7 +314,7 @@ const rings = (() => {
   return {
     show,
     update(dt) {
-      const L = LOOK, u = stars.u; u.ring.value = L.rings ? introK() : 0; u.rsz.value = (L.ringSize ?? 1.6) * L.bodySize; u.rw.value = L.ringWidth ?? .1; u.gotGlow.value = L.ringGlow ?? 1.8;
+      const L = LOOK, u = stars.u; u.ring.value = L.rings || S.mode === 'map' ? introK() : 0;   /* the map always shows rings */ u.rsz.value = (L.ringSize ?? 1.6) * L.bodySize; u.rw.value = L.ringWidth ?? .1; u.gotGlow.value = L.ringGlow ?? 1.8;
       if (gotCard.t > 0) gotCard.t -= dt; ringPop *= Math.exp(-dt / Math.max(.05, L.ringPopTime ?? .7)); HALO.update(dt);
       const want = !L.rings || S.mode !== 'fly'; if (el.hidden !== want) show();
     },

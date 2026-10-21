@@ -141,7 +141,7 @@ function stepByDist(dir) {
   coach.arrow = true; if (dir < 0) coach.qd = true; else coach.ed = true;
   const cand = [], pp = player.pos; for (let i = 0; i < N; i++) { if (TA[i] < 1 || i === passedI) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z; cand.push([dx * dx + dy * dy + dz * dz, i]) }
   if (!cand.length) return; cand.sort((a, b) => a[0] - b[0]);
-  const k = lockI >= 0 ? cand.findIndex(c => c[1] === lockI) : -1, j = k < 0 ? cand[0] : cand[Math.max(0, Math.min(cand.length - 1, k + dir))];
+  const ring = cand.slice(0, Math.max(1, LOOK.qeLoop ?? 5)), k = lockI >= 0 ? ring.findIndex(c => c[1] === lockI) : -1, j = k < 0 ? ring[0] : ring[(k + dir + ring.length) % ring.length];   // Q / E loop round the five nearest: past the nearest Q wraps to the farthest of them, and back
   if (!j || j[1] === lockI) return; focus(j[1]); auto = null; aimFast = .7;
 }
 const _vp = new THREE.Matrix4();

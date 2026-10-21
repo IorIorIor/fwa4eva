@@ -203,5 +203,5 @@ const starR = i => STAR_R[i] * LOOK.bodySize, stopR = i => starR(i) * LOOK.stopK
 /* the outpost: a small station adrift beyond the rim, where every flight starts */
 const OUT = { hubR: 40, hubH: 60, ringR: 150, ringT: 20, padY: 64, padHalf: 45 };
 // no station any more: every pilot starts just outside the rim and well above the disk, at a random point round it
-const HOME_P = (() => { const a = Math.random() * Math.PI * 2, R = GAL_R0 + GAL_LEN; return new V3(Math.cos(a) * R * 1.12, R * .42, Math.sin(a) * R * 1.12).applyQuaternion(GQ).add(GC) })();
+const HOME_P = (() => { const a = Math.random() * Math.PI * 2, R = GAL_R0 + GAL_LEN; const d = R * (LOOK.spawnDist ?? .95), up = (LOOK.spawnUp ?? 40) * Math.PI / 180; return new V3(Math.cos(a) * d * Math.cos(up), d * Math.sin(up), Math.sin(a) * d * Math.cos(up)).applyQuaternion(GQ).add(GC) })();   // where you start: well above the disk, near enough that it fills the view (spawnDist × the galaxy's radius, spawnUp degrees above it)
 const LIGHT = 1.2e6;   // the speed of light, in world units per second

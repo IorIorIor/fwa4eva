@@ -39,10 +39,10 @@ const rmenu = (() => {
     style = LOOK.menuSun ?? 1 ? 'sun' : 'wedge'; el.classList.toggle('sunm', style === 'sun'); ticks.length = 0;
     if (style === 'sun') {
       svg.innerHTML = `<g class="rays">${Array.from({ length: TK }, (_, j) => '<line/>').join('')}</g>` + SEG.map(([k, label, a], n) => { const [lx, ly] = P(RI, a);
-        return `<g class="rs sun" data-k="${k}" style="--n:${n};transform-origin:0 0"><g transform="translate(${lx} ${ly})"><g class="sc"><circle r="12.5"/><svg x="-7.5" y="-7.5" width="15" height="15" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg></g><text y="24">${label}</text></g></g>` }).join('');
+        return `<g class="rs sun" data-k="${k}" style="--n:${n};transform-origin:0 0"><g transform="translate(${lx} ${ly})"><g class="sc"><circle r="12.5"/><svg x="-5.25" y="-5.25" width="10.5" height="10.5" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg></g><text y="24">${label}</text></g></g>` }).join('');
       svg.querySelectorAll('.rays line').forEach((l, j) => ticks.push({ l, a: j / TK * 2 * Math.PI }));
     } else svg.innerHTML = SEG.map(([k, label, a], n) => { const [lx, ly] = P(R0 + (R1 - R0) * .58, a);
-      return `<g class="rs" data-k="${k}" style="--n:${n};transform-origin:0 0"><path d="${sector(a, 52)}"/><g transform="translate(${lx} ${ly})"><svg x="-8" y="-15" width="16" height="16" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg><text y="10">${label}</text></g></g>` }).join('');
+      return `<g class="rs" data-k="${k}" style="--n:${n};transform-origin:0 0"><path d="${sector(a, 52)}"/><g transform="translate(${lx} ${ly})"><svg x="-5.6" y="-12" width="11.2" height="11.2" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg><text y="7">${label}</text></g></g>` }).join('');
     segs = [...svg.querySelectorAll('.rs')];
   }
   function lean() {   // sun: rays stretch and discs swell toward the way you're pushing
@@ -184,6 +184,9 @@ const recorder = (() => {
 (() => {
   const nav = $('topnav'), mapB = nav.querySelector('[data-k="map"]');
   nav.addEventListener('pointerdown', e => e.stopPropagation());
-  nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (k === 'rec') { recorder.toggle(); return } if (k === 'sound') { $('sbtn').click(); return } if (k === 'music') { audio(); setMusicOff(!musicOff); return } if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
-  setInterval(() => { mapB.textContent = S.mode === 'map' ? 'Fly' : 'Map' }, 300);
+  nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (S.mode === 'map' && k === 'filters') { togglePanel('panel'); return } if (S.mode === 'map' && k === 'search') { document.body.classList.toggle('nosearch'); if (!document.body.classList.contains('nosearch')) return; rmenu.close(); return }   // on the map these two are switches: the filters panel and the search bar
+    if (k === 'rec') { recorder.toggle(); return } if (k === 'sound') { $('sbtn').click(); return } if (k === 'music') { audio(); setMusicOff(!musicOff); return } if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
+  const fB = nav.querySelector('[data-k="filters"]'), sB = nav.querySelector('[data-k="search"]');
+  setInterval(() => { const m = S.mode === 'map'; mapB.textContent = m ? 'Fly' : 'Map'; fB.classList.toggle('on', m && $('panel').classList.contains('open')); sB.classList.toggle('on', m && !document.body.classList.contains('nosearch')) }, 200);
+  $('mapSearch').onclick = () => rmenu.sub('search');   // the map's search bar: a click opens the full search
 })();

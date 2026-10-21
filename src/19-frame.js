@@ -70,7 +70,7 @@ function rulerScore(th, us) {   // how many of the dates would be on screen with
 }
 let L_ix = 1, ringFarK = 0, conK = 0, volK = 0, shipR0 = 0, shipOnMap = false;   // conK: a filter's constellation is up, the rest of the sky dims
 function updateTimeRings(dt) {
-  const L = LOOK, u = timeRings.u, map = S.mode === 'map' || mapK > .005, fr = !!L.ringFly, lp = toLocal(map ? orbit.target : camera.position, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
+  const L = LOOK, u = timeRings.u, map = S.mode === 'map' || mapK > .005, fr = (L.flyYearLines ?? 1) > 0, lp = toLocal(map ? orbit.target : camera.position, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   if (map) {   // how many years fit across the view where you're looking decides which rings show
     const uu = Math.max(.03, Math.min(1, (Math.max(GAL_R0, rr) - GAL_R0) / GAL_LEN)), span = 2 * orbit.dist * Math.tan(LOOK.fov * Math.PI / 360) * Math.min(1, camera.aspect);
     mapYrs = span * yrsPerU(uu) / GAL_LEN;
@@ -78,11 +78,11 @@ function updateTimeRings(dt) {
     ringFarK = 0;
   } else {
     // far enough out (above the disk or past its rim) the timeline comes into view: the five-year marks, and the spiral itself
-    const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.ringFar ?? .55), still = false && fr && performance.now() - lastInput > (L.ringIdle ?? 3) * 1000 && !thrusting && !boosting; ringFarK += ((F > 0 ? sstep(out, F, F * 1.6) : 1) * (still ? 1 : 0) - ringFarK) * Math.min(1, dt * (still ? .8 : 3));   // far out and left alone a few seconds: the timeline fades in; touch anything and it goes
+    const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.flyYearFar ?? .4), far = fr && booted && !intro.active; ringFarK += ((F > 0 ? sstep(out, F, F * 1.6) : 1) * (far ? 1 : 0) - ringFarK) * Math.min(1, dt * 1.5);   /* far out above (or beyond) the galaxy the timeline is there: year lines, dividers, the five-year marks */
     const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = ringFarK; mapLvl[1] = ringFarK * inside; mapLvl[2] = 0; mapStars = 0;
   }
   const show = map || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0; ruler.visible = timeRings.mesh.visible && !SPIRAL;   // with the single spiral, the spiral itself is the timeline (it carries its own dates)
-  if (monthTicks) { monthTicks.visible = map && (L.mapMonths ?? 1) + (L.mapYearLines ?? 1) > 0; monthTicks.u.a.value = mapK * .55 * (L.mapMonths ?? 1) * (1 - sstep(mapYrs, L.mapMonthYrs ?? 8, (L.mapMonthYrs ?? 8) * 1.7)); monthTicks.u.ya.value = mapK * .6 * (L.mapYearLines ?? 1); monthTicks.setLen(L.mapTickLen ?? 1500, L.mapYearLen ?? 24000, L.mapEraLen ?? L.mapYearLen ?? 24000); monthTicks.u.fade.value = L.mapTickFade ?? .6 }   // month dividers once a few years fill the view
+  if (monthTicks) { const fk = S.mode === 'fly' ? ringFarK * (L.flyYearLines ?? 1) : 0; monthTicks.visible = (map || fk > .005) && (L.mapMonths ?? 1) + (L.mapYearLines ?? 1) > 0; monthTicks.u.a.value = map ? mapK * .55 * (L.mapMonths ?? 1) * (1 - sstep(mapYrs, L.mapMonthYrs ?? 8, (L.mapMonthYrs ?? 8) * 1.7)) : 0; monthTicks.u.ya.value = Math.max(map ? mapK : 0, fk) * .6 * (L.mapYearLines ?? 1); monthTicks.setLen(L.mapTickLen ?? 1500, L.mapYearLen ?? 24000, L.mapEraLen ?? L.mapYearLen ?? 24000); monthTicks.u.fade.value = L.mapTickFade ?? .6 }   // month dividers once a few years fill the view
   BHM.c.value.copy(GC).applyMatrix4(camera.matrixWorldInverse); BHM.r.value = RP * BH.rs * (L.bhLens ? 1 : 0);   // the lines fade where the hole would bend them
   if (spiralLine) { spiralLine.visible = show; spiralLine.u.a.value = (map ? .55 * mapK : .5 * ringFarK) * Math.max(.3, Math.min(2, L.eraRings || 1)) }
   u.era.value = .3 * L.eraRings * mapLvl[0] * (map ? 1.3 : 1); u.yr.value = .13 * L.ringYear * mapLvl[1] * (map ? 1.4 : 1); u.mo.value = .1 * L.ringMonth * mapLvl[2] * (map ? 1.3 : 1);
