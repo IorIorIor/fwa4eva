@@ -140,8 +140,8 @@ function findLook() {
   });
 }
 $('lookFind').oninput = findLook; $('lookFind').onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { e.target.value = ''; findLook() } };   // typing here never flies the ship
-$('presets').innerHTML = Object.keys(PRESETS).map(n => `<button data-p="${n}">${n}</button>`).join('') + '<button data-p="reset">Reset</button>';
-$('presets').onclick = e => { const p = e.target.dataset && e.target.dataset.p; if (!p) return; const onMap = LOOK === LOOK_MAP, own = LOOK.mapOwnLook; LOOK = { ...LOOK_DEFAULTS, ...(p === 'reset' ? {} : PRESETS[p]), mapOwnLook: own }; if (onMap) LOOK_MAP = LOOK; else LOOK_FLY = LOOK; saveLook(); renderLook(); applyLook() };
+$('presets').innerHTML = Object.keys(PRESETS).map(n => `<button data-p="${n}">${n}</button>`).join('') + '<button data-p="reset">Reset</button><button data-p="splash" title="Back to the splash screen, to record the opening">Splash</button>';
+$('presets').onclick = e => { const p = e.target.dataset && e.target.dataset.p; if (!p) return; if (p === 'splash') { toSplash(); return } const onMap = LOOK === LOOK_MAP, own = LOOK.mapOwnLook; LOOK = { ...LOOK_DEFAULTS, ...(p === 'reset' ? {} : PRESETS[p]), mapOwnLook: own }; if (onMap) LOOK_MAP = LOOK; else LOOK_FLY = LOOK; saveLook(); renderLook(); applyLook() };
 $('lookCopy').onclick = () => {
   const diff = {}; Object.keys(LOOK).forEach(k => { if (k[0] !== '_' && LOOK[k] !== LOOK_DEFAULTS[k]) diff[k] = LOOK[k] });
   const txt = 'FWA FOREVER look settings: ' + JSON.stringify(diff), ta = $('lookOut'); ta.value = txt; ta.hidden = true;   // straight to the clipboard; the text box only shows if the browser refuses

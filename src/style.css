@@ -615,3 +615,21 @@ body.intro #shipLayer{z-index:55}   /* during the opening the 3D pointer is draw
 #coach .td,#coach .tt,#coach .ts,#coach .tt kbd{transition:background-color .6s ease,color .6s ease,border-color .6s ease}
 #coach.done .tt,#coach.done .td,#coach.done .ts{background:#fff;color:#000}
 #coach.done .tt kbd{border-color:#000;color:#000}
+#awList{flex:none;overflow:visible;margin-bottom:6px}
+.flbl.fl2{padding-top:6px}
+#panel #fCat{max-height:48%}
+/* the Filters menu: the same two boxes, each scrolling on its own, so the menu never grows past the screen */
+#rmPanel .fblk{display:flex;flex-direction:column;padding:10px 0 6px;margin:0 -16px;background:rgba(0,0,0,.25)}
+#rmPanel #agList{max-height:min(240px,24vh)}
+#rmPanel #catList{max-height:min(200px,18vh)}
+/* the date picker, plain: three see-through columns, the picked row in a white band, no drums, glass or metal */
+#rmPanel .wheels{perspective:none;gap:6px}
+#rmPanel .dial{height:224px;border-radius:0;background:rgba(255,255,255,.04);box-shadow:none;cursor:ns-resize}
+#rmPanel .dial::after{display:none}
+#rmPanel .drum{transform-style:flat}
+#rmPanel .di{height:32px;margin-top:-16px;line-height:32px;font-family:"FF Good Pro",var(--body);font-size:16px;color:rgba(255,255,255,.75);text-shadow:none;backface-visibility:visible}
+#rmPanel .di::before{display:none}
+#rmPanel .di.on{font-weight:400;color:#000 !important;text-shadow:none}
+#rmPanel .dial .lens{left:0;right:0;height:32px;border-radius:0;background:#fff;box-shadow:none;opacity:1;z-index:0}
+#rmPanel .drum{z-index:1}
+body.splash #shipLayer{visibility:hidden}   /* back on the splash: no ship over the title card */

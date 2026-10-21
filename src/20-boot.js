@@ -148,7 +148,7 @@ function begin(withSound, e) {
   if (e && e.pointerType !== 'touch' && e.clientX) { mouse.x = e.clientX; mouse.y = e.clientY; mouse.in = true }   // the pointer is already where you clicked: no second click to wake it
   if (withSound) { setMuted(false); audio() }
   if (!coarse && !lockFailed && !TEST) { let f = Math.max(0, LOOK.introCurFrames ?? 4); const go = () => f-- > 0 ? requestAnimationFrame(go) : requestLock(); go() }   // your own pointer stays a few frames more, until the drawn one is surely in its place
-  $('intro').hidden = true;   // straight to black: then only the pointer fades in
+  $('intro').hidden = true; document.body.classList.remove('splash');   // straight to black: then only the pointer fades in
   if (!TEST) { intro.start(); const skip = e => { if (booted) return removeEventListener('keydown', skip); if (e.key !== 'Escape' && e.key !== ' ') return; intro.finish(); removeEventListener('keydown', skip) }; setTimeout(() => addEventListener('keydown', skip), 400) }   // clicks never skip it; Esc or Space does
   else handOver();
 }
@@ -157,6 +157,14 @@ else {
   const enter = $('enter'); if (window.__introProgress) window.__introProgress(1); else document.body.classList.add('ready');   // the ring opens Start when it closes
   enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); begin(false, e) };
   addEventListener('keydown', function k(e) { if ($('intro').classList.contains('gone')) return removeEventListener('keydown', k); if (e.target.closest && e.target.closest('#intro button')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeEventListener('keydown', k); begin(true) } });
+}
+/* back to the splash, to record the opening again: everything closes, the title card and Start come back */
+function toSplash() {
+  if (isOpen('lookPanel') || isOpen('panel')) togglePanel(''); rmenu.close(); if (document.pointerLockElement) document.exitPointerLock();
+  if (S.mode !== 'fly') { setMode('fly'); tween = null }
+  if (intro.active) intro.finish(); stopTour(); player.vel.set(0, 0, 0); lockI = -1; auto = null; warp = null; sparks.stop(); coach.end && coach.i >= 0 && coach.end();
+  const el = $('intro'); el.hidden = false; el.classList.remove('gone'); document.body.classList.add('intro', 'ready', 'splash');
+  const enter = $('enter'); enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); begin(false, e) };
 }
 let vt = performance.now();
 if (!TEST) requestAnimationFrame(t => { last = t; loop(t) });

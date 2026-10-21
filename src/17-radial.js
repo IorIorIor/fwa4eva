@@ -117,12 +117,12 @@ const rmenu = (() => {
     w.style.setProperty('--lens', L.dialLens ?? .8); w.style.setProperty('--dfont', (L.dialFont ?? 22) + 'px'); w.style.setProperty('--ticks', L.dialTicks ?? 1); w.style.setProperty('--mag', L.dialMag ?? 1.2);
     const mk = (items, at, set) => {
       const col = document.createElement('div'); col.className = 'dial'; const drum = document.createElement('div'); drum.className = 'drum'; col.append(drum); w.append(col);
-      const R = L.dialRadius ?? 90, step = L.dialStep ?? 22, ih = 2 * R * Math.sin(step * Math.PI / 360);
+      const ih = 32;   // a plain list: rows slide up and down, the middle one is the pick
       col.style.setProperty('--ih', ih.toFixed(1) + 'px');
       const els = items.map(t => { const e = document.createElement('div'); e.className = 'di'; e.textContent = t; drum.append(e); return e }); const lens = document.createElement('i'); lens.className = 'lens'; col.append(lens);
       let pos = at, vel = 0, cur = at, raf = 0, drag = null, tm = 0;
-      const render = () => els.forEach((e, i) => { const a = (i - pos) * step; if (Math.abs(a) > 92) { e.style.visibility = 'hidden'; return } e.style.visibility = ''; const f = Math.cos(a * Math.PI / 180);
-        e.style.transform = `rotateX(${(-a).toFixed(2)}deg) translateZ(${R}px)${i === cur ? ` scale(${L.dialMag ?? 1.2})` : ''}`; e.style.opacity = Math.max(0, 1 - (L.dialFade ?? .6) * (1 - f) * 1.6).toFixed(3); e.classList.toggle('on', i === cur) });
+      const render = () => els.forEach((e, i) => { const o = i - pos; if (Math.abs(o) > 3.5) { e.style.visibility = 'hidden'; return } e.style.visibility = '';
+        e.style.transform = `translateY(${(o * ih).toFixed(1)}px)`; e.style.opacity = Math.max(0, 1 - Math.abs(o) * .28).toFixed(3); e.classList.toggle('on', i === cur) });
       const settle = () => { clearTimeout(tm); tm = setTimeout(update, 140) };
       const tick = () => { const k = Math.max(0, Math.min(items.length - 1, Math.round(pos))); if (k !== cur) { cur = k; if ((L.dialSound ?? 1) > 0) nav.tick(); set(k); settle() } };
       const run = () => {
@@ -133,7 +133,7 @@ const rmenu = (() => {
       const go = () => { if (!raf) raf = requestAnimationFrame(run) };
       col.addEventListener('wheel', e => { e.preventDefault(); e.stopPropagation(); vel += (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0022; vel = Math.max(-1.6, Math.min(1.6, vel)); go() }, { passive: false });
       col.addEventListener('pointerdown', e => { e.preventDefault(); drag = { y: e.clientY, t: performance.now(), v: 0, moved: false }; vel = 0; try { col.setPointerCapture(e.pointerId) } catch (er) { } go() });
-      col.addEventListener('pointermove', e => { if (!drag) return; const dy = e.clientY - drag.y, now = performance.now(), dp = -dy / (R * step * Math.PI / 180); if (Math.abs(dy) > 1) drag.moved = true; pos += dp; drag.v = dp / Math.max(1, now - drag.t) * 16; drag.y = e.clientY; drag.t = now });
+      col.addEventListener('pointermove', e => { if (!drag) return; const dy = e.clientY - drag.y, now = performance.now(), dp = -dy / ih; if (Math.abs(dy) > 1) drag.moved = true; pos += dp; drag.v = dp / Math.max(1, now - drag.t) * 16; drag.y = e.clientY; drag.t = now });
       col.addEventListener('pointerup', e => { if (!drag) return; const moved = drag.moved; vel = drag.v; drag = null; if (!moved) { const r = col.getBoundingClientRect(), off = (e.clientY - (r.top + r.height / 2)) / ih; vel = 0; pos += Math.round(off) * .0001; const tgt = Math.max(0, Math.min(items.length - 1, Math.round(pos + off))); const from = pos; let t0 = 0; const anim = () => { t0 += .12; pos = from + (tgt - from) * Math.min(1, 1 - Math.pow(1 - t0, 3)); tick(); render(); if (t0 < 1) requestAnimationFrame(anim) }; anim() } go() });
       render();
     };

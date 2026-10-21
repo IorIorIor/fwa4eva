@@ -9,7 +9,8 @@ function recolor() {
   D.forEach((d, i) => {
     if (S.agencies.has(d.agency)) _tc.set(agColor(d.agency));
     else if (S.cats.has(d.category)) _tc.set(catColor(d.category));
-    if (fPicks() > 1 && (S.agencies.has(d.agency) || S.cats.has(d.category))) { _tc.getHSL(_hsl); _tc.setHSL(_hsl.h, 1, .42) }   // a picked filter's colour, deep enough to survive the star's white-hot core
+    else if (S.awards.has(d.award) && d.award !== 'SOTD') _tc.set(fPicks() === 1 ? '#ffffff' : AWARD_COL[d.award]);
+    if (fPicks() > 1 && (S.agencies.has(d.agency) || S.cats.has(d.category) || (S.awards.has(d.award) && d.award !== 'SOTD'))) { _tc.getHSL(_hsl); _tc.setHSL(_hsl.h, 1, .42) }   // a picked filter's colour, deep enough to survive the star's white-hot core
     else if (S.colorBy === 'type') _tc.set(KINDS[KIND[i]][1]);
     else if (S.colorBy === 'category') _tc.set(CAT_COL[CATS.indexOf(d.category)]);
     else if (S.colorBy === 'award') _tc.set(AWARD_COL[d.award]);
@@ -138,12 +139,18 @@ const fRow = (name, n, k) => { const b = document.createElement('button'); b.typ
   ag.addEventListener('click', e => { const b = e.target.closest('.frow'); if (!b) return; const a = b.dataset.k;
     if (S.agencies.has(a)) { S.agencies.delete(a); agCol.delete(a) } else { if (S.agencies.size >= AG_PAL.length) return; const used = new Set(agCol.values()); agCol.set(a, AG_PAL.find(c => !used.has(c))); S.agencies.add(a) }
     renderAgChips(); recolor(); applyFilter() });
+  {   // the awards: Site of the Month and FWA of the Year, at the top of the categories box
+    const aw = $('awList'), awN = new Map(); D.forEach(d => awN.set(d.award, (awN.get(d.award) || 0) + 1));
+    [['SOTM', 'Site of the Month'], ['FOTY', 'FWA of the Year']].forEach(([k, name]) => { const r = fRow(name, awN.get(k) || 0, k); r.style.setProperty('--c', AWARD_COL[k]); aw.appendChild(r) });
+    aw.addEventListener('click', e => { const b = e.target.closest('.frow'); if (!b) return; const k = b.dataset.k; S.awards.has(k) ? S.awards.delete(k) : S.awards.add(k); renderAgChips(); recolor(); applyFilter() });
+  }
   cat.addEventListener('click', e => { const b = e.target.closest('.frow'); if (!b) return; const c = b.dataset.k; S.cats.has(c) ? S.cats.delete(c) : S.cats.add(c); renderAgChips(); recolor(); applyFilter() });
   $('agQ').oninput = e => { const q = e.target.value.trim().toLowerCase(); for (const r of ag.children) r.hidden = !!q && !r.dataset.k.toLowerCase().includes(q) };
 }
 function renderAgChips() {   // the lists show what's picked: a picked agency goes bold (the rest grey), a picked category bold with its colour dot
   for (const r of $('agList').children) { const on = S.agencies.has(r.dataset.k); r.classList.toggle('on', on); r.setAttribute('aria-selected', on); r.style.setProperty('--c', on ? agColor(r.dataset.k) : 'transparent') }
   $('fAg').classList.toggle('some', S.agencies.size > 0);
+  for (const r of $('awList').children) { const on = S.awards.has(r.dataset.k); r.classList.toggle('on', on); r.setAttribute('aria-selected', on); r.style.setProperty('--c', on && fPicks() === 1 ? '#ffffff' : AWARD_COL[r.dataset.k]) }
   for (const r of $('catList').children) { const on = S.cats.has(r.dataset.k); r.classList.toggle('on', on); r.setAttribute('aria-selected', on); r.style.setProperty('--c', on ? catColor(r.dataset.k) : CAT_COL[CATS.indexOf(r.dataset.k)]) }
 }
 renderAgChips();
