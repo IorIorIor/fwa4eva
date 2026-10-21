@@ -26,35 +26,40 @@ function makeLogo3d() {
    splash it's drawn flat on its own canvas; from Start the same stars, in the same places, are 3D points in front of the
    camera that rush past with the logo, then fade a second after you're through it, as the galaxy comes up */
 const sStars = (() => {
-  const n = 700, r = mulberry32(4242), X = new Float32Array(n), Y = new Float32Array(n), K = new Float32Array(n), B = new Float32Array(n), P = new Float32Array(n), F = new Float32Array(n);
-  for (let i = 0; i < n; i++) { X[i] = (r() * 2 - 1) * 1.25; Y[i] = (r() * 2 - 1) * 1.25; K[i] = .35 * Math.pow(20, r()); B[i] = .25 + .75 * Math.pow(r(), 2.2); P[i] = r() * 6.283; F[i] = .6 + r() * 2.4 }
-  const S = { shift: 0, v: 0, k: 1, after: -1, t: 0 }, Z0 = () => .6 * .503 * SHIP_SC * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 21);
-  const bright = (i, t, z) => B[i] * (.62 + .38 * Math.sin(t * F[i] + P[i]) + .9 * Math.pow(Math.max(0, Math.sin(t * F[i] * .37 + P[i] * 3)), 40)) * Math.min(1, z / (Z0() * .12)) * Math.min(1, 7.5 - z / Z0());   // a gentle twinkle and, now and then, a sparkle
-  // flat, on the splash
+  // one field of stars in a tunnel ahead of you, depth 0 (here) … ZF (far). Each star sits at a fixed spot on the screen for
+  // its depth (lateral = screen spot × depth), so at rest they fill the screen evenly and only twinkle. From Start you rush
+  // in, faster and faster (exponentially), each star streaking back along its path; one that passes you comes back far off
+  // at a new spot, so the field never clumps
+  const n = 900, ZF = 8, r = mulberry32(4242), X = new Float32Array(n), Y = new Float32Array(n), Z = new Float32Array(n), B = new Float32Array(n), P = new Float32Array(n), F = new Float32Array(n);
+  const spawn = (i, z) => { const u = (r() * 2 - 1) * 1.15, v = (r() * 2 - 1) * 1.15; Z[i] = z; X[i] = u * z; Y[i] = v * z };
+  for (let i = 0; i < n; i++) { spawn(i, .35 + r() * (ZF - .35)); B[i] = .25 + .75 * Math.pow(r(), 2.2); P[i] = r() * 6.283; F[i] = .6 + r() * 2.4 }
+  const S = { k: 1, after: -1, t: 0, run: -1 };
+  const bright = (i, t, z) => B[i] * (.62 + .38 * Math.sin(t * F[i] + P[i]) + .9 * Math.pow(Math.max(0, Math.sin(t * F[i] * .37 + P[i] * 3)), 40)) * Math.min(1, (z - .04) / .35) * Math.min(1, (ZF - z) / 1.6);   // a gentle twinkle and, now and then, a sparkle; soft at both ends of the tunnel
   const cv = $('splashStars'), g = cv && cv.getContext('2d');
   const flat = now => {
     if (!g) return; const live = !$('intro').hidden || (intro.active && S.k > 0 && S.after < 1e3); if (!live) { if (cv.width) g.clearRect(0, 0, cv.width, cv.height); requestAnimationFrame(flat); return } const W = cv.clientWidth, H = cv.clientHeight, d = Math.min(2, devicePixelRatio || 1); if (cv.width !== Math.round(W * d)) { cv.width = Math.round(W * d); cv.height = Math.round(H * d) }
-    const t = now / 1000, z0 = Z0(), fdt = Math.min(.1, Math.max(0, (now - (S.prevT ?? now)) / 1000)); S.prevT = now; S.shift = (S.shift + fdt * z0 * (LOOK.splashDrift ?? .3)) % (z0 * 7); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, W, H);
-    const sh = S.shift + (intro.active ? (S.lshift || 0) * (LOOK.splashStarsFollow ?? 1) : 0), fk = intro.active ? S.k : 1;   // through the opening: the same flat field, rushing with the logo, then fading
-    const v = fdt > 0 ? Math.max(0, sh - (S.prevSh ?? sh)) / fdt : 0, tl = Math.min(z0 * 3, v * (LOOK.splashStreak ?? .08)); S.prevSh = sh; g.lineCap = 'round';   // speed dust: each star streaks back along its rush, longer the faster you go
-    for (let i = 0; i < n; i++) { let z = K[i] * z0 - sh; while (z < z0 * .05) z += z0 * 7; while (z > z0 * 7.05) z -= z0 * 7; const q = K[i] * z0 / z, x = W / 2 + X[i] * q * W / 2, y = H / 2 - Y[i] * q * H / 2; if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
-      const b = bright(i, t, z) * (LOOK.splashStars ?? 1) * fk; if (b < .02) continue; const sz = (.6 + 1.1 * B[i]) * Math.min(2.2, Math.sqrt(q)), q2 = K[i] * z0 / (z + tl), x2 = W / 2 + X[i] * q2 * W / 2, y2 = H / 2 - Y[i] * q2 * H / 2, L = Math.hypot(x - x2, y - y2);
-      if (L > sz) { g.strokeStyle = `rgba(255,255,255,${Math.min(1, b).toFixed(3)})`; g.lineWidth = sz; g.beginPath(); g.moveTo(x2, y2); g.lineTo(x, y); g.stroke() } else { g.fillStyle = `rgba(255,255,255,${Math.min(1, b).toFixed(3)})`; g.fillRect(x - sz / 2, y - sz / 2, sz, sz) } }
+    const t = now / 1000, fdt = Math.min(.1, Math.max(0, (now - (S.prevT ?? now)) / 1000)); S.prevT = now; g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, W, H);
+    let v = 0; if (intro.active && S.run >= 0) { S.run += fdt; v = Math.min(LOOK.splashMaxV ?? 60, (LOOK.splashRush ?? .25) * (Math.exp((LOOK.splashAccel ?? 1.4) * S.run) - 1)) }   // still until Start, then exponentially faster
+    const dz = v * fdt, tl = v * (LOOK.splashStreak ?? .12), fk = intro.active ? S.k : 1, hw = W / 2, hh = H / 2, ar = Math.max(1, W / H), am = Math.max(1, H / W); g.lineCap = 'round';
+    for (let i = 0; i < n; i++) {
+      if (dz) { Z[i] -= dz; if (Z[i] < .04) spawn(i, Z[i] + ZF - .4) }
+      const z = Z[i], x = hw + X[i] / z * hw * am, y = hh - Y[i] / z * hh * ar; if (x < -60 || x > W + 60 || y < -60 || y > H + 60) continue;   // (squared up on a portrait or landscape screen)
+      const b = bright(i, t, z) * (LOOK.splashStars ?? 1) * fk; if (b < .02) continue; const sz = (.6 + 1.1 * B[i]) * Math.min(2.6, Math.sqrt(2.2 / z));
+      const z2 = z + tl, x2 = hw + X[i] / z2 * hw * am, y2 = hh - Y[i] / z2 * hh * ar, L = Math.hypot(x - x2, y - y2), a = Math.min(1, b).toFixed(3);
+      if (L > sz) { const gr = g.createLinearGradient(x2, y2, x, y); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(1, `rgba(255,255,255,${a})`); g.strokeStyle = gr; g.lineWidth = sz; g.beginPath(); g.moveTo(x2, y2); g.lineTo(x, y); g.stroke() }   // the trail thins out behind the star
+      else { g.fillStyle = `rgba(255,255,255,${a})`; g.fillRect(x - sz / 2, y - sz / 2, sz, sz) }
+    }
     requestAnimationFrame(flat);
   };
   requestAnimationFrame(flat);
-  // in 3D, from Start: camera-local quads (they face the camera by construction), sized to stay a pixel or two
-  const geo = new THREE.PlaneGeometry(1, 1), mat = new THREE.MeshBasicMaterial({ map: softDot, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
-  const mesh = new THREE.InstancedMesh(geo, mat, n); mesh.frustumCulled = false; mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3); mesh.renderOrder = 5; mesh.visible = false; shipScene.add(mesh);
-  const m4 = new THREE.Matrix4(), q4 = new Q4(), v3 = new V3(), sc = new V3();
-  S.update = (dt, logoShift) => {
-    if (!intro.active || !(LOOK.splashStars ?? 1)) { mesh.visible = false; return }
-    S.t += dt; if (intro.ph === 2) { if (S.after < 0) S.after = 0; S.after += dt; S.lshift = (S.lshift || 0) + S.v * dt; S.v *= Math.exp(-dt * .5) } else if (logoShift != null) { const ls = logoShift; S.v = dt > 0 ? (ls - (S.lshift || 0)) / dt : 0; S.lshift = ls }
-    S.k = 1 - sstep(S.after, LOOK.splashStarsHold ?? 1, (LOOK.splashStarsHold ?? 1) + (LOOK.splashStarsFade ?? 1)); mesh.visible = false;   // (drawn flat on its own canvas, untouched by the camera or the mouse)
+  S.update = dt => {   // the fade: a while after you're through the logo
+    if (!intro.active) return;
+    S.t += dt; if (intro.ph === 2) { if (S.after < 0) S.after = 0; S.after += dt }
+    S.k = 1 - sstep(S.after, LOOK.splashStarsHold ?? 1, (LOOK.splashStarsHold ?? 1) + (LOOK.splashStarsFade ?? 1));
   };
-  S.reset = () => { S.after = -1; S.lshift = 0; S.v = 0; S.t = 0; S.k = 1; if (cv && cv.parentNode !== document.body) { document.body.appendChild(cv); cv.classList.add('fly') } };   // from Start the canvas leaves the title card and floats over the black
-  S.home = () => { if (cv && cv.parentNode === document.body) { $('intro').prepend(cv); cv.classList.remove('fly') } };
-  S.far = () => mesh.visible ? Z0() * 8 : 0;
+  S.reset = () => { S.after = -1; S.t = 0; S.k = 1; S.run = 0; if (cv && cv.parentNode !== document.body) { document.body.appendChild(cv); cv.classList.add('fly') } };   // from Start the canvas leaves the title card and floats over everything
+  S.home = () => { S.run = -1; if (cv && cv.parentNode === document.body) { $('intro').prepend(cv); cv.classList.remove('fly') } };
+  S.far = () => 0;
   return S;
 })();
 const curEl = (() => { const e = document.createElement('img'); e.id = 'introCur'; e.alt = ''; e.style.cssText = 'position:fixed;left:0;top:0;z-index:60;pointer-events:none;display:none'; document.body.appendChild(e); return e })();   // the opening's plain mouse pointer
@@ -118,7 +123,7 @@ const intro = {
     camera.updateMatrixWorld();
   },
   update(dt) {
-    sStars.update(dt, this.ph === 1 ? this.lshift || 0 : null);
+    sStars.update(dt);
     avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = this.ph === 2; avatar.userData.flame.material.opacity = 0;
     if (this.at && this.goal && dt > 0) {   // elastic: a soft spring with a touch of overshoot, so any flick of the mouse reads as one smooth swing
       const K = 90 * (LOOK.introSpring ?? 1), C = 2 * Math.sqrt(K) * .78, h = Math.min(dt, 1 / 30);

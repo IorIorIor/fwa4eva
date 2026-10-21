@@ -140,8 +140,9 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in
   const slide = k => { b.style.setProperty('--k', k.toFixed(3)); const on = k > .92; if (on !== touchBoost) { touchBoost = on; b.classList.toggle('boost', on); if (on) buzz(14) } };
   const end = () => { if (id < 0) return; id = -1; touchThrust = false; b.classList.remove('on'); slide(0) };
   b.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; y0 = e.clientY; touchThrust = true; b.classList.add('on'); slide(0); buzz(8); try { b.setPointerCapture(id) } catch { } });
-  b.addEventListener('pointermove', e => { if (e.pointerId !== id) return; const span = Math.max(40, Math.min(232, innerHeight * .46) - 76); slide(Math.min(1, Math.max(0, (y0 - e.clientY) / span))) });
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, e => { if (e.pointerId === id) end() })); b.addEventListener('contextmenu', e => e.preventDefault()) }
+  b.addEventListener('pointermove', e => { if (e.pointerId !== id) return; const span = Math.max(40, Math.min(232, innerHeight * .46) - 52); slide(Math.min(1, Math.max(0, (y0 - e.clientY) / span))) });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, e => { if (e.pointerId === id) end() })); b.addEventListener('contextmenu', e => e.preventDefault());
+  addEventListener('pointerup', e => { if (e.pointerId === id) end() }, true); ['touchend', 'touchcancel'].forEach(t => addEventListener(t, e => { if (id >= 0 && ![...e.touches].some(x => b.contains(x.target))) end() }, true)); addEventListener('blur', end); document.addEventListener('visibilitychange', end) }   // let go anywhere, any way: the thrust stops
 
 /* ───────────────────────── picking ───────────────────────── */
 // ← and →: every winner by distance from you. With nothing locked either key goes to the nearest one, wherever it is;

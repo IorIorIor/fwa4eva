@@ -703,3 +703,27 @@ body.farside #labels,body.farside #dayLabels{opacity:0;transition:opacity 1s}   
   .sheet.drag,#rmPanel.drag{transition:none!important}
 }
 body.paper #panel,body.paper #lookPanel,body.paper #rmPanel{background:rgba(250,250,248,.97)!important}
+/* touch: no text selection or callout on a long press (fields still select) */
+@media (pointer:coarse){
+  body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+  /* thrust: the same small square as Brake; held it grows into the boost track, let go it folds back */
+  #thrust{width:52px;height:52px}
+  #thrust i{height:calc(52px + var(--k,0) * (100% - 52px))}
+  #thrust span{height:50px;font-size:9px}
+  #thrust:not(.on){transition:height .22s cubic-bezier(.3,0,.2,1),border-color .2s ease,transform .12s ease}
+  #thrust:not(.on) i{opacity:0;transition:opacity .15s ease}
+}
+/* phones: the record is one still card across the top */
+#tip.mtop{left:12px!important;right:12px;top:calc(60px + env(safe-area-inset-top,0px))!important;transform:none!important;white-space:normal;align-items:stretch;background:rgba(12,12,14,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.14);border-radius:10px;overflow:hidden;transition:none}
+#tip.mtop .td,#tip.mtop .tt,#tip.mtop .ti,#tip.mtop .tnav .tdist{background:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+#tip.mtop .thd{display:block}
+#tip.mtop .td,#tip.mtop.full .td{font-size:10.5px;padding:8px 10px 2px}
+#tip.mtop .tt,#tip.mtop.full .tt{font-size:19px;padding:1px 10px 6px;max-width:none;white-space:normal;transition:none}
+#tip.mtop .tx{transition:none}
+#tip.mtop .ti{width:auto}
+#tip.mtop dl{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px;padding:6px 10px 8px;border-top:1px solid rgba(255,255,255,.1)}
+#tip.mtop dd{font-size:13px;white-space:nowrap}
+#tip.mtop .ti a{padding:0 10px 9px;font-size:11px}
+#tip.mtop .tnav{display:none}
+body.paper #tip.mtop{background:rgba(250,250,248,.95);border-color:rgba(0,0,0,.12)}

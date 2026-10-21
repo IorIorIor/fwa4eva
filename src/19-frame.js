@@ -276,7 +276,7 @@ function updateHover(dt) {
   // what the tooltip shows: a winner you point at; else the one you're beside (opened up into its full record); else your lock
   const map = S.mode === 'map', pin = cardI >= 0 ? cardI : !map && lockI >= 0 ? lockI : -1;
   const put = (key, html, full, side) => {
-    if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full) { if (!side) drawCardImg(cardI); cardFlicker() }   /* the ring's record too comes in piece by piece */ }
+    if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full) { if (!side) drawCardImg(cardI); if (!phone) cardFlicker() }   /* the ring's record too comes in piece by piece */ }
     tip.classList.toggle('full', !!full); tip.classList.toggle('side', !!side); tip.classList.remove('dock'); tip.hidden = false };
   const PI = HALO.pInfo;
   const pRpx = PI.on ? PI.r * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(PI.c))) : 0;
@@ -306,7 +306,8 @@ function updateHover(dt) {
       tip.style.left = x + 'px'; tip.style.top = y + 'px';
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
-  { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = Math.round(camera.position.distanceTo(starPos(+m[1], tmp))).toLocaleString('en') }   // how far it is, live, to the unit
+  { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = Math.round(camera.position.distanceTo(starPos(+m[1], tmp))).toLocaleString('en') }
+  if (phone) { tip.classList.toggle('mtop', !tip.hidden); if (!tip.hidden) { tip.style.left = ''; tip.style.top = '' } }   // phones: the record is one still card at the top, it just comes and goes   // how far it is, live, to the unit
 }
 const RET = { ring: $('aimRing'), p: -1 };
 function updateBoostUI(dt = 0) {   // the reticle is a ring and a dot; it no longer changes with the boost (the console shows the power)
