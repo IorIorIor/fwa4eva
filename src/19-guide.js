@@ -2,25 +2,45 @@
    On a first visit a short run of tips teaches the controls, each one leaving as soon as you've done it.
    The benchmark flies the camera through the heaviest views for a few seconds each and writes a report you can
    paste back to tune quality for real hardware. */
+const K = k => `<kbd data-k="${k}">${{ arrowleft: '←', arrowright: '→', shift: 'Shift', mouse: 'Mouse' }[k] || k.toUpperCase()}</kbd>`;   // a key, drawn as a key (it lights while you hold it)
 const coach = {
-  i: -1, t: 0, look: 0, done: 0, prevQ: new Q4(), el: null,
-  steps: () => [
-    { k: 'Look', t: coarse ? 'Drag to look around' : 'Move the mouse to look around', ok: () => coach.look > 1.1 },
-    { k: 'Fly', t: coarse ? 'Hold the thrust button to fly' : 'Hold W to fly', ok: () => player.vel.length() > 400 },
-    { k: 'Boost & roll', t: coarse ? 'Keep holding: speed builds up' : 'Shift boosts · A and D roll the ship', ok: () => boosting || coach.t > 7 },
-    { k: 'Lock on', t: coarse ? 'Tap a star to lock on' : 'Click a star to lock on, W takes you there', ok: () => lockI >= 0 },
-    { k: 'Map', t: coarse ? 'Map, top left, shows the whole timeline' : 'M opens the map · H flies you home', ok: () => S.mode === 'map' || coach.t > 7 },
+  i: -1, t: 0, look: 0, done: 0, prevQ: new Q4(), el: null, arrow: false, ring: false, hold: 0,
+  steps: () => coarse ? [
+    { t: 'Drag to look around', ok: () => coach.look > 1.1 },
+    { t: 'Hold the thrust button to fly', ok: () => player.vel.length() > 400 },
+    { t: 'Tap a star to lock on', ok: () => lockI >= 0 },
+    { t: 'Map, top right, shows the whole timeline', ok: () => S.mode === 'map' || coach.t > 7 },
+  ] : [
+    { t: `Press ${K('w')} to move forward`, ok: () => keys.w && (coach.hold += coach.dt) > .7 },
+    { t: `Move the ${K('mouse')} to steer`, ok: () => coach.look > 1 },
+    { t: `Press ${K('shift')} to boost`, ok: () => boosting && (coach.hold += coach.dt) > .35 },
+    { t: `Press ${K('s')} to brake`, ok: () => keys.s && brakeK > .6 },
+    { t: `${K('arrowleft')} ${K('arrowright')} pick the nearest winners`, ok: () => coach.arrow },
+    { t: 'Fly through a ring', s: () => LOOK.rings ? `lock on with ${K('arrowleft')} ${K('arrowright')}, then hold ${K('w')}` : `${K('r')} switches the rings game on`, ok: () => coach.ring },
+    { t: `Press ${K('m')} for the map`, ok: () => S.mode === 'map' },
   ],
-  start() { if (!LOOK.tutorial || store.get('sotd-coach') === '1' || TEST) return; this.el = $('coach'); this.list = this.steps(); this.i = 0; this.t = 0; this.prevQ.copy(rig.q); this.show() },
-  show() { const s = this.list[this.i], e = this.el; e.innerHTML = `<span class="td">${this.i + 1} of ${this.list.length} · ${s.k}</span><span class="tt">${s.t}</span>`; e.hidden = false; e.classList.remove('done'); void e.offsetWidth; e.classList.add('in') },
+  start(again) { if ((TEST && !again) || (!again && (!LOOK.tutorial || store.get('sotd-coach') === '1'))) return; this.again = !!again; this.el = $('coach'); this.list = this.steps(); this.i = 0; this.t = 0; this.done = 0; this.prevQ.copy(rig.q); this.arrow = this.ring = false; this.show() },
+  show() {
+    const s = this.list[this.i], e = this.el, v = x => typeof x === 'function' ? x() : x || ''; this.look = 0; this.hold = 0; this.arrow = this.ring = false;
+    e.innerHTML = `<span class="td">${this.i + 1} / ${this.list.length}<span class="sk">${coarse ? '' : K('enter') + ' skip'}</span></span><span class="tt">${v(s.t)}</span>` + (s.s ? `<span class="ts">${v(s.s)}</span>` : '');
+    e.hidden = false; e.classList.remove('done'); if (intro.active) e.classList.add('away'); void e.offsetWidth; e.classList.add('in'); this.kb = [...e.querySelectorAll('kbd')];
+  },
   update(dt) {
     if (this.i < 0 || !booted || intro.active) return;
-    if (!LOOK.tutorial) { this.end(); return }
-    this.t += dt; this.look += this.prevQ.angleTo(rig.q); this.prevQ.copy(rig.q);
+    if (!LOOK.tutorial && !this.again) { this.end(); return }
+    this.dt = dt; this.t += dt; this.look += this.prevQ.angleTo(rig.q); this.prevQ.copy(rig.q);
+    this.kb.forEach(k => k.classList.toggle('dn', k.dataset.k === 'mouse' ? performance.now() - lastInput < 120 && this.look > .02 : !!keys[k.dataset.k]));
+    this.place();
     if (this.done > 0) { this.done -= dt; if (this.done <= 0) { this.i++; this.t = 0; if (this.i >= this.list.length) this.end(); else this.show() } return }
-    if (this.list[this.i].ok()) { this.done = .9; this.el.classList.add('done') }
+    if (this.list[this.i].ok()) { this.done = .9; this.el.classList.add('done'); buzz(12) }
   },
-  end() { this.i = -1; store.set('sotd-coach', '1'); if (this.el) { this.el.classList.remove('in'); setTimeout(() => this.el.hidden = true, 600) } },
+  place() {   // it floats just above the ship
+    const e = this.el, hide = S.mode !== 'fly' || rmenu.panel || document.body.classList.contains('panel-open'); e.classList.toggle('away', hide); if (hide) return;
+    const p = tmp.copy(player.pos).project(camera), x = Math.max(160, Math.min(innerWidth - 160, (p.x * .5 + .5) * innerWidth)), y = Math.max(90, Math.min(innerHeight - 40, (-p.y * .5 + .5) * innerHeight - 46));
+    e.style.left = x.toFixed(1) + 'px'; e.style.top = y.toFixed(1) + 'px';
+  },
+  skip() { if (this.i < 0 || this.done > 0) return false; this.done = .3; this.el.classList.add('done'); return true },
+  end() { this.i = -1; store.set('sotd-coach', '1'); if (this.el) { this.el.classList.remove('in'); setTimeout(() => { if (this.i < 0) this.el.hidden = true }, 600) } },
 };
 
 const bench = { on: false, ms: [] };

@@ -107,6 +107,7 @@ addEventListener('keydown', e => {
   const k = e.key.toLowerCase(); keys[k] = true; if (k === ' ' && !e.target.closest('button,input,select,textarea')) e.preventDefault();
   if (!booted) return;
   if (k === 'm') setMode(S.mode === 'fly' ? 'map' : 'fly');
+  if (k === 'enter' && coach.skip()) { e.preventDefault(); return }   // the first-flight steps: Enter skips one
   if (k === 'h') goHome();
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
   if (k === 'r' && !e.repeat) setRings(!LOOK.rings);   // R: rings game on/off
@@ -133,6 +134,7 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in
 // ← and →: every winner by distance from you. With nothing locked either key goes to the nearest one, wherever it is;
 // from the one you're locked on, ← steps to the next nearer and → to the next farther
 function stepByDist(dir) {
+  coach.arrow = true;
   const cand = [], pp = player.pos; for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z; cand.push([dx * dx + dy * dy + dz * dz, i]) }
   if (!cand.length) return; cand.sort((a, b) => a[0] - b[0]);
   const k = lockI >= 0 ? cand.findIndex(c => c[1] === lockI) : -1, j = k < 0 ? cand[0] : cand[Math.max(0, Math.min(cand.length - 1, k + dir))];

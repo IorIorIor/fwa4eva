@@ -235,8 +235,14 @@ body.idle #youTime{opacity:.25 !important}
 #tip .ti a:hover{text-decoration:underline}
 #labels{position:fixed;inset:0;pointer-events:none;z-index:2;overflow:hidden}
 /* first-flight tips: the tooltip's plates, low and centred, each one ticking off as you do it */
-#coach{left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;pointer-events:none;opacity:0;transform:translate(-50%,8px);transition:opacity .5s ease,transform .5s cubic-bezier(.2,.9,.25,1)}
-#coach.in{opacity:1;transform:translate(-50%,0)}
+#coach{left:50%;top:50%;display:flex;flex-direction:column;align-items:center;pointer-events:none;opacity:0;transform:translate(-50%,calc(-100% + 8px));transition:opacity .5s ease,transform .5s cubic-bezier(.2,.9,.25,1)}
+#coach.in{opacity:1;transform:translate(-50%,-100%)}
+#coach.away{opacity:0 !important}
+#coach .td{display:flex;gap:10px;align-items:center}#coach .sk{color:rgba(255,255,255,.4);text-transform:none;letter-spacing:.02em}#coach .sk kbd{font-size:9px;padding:1px 4px 0;min-width:0;margin-right:3px}
+#coach .ts{font-family:"FF Good Pro",var(--body);font-size:13px;color:rgba(255,255,255,.7);padding:0 12px 6px;background:rgba(26,20,40,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#coach kbd{display:inline-block;min-width:1.5em;padding:2px 6px 0;margin:0 1px;border:1px solid rgba(255,255,255,.55);border-bottom-width:2.5px;border-radius:5px;font-family:var(--mono);font-size:.62em;line-height:1.5;text-align:center;vertical-align:.18em;color:#fff;background:rgba(255,255,255,.06);transition:background .1s,color .1s,transform .1s}
+#coach kbd.dn{background:#fff;color:#0b0c0e;transform:translateY(1px);border-bottom-width:1.5px}
+#coach.done .tt kbd{border-color:#9dffcf}
 #coach .td,#coach .tt{background:rgba(26,20,40,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 #coach .td{font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:11px;line-height:1;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.62);padding:5px 8px 3px}
 #coach .tt{font-family:"FF Good Pro",var(--body);font-size:22px;line-height:1.1;color:#fff;padding:3px 12px 6px;transition:color .3s}
@@ -327,6 +333,11 @@ body.intro #skipHint{opacity:1;transition-delay:1.6s}
 .sheet{z-index:9}
 /* ── FWA-style controls: monochrome, thin Tabler outline icons, white on black that flips to black on white ── */
 #logo{left:max(16px,env(safe-area-inset-left,0px));right:auto}
+#topnav{top:calc(14px + env(safe-area-inset-top,0px));left:calc(max(16px,env(safe-area-inset-left,0px)) + 104px);height:34px;display:flex;align-items:center;gap:2px}
+#topnav button{background:none;border:0;padding:6px 9px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);cursor:pointer;transition:color .15s}
+#topnav button:hover,#topnav button:focus-visible{color:#fff}#topnav button.on{color:#fff}
+body.idle #topnav{opacity:0}body.intro #topnav{opacity:0;pointer-events:none}body.inverted #topnav{filter:invert(1) hue-rotate(180deg)}
+@media (max-width:760px){#topnav{display:none}}
 #brand{left:auto;right:max(16px,env(safe-area-inset-right,0px));flex-direction:row;align-items:center;gap:8px}
 #topbar{display:none}
 .ico{width:20px;height:20px;stroke-width:1.25;display:block;flex:none}

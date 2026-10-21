@@ -165,3 +165,10 @@ const rmenu = (() => {
   const fmtDayLong = dd => { const t = new Date(DAY0 + dd * 864e5); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}` };
   return { get open() { return open }, get panel() { return !panel.hidden }, get hot() { return hot }, held: false, show, move, choose, sub, close };
 })();
+// the same choices as a plain menu along the top, beside the logo
+(() => {
+  const nav = $('topnav'), mapB = nav.querySelector('[data-k="map"]');
+  nav.addEventListener('pointerdown', e => e.stopPropagation());
+  nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
+  setInterval(() => { mapB.textContent = S.mode === 'map' ? 'Fly' : 'Map' }, 300);
+})();
