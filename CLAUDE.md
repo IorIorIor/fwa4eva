@@ -24,6 +24,8 @@ and gives quick visual feedback; keep replies short).
 - Keys: W thrust, Shift/Space boost, A/D roll, S brake, M map, H home, C Look panel, P pilots list, G fly to nearest pilot, X hold current speed, R rings game on/off.
 - Data: the real archive (IorIorIor/fwa4eva-data, private) ships with the app in `public/data/` (archive.json + shots/YYYY/*.webp).
   Refresh it with `npm run data` (copies from a clone at `../fwa4eva-data`). Days before the archive starts borrow real winners.
+- Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
+  field for settings copied from the Ascent toy.
 - Multiplayer: `relay.mjs` (WebSocket at `/ws`, positions only, deals each pilot a distinct hue). On claude.ai the page
   uses the artifact room instead. `?bots=N` adds pretend pilots for testing.
 

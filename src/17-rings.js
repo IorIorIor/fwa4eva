@@ -136,7 +136,7 @@ function collectSound(v = 1) {   // two quick rising notes, bright and glassy, w
   const bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = 'bandpass'; bp.Q.value = 1.2; bp.frequency.setValueAtTime(600, t); bp.frequency.exponentialRampToValueAtTime(3200, t + .35); g.gain.value = .12 * v; n.buffer = b; n.connect(bp); bp.connect(g); g.connect(master); n.start(t);
 }
 function collect(i) {
-  coach.ring = true;
+  coach.ring = true; ascent.sparkle(GOT[i] ? .6 : 1);
   if (lockI === i) { lockI = -1; auto = null }   // through it: the camera's free again
   player.vel.multiplyScalar(1 + Math.max(0, LOOK.ringBurst ?? .25)); engineLook.peak = Math.max(engineLook.peak || 0, 1.3 * (LOOK.ringPopBurst ?? .6)); ringPop = 1; boostK = Math.max(boostK, LOOK.ringBoost ?? .8); collectSound(GOT[i] ? .6 : 1);   // a festive kick: speed, a burst of light from the engine, the boost look   // a kick: speed, the engine flaring, a bright little sound
   ringHide.set(i, performance.now() + (LOOK.ringBallDelay ?? 1) * 1000);   // the star itself comes back only a moment after you're through

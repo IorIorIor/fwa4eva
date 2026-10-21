@@ -1,9 +1,7 @@
 /* ───────────────────────── sound ─────────────────────────
-   "An Ending Ascent" on loop; an engine of filtered noise and a soft drone that rises with speed; a hum near the
+   The Ascent instrument (18-ascent); an engine of filtered noise and a soft drone that rises with speed; a hum near the
    outpost; and hovering a star strikes a glass bell in a vast space, the same chord every time for the same star. */
 let musicFx = null, musicMapOn = null, AC = null, out = null, master = null, ambBus = null, musicGain = null, ENG = null, hum = null, lastTing = 0;
-// the soundtrack starts downloading behind the title card, so it's ready the moment you enter
-const musicEl = (() => { try { const a = new Audio(); a.loop = true; a.preload = TEST_EARLY ? 'none' : 'auto'; a.src = 'an-ending-ascent.mp3'; return a } catch (e) { return null } })();
 let muted = store.get('sotd-muted') === '1';
 const KEYROOT = [72, 74, 76, 79, 81, 84], PENTA = [0, 2, 4, 7, 9];
 const CHIME_K = .9;   // the chime bus level (× the Hover tingles slider)
@@ -28,11 +26,11 @@ function audio() {
       ENG = { bp, nG, lp, tG, oscs, eng, buf: nb };
     } catch (e) { }
     try {
-      musicGain = AC.createGain(); musicGain.gain.value = .6 * LOOK.music; const src = AC.createMediaElementSource(musicEl);
+      musicGain = AC.createGain(); musicGain.gain.value = .6 * LOOK.music; const src = AC.createGain();   // the instrument plays into here
       // the map's filter: everything through a lowpass that closes (with a little resonance), plus a soft echo that only the map hears
       const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 20000; lp.Q.value = .7; const dl = AC.createDelay(1), fb = AC.createGain(), wet = AC.createGain(); dl.delayTime.value = .34; fb.gain.value = .38; wet.gain.value = 0;
       src.connect(lp); lp.connect(musicGain); lp.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(musicGain); musicFx = { lp, wet };
-      musicGain.connect(out); musicEl.play().catch(() => { });
+      musicGain.connect(out); ascent.boot(AC, src);
     } catch (e) { }
     // chimes: their own bus, loud enough to sit clearly over the music: the dry bell up front, a short bright room behind it,
     // and two soft echoes panned left and right
