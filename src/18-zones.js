@@ -45,13 +45,15 @@ const mapZone = (() => {
   };
   Z.open = h => {   // frame the zone: as large as the screen allows, from the angle you're looking at it
     Object.assign(Z, { on: true, t0: h.t0, t1: h.t1, lvl: h.lvl }); actR.set(h.t0, h.t1, LOOK.mapZoneW ?? 70000);
-    const pts = []; for (let k = 0; k < SN; k++) if (st[k] >= h.t0 && st[k] < h.t1) pts.push(new V3(sx[k], 0, sz[k]).applyQuaternion(GQ).add(GC)); if (!pts.length) return;
+    // frame its winners themselves (as big as they can be and all still in view); the stretch of spiral if it has none
+    const pts = []; for (let i = 0; i < N; i++) { const t = Date.parse(D[i].date + 'T00:00:00Z'); if (t >= h.t0 && t < h.t1 && TA[i] > .5) pts.push(starPos(i, new V3())) }
+    const byStars = pts.length > 0; if (!byStars) for (let k = 0; k < SN; k++) if (st[k] >= h.t0 && st[k] < h.t1) pts.push(new V3(sx[k], 0, sz[k]).applyQuaternion(GQ).add(GC)); if (!pts.length) return;
     const q = orbitPose().q, ax = new V3(1, 0, 0).applyQuaternion(q), ay = new V3(0, 1, 0).applyQuaternion(q), c = new V3(); pts.forEach(p => c.add(p)); c.divideScalar(pts.length);
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity; pts.forEach(p => { const d = p.clone().sub(c), x = d.dot(ax), y = d.dot(ay); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y) });
     c.addScaledVector(ax, (x0 + x1) / 2).addScaledVector(ay, (y0 + y1) / 2);   // centred on the zone as you'll see it
     // fit it into the part of the screen that's free (the filters panel covers the left), with the map's own lens
     const pr = $('panel').classList.contains('open') ? $('panel').getBoundingClientRect() : null, pl = pr && pr.left < innerWidth / 2 ? pr.right : 0, fw = Math.max(.3, (innerWidth - pl) / innerWidth);
-    const pad = (LOOK.mapZoneW ?? 70000) * .5, thM = Math.tan(mapFovNow() * Math.PI / 360), hx = (x1 - x0) / 2 + pad, hy = (y1 - y0) / 2 + pad;
+    const pad = byStars ? Math.max(2000, Math.max(x1 - x0, y1 - y0) * (LOOK.mapZonePad ?? .06)) : (LOOK.mapZoneW ?? 70000) * .5, thM = Math.tan(mapFovNow() * Math.PI / 360), hx = (x1 - x0) / 2 + pad, hy = (y1 - y0) / 2 + pad;
     const camD = Math.max(hy / thM, hx / (thM * camera.aspect * fw)) * (LOOK.mapZoneZoom ?? 1.08), halfW = thM * camera.aspect * camD;
     orbit.target.copy(c).addScaledVector(ax, -halfW * pl / innerWidth); orbit.dist = Math.max(MAP_MIN, camD / mapDistK()); const o = orbitPose(); tweenCam(o.p, o.q, LOOK.mapZoneTime ?? 1.3);
   };

@@ -651,3 +651,4 @@ body.intro #gl,body.intro #gl.hovering,body.intro{cursor:default !important}   /
 #rmPanel.p-filters #agList,#rmPanel.p-filters #catList{max-height:none;flex:1}
 #rmPanel.p-filters .rfoot{grid-column:1 / -1}
 #topnav #musNav,#topnav #sndNav{color:rgba(255,255,255,.6)}#topnav #musNav.on,#topnav #sndNav.on{color:#fff}   /* on: bright white; off: the usual grey */
+#splashStars{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}#intro .in{position:relative;z-index:1}

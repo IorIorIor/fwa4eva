@@ -22,6 +22,43 @@ function makeLogo3d() {
   const face = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: .9, roughness: .4, side: THREE.DoubleSide }), side = new THREE.MeshStandardMaterial({ color: 0x9a9aa4, emissive: 0xffffff, emissiveIntensity: .06, roughness: .5, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(geo, [face, side]), g = new THREE.Group(); g.add(mesh); g.userData.mesh = mesh; g.visible = false; shipScene.add(g); return g;
 }
+/* the splash's star field: simple twinkling points around the logo, in 3D (they sit nearer and further than it). On the
+   splash it's drawn flat on its own canvas; from Start the same stars, in the same places, are 3D points in front of the
+   camera that rush past with the logo, then fade a second after you're through it, as the galaxy comes up */
+const sStars = (() => {
+  const n = 700, r = mulberry32(4242), X = new Float32Array(n), Y = new Float32Array(n), K = new Float32Array(n), B = new Float32Array(n), P = new Float32Array(n), F = new Float32Array(n);
+  for (let i = 0; i < n; i++) { X[i] = (r() * 2 - 1) * 1.25; Y[i] = (r() * 2 - 1) * 1.25; K[i] = .35 * Math.pow(20, r()); B[i] = .25 + .75 * Math.pow(r(), 2.2); P[i] = r() * 6.283; F[i] = .6 + r() * 2.4 }
+  const S = { shift: 0, v: 0, k: 1, after: -1, t: 0 }, Z0 = () => .6 * .503 * SHIP_SC * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 21);
+  const bright = (i, t, z) => B[i] * (.62 + .38 * Math.sin(t * F[i] + P[i]) + .9 * Math.pow(Math.max(0, Math.sin(t * F[i] * .37 + P[i] * 3)), 40)) * Math.min(1, z / (Z0() * .12)) * Math.min(1, 7.5 - z / Z0());   // a gentle twinkle and, now and then, a sparkle
+  // flat, on the splash
+  const cv = $('splashStars'), g = cv && cv.getContext('2d');
+  const flat = now => {
+    if (!g) return; if ($('intro').hidden) { requestAnimationFrame(flat); return } const W = cv.clientWidth, H = cv.clientHeight, d = Math.min(2, devicePixelRatio || 1); if (cv.width !== Math.round(W * d)) { cv.width = Math.round(W * d); cv.height = Math.round(H * d) }
+    const t = now / 1000, z0 = Z0(); S.shift = (S.shift + .016 * z0 * (LOOK.splashDrift ?? .04)) % (z0 * 4); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, W, H);
+    for (let i = 0; i < n; i++) { let z = K[i] * z0 - S.shift; if (z < z0 * .05) z += z0 * 7; const q = K[i] * z0 / z, x = W / 2 + X[i] * q * W / 2, y = H / 2 - Y[i] * q * H / 2; if (x < -4 || x > W + 4 || y < -4 || y > H + 4) continue;
+      const b = bright(i, t, z) * (LOOK.splashStars ?? 1); if (b < .02) continue; const sz = (.6 + 1.1 * B[i]) * Math.min(2.2, Math.sqrt(q)); g.fillStyle = `rgba(255,255,255,${Math.min(1, b).toFixed(3)})`; g.fillRect(x - sz / 2, y - sz / 2, sz, sz) }
+    requestAnimationFrame(flat);
+  };
+  requestAnimationFrame(flat);
+  // in 3D, from Start: camera-local quads (they face the camera by construction), sized to stay a pixel or two
+  const geo = new THREE.PlaneGeometry(1, 1), mat = new THREE.MeshBasicMaterial({ map: softDot, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+  const mesh = new THREE.InstancedMesh(geo, mat, n); mesh.frustumCulled = false; mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3); mesh.renderOrder = 5; mesh.visible = false; shipScene.add(mesh);
+  const m4 = new THREE.Matrix4(), q4 = new Q4(), v3 = new V3(), sc = new V3();
+  S.update = (dt, logoShift) => {
+    if (!intro.active || !(LOOK.splashStars ?? 1)) { mesh.visible = false; return }
+    S.t += dt; if (intro.ph === 2) { if (S.after < 0) S.after = 0; S.after += dt; S.lshift = (S.lshift || 0) + S.v * dt; S.v *= Math.exp(-dt * .8) } else if (logoShift != null) { const ls = logoShift; S.v = dt > 0 ? (ls - (S.lshift || 0)) / dt : 0; S.lshift = ls }
+    S.k = 1 - sstep(S.after, LOOK.splashStarsHold ?? 1, (LOOK.splashStarsHold ?? 1) + (LOOK.splashStarsFade ?? 1)); if (S.k <= 0) { mesh.visible = false; return }
+    mesh.visible = true; mesh.position.copy(camera.position); mesh.quaternion.copy(camera.quaternion); mesh.updateMatrixWorld();
+    const z0 = Z0(), th = Math.tan(camera.fov * Math.PI / 360), asp = camera.aspect, tt = performance.now() / 1000, px = 2 * th / innerHeight, sh = S.shift + (S.lshift || 0) * (LOOK.splashStarsFollow ?? 1);
+    for (let i = 0; i < n; i++) {
+      let z = K[i] * z0 - sh; while (z < z0 * .05) z += z0 * 7; const b = bright(i, tt, z) * S.k * (LOOK.splashStars ?? 1), s = (.6 + 1.1 * B[i]) * 2.6 * px * z * Math.min(2.2, Math.sqrt(K[i] * z0 / z));
+      m4.compose(v3.set(X[i] * th * asp * K[i] * z0, Y[i] * th * K[i] * z0, -z), q4, sc.set(s, s, 1)); mesh.setMatrixAt(i, m4); mesh.instanceColor.setXYZ(i, b, b, b) }
+    mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true;
+  };
+  S.reset = () => { S.after = -1; S.lshift = 0; S.v = 0; S.t = 0 };
+  S.far = () => mesh.visible ? Z0() * 8 : 0;
+  return S;
+})();
 const curEl = (() => { const e = document.createElement('img'); e.id = 'introCur'; e.alt = ''; e.style.cssText = 'position:fixed;left:0;top:0;z-index:60;pointer-events:none;display:none'; document.body.appendChild(e); return e })();   // the opening's plain mouse pointer
 const intro = {
   logoAt: null,
@@ -34,7 +71,7 @@ const intro = {
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
     INTRO_END.set(0, rig.dist * (LOOK.camHeight ?? .42), rig.dist).multiplyScalar(LOOK.introDist ?? 1);   /* it lands right where the flight camera sits, so nothing moves on afterwards */ this.lit = false;   // where the opening ends up: close behind the pointer
     this.goal = null; this.av.x = this.av.y = 0;
-    this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 0; camNearGo = false; camHold = null; this.active = introActive = true;
+    sStars.reset(); this.lshift = 0; this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 0; camNearGo = false; camHold = null; this.active = introActive = true;
     document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.wipe = true;   // one frame through the black veil, so the warm-up's last picture doesn't linger on the canvas
     setDpr(.5, true); this.lowDpr = true;   // nothing but black, the pointer and the logo to draw at first: the lowest resolution is plenty
     const wantLogo = LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d())); if (logo3d) logo3d.visible = false;
@@ -69,6 +106,7 @@ const intro = {
     const T = Math.max(.5, LOOK.logoTime ?? 2.6), q = Math.min(1, (this.lt += dt) / T), e = Math.pow(q, LOOK.logoAccel ?? 2.2), G = this.lg;
     const z = -G.Z0 + (G.Z0 + G.dz * 1.6 + G.Z0 * .02) * e, c = sstep(e, 0, .8), W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), dx = this.at ? this.at.x - W / 2 : 0, dy = this.at ? this.at.y - H / 2 : 0;
     logo3d.position.set(G.x0 * (1 - c) - dx / W * 2 * th * W / H * -z, G.y0 * (1 - c) + dy / H * 2 * th * -z, z).applyQuaternion(camera.quaternion).add(camera.position); logo3d.quaternion.copy(camera.quaternion);   // undo the frame shift that keeps the pointer under the mouse: the logo stays put
+    this.lshift = (G.Z0 + G.dz * 1.6 + G.Z0 * .02) * e;   // how far the logo has come at you: the stars come with it
     if (q >= 1) { logo3d.visible = false; this.curHide = 3; this.ph = 2 }   // the flat pointer stays a few frames more, until the 3D one is surely drawn in its place   // through: the pointer becomes the ship and the camera starts in
   },
   pose(t) {   // the camera at a point of the move: from straight overhead round to just above and behind the ship, looking at it until, at the very end, it looks ahead past it
@@ -82,6 +120,7 @@ const intro = {
     camera.updateMatrixWorld();
   },
   update(dt) {
+    sStars.update(dt, this.ph === 1 ? this.lshift || 0 : null);
     avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = this.ph === 2; avatar.userData.flame.material.opacity = 0;
     if (this.at && this.goal && dt > 0) {   // elastic: a soft spring with a touch of overshoot, so any flick of the mouse reads as one smooth swing
       const K = 90 * (LOOK.introSpring ?? 1), C = 2 * Math.sqrt(K) * .78, h = Math.min(dt, 1 / 30);
