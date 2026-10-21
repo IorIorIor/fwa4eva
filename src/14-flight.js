@@ -10,7 +10,7 @@ const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist:
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
 const camRel = new V3(0, .8, 3.4).multiplyScalar(SHIP_SC), camRelV = new V3(), prevVel = new V3();
-let bankCam = 0, bankCamV = 0, bankPrev = 0, thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
+let revT = 0, revK = 0, bankCam = 0, bankCamV = 0, bankPrev = 0, thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
 function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
@@ -165,7 +165,7 @@ function updatePlayer(dt) {
     const accel = SM.acc * accIn * (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
     p.vel.addScaledVector(wish, (accel + (GM / (oR * oR || 1) * L.orbitThrust - accel) * ob) * (1 - .5 * obT) * dt);   // and accelerate half as hard
     if (gasOn) { const vf = p.vel.dot(course); tmp.copy(p.vel).addScaledVector(course, -vf); p.vel.addScaledVector(tmp, -(1 - Math.exp(-2.8 * dt))) }
-    p.vel.multiplyScalar(Math.exp(-((thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - brakeK) + (L.brakeStr ?? 5.5) * brakeK * bt) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
+    p.vel.multiplyScalar(Math.exp(-((thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - brakeK) + (L.brakeStr ?? 5.5) * brakeK * bt * (1 - revK)) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
     if (keys.x && !thrusting && !braking) { if (holdSp < 0) holdSp = p.vel.length(); p.vel.copy(course).multiplyScalar(holdSp); p.cruise = Math.max(p.cruise, cAt(holdSp)) } else { holdSp = -1; if (holdDir) p.vel.copy(holdDir).multiplyScalar(Math.max(0, p.vel.dot(holdDir))) }   // X: hold the speed you have, on the course you had; W and S only change the speed
     const vmax = Math.min(thrusting ? vC : Infinity, turnAmt > 0 ? Math.min(vC, L.steerCap) + Math.max(0, vC - L.steerCap) * (1 - turnAmt) : Infinity);
     { const sp = p.vel.length(); if (sp > vmax) p.vel.setLength(Math.max(vmax, sp * Math.exp(-(thrusting ? 4 : 1 / Math.max(.1, L.glide)) * dt))) }   // eases down, never snaps
@@ -181,7 +181,12 @@ function updatePlayer(dt) {
       if (w > 0) { starPos(nearI, tmp); tmp2.copy(p.pos).sub(tmp).setLength(dockDist(nearI)).add(tmp).sub(p.pos); p.vel.addScaledVector(tmp2, 7 * w * L.wellPull * dt); p.vel.multiplyScalar(Math.exp(-3.5 * w * L.wellPull * dt)) }
     }
   }
-  if (braking && !auto) { const rv = L.reverseMax ?? 40, vb = p.vel.dot(fwd); if (rv > 0 && vb < rv * 2) p.vel.addScaledVector(fwd, -rv * (L.brakeStr ?? 5.5) * 1.3 * brakeK * dt); const vb2 = p.vel.dot(fwd); if (vb2 < -rv) p.vel.addScaledVector(fwd, -rv - vb2) }   // S brakes, and once you've all but stopped it backs you up, slowly
+  {   // S backs you up, but only once you've been stood still a moment (reverseWait), then it eases into reverse (reverseEase)
+    const rv = L.reverseMax ?? 40, vb = p.vel.dot(fwd);
+    if (braking && !auto && rv > 0) { if (revT > 0 || p.vel.length() < Math.max(6, rv * .15)) revT += dt } else revT = 0;
+    const w = L.reverseWait ?? 1, rk = revT > w ? ease(Math.min(1, (revT - w) / Math.max(.05, L.reverseEase ?? 1.2))) : 0;
+    revK = rk; if (rk > 0) { const want = -rv * rk; p.vel.addScaledVector(fwd, (want - vb) * Math.min(1, dt * 4)) }
+  }
   // move, in substeps when touching a winner: its surface is a spring that stiffens toward the star, so you bounce off
   // along the normal and keep your sideways motion. The nose swings round to the new heading.
   let touch = 0;
