@@ -102,7 +102,7 @@ function updateLabels() {
     }
     if (show !== l.shown) { l.shown = show; l.e.style.display = show ? '' : 'none' }
     if (!show) continue;
-    const op = Math.round((map ? fade : Math.max(.12, Math.min(1, l.f / camera.position.distanceTo(l.pos)))) * 50) / 50;
+    const op = Math.round((map ? fade * mapK : Math.max(.12, Math.min(1, l.f / camera.position.distanceTo(l.pos)))) * 50) / 50;
     if (x !== l.x) { l.x = x; l.e.style.left = x + 'px' } if (y !== l.y) { l.y = y; l.e.style.top = y + 'px' } if (op !== l.op) { l.op = op; l.e.style.opacity = op }
   }
 }
