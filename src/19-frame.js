@@ -280,7 +280,7 @@ function updateHover(dt) {
   if (PI.on && !map && S.mode === 'fly' && pRpx * 2 >= (LOOK.ringInfoPx ?? 500) && tmp.copy(PI.c).project(camera).z < 1) {   // while it's up, it's all you see: hovering other stars doesn't swap it for their tooltip   // a ring up close: once its portal is big on screen, the full record (text only) floats beside it, never over it
     const cx = (tmp.x * .5 + .5) * innerWidth, cy = (-tmp.y * .5 + .5) * innerHeight;
     {
-      put('q' + PI.i, tipHTML(PI.i) + TNAV + tipMore(PI.i), true, true); const w = tip.offsetWidth, h = tip.offsetHeight, gap = 24, right = cx + pRpx * (L_ix = LOOK.ringInfoX ?? 1) + gap * L_ix, left = cx - pRpx * L_ix - gap * L_ix - w;
+      put('q' + PI.i, tipHTML(PI.i) + tipMore(PI.i), true, true); const w = tip.offsetWidth, h = tip.offsetHeight, gap = 24, right = cx + pRpx * (L_ix = LOOK.ringInfoX ?? 1) + gap * L_ix, left = cx - pRpx * L_ix - gap * L_ix - w;
       const x = right + w <= innerWidth - 12 ? right : left >= 12 ? left : cx >= innerWidth / 2 ? 12 : innerWidth - w - 12;   // beside it; once the ring outgrows the screen, held at the edge with the most room
       tip.style.left = x + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, cy - h / 2)) + 'px';
     }
