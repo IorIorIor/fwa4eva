@@ -239,9 +239,9 @@ const tipMore = i => {
     `</dl>${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">Launch project →</a>` : ''}</div></div>`;
 };
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const tipBox = (top, title, score) => `<span class="thd"><span class="td"><span>${esc(top)}</span>${score != null ? `<b class="tsc">${esc(score)}</b>` : ''}</span><span class="tt">${esc(title)}</span></span>`;   // the top line runs as wide as the title, the score at its right end
+const tipBox = (top, title, score, aw) => `<span class="thd"><span class="td"><span>${esc(top)}</span>${aw ? `<em class="taw">${aw}</em>` : ''}${score != null ? `<b class="tsc">${esc(score)}</b>` : ''}</span><span class="tt">${esc(title)}</span></span>`;   // the top line runs as wide as the title, the score at its right end
 const clip = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
-const tipHTML = i => { const d = D[i], t = new Date(d.date + 'T00:00:00Z'); return tipBox(`${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`, clip(d.title, LOOK.tipTitleMax ?? 26), Math.round(d.score * 10)) };   // long titles cut short
+const tipHTML = i => { const d = D[i], t = new Date(d.date + 'T00:00:00Z'); return tipBox(`${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`, clip(d.title, LOOK.tipTitleMax ?? 26), Math.round(d.score * 10), d.award === 'SOTM' ? 'SOTM' : d.award === 'FOTY' ? 'SOTY' : '') };   // the specials say so, between the date and the score   // long titles cut short
 
 /* compass: heading ring around the reticle, with core and home markers */
 const CMP = [{ pos: GC, label: 'core', c: '#ffc79a' }, { pos: new V3(0, 0, 0), label: 'home', c: '#ece9ff' }];

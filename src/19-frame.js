@@ -4,7 +4,7 @@ let coreGlowV = { k: 0, s: 1 }, mapK = 0;
 const dayLab = (() => {
   const box = $('dayLabels'), els = new Map(), cand = [], v = new V3();   // one label per winner, so each fades in and out on its own
   return function update() {
-    const L = LOOK, on = S.mode === 'map' && !(tween && tween.mode) && (L.mapDays ?? 1) > 0 && booted, now = performance.now(); box.style.setProperty('--dls', (L.mapDaySize ?? 8) + 'px'); box.style.opacity = L.mapDays ?? 1;
+    const L = LOOK, on = S.mode === 'map' && !(tween && tween.mode) && !(mapZone.on && mapZone.lvl !== 12) && (L.mapDays ?? 1) > 0 && booted, now = performance.now(); box.style.setProperty('--dls', (L.mapDaySize ?? 8) + 'px'); box.style.opacity = L.mapDays ?? 1;
     cand.length = 0; if (on) { const R = (L.mapDayDist ?? 60000) * mapDistK(), R2 = R * R, cp = camera.position, zh = mapZone.on ? mapZone : null; for (let i = 0; i < N; i++) { if (TA[i] < 1 || (zh && (D[i].t < zh.t0 || D[i].t >= zh.t1))) continue; const dx = P[i * 3] - cp.x, dy = P[i * 3 + 1] - cp.y, dz = P[i * 3 + 2] - cp.z, d2 = dx * dx + dy * dy + dz * dz; if (zh || d2 < R2) cand.push([d2, i]) }   /* an open (or lit) month shows every winner in it; otherwise only those within reach */ cand.sort((a, b) => a[0] - b[0]) }
     const n = Math.min(cand.length, mapZone.on ? 400 : L.mapDayN ?? 60), seen = new Set();   // inside an open zone, every winner in it gets its date
     const occ = new Set(), cw = (L.mapDaySize ?? 8) * 7, ch = (L.mapDaySize ?? 8) * 1.6;   // declutter: a date only shows where it doesn't land on one already shown
