@@ -21,7 +21,8 @@ and gives quick visual feedback; keep replies short).
 - Settings: every slider is a row in `LOOK_DEF` (`src/03-settings.js`), keyed by a stable name. Defaults = the row value,
   overridden by `MY_LOOK` (Laurens's tuned look). When he pastes "FWA FOREVER look settings: {...}" (Look → Copy
   settings), merge those keys into `MY_LOOK` (skip keys with no row). Galaxy-shape settings (`SHAPE`) apply on Rebuild.
-- Keys: W thrust, Shift/Space boost, A/D roll, S brake, M map, H home, C Look panel, P pilots list, G fly to nearest pilot, X hold current speed, R rings game on/off.
+- Keys: W thrust, Shift/Space boost, A/D roll, S brake, M map, H home, C Look panel, P pilots list, G fly to nearest pilot, X hold current speed, R rings game on/off,
+  ↑/↓ speed mode, ←/→ nearer/farther winner, Q free pointer, Enter skips a first-flight step.
 - Data: the real archive (IorIorIor/fwa4eva-data, private) ships with the app in `public/data/` (archive.json + shots/YYYY/*.webp).
   Refresh it with `npm run data` (copies from a clone at `../fwa4eva-data`). Days before the archive starts borrow real winners.
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
