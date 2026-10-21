@@ -229,11 +229,13 @@ function updateCamera(dt) {
     { idleT = thrusting || boosting || keys.x ? 0 : idleT + dt; const w = sstep(idleT, L.camRestAfter ?? 1, (L.camRestAfter ?? 1) + (L.camRestTime ?? 5)); camRest += ((thrusting || boosting ? 0 : w) - camRest) * Math.min(1, dt * (thrusting || boosting ? 2 : .6));   // left alone, the camera drifts in very slowly until the ship fills a share of the view
       if (camRest > 1e-3) { const d = SHIP_LEN / (2 * (L.camRestFill ?? .2) * Math.tan(camera.fov * Math.PI / 360)); tmp2.setLength(tmp2.length() + (Math.min(tmp2.length(), d) - tmp2.length()) * camRest); tmp2.y *= 1 - .6 * camRest } }   // and drops lower, so the ship sits nearer the middle
     if (camNear > 0) { if (booted && thrusting) camNearGo = true; if (camNearGo) { camNear = Math.max(0, camNear - dt / 3.5); if (!camNear) camNearGo = false } tmp2.lerp(INTRO_END, ease(camNear)) }   // after the intro the camera stays close until your first push
-    if (camHold) {   // after the opening: the camera waits, its distance to the ship growing only as the ship flies off (it never chases), always behind the ship so steering swings it round the ship like normal; at the usual distance the spring takes over from exactly there
-      const d = Math.max(camHold.d0, camHold.at.distanceTo(player.pos)), dT = Math.max(camHold.d0 + 1e-6, Math.hypot(rig.dist * L.camHeight * Math.sqrt(pull), rig.dist * pull) * (LOOK.camLetGo ?? .97)), k = Math.min(1, (d - camHold.d0) / (dT - camHold.d0)), e = k * k * (3 - 2 * k);
-      _cm.copy(camHold.dir).lerp(_cw.copy(tmp2).normalize(), e).normalize().multiplyScalar(d); camRelV.copy(_cm).sub(camRel).divideScalar(Math.max(dt, 1e-4)); camRel.copy(_cm); prevVel.copy(player.vel); idleT = 0; camRest = 0;
-      if (d >= dT) { camHold = null; const mv = rig.dist * 3; if (camRelV.length() > mv) camRelV.setLength(mv) }   // it lets go still moving the way it was: the spring eases it in
-    } else {
+    if (camHold) {   // after the opening: where the camera wants to be is where it landed while the ship pulls away (its distance grows with how far the ship has gone),
+      // eased (no kink) into the usual offset; the ordinary spring below follows that target as always, so nothing ever jumps. It keeps its place behind the ship, so steering never loses it
+      const Lt = tmp2.length(), d0 = camHold.d0, d = d0 + camHold.from.distanceTo(player.pos), w = Math.max(1e-4, Math.min(Lt * .35, (Lt - d0) * .9)), q = d <= Lt - w ? d : d >= Lt + w ? Lt : Lt - (Lt + w - d) * (Lt + w - d) / (4 * w);
+      const k = Math.max(0, Math.min(1, (q - d0) / Math.max(1e-6, Lt - d0))), e = k * k * (3 - 2 * k); tmp2.copy(_cm.copy(camHold.dir).lerp(_cw.copy(tmp2).divideScalar(Lt), e).normalize().multiplyScalar(q)); idleT = 0; camRest = 0;
+      if (d >= Lt + w) camHold = null;
+    }
+    {
     const k = 60 / Math.max(.15, L.elastic) * (warp ? LOOK.warpCamStiff ?? 6 : 1), c = 2 * Math.sqrt(k) * (warp ? 1 : .62);   // underdamped: a little overshoot (in a warp: much stiffer and damped, so the ship never gets away)
     camRelV.addScaledVector(tmp2.sub(camRel), k * dt).multiplyScalar(Math.exp(-c * dt));
     _sd.copy(player.vel).sub(prevVel).applyQuaternion(_iq.copy(rig.quat).invert()); prevVel.copy(player.vel); const kick = warp ? 0 : Math.min(_sd.length(), 400); if (kick > 1e-3) camRelV.addScaledVector(_sd.setLength(kick), -.06 * L.elastic * SHIP_K * SHIP_SC);   // acceleration kicks the camera back

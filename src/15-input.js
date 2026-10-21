@@ -171,7 +171,7 @@ function pick(x, y) {
 }
 let magI = -1, magS = 1;
 function aimAssist(dt) {
-  let s = 1; magI = -1; if (!booted || introActive) return;
+  let s = 1; magI = -1; if (!booted || introActive || camHold) return;   // (no aim pull while the camera is still settling in after the opening)
   if (aimSlow > 0 && lockI >= 0 && S.mode === 'fly') { aimSlow -= dt; const k = 1 - Math.exp(-(LOOK.ringNextRate ?? 1.8) * dt), dir = starPos(lockI, tmp).sub(player.pos).normalize(); aimAt(_an.copy(starPos(lockI, _an)).sub(camera.position), k); player.base.slerp(lookAtQ(dir, _an.set(0, 1, 0).applyQuaternion(player.base), _anq), k) }   // through a ring you were locked on: the view and the ship come round slowly to the next one
   if (aimFast > 0 && lockI >= 0 && S.mode === 'fly') { aimFast -= dt; aimAt(starPos(lockI, tmp).sub(camera.position), 1 - Math.exp(-12 * dt)) }   // a quick swing onto a star you stepped to
   if (S.mode === 'fly' && LOOK.magnet > 0 && (locked() || coarse) && openA < .3 && !auto && !HALO.pInfo.on) {   /* (no pull once a ring's picture is showing) */ const Rr = LOOK.magnetR, h = pickNear(innerWidth / 2, innerHeight / 2, Rr); if (h) { magI = h.i; aimAt(starPos(h.i, tmp).sub(camera.position), 1 - Math.exp(-LOOK.magnet * 7 * dt)); s = .35 + .65 * Math.min(1, h.d / h.R) } }

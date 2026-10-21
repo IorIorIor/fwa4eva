@@ -199,9 +199,9 @@ const ascent = (() => {
       const N = 64, shape = new Float32Array(N);
       const curveAt = scale => { const c = new Float32Array(N); for (let i = 0; i < N; i++) c[i] = shape[i] * scale; return c; };
       for (let i = 0; i < N; i++) shape[i] = Math.pow(0.5 - 0.5 * Math.cos(Math.PI * i / (N - 1)), P.curve);
-      const tRel = t + atk + hold, tEnd = tRel + rel * 1.25 + 0.05;
+      const tRel = Math.max(t + atk + hold, t + atk + 1e-3), tEnd = tRel + rel * 1.25 + 0.05;
       const envelope = (param, scale) => {
-        param.setValueCurveAtTime(curveAt(scale), t, atk);
+        param.setValueCurveAtTime(curveAt(scale), t, atk);   // (the release starts once the attack's curve is over: a value can't be set inside it)
         param.setValueAtTime(scale, tRel);
         param.setTargetAtTime(0, tRel, rel / 5);
       };
