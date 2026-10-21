@@ -37,7 +37,7 @@ let lookDoc = null, lookT = 0;
 const lookData = () => { const d = {}; Object.keys(LOOK).forEach(k => { if (k[0] !== '_') d[k] = LOOK[k] }); return d };
 // the map can have a look of its own: with the switch on, the Look panel edits a separate set of settings while you're on the map
 const MAP_KEY = 'sotd-look-map';
-let LOOK_FLY = LOOK, LOOK_MAP = { ...LOOK, ...store.json(MAP_KEY, {}) };
+let LOOK_FLY = LOOK, LOOK_MAP = { ...LOOK, ...MY_MAP_LOOK, ...store.json(MAP_KEY, {}) };
 const INV_KEY = 'sotd-look-inv';   // the inverted look: with the inverted switch on, every slider edits this set instead (fly and map alike)
 let LOOK_INV = { ...LOOK, ...store.json(INV_KEY, {}), invert: 1 }, invOn = store.get('sotd-inv-on') === '1';
 const LOOK_MIX = {};   // in between: every slider part way from the flying look to the map's, following the camera's move
