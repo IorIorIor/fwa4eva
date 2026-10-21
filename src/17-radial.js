@@ -168,7 +168,7 @@ const rmenu = (() => {
 })();
 // recording: the browser captures this tab (it asks which; pick this one), and the video lands in your downloads
 const recorder = (() => {
-  let mr = null, chunks = [], stream = null; const btn = () => $('recBtn');
+  let mr = null, chunks = [], stream = null; const btn = () => $('recBtn') || { classList: { add() { }, remove() { } } };   // (no Record button any more: L does it)
   const stop = () => { if (mr && mr.state !== 'inactive') mr.stop(); if (stream) stream.getTracks().forEach(t => t.stop()); stream = null };
   async function start() {
     try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60, displaySurface: 'browser' }, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include' }) } catch (e) { return }

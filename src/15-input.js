@@ -113,7 +113,7 @@ addEventListener('keydown', e => {
   if (k === 'h') goHome();
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
   // (R did the rings game on/off; off for now)
-  if (k === 'l' && !e.repeat) { clearTimeout(recHoldT); recHoldT = setTimeout(() => { if (keys.l) recorder.toggle() }, 2000) }   // hold L two seconds: start (or stop) recording
+  if (k === 'l' && !e.repeat && !e.target.closest('input,textarea')) recorder.toggle();   // L: start (or stop) recording
   if (k === 'escape' && tour.on) stopTour();
   if (k === 'escape' && mapZone.on) mapZone.clear();
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }

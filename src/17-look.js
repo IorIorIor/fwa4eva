@@ -40,6 +40,15 @@ const MAP_KEY = 'sotd-look-map';
 let LOOK_FLY = LOOK, LOOK_MAP = { ...LOOK, ...MY_MAP_LOOK, ...store.json(MAP_KEY, {}) };
 const INV_KEY = 'sotd-look-inv';   // the inverted look: with the inverted switch on, every slider edits this set instead (fly and map alike)
 let LOOK_INV = { ...LOOK, ...store.json(INV_KEY, {}), invert: 1 }, invOn = store.get('sotd-inv-on') === '1';
+/* the galaxy's shape is one and the same in every look: these are built into the galaxy itself (on Rebuild), so flying,
+   the map and the inverted look always share them, whichever one you change them in */
+const GAL_KEYS = ['galaxyStyle', 'armStart', 'armWindA', 'armWindG', 'armCount', 'armLock', 'armBeat', 'spiral', 'armWiden', 'armWidenCurve', 'spiralTurns', 'spiralGap', 'spiralHole', 'spiralSize', 'starBandW', 'starBandH', 'starCoreH', 'starAlong', 'starSep', 'nebOut', 'hazeCore'];
+GAL_KEYS.forEach(k => { if (k in LOOK_FLY) LOOK_MAP[k] = LOOK_INV[k] = LOOK_FLY[k] });
+function syncGal() {
+  if (LOOK === LOOK_MIX) return; let ch = false;
+  for (const L of [LOOK_FLY, LOOK_MAP, LOOK_INV]) if (L !== LOOK) GAL_KEYS.forEach(k => { if (k in LOOK && L[k] !== LOOK[k]) { L[k] = LOOK[k]; ch = true } });
+  if (!ch) return; if (LOOK !== LOOK_FLY) store.set(LOOK_KEY, JSON.stringify(LOOK_FLY)); if (LOOK !== LOOK_MAP) store.set(MAP_KEY, JSON.stringify(LOOK_MAP)); if (LOOK !== LOOK_INV && store.get(INV_KEY)) store.set(INV_KEY, JSON.stringify(LOOK_INV));
+}
 const LOOK_MIX = {};   // in between: every slider part way from the flying look to the map's, following the camera's move
 function swapLook() {
   if (LOOK === LOOK_INV) { if (LOOK_INV.invert) return; invOn = false; store.set('sotd-inv-on', '0'); LOOK_INV.invert = 1; saveLookNow(); LOOK = LOOK_FLY; LOOK.invert = 0; saveLookNow(); renderLook(); applyLook(); return }   // inverted switched off: back to your normal look
@@ -55,8 +64,8 @@ function swapLook() {
   for (const key in LOOK_FLY) { const a = LOOK_FLY[key], b = LOOK_MAP[key]; LOOK_MIX[key] = typeof a === 'number' && typeof b === 'number' ? a + (b - a) * k : k < .5 ? a : b ?? a }
   LOOK = LOOK_MIX; applyLook();
 }
-function saveLookNow() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
-function saveLook() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
+function saveLookNow() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
+function saveLook() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
 (async () => {
   try {
     if (!window.claude || !claude.use) return; const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]); if (!db || !user) return;
