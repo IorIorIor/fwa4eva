@@ -158,11 +158,17 @@ else {
   enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); begin(false, e) };
   addEventListener('keydown', function k(e) { if ($('intro').classList.contains('gone')) return removeEventListener('keydown', k); if (e.target.closest && e.target.closest('#intro button')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeEventListener('keydown', k); begin(true) } });
 }
+/* the ship back to where it starts, at once: still, facing the core, no trail behind it */
+function toSpawn() {
+  if (S.mode !== 'fly') { setMode('fly'); tween = null }
+  warp = null; auto = null; lockI = -1; stopTour(); sparks.stop(); player.pos.copy(HOME_P); player.vel.set(0, 0, 0); player.cruise = 0;
+  aimAt(GC.clone().sub(player.pos), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
+}
 /* back to the splash, to record the opening again: everything closes, the title card and Start come back */
 function toSplash() {
   if (isOpen('lookPanel') || isOpen('panel')) togglePanel(''); rmenu.close(); if (document.pointerLockElement) document.exitPointerLock();
   if (S.mode !== 'fly') { setMode('fly'); tween = null }
-  if (intro.active) intro.finish(); stopTour(); player.vel.set(0, 0, 0); lockI = -1; auto = null; warp = null; sparks.stop(); coach.end && coach.i >= 0 && coach.end();
+  if (intro.active) intro.finish(); toSpawn(); player.vel.set(0, 0, 0); lockI = -1; auto = null; warp = null; sparks.stop(); coach.end && coach.i >= 0 && coach.end();
   const el = $('intro'); el.hidden = false; el.classList.remove('gone'); document.body.classList.add('intro', 'ready', 'splash');
   const enter = $('enter'); enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); begin(false, e) };
 }
