@@ -24,13 +24,16 @@ function ringHit(h) {   // through the plane: it's yours, and time starts back u
 const whiteout = (() => {
   const el = document.createElement('div'); el.id = 'whiteout'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el);
   const W = { near: 0, at: new V3(), out: 0, k: 0, kv: 0, fv: 0, fov: 0 }, _p = new V3();
-  W.hit = () => { W.out = 1; W.fv = 1 };
+  W.vt = -1; W.hit = () => { W.out = 1; W.fv = 1; W.vt = 0 };
   W.update = rdt => {
     const L = LOOK, amt = L.ringFlash ?? 1, inK = Math.pow(W.near, 1.6); W.near = 0;
     if (W.out > 0) W.out = Math.max(0, W.out - rdt / Math.max(.05, L.ringFlashOut ?? .35));
     if (W.fv > 0) W.fv = Math.max(0, W.fv - rdt / Math.max(.05, L.ringHitFovTime ?? .6)); W.fov = (L.ringHitFov ?? 50) * Math.pow(W.fv, 2.2);   // through: the lens stretches wide at once, then eases back
     const b = S.mode === 'fly' ? Math.max(inK, W.out * W.out * (3 - 2 * W.out)) : 0; W.k = b;   // b drives the exposure and glow (their own sliders); the white veil is b × its amount
-    const k = b * amt; if (Math.abs(k - W.kv) < .002 && k !== 0) return; W.kv = k;
+    let v = 0; if (W.vt >= 0) { W.vt += rdt; const h = L.ringVeilHold ?? .15, o = Math.max(.05, L.ringVeilOut ?? 1.2); v = W.vt < h ? 1 : Math.pow(Math.max(0, 1 - (W.vt - h) / o), L.ringVeilEase ?? 2); if (W.vt > h + o) W.vt = -1; v *= S.mode === 'fly' ? (L.ringVeil ?? 1) : 0 }   // through: one big white veil over the screen that holds, then fades out
+    W.k = Math.max(b, v * (L.ringVeilBloom ?? 0));
+    const k = Math.max(b * amt, v); if (Math.abs(k - W.kv) < .002 && k !== 0) return; W.kv = k;
+    if (v >= b * amt && v > .002) { el.style.background = '#fff'; el.style.opacity = v.toFixed(3); return }
     if (k <= .002) { el.style.opacity = 0; return }
     _p.copy(W.at).project(camera); const x = ((_p.x * .5 + .5) * 100).toFixed(1), y = ((-_p.y * .5 + .5) * 100).toFixed(1), r = (20 + 140 * k).toFixed(0);
     el.style.background = `radial-gradient(circle at ${x}% ${y}%, #fff 0, #fff ${(r * .35).toFixed(0)}vmax, rgba(255,255,255,${Math.min(1, k * 1.4).toFixed(3)}) ${r}vmax), rgba(255,255,255,${Math.pow(k, 2.2).toFixed(3)})`;
@@ -68,18 +71,24 @@ const sparks = (() => {
   const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; mesh.renderOrder = 3; mesh.visible = false; shipScene.add(mesh);
   const bp = new Float32Array(n * 3), bv = new Float32Array(n * 3), dz = new Float32Array(n * 3), tb = new Float32Array(n), born = new Uint8Array(n), bk = new V3(), tip = new V3(), cp = new V3();
   let on = false, Rr = 1, R = 1, ez = 3, tr = .15, life = 1.6, emit = .5, keep = .15, t = 0;
+  let cone = 1.4;
+  const aimBack = () => { const sp0 = player.vel.length(); bk.copy(sp0 > 1 ? player.vel : bk.set(0, 0, -1).applyQuaternion(player.base)).normalize().negate() };
+  const aim = i => { const k = i * 3; _cd.set(dirs[k] + bk.x * cone, dirs[k + 1] + bk.y * cone, dirs[k + 2] + bk.z * cone).normalize(); dz[k] = _cd.x; dz[k + 1] = _cd.y; dz[k + 2] = _cd.z };
   const ease = x => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), ez);
   return {
     mesh, u,
     burst(at, Rring) {
       const L = LOOK; if (!(L.ringSpark ?? 1)) return; const ah = L.ringSparkAhead ?? 1.2; Rr = ah > 0 ? Math.max(1e-3, camera.position.distanceTo(player.pos)) : Rring; R = Rr * (L.ringSparkSpread ?? .8);
       if (ah <= 0) tip.copy(at); life = L.ringSparkLife ?? 1.6; emit = L.ringSparkEmit ?? .5; keep = L.ringSparkKeep ?? .5; ez = L.ringSparkEase ?? 3; tr = L.ringSparkTrail ?? .15; u.sz.value = L.ringSparkSize ?? 5; u.k.value = L.ringSpark ?? 1;
-      const sp0 = player.vel.length(); bk.copy(sp0 > 1 ? player.vel : bk.set(0, 0, -1).applyQuaternion(player.base)).normalize().negate(); const cone = L.ringSparkCone ?? 1.4;
-      for (let i = 0; i < n; i++) { const k = i * 3; _cd.set(dirs[k] + bk.x * cone, dirs[k + 1] + bk.y * cone, dirs[k + 2] + bk.z * cone).normalize(); dz[k] = _cd.x; dz[k + 1] = _cd.y; dz[k + 2] = _cd.z; tb[i] = emit * i / n; born[i] = 0 }
+      aimBack();
+      if (L.ringSparkLoop) emit = life; cone = L.ringSparkCone ?? 1.4;
+      for (let i = 0; i < n; i++) { aim(i); tb[i] = emit * i / n; born[i] = 0 }
       t = 0; u.t.value = 0; on = true;
     },
     update(dt) {
-      if (!on) { mesh.visible = false; return } t += dt; u.t.value = t; if (t > emit + life) { on = false; mesh.visible = false; return }
+      const loop = !!LOOK.ringSparkLoop; if (loop && !on) this.burst(player.pos, 1);   // the toggle: the tip sheds sparks forever, to play with
+      if (!on) { mesh.visible = false; return } t += dt; u.t.value = t; if (!loop && t > emit + life) { on = false; mesh.visible = false; return }
+      if (loop) { aimBack(); life = LOOK.ringSparkLife ?? 1.6; keep = LOOK.ringSparkKeep ?? .5; ez = LOOK.ringSparkEase ?? 3; tr = LOOK.ringSparkTrail ?? .15; cone = LOOK.ringSparkCone ?? 1.4; u.sz.value = LOOK.ringSparkSize ?? 5; u.k.value = LOOK.ringSpark || 1; R = Rr * (LOOK.ringSparkSpread ?? .8); for (let i = 0; i < n; i++) if (born[i] && t - tb[i] >= life) { tb[i] += life; born[i] = 0; aim(i) } }
       const ah = LOOK.ringSparkAhead ?? 1.2; if (ah > 0) tip.set(0, 0, -1).applyQuaternion(player.base).multiplyScalar(Rr * ah).add(player.pos);   // the emitter sits on the tip of the ship
       cp.copy(camera.position);
       for (let i = 0; i < n; i++) {
@@ -205,7 +214,7 @@ const HALO = (() => {
     // bright parts, blurred and added back), all rising the closer you get
     const bl = (r, w) => [[1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]].map(([x, y]) => tap(uG.add(vec2(x * r, y * r * 1.6))).rgb).reduce((a, b) => a.add(b)).mul(w / 8);
     const blur = bl(.02, .5).add(bl(.05, .5)), bright = blur.mul(smoothstep(.25, 1, dot(blur, vec3(.3, .55, .15))));
-    const imgL = clamp(img.mul(pt.ex.add(1)).div(float(1).sub(pt.lv.mul(.85))), 0, 1.5).add(bright.mul(pt.gl));
+    const imgL = mix(clamp(img.mul(pt.ex.add(1)).div(float(1).sub(pt.lv.mul(.85))), 0, 1.5), vec3(1.5), pt.lv.mul(pt.lv).mul(pt.lv).add(pt.ex.div(4).clamp(0, 1).pow(2)).clamp(0, 1)).add(bright.mul(pt.gl));   /* levels at 1 (or exposure at 4) take even the blacks to white */
     const c = imgL.mul(pt.dark).mul(rim.mul(.75).oneMinus()).add(pt.glow.mul(pow(rr, 6)).mul(.35)).add(mix(pt.glow, vec3(1), .5).mul(smoothstep(.93, .995, rr)).mul(.6));
     Discard(rr.greaterThan(1));
     const nz = noise3(vec3(positionGeometry.xy.mul(7), 3.1)).mul(.5).add(noise3(vec3(positionGeometry.xy.mul(19), 7.7)).mul(.25)).add(.5), cut = pt.brk.mul(1.15).sub(.08);
