@@ -229,10 +229,9 @@ function updateCamera(dt) {
     { idleT = thrusting || boosting || keys.x ? 0 : idleT + dt; const w = sstep(idleT, L.camRestAfter ?? 1, (L.camRestAfter ?? 1) + (L.camRestTime ?? 5)); camRest += ((thrusting || boosting ? 0 : w) - camRest) * Math.min(1, dt * (thrusting || boosting ? 2 : .6));   // left alone, the camera drifts in very slowly until the ship fills a share of the view
       if (camRest > 1e-3) { const d = SHIP_LEN / (2 * (L.camRestFill ?? .2) * Math.tan(camera.fov * Math.PI / 360)); tmp2.setLength(tmp2.length() + (Math.min(tmp2.length(), d) - tmp2.length()) * camRest); tmp2.y *= 1 - .6 * camRest } }   // and drops lower, so the ship sits nearer the middle
     if (camNear > 0) { if (booted && thrusting) camNearGo = true; if (camNearGo) { camNear = Math.max(0, camNear - dt / 3.5); if (!camNear) camNearGo = false } tmp2.lerp(INTRO_END, ease(camNear)) }   // after the intro the camera stays close until your first push
-    if (camHold) {   // after the opening the camera stays where it landed, close behind the ship; it only starts following once you've flown far enough ahead that it sits at its usual distance
-      const fw = _cw.set(0, 0, -1).applyQuaternion(rig.quat), mv = _cm.copy(player.pos).sub(camHold.prev).dot(fw); camHold.prev.copy(player.pos);
-      camHold.z = Math.max(camHold.z0, camHold.z + mv); const zT = Math.max(camHold.z0 + 1e-6, tmp2.z), k = Math.min(1, (camHold.z - camHold.z0) / (zT - camHold.z0));
-      camRel.set(0, camHold.y0 + (tmp2.y - camHold.y0) * k * k * (3 - 2 * k), camHold.z); camRelV.set(0, 0, 0); prevVel.copy(player.vel); if (camHold.z >= zT) camHold = null;
+    if (camHold) {   // after the opening the camera stays put in space where it landed; once the ship is out at the usual distance it lets go and follows, elastically, from right there
+      _cm.copy(camHold.at).sub(player.pos).applyQuaternion(_iq.copy(rig.quat).invert()); camRel.copy(_cm); camRelV.set(0, 0, 0); prevVel.copy(player.vel);
+      idleT = 0; camRest = 0; if (_cm.length() >= Math.hypot(rig.dist * L.camHeight * Math.sqrt(pull), rig.dist * pull) * (LOOK.camLetGo ?? .97)) { camHold = null; camRelV.copy(player.vel).applyQuaternion(_iq).negate() }   // it lets go still at rest in space (moving back past the ship), and the spring takes it from there: no jolt
     } else {
     const k = 60 / Math.max(.15, L.elastic), c = 2 * Math.sqrt(k) * .62;                    // underdamped: a little overshoot
     camRelV.addScaledVector(tmp2.sub(camRel), k * dt).multiplyScalar(Math.exp(-c * dt));
