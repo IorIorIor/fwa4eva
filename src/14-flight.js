@@ -51,12 +51,12 @@ function setMode(m) {
     Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), theta: (LOOK.mapTurn ?? 0) * Math.PI / 180 + (mapView().flip ? Math.PI : 0), phi: up > 0 ? mapPhi() : Math.PI - mapPhi(), mir: up < 0, flip: mapView().flip });   // the map's own view, from the face of the disk your ship is on   // from whichever face of the disk you were on
     const o = orbitPose(); tweenCam(o.p, o.q, 2.4, null, GC.clone()); tween.mode = true; tween.f0 = camera.fov;
   } else { tween = { fp: camera.position.clone(), fq: camera.quaternion.clone(), t: 0, dur: 2.2, c: true, mode: true, f0: camera.fov }; if (S.mapPick >= 0) { const i = S.mapPick; S.mapPick = -1; focus(i) } }
-  refreshLabels(); updateLockUI();
+  refreshLabels(); updateLockUI(); applyFilter();   // (a filter hides the rest on the map, only dims it in flight)
 }
 function focus(i) {
   if (i < 0) return; S.sel = i; const p = starPos(i);
   if (S.mode === 'fly') { if (lockI !== i) buzz(14); lockI = i; auto = null; if (i !== passedI) passedI = -1 }   // lock only turns the ship toward it; W takes you there
-  else { S.mapPick = i; orbit.target.copy(p); orbit.dist = CR[i] * 14; const o = orbitPose(); tweenCam(o.p, o.q, 1.8) }
+  else { S.mapPick = i; orbit.target.copy(p); orbit.dist = LOOK.rings ? Math.max(MAP_MIN, starR(i) * (LOOK.ringSize ?? 1.6) / (Math.tan(LOOK.fov * Math.PI / 360) * (LOOK.mapRingFill ?? .9))) : CR[i] * 14;   /* rings: close enough that the ring fills the screen */ const o = orbitPose(); tweenCam(o.p, o.q, 1.8) }
 }
 function goHome() {
   if (S.mode === 'map') { mapFlip(); Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), phi: orbit.mir ? Math.PI - mapPhi() : mapPhi() }); const o = orbitPose(); tweenCam(o.p, o.q, 1.6); return }

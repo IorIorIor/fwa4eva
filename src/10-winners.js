@@ -20,7 +20,7 @@ const stars = (() => {
     vDot.assign(smoothstep(dot1.mul(2.6), dot1, ps)); vPs.assign(clamp(ps, mix(dot1, U.dpr.mul(4), on), 220)); vC.assign(ia('aColor', 'vec3')); vT.assign(ia('aType', 'float'));
     // on the map every winner stays a white pixel; in flight the far ones thin out and fade away
     const flyK = clamp(ps.div(dot1), .3, 1).mul(smoothstep(3.5e5, 1.2e6, z).oneMinus());
-    vA.assign(al.mul(mix(.95, 1, smoothstep(dot1, dot1.mul(2), ps))).mul(mix(1, flyK, u.far)).mul(mix(1, smoothstep(dot1.mul(.45), dot1.mul(1.4), ps), u.thin.mul(on.oneMinus()))).max(u.faint));   // (faint: on the map every winner stays at least a faint dot)   // map, zoomed out: winners too small to see fade away instead of each staying a pixel
+    vA.assign(al.mul(mix(.95, 1, smoothstep(dot1, dot1.mul(2), ps))).mul(mix(1, flyK, u.far)).mul(mix(1, smoothstep(dot1.mul(.45), dot1.mul(1.4), ps), u.thin.mul(on.oneMinus()))).max(u.faint.mul(step(.5, al))));   // (faint: on the map every winner stays at least a faint dot)   // map, zoomed out: winners too small to see fade away instead of each staying a pixel
     // the game: a ring of the star's real size (× ring size). Once it's a few px across the sprite grows to hold it and the ring takes over
     const rpx = ia('aR', 'float').mul(u.rsz).mul(pxScale).div(max(z, .01)), ron = smoothstep(2.5, 7, rpx).mul(u.ring).mul(smoothstep(40, 18, rpx)), side = max(vPs, rpx.mul(2.6)).mul(ron).add(vPs.mul(ron.oneMinus())).min(9000);   // up close the 3D halo takes over
     vRon.assign(ron); vA.assign(vA.mul(mix(1, smoothstep(34, 18, rpx), u.ring)));   // the rings game: once the 3D ring has taken over, no star dot left in its middle
@@ -119,8 +119,8 @@ const constellation = (() => {   // each link a screen-space ribbon: a 2 px line
     return select(behind, vec4(0, 0, 2, 1), c.add(vec4(off.div(half).mul(c.w), 0, 0)));
   })();
   m.fragmentNode = Fn(() => {
-    const d = length(vec2(max(0, max(vT.negate(), vT.sub(vL))), vD)), core = smoothstep(u.w.mul(.5).add(.5), u.w.mul(.5).sub(.5), d), glow = exp(d.div(u.gw.mul(.45)).pow(2).negate()).mul(.22);
-    const k = u.op.mul(min(u.glow, 1.5)).mul(vH.mul(.5).add(.7)), a = clamp(max(core, glow).mul(k), 0, 1);   // blended, not added: where links cross they don't pile up into white. Distance to the segment itself, so each link ends in a round cap right on its star and the next starts from the same point
+    const d = length(vec2(max(0, max(vT.negate(), vT.sub(vL))), vD)), core = smoothstep(u.w.mul(.5).add(.5), u.w.mul(.5).sub(.5), d), glow = exp(d.div(u.gw.mul(.45)).pow(2).negate()).mul(.1);
+    const k = u.op.mul(min(u.glow, 1.5)).mul(vH.mul(.5).add(.7)).mul(.6), a = clamp(max(core, glow).mul(k), 0, 1);   // blended, not added: where links cross they don't pile up into white. Distance to the segment itself, so each link ends in a round cap right on its star and the next starts from the same point
     return vec4(mix(vC, mix(vC, vec3(1), .5), core), a);
   })();
   const mesh = layer(new THREE.Mesh(g, m), scene, 3); mesh.u = u; mesh.buf = { pa, pb, col, sq }; return mesh;

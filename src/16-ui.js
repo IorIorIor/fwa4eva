@@ -31,7 +31,7 @@ const perYear = new Array(27).fill(0), galCount = new Array(NERA).fill(0), galTo
 let histBtns = [];
 function applyFilter() {
   let c = 0; perYear.fill(0); galCount.fill(0);
-  D.forEach((d, i) => { const m = matches(d); TA[i] = m ? 1 : .035; if (m) { c++; if (d.year >= 2000 && d.year <= 2026) perYear[d.year - 2000]++; galCount[galOf(d.year)]++ } });
+  D.forEach((d, i) => { const m = matches(d); TA[i] = m ? 1 : S.mode === 'map' ? 0 : .035; /* on the map a filter shows only what matches */ if (m) { c++; if (d.year >= 2000 && d.year <= 2026) perYear[d.year - 2000]++; galCount[galOf(d.year)]++ } });
   $('count').innerHTML = c.toLocaleString('en') + '<small>of ' + N.toLocaleString('en') + ' sites</small>';
   const mx = Math.max(1, ...perYear);
   histBtns.forEach((b, k) => { b.style.height = Math.max(2, perYear[k] / mx * 46) + 'px'; b.classList.toggle('on', YEARS[k] >= S.y0 && YEARS[k] <= S.y1 && perYear[k] > 0) });
@@ -44,7 +44,6 @@ let chain = [], chainPos = new Map(), conOn = false;
 function buildConstellation() {
   chain = []; chainPos = new Map(); const chains = [];
   if (S.agencies.size) { S.agencies.forEach(a => { const ids = []; for (let i = 0; i < N; i++) if (TA[i] === 1 && D[i].agency === a) ids.push(i); if (ids.length >= 2) chains.push({ ids, name: a, col: agColor(a) }) }) }
-  else if (matchCount < N && matchCount >= 2 && matchCount <= CON_MAX + 1) { const ids = []; for (let i = 0; i < N; i++) if (TA[i] === 1) ids.push(i); chains.push({ ids, name: '', col: '#ffb547' }) }
   let seg = 0, v = 0; const cc = new C3();
   for (const c of chains) {
     c.ids.sort((a, b) => D[a].t - D[b].t); cc.set(c.col); const len = c.ids.length;

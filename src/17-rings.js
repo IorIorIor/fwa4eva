@@ -144,9 +144,9 @@ const HALO = (() => {
   const _m = new THREE.Matrix4(), _q = new Q4(), _s = new V3(), _z = new V3(0, 0, 1), _d = new V3(), live = [], pool = Array.from({ length: HALO_N }, () => ({ i: -1, c: new V3(), r: 1, c0: 0, done: false, n: new V3(), ax: new V3(), ay: new V3(), nSet: false, sPrev: 0 }));
   const best = []; let fade = new Map(), minTs = Infinity;   // minTs: seconds until you pass through the nearest ring you can't miss
   function update(dt) {
-    const L = LOOK; if (!L.rings || S.mode !== 'fly') { mesh.count = 0; live.length = 0; lens.forEach(m => m.visible = false); return } if (tw !== (L.ringWidth ?? .1)) build(L.ringWidth ?? .1);
+    const L = LOOK, ref = S.mode === 'map' ? camera.position : player.pos; if (!L.rings || (S.mode !== 'fly' && !(S.mode === 'map' && (L.mapRings ?? 1)))) { mesh.count = 0; live.length = 0; lens.forEach(m => m.visible = false); return } /* on the map too, the rings round you (the camera) */ if (tw !== (L.ringWidth ?? .1)) build(L.ringWidth ?? .1);
     u.spark.value = L.ringSparkle ?? 1; u.holo.value = L.ringHolo ?? 1; u.br.value = L.ringBright ?? .55; u.refr.value = L.ringRefract ?? 1; u.disp.value = L.ringDisperse ?? .35; u.glass.value = L.ringGlass ?? 1; u.film.value = L.ringFilm ?? 1; u.filmF.value = L.ringFilmBands ?? 3; u.rim.value = L.ringRim ?? 1;
-    best.length = 0; const px = player.pos.x, py = player.pos.y, pz = player.pos.z;   // the nearest few, by straight distance
+    best.length = 0; const px = ref.x, py = ref.y, pz = ref.z;   // the nearest few, by straight distance
     for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - px, dy = P[i * 3 + 1] - py, dz = P[i * 3 + 2] - pz, d2 = dx * dx + dy * dy + dz * dz; if (best.length < HALO_N) { best.push([d2, i]); best.sort((a, b) => a[0] - b[0]) } else if (d2 < best[HALO_N - 1][0]) { best[HALO_N - 1] = [d2, i]; best.sort((a, b) => a[0] - b[0]) } }
     const v = player.vel, vv = v.lengthSq(), pred = L.ringPredict ?? .7, pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360));
     live.length = 0; let n = 0; minTs = Infinity;
@@ -164,7 +164,7 @@ const HALO = (() => {
       h.r = R; const gone = h.done ? (fade.get(i) ?? 1) : 1; if (h.done) fade.set(i, Math.max(0, gone - dt * 4));
       if ((L.ringPortal ?? 1) && rpx > (L.ringPortalPre ?? 4)) shot(D[i]);   /* the picture starts loading well before the ring shows, for every ring nearby */
       const sp = L.ringShowPx ?? 34, a = (play ? 1 : sstep(rpx, sp * .4, sp) * gone) * introK(); if (a <= .005 || h.r < 1e-3) { n++; continue }
-      _q.setFromUnitVectors(_z, h.nSet ? h.n : _s.copy(player.pos).sub(c).normalize()); mesh.setMatrixAt(live.length, _m.compose(c, _q, _s.setScalar(h.r))); { const lz = lens[live.length], on = (L.ringLens ?? 0) > 0 && (L.ringLensMode ?? 1) > 0; lz.visible = on; if (on) { lz.matrix.compose(c, _q, _s.setScalar(h.r * (L.ringLensSize ?? 3))); lz.matrixWorldNeedsUpdate = true; lz.a.value = Math.min(1, a); lz.kb.value = 1 + (L.ringLensNear ?? 2) * (h.near || 0) } }
+      _q.setFromUnitVectors(_z, h.nSet ? h.n : _s.copy(ref).sub(c).normalize()); mesh.setMatrixAt(live.length, _m.compose(c, _q, _s.setScalar(h.r))); { const lz = lens[live.length], on = (L.ringLens ?? 0) > 0 && (L.ringLensMode ?? 1) > 0; lz.visible = on; if (on) { lz.matrix.compose(c, _q, _s.setScalar(h.r * (L.ringLensSize ?? 3))); lz.matrixWorldNeedsUpdate = true; lz.a.value = Math.min(1, a); lz.kb.value = 1 + (L.ringLensNear ?? 2) * (h.near || 0) } }
       const got = GOT[i], j = live.length * 3; iCol[j] = got ? 1 : COL[i * 3]; iCol[j + 1] = got ? .86 : COL[i * 3 + 1]; iCol[j + 2] = got ? .58 : COL[i * 3 + 2]; iA[live.length] = a * (got ? 1.3 : 1);
       { const tx = texCache.get(i), ac = tx && tx.avgCol, o = live.length * 4; if (ac) { iImg[o] = ac.r; iImg[o + 1] = ac.g; iImg[o + 2] = ac.b } iImg[o + 3] = ac ? Math.min(1, L.ringImgTint ?? .75) * (got ? .5 : 1) : 0 }   // the ring takes on the colour of the picture inside it
       live.push(h); n++;
@@ -205,7 +205,7 @@ const HALO = (() => {
   const portal = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 48, 48), pm); portal.frustumCulled = false; portal.renderOrder = 2; portal.visible = false; portal.matrixAutoUpdate = false; shipScene.add(portal);   // on the ship's layer: the galaxy's glows and star clouds are drawn after the scene and would speckle over the picture
   let pI = -1, pop = null; const _mn = new V3(), _mv = new V3(), _ldp = new V3(), _pm = new THREE.Matrix4(), _up = new V3(), pInfo = { on: false, i: -1, c: new V3(), r: 1 };   // where the portal is, for the record that floats beside it
   function portalUpdate(dt) {
-    const L = LOOK; pInfo.on = false; if (!(L.ringPortal ?? 1) || !L.rings || S.mode !== 'fly') { portal.visible = false; return }
+    const L = LOOK, ref = S.mode === 'map' ? camera.position : player.pos; pInfo.on = false; if (!(L.ringPortal ?? 1) || !L.rings || (S.mode !== 'fly' && !(S.mode === 'map' && (L.mapRings ?? 1)))) { portal.visible = false; return }
     if (pop) {   // through it: the white, fully warped picture shrinks to a point, then bursts into sparks
       pop.t += dt / Math.max(.05, L.ringShrink ?? .35); const s = Math.pow(Math.max(0, 1 - pop.t), 1.7); pInfo.on = false;
       portal.matrix.copy(pop.m).multiply(_m.makeScale(s, s, 1)); portal.matrixWorldNeedsUpdate = true; pt.white.value = 1; pt.dis.value = 2.2 * (L.ringMemWarp ?? 1); pt.st.value = 0; pt.brk.value = 0; pt.a.value = 1; portal.visible = s > .002;
@@ -224,7 +224,7 @@ const HALO = (() => {
       const tin = L.ringMemIn ?? .5, near = tin > .001 ? Math.pow(Math.max(0, 1 - tt / tin), 1.4) : 0, shT = Math.max(.02, L.ringShrink ?? .25); h.near = near;
       pt.dis.value = near * .3 * (L.ringMemWarp ?? 1); pt.white.value = sstep(near, .3, .9) * (L.ringMemWhite ?? 0); { const nd = 1 - sstep(player.pos.distanceTo(h.c), h.r * .2, h.r * (L.ringNearDist ?? 3)); pt.gl.value = nd * (L.ringNearGlow ?? 1.5); pt.lv.value = nd * (L.ringNearLevels ?? .6); pt.ex.value = nd * (L.ringNearExpo ?? .5) } whiteout.near = Math.max(whiteout.near, 1 - sstep(player.pos.distanceTo(h.c), h.r * .1, h.r * (L.ringFlashDist ?? 1.5))); whiteout.at.copy(h.c);   // the whiteout goes by plain distance: only right up close
     }
-    _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(h.nSet ? _ldp.copy(h.c).add(h.n) : player.pos, h.c, _up);   /* once committed the portal stays put, facing the way you came */ portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5) * sh; portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005 && sh > .003; Object.assign(pInfo, { on: portal.visible && !h.done, i: pI, r: h.r }); pInfo.c.copy(h.c);   // just inside the ring's tube, so the ring still frames it
+    _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(h.nSet ? _ldp.copy(h.c).add(h.n) : ref, h.c, _up);   /* once committed the portal stays put, facing the way you came */ portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5) * sh; portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005 && sh > .003; Object.assign(pInfo, { on: portal.visible && !h.done, i: pI, r: h.r }); pInfo.c.copy(h.c);   // just inside the ring's tube, so the ring still frames it
   }
   const update0 = update; function updateAll(dt) { update0(dt); portalUpdate(dt); sparks.update(dt) }
   const popAt = h => { sparks.burst(h.c, h.r) };   // through: the picture has just shrunk to its point, and it bursts into sparks   // straight to the sparks
