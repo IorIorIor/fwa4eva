@@ -277,7 +277,7 @@ function updateHover(dt) {
     tip.classList.toggle('full', !!full); tip.classList.toggle('side', !!side); tip.classList.remove('dock'); tip.hidden = false };
   const PI = HALO.pInfo;
   const pRpx = PI.on ? PI.r * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(PI.c))) : 0;
-  if (PI.on && !map && S.mode === 'fly' && (hovI < 0 || hovI === PI.i) && pRpx * 2 >= (LOOK.ringInfoPx ?? 500) && tmp.copy(PI.c).project(camera).z < 1) {   // (pointing at the ring's own star doesn't count as pointing elsewhere)   // a ring up close: once its portal is big on screen, the full record (text only) floats beside it, never over it
+  if (PI.on && !map && S.mode === 'fly' && pRpx * 2 >= (LOOK.ringInfoPx ?? 500) && tmp.copy(PI.c).project(camera).z < 1) {   // while it's up, it's all you see: hovering other stars doesn't swap it for their tooltip   // a ring up close: once its portal is big on screen, the full record (text only) floats beside it, never over it
     const cx = (tmp.x * .5 + .5) * innerWidth, cy = (-tmp.y * .5 + .5) * innerHeight;
     {
       put('q' + PI.i, tipHTML(PI.i) + TNAV + tipMore(PI.i), true, true); const w = tip.offsetWidth, h = tip.offsetHeight, gap = 24, right = cx + pRpx + gap, left = cx - pRpx - gap - w;
@@ -353,7 +353,7 @@ function tick(now) {
   boostK += ((fly && boosting ? 1 : 0) - boostK) * Math.min(1, dt * (boosting ? 6 : 2)); if (boosting) boostK = Math.min(boostK, (boostK0 += dt / .12)); else boostK0 = boostK;   // the boost glow swells in over 120 ms
   updateTrail(dt, fly && !!L.trail); trail.visible = fly && !!L.trail && trail.userData.used > 1; updateEngine(); updateBoostUI(dt);
   if (fly && booted) { if (player.vel.length() < 1 && !auto) { shipStill += dt; if (shipStill > 3 && !shipSaved) { shipSaved = true; store.set('sotd-ship', JSON.stringify({ p: player.pos.toArray(), q: player.base.toArray(), r: rig.q.toArray() })) } } else { shipStill = 0; shipSaved = false } }
-  if (fly) { updateCompass(); const r = regionOf(player.pos); if (r !== region) { region = r; if (L.cards && booted) arrive(r) } } else if (region !== null) { region = null; $('arrive').classList.remove('show') }
+  winCompass(); if (fly) { updateCompass(); const r = regionOf(player.pos); if (r !== region) { region = r; if (L.cards && booted) arrive(r) } } else if (region !== null) { region = null; $('arrive').classList.remove('show') }
   constellation.u.op.value += ((conOn ? 1 : 0) - constellation.u.op.value) * Math.min(1, dt * 3); constellation.visible = constellation.u.op.value > .01;
   streaks.visible = fly && !!L.streaks; motes.visible = fly && !!L.motes; if (fly) updateStreaks(dt);
   stars.u.hi.value += ((!fly && matchCount < N ? 1 : 0) - stars.u.hi.value) * Math.min(1, dt * 4);

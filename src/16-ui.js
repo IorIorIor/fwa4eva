@@ -247,6 +247,34 @@ function updateCompass() {
     m.g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`); m.p.setAttribute('transform', `rotate(${(a * 180 / Math.PI + 90).toFixed(1)})`); m.t.setAttribute('y', y > 0 ? 14 : -8); m.g.style.opacity = _cv.z < 0 ? .95 : .4
   }
 }
+/* the winner compass: a thin circle round the ship, most of the screen across, with the nearest winners as dots on it
+   in the direction they lie, each tagged with its date. Where tags would stack, only the nearest keeps its place */
+const winCompass = (() => {
+  const el = document.createElement('div'); el.id = 'wcmp'; el.className = 'hud'; el.setAttribute('aria-hidden', 'true'); el.innerHTML = '<i class="c"></i>'; document.body.appendChild(el);
+  const circ = el.querySelector('.c'), MK = Array.from({ length: 8 }, () => { const m = document.createElement('div'); m.className = 'm'; m.innerHTML = '<i></i><span></span>'; el.appendChild(m); return { m, dot: m.firstChild, t: liveText(m.lastChild), lab: m.lastChild, i: -1 } });
+  const near = [], v = new V3(), sp = new V3(), MO = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
+  let on = null;
+  return () => {
+    const L = LOOK, show = !!(L.winCompass ?? 1) && S.mode === 'fly' && booted && !intro.active; if (show !== on) { on = show; el.hidden = !show } if (!show) return;
+    const W = innerWidth, H = innerHeight, R = Math.min(W, H) * (L.winCompassSize ?? .8) / 2, n = Math.max(1, Math.min(8, Math.round(L.winCompassN ?? 5)));
+    sp.copy(player.pos).project(camera); const cx = W / 2, cy = H / 2 + ((-sp.y * .5 + .5) * H - H / 2) * (L.winCompassFollow ?? .3);   // centred on the screen, drawn a little toward the ship (which sits low), so the whole circle stays in view
+    circ.style.cssText = `left:${(cx - R).toFixed(1)}px;top:${(cy - R).toFixed(1)}px;width:${(2 * R).toFixed(1)}px;height:${(2 * R).toFixed(1)}px`;
+    near.length = 0; const pp = player.pos;   // the n nearest (that the filter shows)
+    for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z, d2 = dx * dx + dy * dy + dz * dz; if (near.length < n) { near.push([d2, i]); near.sort((a, b) => a[0] - b[0]) } else if (d2 < near[n - 1][0]) { near[n - 1] = [d2, i]; near.sort((a, b) => a[0] - b[0]) } }
+    const placed = [], gap = 64 / R;   // tags closer than this (radians round the circle) would stack
+    MK.forEach((k, j) => {
+      const c = near[j]; if (!c || j >= n) { k.m.hidden = true; return }
+      const i = c[1]; starPos(i, v).applyMatrix4(camera.matrixWorldInverse); let a;
+      if (v.z < 0) { sp.copy(starPos(i, sp)).project(camera); a = Math.atan2((-sp.y * .5 + .5) * H - cy, (sp.x * .5 + .5) * W - cx) } else a = Math.atan2(-v.y, v.x);   // in front: where it shows from the ship; behind: which way to turn
+      if (placed.some(b => Math.abs(((a - b + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < gap)) { k.m.hidden = true; return } placed.push(a);
+      if (k.i !== i) { k.i = i; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
+      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R; k.m.hidden = false; k.m.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+      const ins = y + Math.sin(a) * 14 + 12 > H || y + Math.sin(a) * 14 - 12 < 0 || x + Math.cos(a) * 90 > W || x + Math.cos(a) * 90 < 0, o = ins ? -1 : 1, ca = Math.cos(a) * o;   // a tag that would leave the screen goes inside the circle
+      k.lab.style.transform = `translate(${(ca < -.3 ? -100 : ca > .3 ? 0 : -50)}%,0) translate(${(ca * 10).toFixed(1)}px,${(Math.sin(a) * 14 * o - 7).toFixed(1)}px)`;
+      k.m.classList.toggle('first', j === 0); k.m.classList.toggle('back', v.z >= 0);
+    });
+  };
+})();
 /* regions: where you are, announced as you cross into it */
 let region = null, arriveTimer = 0;
 const _rl = new V3();
