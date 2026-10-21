@@ -186,6 +186,9 @@ $('lookX').onclick = () => { if (isOpen('lookPanel')) togglePanel('lookPanel') }
 const texCache = new Map();
 try { document.fonts && document.fonts.load('16px "Paper Mono"').then(() => { texCache.forEach(t => t.dispose()); texCache.clear(); SHOT.userData.i = -1 }) } catch (e) { }
 function avgColor(c) { const col = new C3(0xffb547); try { const s = document.createElement('canvas'); s.width = 16; s.height = 10; const g = s.getContext('2d'); g.drawImage(c, 0, 0, 16, 10); const p = g.getImageData(0, 0, 16, 10).data; let r = 0, gg = 0, b = 0, n = 0; for (let i = 0; i < p.length; i += 4) { const mx = Math.max(p[i], p[i + 1], p[i + 2]), mn = Math.min(p[i], p[i + 1], p[i + 2]), w = .03 + Math.pow((mx - mn) / 255, 2) * (mx / 255); r += p[i] * w; gg += p[i + 1] * w; b += p[i + 2] * w; n += w } col.setRGB(r / n / 255, gg / n / 255, b / n / 255);   /* weighted toward its vivid pixels, so it's the picture's colour, not its grey */ const h = {}; col.getHSL(h); col.setHSL(h.h, Math.min(1, h.s * 1.4), Math.max(.5, h.l)) } catch (e) { } return col }
+/* a winner's pictures, in order: the one screenshot for now; more per winner (d.shots, extra captures) slot in here and the ring's
+   portal pages through them */
+const gallery = i => [shot(D[i])];
 function shot(d) {
   if (texCache.has(d.i)) return texCache.get(d.i);
   const tex = placeholderShot(d);

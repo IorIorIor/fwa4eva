@@ -198,7 +198,7 @@ const HALO = (() => {
   // the portal: inside the nearest ring, its winner's screenshot, set back behind the ring like a window into another room.
   // Each pixel follows your line of sight through the disc onto a plane some way behind it, so as you move the picture
   // shifts behind the opening. It starts loading a little before the ring appears
-  const pt = { cur: placeholderShot(D[0]), taps: [], hit: uniform(new THREE.Vector2()), st: uniform(0), white: uniform(0), brk: uniform(0), dis: uniform(0), gl: uniform(0), lv: uniform(0), ex: uniform(0), bg: uniform(new C3(0, 0, 0)), depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85), lens: uniform(.6), ca: uniform(.5) };
+  const pt = { cur: placeholderShot(D[0]), taps: [], nx: null, ntaps: [], slide: uniform(0), hit: uniform(new THREE.Vector2()), st: uniform(0), white: uniform(0), brk: uniform(0), dis: uniform(0), gl: uniform(0), lv: uniform(0), ex: uniform(0), bg: uniform(new C3(0, 0, 0)), depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85), lens: uniform(.6), ca: uniform(.5) };
   const pm = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
   pm.positionNode = Fn(() => { const q = positionLocal.xy.sub(pt.hit), w = exp(dot(q, q).mul(-3.2)); return positionLocal.add(vec3(0, 0, pt.st.mul(w))) })();
   pm.colorNode = Fn(() => {
@@ -210,10 +210,13 @@ const HALO = (() => {
     // the edge acts like thick glass: the picture bulges outward near the rim and its colours fringe apart
     const bulge = pt.lens.mul(pow(rr, 4)).mul(.35), fr = pt.ca.mul(pow(rr, 4)).mul(.04), at = k => q0.mul(float(1).sub(bulge.add(k))).mul(.5).add(.5);
     const inside = uvI => step(0, uvI.x).mul(step(uvI.x, 1)).mul(step(0, uvI.y)).mul(step(uvI.y, 1));
-    const uR = at(fr), uG = at(0), uB = at(fr.negate()), tap = uv => { const t = texture(pt.cur, uv); pt.taps.push(t); return t }, img = vec3(mix(pt.bg.r, tap(uR).r, inside(uR)), mix(pt.bg.g, tap(uG).g, inside(uG)), mix(pt.bg.b, tap(uB).b, inside(uB)));   // keep the sampling nodes, so a new winner's picture can be swapped in   // shadowed toward the rim (depth), lit by the ring's glow right at the edge
+    const uR = at(fr), uG = at(0), uB = at(fr.negate()), tap = uv => { const t = texture(pt.cur, uv); pt.taps.push(t); return t }, tapN = uv => { const t = texture(pt.cur, uv); pt.ntaps.push(t); return t };
+    // the pictures side by side: sliding (pt.slide 0 → 1) moves this one off to the left as the next comes in from the right, with a small gap
+    const pic = uv => { const g1 = pt.slide.mul(1.08), uc = uv.add(vec2(g1, 0)), un = uv.add(vec2(g1.sub(1.08), 0)); return mix(mix(pt.bg, tapN(un).rgb, inside(un).mul(step(.0005, pt.slide))), tap(uc).rgb, inside(uc)) };
+    const img = vec3(pic(uR).r, pic(uG).g, pic(uB).b);   // keep the sampling nodes, so a new winner's picture can be swapped in   // shadowed toward the rim (depth), lit by the ring's glow right at the edge
     // closing in: old-school levels (the white point comes down, so the picture goes whiter), exposure, and a glow (its own
     // bright parts, blurred and added back), all rising the closer you get
-    const bl = (r, w) => [[1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]].map(([x, y]) => tap(uG.add(vec2(x * r, y * r * 1.6))).rgb).reduce((a, b) => a.add(b)).mul(w / 8);
+    const bl = (r, w) => [[1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]].map(([x, y]) => pic(uG.add(vec2(x * r, y * r * 1.6)))).reduce((a, b) => a.add(b)).mul(w / 8);
     const blur = bl(.02, .5).add(bl(.05, .5)), bright = blur.mul(smoothstep(.25, 1, dot(blur, vec3(.3, .55, .15))));
     const imgL = mix(clamp(img.mul(pt.ex.add(1)).div(float(1).sub(pt.lv.mul(.85))), 0, 1.5), vec3(1.5), pt.lv.mul(pt.lv).mul(pt.lv).add(pt.ex.div(4).clamp(0, 1).pow(2)).clamp(0, 1)).add(bright.mul(pt.gl));   /* levels at 1 (or exposure at 4) take even the blacks to white */
     const c = imgL.mul(pt.dark).mul(rim.mul(.75).oneMinus()).add(pt.glow.mul(pow(rr, 6)).mul(.35)).add(mix(pt.glow, vec3(1), .5).mul(smoothstep(.93, .995, rr)).mul(.6));
@@ -234,7 +237,7 @@ const HALO = (() => {
       if (pop.t >= 1) { sparks.burst(pop.c, pop.r); pop = null; portal.visible = false } return;
     }
     let near = -1; if (best.length) { const i = best[0][1], R = starR(i) * (L.ringSize ?? 1.6), dist = Math.sqrt(best[0][0]), pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360)); if (R * pxK / dist > (L.ringPortalPre ?? 4) || L.ringPlay) near = i }   // a little before the ring shows
-    if (near >= 0 && (near !== pI || texCache.get(near) !== pt.cur)) { pI = near; pt.cur = shot(D[near]); pt.taps.forEach(t => t.value = pt.cur); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
+    if (near >= 0 && (near !== pI || (gal.k === 0 && texCache.get(near) !== pt.cur))) { pI = near; gal.list = gallery(near); gal.k = 0; gal.t = -1; pt.slide.value = 0; pt.cur = gal.list[0]; pt.taps.forEach(t => t.value = pt.cur); pt.ntaps.forEach(t => t.value = pt.cur); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
     const h = live.find(x => x.i === pI); if (!h || near < 0 || h.done) { portal.visible = false; return }   // a ring you've just taken has no picture until it's back
     { const ac = pt.cur && pt.cur.avgCol, dk = 1 - (L.ringPortalBg ?? .6); if (ac) pt.bg.value.copy(ac).multiplyScalar(dk); else pt.bg.value.setRGB(0, 0, 0) }   // round the picture: its own average colour, darkened
     pt.ld = pt.cur && pt.cur.avgCol ? Math.min(1, (pt.ld || 0) + dt * 6) : 0;   // the picture fades in once it's loaded (no placeholder)
@@ -248,9 +251,16 @@ const HALO = (() => {
     }
     _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(h.nSet ? _ldp.copy(h.c).add(h.n) : ref, h.c, _up);   /* once committed the portal stays put, facing the way you came */ portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5) * sh; portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005 && sh > .003; Object.assign(pInfo, { on: portal.visible && !h.done, i: pI, r: h.r }); pInfo.c.copy(h.c);   // just inside the ring's tube, so the ring still frames it
   }
-  const update0 = update; function updateAll(dt) { update0(dt); portalUpdate(dt); sparks.update(dt) }
+  // paging through a winner's pictures: a click on the picture slides it away left and the next one in from the right
+  const gal = { list: [], k: 0, t: -1 };
+  function nextPic() { if (!pInfo.on || gal.t >= 0 || !gal.list.length) return false; const nk = (gal.k + 1) % gal.list.length; gal.nk = nk; pt.nx = gal.list[nk]; pt.ntaps.forEach(t => t.value = pt.nx); gal.t = 0; return true }
+  function slideStep(rdt) {
+    if (gal.t < 0) return; gal.t += rdt / Math.max(.1, LOOK.ringSlideTime ?? .6); const x = Math.min(1, gal.t); pt.slide.value = x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+    if (gal.t >= 1) { gal.k = gal.nk; pt.cur = gal.list[gal.k]; pt.taps.forEach(t => t.value = pt.cur); pt.slide.value = 0; gal.t = -1 }
+  }
+  const update0 = update; function updateAll(dt) { update0(dt); portalUpdate(dt); sparks.update(dt); slideStep(Math.min(.05, dt / Math.max(.03, slowmo.k))) }   // (the slide runs in real time, whatever bullet time does)
   const popAt = h => { sparks.burst(h.c, h.r) };   // through: the picture has just shrunk to its point, and it bursts into sparks   // straight to the sparks
-  return { update: updateAll, pop: popAt, live, u, portal, pt, pInfo, get ts() { return minTs } };
+  return { update: updateAll, pop: popAt, nextPic, live, u, portal, pt, pInfo, get ts() { return minTs } };
 })();
 /* bullet time: once a ring can't be missed, all of time slows, exponentially, to all but a standstill as you pass through it,
    then winds back up just as it slowed */
