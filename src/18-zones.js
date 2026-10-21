@@ -34,7 +34,7 @@ const mapZone = (() => {
       const g = groundAt(mouse.x, mouse.y);
       if (g) { toLocal(g, _l); let best = -1, bd = Infinity; for (let k = 0; k < SN; k++) { const dx = sx[k] - _l.x, dz = sz[k] - _l.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = k } }
         const onScr = best >= 0 && (_sp.set(sx[best], 0, sz[best]).applyQuaternion(GQ).add(GC).project(camera), _sp.z < 1 && Math.hypot((_sp.x * .5 + .5) * innerWidth - mouse.x, (-_sp.y * .5 + .5) * innerHeight - mouse.y) < (L.mapZonePx ?? 40));   // only the stretch of timeline right under the pointer, on screen
-        if (onScr && Math.sqrt(bd) < (L.mapZoneHit ?? 22000)) { const t = st[best], lvl = Z.on || orbit.dist < (L.mapZoneMonths ?? 900000) ? 12 : 1, [t0, t1, y0] = span(t, lvl);
+        if (onScr && Math.sqrt(bd) < (L.mapZoneHit ?? 22000)) { const t = st[best], lvl = orbit.dist < (L.mapZoneMonths ?? 900000) ? 12 : 1, [t0, t1, y0] = span(t, lvl);
           if (!(Z.on && t0 === Z.t0 && t1 === Z.t1)) Z.hov = { t0: Math.max(t0, tS), t1: Math.min(t1, tE + 864e5), lvl, y0 } } }
     }
     if (Z.hov) hovR.set(Z.hov.t0, Z.hov.t1, W);
