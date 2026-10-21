@@ -8,11 +8,11 @@ const sing = (() => {
   const el = document.createElement('div'); el.id = 'farText'; el.setAttribute('aria-hidden', 'true'); el.innerHTML = `<small>FWA · 2000–2026</small><b>${SING_LINE}</b>`; document.body.appendChild(el);
   const star = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: new C3(1, .94, .82), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); star.visible = false; star.frustumCulled = false; scene.add(star);
   const S_ = { t: -1, w: 0, dir: new V3(), far: false, ft: 0 };
-  function enter() { S_.t = 0; S_.dir.copy(player.vel).lengthSq() > 1 ? S_.dir.normalize() : S_.dir.set(0, 0, -1).applyQuaternion(player.base); auto = null; lockI = -1; warp = null }
+  function enter() { buzz([30, 80, 30, 80, 160]); S_.t = 0; S_.dir.copy(player.vel).lengthSq() > 1 ? S_.dir.normalize() : S_.dir.set(0, 0, -1).applyQuaternion(player.base); auto = null; lockI = -1; warp = null }
   function emerge() {   // the far side: well out beyond the galaxy along the way you were going, facing on, the galaxy behind
     const R = GAL_R0 + GAL_LEN, at = GC.clone().addScaledVector(S_.dir, R * (LOOK.singFar ?? 3));
     player.pos.copy(at); player.vel.set(0, 0, 0); aimAt(S_.dir.clone(), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
-    star.position.copy(at).addScaledVector(S_.dir, R * .35); star.scale.setScalar(R * .05); star.visible = true; S_.far = true; S_.ft = 0; ringBell(N - 1); document.body.classList.add('farside');
+    star.position.copy(at).addScaledVector(S_.dir, R * .35); star.scale.setScalar(R * .05); star.visible = true; S_.far = true; S_.ft = 0; ringBell(N - 1); buzz(60); document.body.classList.add('farside');
   }
   return {
     get busy() { return S_.t >= 0 },

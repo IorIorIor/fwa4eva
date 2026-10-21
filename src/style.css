@@ -687,3 +687,19 @@ body.paper .frow b,body.paper .flbl{color:rgba(0,0,0,.45)}body.paper #fAg.some .
 body.paper .frow:hover{background:rgba(0,0,0,.06)}body.paper #mapSearch{border-bottom-color:rgba(0,0,0,.3)}
 body.paper #tip .td,body.paper #tip .tt,body.paper #tip .ti{background:rgba(255,255,255,.9);color:#111}
 body.farside #labels,body.farside #dayLabels{opacity:0;transition:opacity 1s}   /* the far side is quiet: no tags */
+/* phones: Tilt sits over Brake; panels come up from the bottom as sheets you can swipe away */
+#tiltBtn{display:none}
+@media (pointer:coarse){
+  #tiltBtn{display:block;position:fixed;z-index:5;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px));width:52px;height:32px;padding:0;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.06);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background-color .3s ease,color .2s ease}
+  #tiltBtn.on{background:#fff;color:#000;border-color:#fff}
+  #tiltBtn[hidden],body.map #tiltBtn{display:none}
+}
+@media (max-width:760px){
+  #panel,#lookPanel{left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;max-height:72vh;border-radius:16px 16px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(14,14,16,.96)!important;border:1px solid rgba(255,255,255,.12)!important;border-bottom:0!important;z-index:30}
+  .sheet:not(.open){transform:translateY(60px)}
+  #rmPanel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:80vh;border-radius:16px 16px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px);transform:translateY(100%);transition:opacity .2s ease,transform .38s cubic-bezier(.2,.9,.25,1)}
+  #rmPanel.in{transform:translateY(var(--dy,0px))}
+  #panel::before,#lookPanel::before,#rmPanel::before{content:'';display:block;flex:none;width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.32);margin:8px auto 2px}
+  .sheet.drag,#rmPanel.drag{transition:none!important}
+}
+body.paper #panel,body.paper #lookPanel,body.paper #rmPanel{background:rgba(250,250,248,.97)!important}

@@ -6,9 +6,11 @@ const K = k => `<kbd data-k="${k}">${{ arrowleft: '←', arrowright: '→', shif
 const coach = {
   i: -1, t: 0, look: 0, done: 0, prevQ: new Q4(), el: null, arrow: false, ring: false, hold: 0,
   steps: () => coarse ? [
-    { t: 'Drag to look around', ok: () => coach.look > 1.1 },
-    { t: 'Hold the thrust button to fly', ok: () => player.vel.length() > 400 },
-    { t: 'Tap a star to lock on', ok: () => lockI >= 0 },
+    { t: 'Drag to look around', s: () => portal.on ? 'or tilt the phone: it\'s a window' : '', ok: () => coach.look > 1.1 },
+    { t: 'Hold Thrust to fly', s: 'slide your thumb up it to boost', ok: () => player.vel.length() > 400 },
+    { t: 'Tap a star near you to lock on', s: 'then hold Thrust to fly to it', ok: () => lockI >= 0 },
+    { t: 'Touch and hold anywhere for the menu', ok: () => !!(rmenu.open || rmenu.panel) },
+    { t: 'Tilt, bottom left, steers with the phone', ok: () => portal.steering || coach.t > 6, skip: () => !portal.on },
     { t: 'Map, top right, shows the whole timeline', ok: () => S.mode === 'map' || coach.t > 7 },
   ] : [
     { t: `Press ${K('w')} to move forward`, ok: () => keys.w && (coach.hold += coach.dt) > .7 },

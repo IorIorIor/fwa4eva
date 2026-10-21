@@ -170,11 +170,12 @@ function pickNear(x, y, Rr) {
   return best < 0 ? null : { i: best, d: bd, R: bR };
 }
 function pick(x, y) {
+  const touchR = down && down.touch || coarse ? LOOK.tapR ?? 44 : 14;   // a finger covers more than a pointer: a tap reaches the star near it
   _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight; let best = -1, bd = Infinity;
   for (let i = 0; i < N; i++) {
     if (TA[i] < 1) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5) continue;
     const X = ((e[0] * px + e[4] * py + e[8] * pz + e[12]) / w * .5 + .5) * W, Y = (-(e[1] * px + e[5] * py + e[9] * pz + e[13]) / w * .5 + .5) * H;
-    const rpx = ringPxAt(i, w), d = Math.hypot(X - x, Y - y), rad = rpx > 18 ? rpx * .95 : Math.max(14, starPx(i, w) * .5);   // a ring big enough to be a 3D ring: only inside it counts
+    const rpx = ringPxAt(i, w), d = Math.hypot(X - x, Y - y), rad = rpx > 18 ? Math.max(rpx * .95, touchR) : Math.max(touchR, starPx(i, w) * .5);   // a ring big enough to be a 3D ring: only inside it counts
     if (d < rad) { const score = d / rad + w * .000003; if (score < bd) { bd = score; best = i } }
   }
   return best;

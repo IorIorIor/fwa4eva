@@ -39,7 +39,7 @@ const lookData = () => { const d = {}; Object.keys(LOOK).forEach(k => { if (k[0]
 const MAP_KEY = 'sotd-look-map';
 let LOOK_FLY = LOOK, LOOK_MAP = { ...LOOK, ...MY_MAP_LOOK, ...store.json(MAP_KEY, {}) };
 const INV_KEY = 'sotd-look-inv';   // the inverted look: with the inverted switch on, every slider edits this set instead (fly and map alike)
-let LOOK_INV = { ...LOOK, ...store.json(INV_KEY, {}), invert: 1 }, invOn = store.get('sotd-inv-on') === '1';
+phoneTier(LOOK_MAP); let LOOK_INV = phoneTier({ ...LOOK, ...store.json(INV_KEY, {}), invert: 1 }), invOn = store.get('sotd-inv-on') === '1';
 /* the galaxy's shape is one and the same in every look: these are built into the galaxy itself (on Rebuild), so flying,
    the map and the inverted look always share them, whichever one you change them in */
 const GAL_KEYS = ['galaxyStyle', 'armStart', 'armWindA', 'armWindG', 'armCount', 'armLock', 'armBeat', 'spiral', 'armWiden', 'armWidenCurve', 'spiralTurns', 'spiralGap', 'spiralHole', 'spiralSize', 'starBandW', 'starBandH', 'starCoreH', 'starAlong', 'starSep', 'nebOut', 'hazeCore'];
