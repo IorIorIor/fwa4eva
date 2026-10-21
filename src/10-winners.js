@@ -10,7 +10,7 @@ const stars = (() => {
   geo.setAttribute('aGot', new THREE.InstancedBufferAttribute(GOT, 1).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(COL, 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aAlpha', new THREE.InstancedBufferAttribute(ALPHA, 1).setUsage(THREE.DynamicDrawUsage));
-  const u = { gold: uniform(1), wc: uniform(new V3()), wr: uniform(0), ww: uniform(1), wk: uniform(0), coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), faint: uniform(0), shine: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
+  const u = { dim: uniform(1), gold: uniform(1), wc: uniform(new V3()), wr: uniform(0), ww: uniform(1), wk: uniform(0), coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), faint: uniform(0), shine: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
   const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vA = varyingProperty('float', 'vA'), vT = varyingProperty('float', 'vT'), vPs = varyingProperty('float', 'vPs'), vDot = varyingProperty('float', 'vDot'), vRing = varyingProperty('float', 'vRing'), vRon = varyingProperty('float', 'vRon'), vPx = varyingProperty('float', 'vPx'), vGot = varyingProperty('float', 'vGot');
   m.vertexNode = Fn(() => {
     const ab = aberrate(ia('aP', 'vec3')), al = ia('aAlpha', 'float');
@@ -70,7 +70,7 @@ const stars = (() => {
       const br = float(1).add(u.shine.mul(mix(.45, .9, yr)).mul(sin(U.now.mul(1.7).add(vC.g.mul(9))).mul(.3).add(.7))), mx = max(col.r, max(col.g, col.b));
       col.assign(mix(col, mix(vec3(1), rgb, .85).mul(mx), u.shine.mul(mix(.4, .65, yr)).min(1)).mul(br));
     });
-    const k = a.mul(vA); return vec4(col.mul(k), k);
+    const k = a.mul(vA).mul(u.dim); return vec4(col.mul(k), k);   /* (dim: paper's dark grey dots) */
   })();
   const mesh = layer(new THREE.Mesh(geo, m), scene, 2);
   return { mesh, u, aColor: geo.attributes.aColor, aAlpha: geo.attributes.aAlpha, aGot: geo.attributes.aGot };

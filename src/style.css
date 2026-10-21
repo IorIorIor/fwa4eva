@@ -677,3 +677,12 @@ body.map:has(#rmPanel.p-search:not([hidden])) #rmVeil{opacity:0}
 #stamp{position:fixed;left:50%;top:42%;z-index:21;pointer-events:none;opacity:0;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;max-width:80vw;transform:translate(-50%,-50%)}
 #stamp small{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.75)}
 #stamp b{font-family:"FF Good Pro",var(--body);font-weight:400;font-size:clamp(34px,6vw,76px);line-height:1;color:#fff;text-shadow:0 0 30px rgba(255,220,160,.45)}
+/* paper: the page goes white; tags and labels turn to black ink */
+body.paper{background:#fff}
+body.paper #zoneTip{background:#000;color:#fff}
+#farText{position:fixed;left:50%;top:30%;transform:translate(-50%,-50%);z-index:19;pointer-events:none;opacity:0;text-align:center;display:flex;flex-direction:column;gap:8px;color:#fff}#farText small{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.6)}#farText b{font-family:"FF Good Pro",var(--body);font-weight:400;font-size:clamp(28px,4vw,52px)}
+body.paper #panel header,body.paper #panel .fblk,body.paper #rmPanel,body.paper #lookPanel,body.paper #mapSearch{background:rgba(255,255,255,.88) !important;color:#111}
+body.paper .frow,body.paper #agQ,body.paper #mapSearch,body.paper #rmPanel,body.paper #rmPanel header b,body.paper #navQ{color:#111}
+body.paper .frow b,body.paper .flbl{color:rgba(0,0,0,.45)}body.paper #fAg.some .frow:not(.on){color:rgba(0,0,0,.35)}
+body.paper .frow:hover{background:rgba(0,0,0,.06)}body.paper #mapSearch{border-bottom-color:rgba(0,0,0,.3)}
+body.paper #tip .td,body.paper #tip .tt,body.paper #tip .ti{background:rgba(255,255,255,.9);color:#111}

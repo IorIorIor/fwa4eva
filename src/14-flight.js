@@ -215,8 +215,8 @@ function updatePlayer(dt) {
   if (touch > 0 && !auto && lockI !== nearI) { const sp = p.vel.length(); if (sp > 1) p.base.slerp(lookAtQ(_vn.copy(p.vel).divideScalar(sp), Yv.clone().applyQuaternion(p.base), _nq), Math.min(1, dt * 6 * Math.min(1, touch * 3))) }   // pushed: the nose follows the bounce
   {
     tmp.copy(p.pos).sub(GC); const d = tmp.length(), mn = BH.sh * 1.3;
-    if (d < mn) { tmp.setLength(mn); p.pos.copy(GC).add(tmp); const n = tmp.normalize(), vn = p.vel.dot(n); if (vn < 0) p.vel.addScaledVector(n, -vn) }
-    else if (d < BH.sh * 18 && !auto) { const sp = p.vel.length(), cap = 60 + (d - mn) * 6; if (sp > cap) p.vel.setLength(Math.max(cap, sp * Math.exp(-3 * dt))); p.vel.addScaledVector(tmp.normalize(), -dt * 250 * L.bhPull * (1 - sstep(d, mn, BH.sh * 5))) }   // only a gentle tug, and only close in
+    if (d < mn && !(LOOK.singularity ?? 1)) { tmp.setLength(mn); p.pos.copy(GC).add(tmp); const n = tmp.normalize(), vn = p.vel.dot(n); if (vn < 0) p.vel.addScaledVector(n, -vn) }
+    else if (d < BH.sh * 18 && !auto && !sing.busy) { const sp = p.vel.length(), cap = 60 + (d - mn) * 6; if (sp > cap) p.vel.setLength(Math.max(cap, sp * Math.exp(-3 * dt))); p.vel.addScaledVector(tmp.normalize(), -dt * 250 * L.bhPull * (1 - sstep(d, mn, BH.sh * 5))) }   // only a gentle tug, and only close in
   }
   p.roll += (Math.max(-1.2, Math.min(1.2, -turnSide * .45 + turnKey * (L.rollSteerBank ?? .7))) - p.roll) * (1 - Math.exp(-5 * dt));   // a cosmetic bank into turns (and into an A/D turn)
   p.quat.copy(p.base).multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), p.roll));

@@ -409,7 +409,7 @@ const ascent = (() => {
     sparkle(v = 1) { if (e && (LOOK.mSparkle ?? 1) > 0) e.sparkle(v * (LOOK.mSparkle ?? 1)) },
     update(dt) {   // the game's hold on it, a few times a second
       if (!e || (sk -= dt) > 0) return; sk = .1; sync();
-      const L = LOOK, n = e.n, t = ctx.currentTime, fly = S.mode === 'fly', s = fly ? Math.min(1, Math.log10(1 + player.vel.length()) / Math.log10(1 + LIGHT)) : 0, dl = 1 - slowmo.k;
+      const L = LOOK, n = e.n, t = ctx.currentTime, fly = S.mode === 'fly', s = fly ? Math.min(1, Math.log10(1 + player.vel.length()) / Math.log10(1 + LIGHT)) : 0, dl = Math.max(1 - slowmo.k, singQ * .95);   /* nearing the horizon the tape slows and sinks too */
       const Rg = GAL_R0 + GAL_LEN, gal = 1 - sstep(camera.position.distanceTo(GC), Rg * .8, Rg * 2.6), sb = (L.mSpeed ?? 1) * s, dk = (L.mDilate ?? 1) * dl;
       n.tone.frequency.setTargetAtTime(Math.min(16000, P.tone * (1 + 2.2 * sb) * (1 - .55 * Math.min(1, dk))), t, .3);   // faster: brighter; time slowing: darker
       n.haloBus.gain.setTargetAtTime(1 + 1.5 * sb, t, .4);
@@ -418,7 +418,7 @@ const ascent = (() => {
       n.revSend.gain.setTargetAtTime(1.6 * P.revMix * (1 + 1.2 * dk), t, .2); n.delFb.gain.setTargetAtTime(Math.min(.85, P.delFb + .4 * dk), t, .2);
       { const rn = fly && LOOK.rings ? 1 - sstep(HALO.ts, .1, 2) : 0, ek = (L.mEcho ?? 1) * Math.max(rn, Math.min(1, dl * 1.3)), et = Math.min(2.9, P.delTime * (1 + 2.2 * ek)); n.delL.delayTime.setTargetAtTime(et, t, .35); n.delR.delayTime.setTargetAtTime(et, t, .35); n.delSend.gain.setTargetAtTime(Math.min(1, P.delMix * .9 * (1 + 1.5 * ek)), t, .3) }   // near and through a ring the echoes stretch out (the repeats slide in pitch as they do) and come forward
       { const dk = fly ? sstep(player.vel.length(), 150, 4000) * Math.min(1, streakDens * 1.5) : 0; dustHissK = dk; n.hissGain.gain.setTargetAtTime(.035 * P.hiss + .05 * (L.mDustHiss ?? .6) * dk, t, .25) }   // the tape hiss rises with the speed dust you're flying through, like a faint Geiger counter
-      n.out.gain.setTargetAtTime(P.volume * (1 - (L.mVoid ?? .45) * (1 - gal)) * (1 + .25 * sb), t, .8);   // fullest in the galaxy, thinner out in the void
+      n.out.gain.setTargetAtTime(P.volume * (1 - (L.mVoid ?? .45) * (1 - gal)) * (1 + .25 * sb) * Math.pow(1 - singQ, 1.5), t, .8);   /* … and falls silent at the horizon */   // fullest in the galaxy, thinner out in the void
     },
   };
 })();

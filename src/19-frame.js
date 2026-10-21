@@ -400,7 +400,7 @@ function tick(now) {
   updateLockMark();
   targetRing.visible = ringI >= 0; if (ringI >= 0) { starPos(ringI, targetRing.position); targetRing.quaternion.copy(camera.quaternion); targetRing.scale.setScalar(Math.max(CR[ringI] * 1.6, camera.position.distanceTo(targetRing.position) * .03) * (1 + .05 * Math.sin(now * .005))) }
   updateHover(dt); updateLabels();
-  if (fly) gauge.fly(); else gauge.map(); consoleUI(rdt); whiteout.update(rdt); ascent.update(rdt);
+  if (fly) gauge.fly(); else gauge.map(); consoleUI(rdt); whiteout.update(rdt); sing.update(rdt); ascent.update(rdt);
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
   updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt); musicMap(S.mode === 'map'); mapZone.update(dt); dayLab(); swapLook();
   if (tween && tween.mode) { const e = ease(Math.min(1, tween.t)); mapK = S.mode === 'map' ? sstep(e, 0, .55) : 1 - sstep(e, .45, 1) } else mapK += ((S.mode === 'map' ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); conK += ((conOn ? 1 : 0) - conK) * Math.min(1, dt * 3); { const dim = Math.max((L.mapFade ?? .85) * mapK, (L.conDim ?? .8) * conK); PU.bgK.value = 1 - dim; bgStars.u.op.value = L.bgStars * (1 - dim) }   // between map and flight the map's dimming follows the camera's move, so the galaxy never flares up while you're still far out; on the map it clears down to the winners
@@ -412,6 +412,7 @@ function tick(now) {
     bloomPass.threshold.value = Math.min(1, L.bloomThr * (1 - .45 * k) * (1 + (L.coreThr - 1) * coreK))
     PU.exp.value = L.exposure * (1 + (L.coreExposure - 1) * coreK) * (1 + (L.ringFlashExpo ?? 1.5) * whiteout.k); bloomPass.strength.value += (L.ringFlashGlow ?? 1.2) * whiteout.k; PU.lv.value = whiteout.lv; { const so = (1 - whiteout.lv * whiteout.lv).toFixed(2); if (shipCanvas.style.opacity !== so) shipCanvas.style.opacity = so } PU.lvMid.value = L.ringVeilMid ?? 2;   // closing in on a ring the picture's exposure and glow swell with the whiteout
   }
+  paperUpdate(rdt); paperPics.update();
   {   // the core and bulge puffs, raymarched (when switched on), and the core's glow as a volume
     const pOn = !!L.puffVol, gOn = !!L.bhGlowVol && coreGlowV.k > .002, on = pOn || gOn, pv = puffVol.u; puffVol.mesh.visible = on;
     if (on) {
