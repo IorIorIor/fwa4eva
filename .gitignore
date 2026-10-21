@@ -5,3 +5,4 @@ test/*.png
 test/result.json
 .DS_Store
 .canopy/
+flags.json

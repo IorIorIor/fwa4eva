@@ -268,8 +268,10 @@ const slowmo = { k: 1, after: 1e9,
   step(rdt) {
     const L = LOOK, amt = L.rings ? L.ringSlow ?? 1 : 0; this.after += rdt * this.k; if (amt <= 0 || L.ringPlay) { this.k = 1; return }
     const lo = Math.max(.001, L.ringSlowMin ?? .06), F = Math.max(.05, L.ringSlowFrom ?? .5), ts = HALO.ts, sm = x => Math.pow(Math.max(0, Math.min(1, x)), 1.6);   // a soft start, then each moment a fixed share slower
-    let k = Math.pow(lo, sm(1 - ts / F));   // softly in, then exponentially slower: all but still at the moment you cross
-    k = Math.min(k, Math.pow(lo, sm(1 - this.after / Math.max(.02, L.ringSlowAfter ?? F))));   // and out again the same way, mirror image
+    if (ts < F) { const v0 = Math.max(1, L.ringSlowV0 ?? 500), v1 = Math.max(v0 * 1.01, L.ringSlowV1 ?? 6e4), sp = Math.max(1, player.vel.length()); this.sk = sstep(Math.log(sp), Math.log(v0), Math.log(v1)) }   // how fast you come at it decides how far time slows: crawling through hardly at all, flat out almost to a stop
+    const lo2 = Math.pow(lo, this.sk ?? 1);
+    let k = Math.pow(lo2, sm(1 - ts / F));   // softly in, then exponentially slower: all but still at the moment you cross
+    k = Math.min(k, Math.pow(lo2, sm(1 - this.after / Math.max(.02, L.ringSlowAfter ?? F))));   // and out again the same way, mirror image
     this.k = 1 - amt * (1 - k);
   },
 };

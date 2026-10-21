@@ -774,3 +774,29 @@ body.mm-open #logo{z-index:46}   /* the logo stays on top of its menu: tap it ag
   body.map.mtab-open #rmVeil{opacity:0}
 }
 body.paper #mTabs button{background:rgba(255,255,255,.9);color:#333}body.paper #mTabs button.on{background:#111;color:#fff}
+/* flags: a parked pilot's name and agency, right up close */
+#flagTags{position:fixed;inset:0;pointer-events:none;z-index:6}
+.ftag{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:flex-start;margin:-60px 0 0 14px}
+.ftag .td{font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.7);background:rgba(26,20,40,.56);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:4.5px 7px 3px}
+.ftag .tt{font-family:"FF Good Pro",var(--body);font-size:22px;line-height:1.05;color:#fff;background:rgba(26,20,40,.56);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:2px 9px 5px 7px}
+#flagDlg{left:50%;top:50%;transform:translate(-50%,-50%);z-index:31;width:min(360px,calc(100vw - 32px));background:rgba(14,14,16,.96);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;padding:0 0 14px;font-family:var(--body)}
+#flagDlg header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px 16px}
+#flagDlg header b{font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:17px;letter-spacing:.1em;text-transform:uppercase}
+#flagDlg .x{background:none;border:0;color:#fff;font-size:22px;width:30px;height:30px;cursor:pointer}
+#flagDlg p{margin:0 16px 12px;font-size:13px;line-height:1.4;color:rgba(255,255,255,.6)}
+#flagDlg label{display:flex;flex-direction:column;gap:4px;margin:0 16px 10px;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+#flagDlg input,#sayBox input{background:rgba(255,255,255,.05);border:0;border-bottom:1px solid rgba(255,255,255,.35);color:#fff;font-family:var(--body);font-size:16px;padding:8px 10px;outline:none}
+#flagDlg .fr{display:flex;gap:6px;margin:6px 16px 0;flex-wrap:wrap}
+#flagDlg .fr button{flex:1;padding:10px 12px;background:rgba(255,255,255,.08);border:0;color:#fff;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+#flagDlg .fr .go{background:#fff;color:#000}
+/* messages: the line you type, what nearby pilots said, and their words over their markers */
+#sayBox{left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:31;display:flex;width:min(440px,calc(100vw - 32px));background:rgba(14,14,16,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+#sayBox input{flex:1;border-bottom:0}
+#sayBox button{background:#fff;color:#000;border:0;padding:0 14px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+#sayLog{left:max(16px,env(safe-area-inset-left,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:12;display:flex;flex-direction:column;gap:4px;pointer-events:none;max-width:min(360px,calc(100vw - 32px))}
+#sayLog .sl{background:rgba(14,14,20,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:4px 8px;font-size:13px;line-height:1.3;color:#fff;transition:opacity 1s ease}
+#sayLog .sl b{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.06em;margin-right:6px}
+#sayLog .sl.gone{opacity:0}
+.pm em{font-style:normal;font-family:var(--body);font-size:13px;letter-spacing:0;color:#fff;background:rgba(14,14,20,.7);padding:3px 7px;max-width:240px;white-space:normal;margin-left:4px}
+/* the winner compass tags: larger and brighter on touch screens */
+@media (pointer:coarse){#wcmp .m span{font-size:11.5px;letter-spacing:.08em;color:rgba(255,255,255,.8);text-shadow:0 0 6px rgba(0,0,0,.9)}#wcmp .m.star span{color:rgba(255,255,255,.75)}}

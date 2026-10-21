@@ -19,7 +19,9 @@ function peerUpdate(p) {
   const s = p.presence, ok = a => Array.isArray(a) && a.every(Number.isFinite); if (!s || !ok(s.p) || s.p.length !== 3) return;   // untrusted: take only well-formed numbers
   let v = Net.peers.get(p.peer); if (!v) { const h = Number.isFinite(+s.h) ? ((+s.h % 360) + 360) % 360 : 0; v = peerViz(h); Net.peers.set(p.peer, v) }
   if (Number.isFinite(+s.h)) { const h = ((+s.h % 360) + 360) % 360; if (Math.abs(h - v.hue) > .5) { v.hue = h; v.col.setHSL(h / 360, 1, .6); v.g.userData.flame.material.color.copy(v.col); v.g.userData.hole.col.value.copy(v.col); v.g.userData.emit.material.color.copy(v.col); v.dot.material.color.copy(v.col) } }
-  if (typeof s.n === 'string') v.name = s.n.slice(0, 24);
+  if (typeof s.n === 'string' && s.n) v.name = s.n.slice(0, 24);
+  if (v.sid === undefined) v.sid = typeof s.say === 'string' && Number.isFinite(+s.sid) ? +s.sid : -1;   // a line already up when they came into view isn't news
+  if (typeof s.say === 'string' && Number.isFinite(+s.sid) && +s.sid !== v.sid) { v.sid = +s.sid; if (say.heard(v, s.say.slice(0, 140))) { v.sayT = performance.now(); v.sayText = s.say.slice(0, 140) } }   // a new line from them (not one already up when you arrived), shown only if they're near
   v.tgt.fromArray(s.p); if (ok(s.v) && s.v.length === 3) v.vel.fromArray(s.v); if (ok(s.q) && s.q.length === 4) v.q.fromArray(s.q).normalize();
   v.at = performance.now(); v.th = (s.th | 0) & 3; v.mode = s.m === 'map' ? 'map' : 'fly';
   if (!v.cur || v.cur.distanceTo(v.tgt) > 5e5) { v.cur = v.tgt.clone(); v.pts.length = 0; v.g.quaternion.copy(v.q) }   // new, or jumped home
@@ -41,13 +43,14 @@ Net.connect = async () => {
       }
     }
   } catch (e) { }
-  if (NET_URL && !TEST) wsConnect(0);
+  if (NET_URL && (!TEST || QS.has('net'))) wsConnect(0);   // (tests stay offline unless ?net)
 };
 function wsConnect(tries) {
   let ws; try { ws = new WebSocket(NET_URL) } catch (e) { return }
-  ws.onopen = () => { Net.ws = ws; tries = 0; netLive() };
+  ws.onopen = () => { Net.ws = ws; tries = 0; netLive(); flags.hello() };
   ws.onmessage = e => {
     let m; try { m = JSON.parse(e.data) } catch (_) { return }
+    if (m && (m.t === 'flags' || m.t === 'flag' || m.t === 'flagme')) { flags.onWs(m); return }
     if (m && m.t === 'hi' && Number.isFinite(m.h)) { PILOT_HUE = ((m.h % 360) + 360) % 360; Net.self.hue = PILOT_HUE; return }   // the relay deals out colours spread round the wheel, so no two pilots match
     if (!m || typeof m.id !== 'string') return;
     if (m.t === 'p' && m.s && typeof m.s === 'object') peerUpdate({ peer: 'w:' + m.id, presence: m.s }); else if (m.t === 'x') peerDrop('w:' + m.id);
@@ -56,7 +59,7 @@ function wsConnect(tries) {
   ws.onerror = () => { try { ws.close() } catch (_) { } };
 }
 Net.send = s => {
-  const f = x => Math.round(x * 100) / 100, msg = { p: s.pos.map(f), q: s.quat.map(x => Math.round(x * 1e4) / 1e4), v: s.vel.map(Math.round), h: PILOT_HUE, m: s.mode, th: s.th };
+  const f = x => Math.round(x * 100) / 100, msg = { p: s.pos.map(f), q: s.quat.map(x => Math.round(x * 1e4) / 1e4), v: s.vel.map(Math.round), h: PILOT_HUE, m: s.mode, th: s.th, n: ME.n, ...(say.out || {}) };
   if (Net.room) Net.room.presence(msg).catch(() => { });
   else if (Net.ws && Net.ws.readyState === 1) Net.ws.send(JSON.stringify({ t: 'p', s: msg }));
 };
@@ -103,11 +106,12 @@ function updatePeers(dt) {
   for (const v of Net.peers.values()) {
     _pd.copy(v.tgt).addScaledVector(v.vel, Math.min(1, (now - v.at) / 1000)); v.cur.lerp(_pd, 1 - Math.exp(-9 * dt));
     v.g.position.copy(v.cur); v.g.quaternion.slerp(v.q, 1 - Math.exp(-10 * dt)); v.g.visible = fly;
-    if (!v.mk) { v.mk = document.createElement('div'); v.mk.className = 'pm'; v.mk.style.setProperty('--c', `hsl(${v.hue} 100% 60%)`); v.mk.innerHTML = '<i></i><span></span>'; peerMarks.appendChild(v.mk) }
+    if (!v.mk) { v.mk = document.createElement('div'); v.mk.className = 'pm'; v.mk.style.setProperty('--c', `hsl(${v.hue} 100% 60%)`); v.mk.innerHTML = '<i></i><span></span><em hidden></em>'; peerMarks.appendChild(v.mk) }
     { _ps.copy(v.cur).project(camera); let x = _ps.x, y = _ps.y; const behind = _ps.z > 1; if (behind) { x = -x; y = -y } const on = !behind && Math.abs(x) < .95 && Math.abs(y) < .92;
       if (!on) { const m = Math.max(Math.abs(x) / .93, Math.abs(y) / .88, 1e-6); x /= m; y /= m }
-      v.mk.style.transform = `translate(${((x * .5 + .5) * innerWidth).toFixed(1)}px,${((-y * .5 + .5) * innerHeight).toFixed(1)}px)`; v.mk.classList.toggle('edge', !on); v.mk.hidden = !fly;
-      const dd = v.cur.distanceTo(player.pos); v.mk.lastChild.textContent = fmtD(dd) }
+      v.mk.style.transform = `translate(${((x * .5 + .5) * innerWidth).toFixed(1)}px,${((-y * .5 + .5) * innerHeight).toFixed(1)}px)`; v.mk.classList.toggle('edge', !on);
+      const dd = v.cur.distanceTo(player.pos); v.mk.children[1].textContent = fmtD(dd); v.mk.hidden = !fly || dd > (LOOK.peerMarkDist ?? 4e5);   /* only within aiming range */
+      const sb = v.mk.lastChild, up = v.sayT && now - v.sayT < 8000; if (up && sb.textContent !== v.sayText) sb.textContent = v.sayText; sb.hidden = !up; if (up) v.mk.hidden = !fly }   // what they said, over their marker
     const fl = v.g.userData.flame; fl.material.opacity += ((v.th ? .85 : 0) - fl.material.opacity) * Math.min(1, dt * 10); const ho = v.g.userData.hole; ho.on.value += ((v.th ? 1.1 : .45) - ho.on.value) * Math.min(1, dt * 6); { const fz = .8 + .4 * Math.sin(now * .04); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
     ;
     v.dot.visible = !fly; if (!fly) { v.dot.position.copy(v.cur); v.dot.scale.setScalar(.022) }
