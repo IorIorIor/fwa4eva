@@ -579,3 +579,5 @@ body.inverted #wcmp{filter:invert(1) hue-rotate(180deg)}
 .frow:hover,.frow:focus-visible{background:rgba(255,255,255,.07);padding-left:18px;outline:none}
 .frow.on{font-weight:700}.frow.on i{width:6px;margin-right:8px}
 #fAg.some .frow:not(.on){color:rgba(255,255,255,.38)}#fAg.some .frow:not(.on) b{color:rgba(255,255,255,.2)}
+
+#whiteout{position:fixed;inset:0;z-index:20;pointer-events:none;opacity:0;mix-blend-mode:normal}   /* the ring's whiteout, over everything */

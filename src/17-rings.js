@@ -14,9 +14,27 @@ function ringCheck(p) {   // called by the flight after it moves you: you get a 
 }
 const _rk = new V3();
 function ringHit(h) {   // through the plane: it's yours, and time starts back up from here
+  whiteout.hit();
   slowmo.after = 0; ringIn = h.i; HALO.pop(h);
   h.done = true; collect(h.i);
 }
+/* the whiteout: closing in on a ring a bloom of white swells from it until the whole screen is white; through it, the
+   white clears quickly (in real time, whatever bullet time is doing) */
+const whiteout = (() => {
+  const el = document.createElement('div'); el.id = 'whiteout'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el);
+  const W = { near: 0, at: new V3(), out: 0, k: 0 }, _p = new V3();
+  W.hit = () => { W.out = 1 };
+  W.update = rdt => {
+    const L = LOOK, amt = L.ringFlash ?? 1, inK = Math.pow(sstep(W.near, .15, 1), 1.6) * amt; W.near = 0;
+    if (W.out > 0) W.out = Math.max(0, W.out - rdt / Math.max(.05, L.ringFlashOut ?? .35));
+    const k = S.mode === 'fly' ? Math.max(inK, amt * W.out * W.out * (3 - 2 * W.out)) : 0; if (Math.abs(k - W.k) < .002 && k !== 0) return; W.k = k;
+    if (k <= .002) { el.style.opacity = 0; return }
+    _p.copy(W.at).project(camera); const x = ((_p.x * .5 + .5) * 100).toFixed(1), y = ((-_p.y * .5 + .5) * 100).toFixed(1), r = (20 + 140 * k).toFixed(0);
+    el.style.background = `radial-gradient(circle at ${x}% ${y}%, #fff 0, #fff ${(r * .35).toFixed(0)}vmax, rgba(255,255,255,${Math.min(1, k * 1.4).toFixed(3)}) ${r}vmax), rgba(255,255,255,${Math.pow(k, 2.2).toFixed(3)})`;
+    el.style.opacity = Math.min(1, k * 1.25).toFixed(3);
+  };
+  return W;
+})();
 /* the sparks a ring bursts into: white points flung out from its middle, slowing as they go, twinkling out. All on the
    GPU: each has a direction and a speed, and the shader places it by the burst's age (game time, so bullet time slows them too) */
 const sparks = (() => {
@@ -157,7 +175,7 @@ const HALO = (() => {
     if (!h.done && !L.ringPlay) {   // by how long until you reach it: clear on the way in, then in the last moment the picture is lensed harder and harder, turns white and shrinks to a point just as you arrive
       const n = h.nSet ? h.n : _mn.copy(player.pos).sub(h.c).normalize(), s = _mv.copy(player.pos).sub(h.c).dot(n), vn = -player.vel.dot(n), tt = vn > 1 && s > 0 ? s / vn : Infinity;
       const tin = Math.max(.05, L.ringMemIn ?? .5), near = Math.pow(Math.max(0, 1 - tt / tin), 1.4), shT = Math.max(.02, L.ringShrink ?? .25); h.near = near;
-      pt.dis.value = near * .3 * (L.ringMemWarp ?? 1); pt.white.value = sstep(near, .3, .9) * (L.ringMemWhite ?? 1); sh = tt < shT ? Math.pow(tt / shT, 1.3) : 1;   // white, and shrinking so it's a point the moment you get there
+      pt.dis.value = near * .3 * (L.ringMemWarp ?? 1); pt.white.value = sstep(near, .3, .9) * (L.ringMemWhite ?? 1); whiteout.near = Math.max(whiteout.near, near); whiteout.at.copy(h.c);   // white, and shrinking so it's a point the moment you get there
     }
     _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(h.nSet ? _ldp.copy(h.c).add(h.n) : player.pos, h.c, _up);   /* once committed the portal stays put, facing the way you came */ portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5) * sh; portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005 && sh > .003; Object.assign(pInfo, { on: portal.visible && !h.done, i: pI, r: h.r }); pInfo.c.copy(h.c);   // just inside the ring's tube, so the ring still frames it
   }
