@@ -584,3 +584,5 @@ body.inverted #wcmp{filter:invert(1) hue-rotate(180deg)}
 #whiteout{position:fixed;inset:0;z-index:20;pointer-events:none;opacity:0;mix-blend-mode:normal}   /* the ring's whiteout, over everything */
 
 .tnav:has(.tdist:empty){display:none}   /* no distance to show: no empty box */
+
+#topnav button.rec{color:#ff5a5a}

@@ -406,7 +406,7 @@ function tick(now) {
     const k = fly ? sstep(beta, .05, .92) * L.bloomBoost : 0, on = L.bloom ? 1 : 0;
     bloomPass.strength.value = on * (L.bloomStr + (2 - L.bloomStr) * k) * (1 + (L.coreBloom - 1) * coreK); bloomPass.strength.value += on * (engineLook.burst || 0) * (L.flareBurst ?? 1.2) * .35; igniteK *= Math.exp(-dt / .9); bloomPass.radius.value = L.bloomRad + (1 - L.bloomRad) * k;
     bloomPass.threshold.value = Math.min(1, L.bloomThr * (1 - .45 * k) * (1 + (L.coreThr - 1) * coreK))
-    PU.exp.value = L.exposure * (1 + (L.coreExposure - 1) * coreK);
+    PU.exp.value = L.exposure * (1 + (L.coreExposure - 1) * coreK) * (1 + (L.ringFlashExpo ?? 1.5) * whiteout.k); bloomPass.strength.value += (L.ringFlashGlow ?? 1.2) * whiteout.k;   // closing in on a ring the picture's exposure and glow swell with the whiteout
   }
   {   // the core and bulge puffs, raymarched (when switched on), and the core's glow as a volume
     const pOn = !!L.puffVol, gOn = !!L.bhGlowVol && coreGlowV.k > .002, on = pOn || gOn, pv = puffVol.u; puffVol.mesh.visible = on;

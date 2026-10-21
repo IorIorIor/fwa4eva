@@ -165,10 +165,24 @@ const rmenu = (() => {
   const fmtDayLong = dd => { const t = new Date(DAY0 + dd * 864e5); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}` };
   return { get open() { return open }, get panel() { return !panel.hidden }, get hot() { return hot }, held: false, show, move, choose, sub, close };
 })();
+// recording: the browser captures this tab (it asks which; pick this one), and the video lands in your downloads
+const recorder = (() => {
+  let mr = null, chunks = [], stream = null; const btn = () => $('recBtn');
+  const stop = () => { if (mr && mr.state !== 'inactive') mr.stop(); if (stream) stream.getTracks().forEach(t => t.stop()); stream = null };
+  async function start() {
+    try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60, displaySurface: 'browser' }, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include' }) } catch (e) { return }
+    const type = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+    chunks = []; mr = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 16e6 }); mr.ondataavailable = e => e.data.size && chunks.push(e.data);
+    mr.onstop = () => { const b = new Blob(chunks, { type: mr.mimeType || 'video/webm' }), a = document.createElement('a'), d = new Date(), p = n => String(n).padStart(2, '0'); a.href = URL.createObjectURL(b); a.download = `fwa-forever-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${/mp4/.test(b.type) ? 'mp4' : 'webm'}`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 4000); mr = null; btn().textContent = 'Record'; btn().classList.remove('rec') };
+    stream.getVideoTracks()[0].addEventListener('ended', stop);   // the browser's own Stop sharing button ends it too
+    mr.start(1000); btn().textContent = '● Stop'; btn().classList.add('rec');
+  }
+  return { toggle() { if (mr) stop(); else start() }, get on() { return !!mr } };
+})();
 // the same choices as a plain menu along the top, beside the logo
 (() => {
   const nav = $('topnav'), mapB = nav.querySelector('[data-k="map"]');
   nav.addEventListener('pointerdown', e => e.stopPropagation());
-  nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
+  nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (k === 'rec') { recorder.toggle(); return } if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
   setInterval(() => { mapB.textContent = S.mode === 'map' ? 'Fly' : 'Map' }, 300);
 })();
