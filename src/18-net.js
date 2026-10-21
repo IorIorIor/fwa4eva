@@ -19,6 +19,7 @@ function peerUpdate(p) {
   const s = p.presence, ok = a => Array.isArray(a) && a.every(Number.isFinite); if (!s || !ok(s.p) || s.p.length !== 3) return;   // untrusted: take only well-formed numbers
   let v = Net.peers.get(p.peer); if (!v) { const h = Number.isFinite(+s.h) ? ((+s.h % 360) + 360) % 360 : 0; v = peerViz(h); Net.peers.set(p.peer, v) }
   if (Number.isFinite(+s.h)) { const h = ((+s.h % 360) + 360) % 360; if (Math.abs(h - v.hue) > .5) { v.hue = h; v.col.setHSL(h / 360, 1, .6); v.g.userData.flame.material.color.copy(v.col); v.g.userData.hole.col.value.copy(v.col); v.g.userData.emit.material.color.copy(v.col); v.dot.material.color.copy(v.col) } }
+  if (typeof s.n === 'string') v.name = s.n.slice(0, 24);
   v.tgt.fromArray(s.p); if (ok(s.v) && s.v.length === 3) v.vel.fromArray(s.v); if (ok(s.q) && s.q.length === 4) v.q.fromArray(s.q).normalize();
   v.at = performance.now(); v.th = (s.th | 0) & 3; v.mode = s.m === 'map' ? 'map' : 'fly';
   if (!v.cur || v.cur.distanceTo(v.tgt) > 5e5) { v.cur = v.tgt.clone(); v.pts.length = 0; v.g.quaternion.copy(v.q) }   // new, or jumped home
@@ -75,7 +76,7 @@ function nearestPeer() { let best = null, bd = Infinity; for (const [id, v] of N
 function pilotList() {
   if (pilotsEl.hidden) return; const rows = [...Net.peers].filter(([, v]) => v.cur).map(([id, v]) => ({ id, v, d: v.cur.distanceTo(player.pos) })).sort((a, b) => a.d - b.d);
   pilotsEl.innerHTML = `<div class="ph">Pilots <span>${rows.length + 1} here · G flies to the nearest</span></div>` + `<div class="pr me"><i style="--c:hsl(${PILOT_HUE} 100% 60%)"></i><b>You</b><span>${Net.enabled ? 'online' : 'solo'}</span></div>` +
-    (rows.length ? rows.map(r => `<button class="pr" data-id="${r.id}"><i style="--c:hsl(${r.v.hue} 100% 60%)"></i><b>Pilot ${r.id.slice(-4)}</b><span>${fmtD(r.d)} u · ${r.v.mode === 'map' ? 'on the map' : r.v.th ? 'thrusting' : 'flying'}</span></button>`).join('') : '<div class="pr none">Nobody else yet. Open this page in another window or on your phone.</div>');
+    (rows.length ? rows.map(r => `<button class="pr" data-id="${r.id}"><i style="--c:hsl(${r.v.hue} 100% 60%)"></i><b>${esc(r.v.name || 'Pilot ' + r.id.slice(-4))}</b><span>${fmtD(r.d)} u · ${r.v.mode === 'map' ? 'on the map' : r.v.th ? 'thrusting' : 'flying'}</span></button>`).join('') : '<div class="pr none">Nobody else yet. Open this page in another window or on your phone.</div>');
 }
 pilotsEl.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) goToPeer(b.dataset.id) });
 addEventListener('keydown', e => {
