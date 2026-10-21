@@ -38,6 +38,7 @@ const whiteout = (() => {
 })();
 /* the sparks a ring bursts into: white points flung out from its middle, slowing as they go, twinkling out. All on the
    GPU: each has a direction and a speed, and the shader places it by the burst's age (game time, so bullet time slows them too) */
+const _cd = new V3();
 const sparks = (() => {
   // each spark flies out along its direction, eased from birth to death (ease 1 = steady, higher = a fast burst that slows),
   // drawn as a short screen-space streak from where it was a moment ago (the trail) to where it is. Worked out on the CPU,
@@ -62,15 +63,23 @@ const sparks = (() => {
     const k = clamp(exp(sq(d).mul(-.35)).mul(along).mul(vA).mul(1.6), 0, 1); return vec4(vec3(1, .98, .94).mul(k), k);   // brightest at the head, fading down the trail
   })();
   const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; mesh.renderOrder = 3; mesh.visible = false; shipScene.add(mesh);
-  const c = new V3(), o = new V3(); let on = false, Rr = 1, R = 1, ez = 3, tr = .15;
+  const c = new V3(), o = new V3(), v0 = new V3(), bk = new V3(), dz = new Float32Array(n * 3); let on = false, Rr = 1, R = 1, ez = 3, tr = .15, keep = .6;
   const ease = t => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), ez);
   return {
-    burst(at, Rring) { const L = LOOK; if (!(L.ringSpark ?? 1)) return; c.copy(at); Rr = (L.ringSparkAhead ?? 1.2) > 0 ? Math.max(1e-3, camera.position.distanceTo(player.pos)) : Rring; R = Rr * (L.ringSparkSpread ?? 2.5); u.t.value = 0; u.life.value = L.ringSparkLife ?? 1.6; u.sz.value = L.ringSparkSize ?? 5; u.k.value = L.ringSpark ?? 1; ez = L.ringSparkEase ?? 3; tr = L.ringSparkTrail ?? .15; on = true },   /* at the ship, sized to the view of it (the camera's distance); at the ring, to the ring */
+    mesh, u,
+    burst(at, Rring) {   // like dust off a comet: shaped by the ship's motion, flung back from its course and carried on with part of its momentum
+      const L = LOOK; if (!(L.ringSpark ?? 1)) return; Rr = (L.ringSparkAhead ?? 1.2) > 0 ? Math.max(1e-3, camera.position.distanceTo(player.pos)) : Rring;
+      c.copy(at); if ((L.ringSparkAhead ?? 1.2) > 0) c.set(0, 0, -1).applyQuaternion(player.base).multiplyScalar(Rr * (L.ringSparkAhead ?? 1.2)).add(player.pos);
+      v0.copy(player.vel); const sp0 = v0.length(); bk.copy(sp0 > 1 ? v0 : bk.set(0, 0, -1).applyQuaternion(player.base)).normalize().negate();   // back along the course
+      const cone = L.ringSparkCone ?? 1.4; for (let i = 0; i < n; i++) { const k = i * 3; _cd.set(dirs[k] + bk.x * cone, dirs[k + 1] + bk.y * cone, dirs[k + 2] + bk.z * cone).normalize(); dz[k] = _cd.x; dz[k + 1] = _cd.y; dz[k + 2] = _cd.z }
+      const fk = 1 + (L.ringSparkSpeed ?? 1) * Math.min(3, Math.log10(1 + sp0) / 3); R = Rr * (L.ringSparkSpread ?? 2.5); keep = Rr * (L.ringSparkDrift ?? 2.5) * fk; /* the faster you go, the faster it streams off the back */ u.t.value = 0; u.life.value = L.ringSparkLife ?? 1.6; u.sz.value = L.ringSparkSize ?? 5; u.k.value = L.ringSpark ?? 1; ez = L.ringSparkEase ?? 3; tr = L.ringSparkTrail ?? .15; on = true;
+    },
     update(dt) {
       if (!on) { mesh.visible = false; return } u.t.value += dt; const life = u.life.value, t = u.t.value; if (t > life) { on = false; mesh.visible = false; return }
-      const ah = LOOK.ringSparkAhead ?? 1.2; if (ah > 0) c.set(0, 0, -1).applyQuaternion(player.base).multiplyScalar(Rr * ah).add(player.pos);   // the emitter rides just in front of the ship
-      o.copy(c).sub(camera.position); const eB = ease(t / life), eA = ease((t - tr * life) / life);
-      for (let i = 0; i < n; i++) { const k = i * 3, s = sp[i] * R; pb[k] = o.x + dirs[k] * s * eB; pb[k + 1] = o.y + dirs[k + 1] * s * eB; pb[k + 2] = o.z + dirs[k + 2] * s * eB; pa[k] = o.x + dirs[k] * s * eA; pa[k + 1] = o.y + dirs[k + 1] * s * eA; pa[k + 2] = o.z + dirs[k + 2] * s * eA }
+      const tA = Math.max(0, t - tr * life), eB = ease(t / life), eA = ease(tA / life);
+      const ah = LOOK.ringSparkAhead ?? 1.2; if (ah > 0) c.set(0, 0, -1).applyQuaternion(player.base).multiplyScalar(Rr * ah).add(player.pos);   // it rides with the ship (in the ship's frame, like a comet's coma)
+      o.copy(c).sub(camera.position); const mB = keep * t, mA = keep * tA;   // and streams off the back of it, along the course you had
+      for (let i = 0; i < n; i++) { const k = i * 3, s = sp[i] * R; pb[k] = o.x + bk.x * mB + dz[k] * s * eB; pb[k + 1] = o.y + bk.y * mB + dz[k + 1] * s * eB; pb[k + 2] = o.z + bk.z * mB + dz[k + 2] * s * eB; pa[k] = o.x + bk.x * mA + dz[k] * s * eA; pa[k + 1] = o.y + bk.y * mA + dz[k + 1] * s * eA; pa[k + 2] = o.z + bk.z * mA + dz[k + 2] * s * eA }
       g.attributes.aA.needsUpdate = g.attributes.aB.needsUpdate = true; mesh.visible = S.mode === 'fly';
     },
   };
