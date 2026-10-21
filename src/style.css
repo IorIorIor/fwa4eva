@@ -596,3 +596,18 @@ body.intro #shipLayer{z-index:55}   /* during the opening the 3D pointer is draw
 #topnav button.off{color:rgba(255,255,255,.35)}
 #gotPill{top:calc(14px + env(safe-area-inset-top,0px));height:34px;display:flex;align-items:center;gap:4px;font-family:"FF Good Pro",var(--body);font-size:14px;letter-spacing:.01em;color:rgba(255,255,255,.6)}
 #gotPill b{font-size:14px;margin-right:0}   /* the score: small, top right, the same size as the menu */
+/* every menu in the filters' style: square, see-through black blocks with a blur, FF Good Pro rows, small mono labels */
+#rmPanel,#lookPanel,#pilots,#panel header,#panel .fblk{background:#0000005c !important;-webkit-backdrop-filter:blur(10px) !important;backdrop-filter:blur(10px) !important;border:0 !important;border-radius:0 !important;box-shadow:none !important}
+#rmPanel header,#lookPanel header,#pilots .ph{border-bottom:0}
+#rmPanel header b{font-family:"FF Good Pro",var(--body);font-weight:400;font-size:17px;letter-spacing:.01em;text-transform:none}
+#lookPanel .lh{font-family:"FF Good Pro",var(--body);font-size:20px;text-transform:none}
+#rmPanel .rtours span,#rmPanel .rk,#rmPanel .rwin .rk,#rmPanel .rfoot{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4)}
+#rmPanel .rtours button,#rmPanel .rbtn,#lookPanel header button,#lookPanel .btn{background:rgba(255,255,255,.07);border:0;border-radius:0;color:#fff;font-family:"FF Good Pro",var(--body);font-size:13px;letter-spacing:.01em;text-transform:none;padding:6px 10px}
+#rmPanel .rtours button:hover,#rmPanel .rbtn:hover,#lookPanel header button:hover,#lookPanel .btn:hover{background:#fff;color:#000}
+#rmPanel #navQ,#lookPanel input[type=search],#lookPanel input[type=text]{background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.18);border-radius:0;padding:6px 0 7px;font-family:"FF Good Pro",var(--body);font-size:16px;color:#fff;outline:none}
+#rmPanel #navQ:focus{border-bottom-color:rgba(255,255,255,.6)}
+#rmPanel .ships button{background:rgba(255,255,255,.05);border:0;border-radius:0;font-family:"FF Good Pro",var(--body)}
+#rmPanel .ships button.on{background:rgba(255,255,255,.18)}
+.lhd{border-radius:0;font-family:"FF Good Pro",var(--body);font-size:13px;letter-spacing:.01em;text-transform:none;color:#fff;margin:0 -10px}
+.lsec.open>.lhd{background:rgba(255,255,255,.12);color:#fff}.lsec.open>.lhd svg{stroke:#fff}
+#pilots .pr{font-family:"FF Good Pro",var(--body)}

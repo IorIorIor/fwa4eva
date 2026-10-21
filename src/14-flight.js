@@ -224,14 +224,14 @@ function updatePlayer(dt) {
 function updateCamera(dt) {
   const L = LOOK;
   if (S.mode === 'fly') {
-    const sp = player.vel.length(), pull = 1 + L.speedPull * (sstep(sp, 40, 3000) * .6 + sstep(Math.log10(Math.max(1, sp)), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) * (L.speedPullFar ?? 3.5)) + boostK * .45;   // the second part follows the FOV's curve: they widen and pull back together
+    const sp = player.vel.length() * (warp ? LOOK.warpCamPull ?? 0 : 1), pull = 1 +   /* in a warp the camera stays put behind the ship instead of trailing far back */ L.speedPull * (sstep(sp, 40, 3000) * .6 + sstep(Math.log10(Math.max(1, sp)), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) * (L.speedPullFar ?? 3.5)) + boostK * .45;   // the second part follows the FOV's curve: they widen and pull back together
     tmp2.set(0, rig.dist * L.camHeight * Math.sqrt(pull), rig.dist * pull);                 // where the camera wants to sit, in the ship's frame (rising as it pulls back, so the arrow's face stays in view)
     { idleT = thrusting || boosting || keys.x ? 0 : idleT + dt; const w = sstep(idleT, L.camRestAfter ?? 1, (L.camRestAfter ?? 1) + (L.camRestTime ?? 5)); camRest += ((thrusting || boosting ? 0 : w) - camRest) * Math.min(1, dt * (thrusting || boosting ? 2 : .6));   // left alone, the camera drifts in very slowly until the ship fills a share of the view
       if (camRest > 1e-3) { const d = SHIP_LEN / (2 * (L.camRestFill ?? .2) * Math.tan(camera.fov * Math.PI / 360)); tmp2.setLength(tmp2.length() + (Math.min(tmp2.length(), d) - tmp2.length()) * camRest); tmp2.y *= 1 - .6 * camRest } }   // and drops lower, so the ship sits nearer the middle
     if (camNear > 0) { if (booted && thrusting) camNearGo = true; if (camNearGo) { camNear = Math.max(0, camNear - dt / 3.5); if (!camNear) camNearGo = false } tmp2.lerp(INTRO_END, ease(camNear)) }   // after the intro the camera stays close until your first push
     const k = 60 / Math.max(.15, L.elastic), c = 2 * Math.sqrt(k) * .62;                    // underdamped: a little overshoot
     camRelV.addScaledVector(tmp2.sub(camRel), k * dt).multiplyScalar(Math.exp(-c * dt));
-    _sd.copy(player.vel).sub(prevVel).applyQuaternion(_iq.copy(rig.quat).invert()); prevVel.copy(player.vel); const kick = Math.min(_sd.length(), 400); if (kick > 1e-3) camRelV.addScaledVector(_sd.setLength(kick), -.06 * L.elastic * SHIP_K * SHIP_SC);   // acceleration kicks the camera back
+    _sd.copy(player.vel).sub(prevVel).applyQuaternion(_iq.copy(rig.quat).invert()); prevVel.copy(player.vel); const kick = warp ? 0 : Math.min(_sd.length(), 400); if (kick > 1e-3) camRelV.addScaledVector(_sd.setLength(kick), -.06 * L.elastic * SHIP_K * SHIP_SC);   // acceleration kicks the camera back
     camRel.addScaledVector(camRelV, dt); const maxL = rig.dist * pull * 2.2; if (camRel.length() > maxL) camRel.setLength(maxL);
     tmp.copy(camRel).applyQuaternion(rig.quat).add(player.pos);
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur || 1.2); const e = tween.mode ? easeMode(Math.min(1, tween.t)) : ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tmp, player.pos, e); else camera.position.lerpVectors(tween.fp, tmp, e); camera.quaternion.copy(tween.fq).slerp(rig.quat, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }

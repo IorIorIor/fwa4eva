@@ -13,13 +13,16 @@ function flyTo(i) {   // lock on and let the autopilot take you there (on the ma
 let warp = null;
 function startWarp(i) {
   const to = starPos(i, new V3()), from = player.pos.clone(), back = from.clone().sub(to), bl = back.length() || 1;
-  warp = { i, from, to, dest: to.clone().addScaledVector(back, dockDist(i) * 1.5 / bl), t: 0, dur: Math.max(.6, LOOK.warpTime ?? 2.4), prev: from.clone() }; auto = null; curStrand = null;
+  warp = { i, from, to, dest: to.clone().addScaledVector(back, dockDist(i) * 1.5 / bl), t: 0, turn: Math.max(0, LOOK.warpTurn ?? 1.1), dur: Math.max(.6, LOOK.warpTime ?? 2.4), prev: from.clone(), eT: 0 }; auto = null; curStrand = null;
 }
 function stepWarp(dt) {
-  const w = warp; w.t += dt; const p = Math.min(1, w.t / w.dur), e = p * p * p * (p * (p * 6 - 15) + 10);
-  w.prev.copy(player.pos); player.pos.lerpVectors(w.from, w.dest, e); thrusting = false;
-  player.vel.copy(w.dest).sub(w.from).setLength(LIGHT * .97 * Math.pow(Math.sin(Math.PI * Math.min(1, p * 1.08)), .7) + 1);   // what the speed effects read: up to light speed and back
-  aimAt(tmp.copy(w.to).sub(camera.position), 1 - Math.exp(-8 * dt)); player.quat.slerp(rig.q, 1 - Math.exp(-8 * dt)); player.base.copy(player.quat);
+  // first the ship turns to face it (eased, standing still), then it goes: a slow start, very fast in the middle, a long soft arrival
+  const w = warp; w.t += dt; thrusting = false; w.prev.copy(player.pos);
+  if (w.t < w.turn) { const q = w.t / w.turn, e = q * q * (3 - 2 * q), k = w.eT >= 1 ? 1 : (e - w.eT) / (1 - w.eT); w.eT = e; aimAt(tmp.copy(w.to).sub(player.pos), Math.max(0, Math.min(1, k))); player.quat.copy(rig.q); player.base.copy(player.quat); player.vel.set(0, 0, 0); return }
+  const p = Math.min(1, (w.t - w.turn) / w.dur), n = Math.max(1, LOOK.warpEase ?? 4), e = p < .5 ? Math.pow(2 * p, n) / 2 : 1 - Math.pow(2 - 2 * p, n) / 2;
+  player.pos.lerpVectors(w.from, w.dest, e);
+  player.vel.copy(w.dest).sub(w.from).setLength(LIGHT * .97 * Math.pow(Math.sin(Math.PI * p), 1.5) + 1);   // what the speed effects read: up to light speed and back
+  aimAt(tmp.copy(w.to).sub(player.pos), 1 - Math.exp(-10 * dt)); player.quat.copy(rig.q); player.base.copy(player.quat);
   if (p >= 1) { player.vel.set(0, 0, 0); warp = null }
 }
 // tours: a list of winners, flown one after another, pausing at each so its record can open. Any thrust or brake ends it
