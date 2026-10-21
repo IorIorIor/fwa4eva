@@ -8,7 +8,8 @@ const PU = {   // pipeline uniforms
   inv: uniform(0), apex: uniform(new THREE.Vector2(.5, .5)),   // apex: where on screen you're heading (or, looking back, coming from)   // the inverted monochrome look: black stars on white
   volOn: uniform(0), hazeScreen: uniform(1), volBlur: uniform(0),
   exp: uniform(1), film: uniform(1), vig: uniform(.45), grain: uniform(.03), ab: uniform(0), beta: uniform(0), black: uniform(0), con: uniform(1), sat: uniform(1), cool: uniform(0),
-  bgK: uniform(1),   // the whole background (gas, haze, arcs) dims to this on the map, leaving the winners and the lines
+  bgK: uniform(1), lv: uniform(0), lvMid: uniform(2),   // lv: the ring veil's levels over the whole frame (1 = all white, easing back to 0 = untouched)
+    // the whole background (gas, haze, arcs) dims to this on the map, leaving the winners and the lines
   edge: uniform(0), edgeA: uniform(.1), edgeB: uniform(.25), nV: uniform(new V3(0, 1, 0)),   // edge-on: how much, the angle band (as sin), the disk normal in view space
   betaC: uniform(0), beam: uniform(1), vV: uniform(new V3(0, 0, -1)), tx: uniform(1), ty: uniform(1),   // the Doppler shift: β, beaming, travel direction (view space), tan of the half FOV
 };
@@ -98,6 +99,7 @@ const finalNode = Fn(() => {
   If(PU.inv.greaterThan(.001), () => { c.assign(mix(c, vec3(dot(c, vec3(.2126, .7152, .0722)).oneMinus()), PU.inv)) });   // inverted: the sky turns white, the stars black
   { const tc = trailTex.sample(vUv).rgb, tm = max(max(tc.r, tc.g), tc.b); c.assign(mix(c.add(tc.div(max(1, tm))), mix(c, tc.div(max(tm, 1e-4)), min(1, tm)), PU.inv)) }   // the trails over the graded sky (on white they're laid on like paint, keeping their colour)   // the trails over the graded sky; where they pile up they brighten to full colour, never to white
   c.mulAssign(min(1, PU.vig.add(PU.beta.mul(.45))).mul(smoothstep(PU.beta.mul(-.18).add(.32), .9, r)).oneMinus());
+  If(PU.lv.greaterThan(.001), () => { const o = PU.lv.mul(PU.lv); c.assign(pow(clamp(c.div(max(.02, PU.lv.oneMinus())), 0, 1), vec3(float(1).div(PU.lv.mul(PU.lvMid).add(1)))).mul(o.oneMinus()).add(o)) });   /* levels: the white point drops, the mids lift and the black point rises, all to white at 1 */
   c.addAssign(fract(sin(dot(vUv.mul(vec2(1733, 977)), vec2(12.9898, 78.233)).add(fract(U.now).mul(91.7))).mul(43758.5453)).sub(.5).mul(PU.grain));
   return vec4(clamp(c, 0, 1), 1);
 })();
