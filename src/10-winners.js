@@ -10,17 +10,18 @@ const stars = (() => {
   geo.setAttribute('aGot', new THREE.InstancedBufferAttribute(GOT, 1).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(COL, 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aAlpha', new THREE.InstancedBufferAttribute(ALPHA, 1).setUsage(THREE.DynamicDrawUsage));
-  const u = { coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), faint: uniform(0), shine: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
+  const u = { gold: uniform(1), wc: uniform(new V3()), wr: uniform(0), ww: uniform(1), wk: uniform(0), coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), faint: uniform(0), shine: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
   const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vA = varyingProperty('float', 'vA'), vT = varyingProperty('float', 'vT'), vPs = varyingProperty('float', 'vPs'), vDot = varyingProperty('float', 'vDot'), vRing = varyingProperty('float', 'vRing'), vRon = varyingProperty('float', 'vRon'), vPx = varyingProperty('float', 'vPx'), vGot = varyingProperty('float', 'vGot');
   m.vertexNode = Fn(() => {
     const ab = aberrate(ia('aP', 'vec3')), al = ia('aAlpha', 'float');
     const mv = cameraViewMatrix.mul(vec4(ab, 1)).toVar(), on = step(.5, al).mul(u.hi), z = mv.z.negate();
     const ps = ia('aSize', 'float').mul(u.size).mul(on.mul(6).add(1)).mul(pxScale).div(z).toVar(), dot1 = U.dpr.mul(1.9);
     // far away a winner is still a crisp white pixel, out past half the galaxy; beyond that it slowly dims
-    vDot.assign(smoothstep(dot1.mul(2.6), dot1, ps)); vPs.assign(clamp(ps, mix(dot1, U.dpr.mul(4), on), 220)); vC.assign(ia('aColor', 'vec3')); vT.assign(ia('aType', 'float'));
+    vDot.assign(smoothstep(dot1.mul(2.6), dot1, ps)); vPs.assign(clamp(ps, mix(dot1, U.dpr.mul(4), on), 220)); vC.assign(mix(ia('aColor', 'vec3'), vec3(1, .74, .28), ia('aGot', 'float').mul(u.gold).mul(.85))); vT.assign(ia('aType', 'float'));   /* collected: gold */
     // on the map every winner stays a white pixel; in flight the far ones thin out and fade away
     const flyK = clamp(ps.div(dot1), .3, 1).mul(smoothstep(3.5e5, 1.2e6, z).oneMinus());
-    vA.assign(al.mul(mix(.95, 1, smoothstep(dot1, dot1.mul(2), ps))).mul(mix(1, flyK, u.far)).mul(mix(1, smoothstep(dot1.mul(.45), dot1.mul(1.4), ps), u.thin.mul(on.oneMinus()))).max(u.faint.mul(step(.5, al))));   // (faint: on the map every winner stays at least a faint dot)   // map, zoomed out: winners too small to see fade away instead of each staying a pixel
+    vA.assign(al.mul(mix(.95, 1, smoothstep(dot1, dot1.mul(2), ps))).mul(mix(1, flyK, u.far)).mul(mix(1, smoothstep(dot1.mul(.45), dot1.mul(1.4), ps), u.thin.mul(on.oneMinus()))).max(u.faint.mul(step(.5, al))));
+    { const wd = length(ia('aP', 'vec3').sub(u.wc)), wv = exp(sq(wd.sub(u.wr).div(u.ww)).negate()).mul(u.wk).mul(step(.5, al)); vC.assign(mix(vC, vec3(1, .95, .82), min(1, wv.mul(.8)))); vA.assign(max(vA, min(1, wv))) }   /* a ring taken: a shockwave runs out through the stars round it, lighting each as it passes */   // (faint: on the map every winner stays at least a faint dot)   // map, zoomed out: winners too small to see fade away instead of each staying a pixel
     // the game: a ring of the star's real size (× ring size). Once it's a few px across the sprite grows to hold it and the ring takes over
     const rpx = ia('aR', 'float').mul(u.rsz).mul(pxScale).div(max(z, .01)), ron = smoothstep(2.5, 7, rpx).mul(u.ring).mul(smoothstep(40, 18, rpx)), side = max(vPs, rpx.mul(2.6)).mul(ron).add(vPs.mul(ron.oneMinus())).min(9000);   // up close the 3D halo takes over
     vRon.assign(ron); vA.assign(vA.mul(mix(1, smoothstep(34, 18, rpx), u.ring)));   // the rings game: once the 3D ring has taken over, no star dot left in its middle
@@ -60,7 +61,7 @@ const stars = (() => {
     If(vRon.greaterThan(.001), () => {
       const rf = r.mul(vPs.div(vPx)), px1 = float(2.4).div(vPx), w = max(vRing.mul(u.rw), px1), dd = rf.sub(vRing).div(w), band = exp(dd.mul(dd).negate());
       const gl = exp(sq(rf.sub(vRing).div(vRing.mul(.45).add(px1))).negate()).mul(.35), g = vGot;
-      const rc = mix(mix(vC, vec3(1), .25), mix(vC, vec3(1, .88, .62), .7).mul(u.gotGlow), g), ra = band.add(gl.mul(mix(1, u.gotGlow, g)));
+      const rc = mix(mix(vC, vec3(1), .25), mix(vC, mix(vec3(1, .88, .62), vec3(1, .74, .28), u.gold), .7).mul(u.gotGlow), g), ra = band.add(gl.mul(mix(1, u.gotGlow, g)));
       col.assign(mix(col, rc.mul(band.mul(1.3).add(gl)), vRon)); a.assign(mix(a, ra, vRon));
     });
     // the rings game: no flares or rays, the month's and the year's best just burn brighter, their colour slowly cycling
@@ -105,7 +106,7 @@ const constellation = (() => {   // each link a screen-space ribbon: a 2 px line
   const g = new THREE.InstancedBufferGeometry(); g.index = QUAD.index; g.setAttribute('position', QUAD.attributes.position); g.setAttribute('uv', QUAD.attributes.uv);
   const pa = new Float32Array(CON_MAX * 3), pb = new Float32Array(CON_MAX * 3), col = new Float32Array(CON_MAX * 3), sq = new Float32Array(CON_MAX);
   [['aA', pa, 3], ['aB', pb, 3], ['aCol', col, 3], ['aSeq', sq, 1]].forEach(([k, a, n]) => g.setAttribute(k, new THREE.InstancedBufferAttribute(a, n).setUsage(THREE.DynamicDrawUsage))); g.instanceCount = 0;
-  const u = { t: uniform(0), cur: uniform(-10), op: uniform(0), glow: uniform(1), w: uniform(2), gw: uniform(10) }, m = skyMat({ blend: 'alpha', depthTest: false }), vD = varyingProperty('float', 'vD'), vC = varyingProperty('vec3', 'vC'), vH = varyingProperty('float', 'vH'), vT = varyingProperty('float', 'vAl'), vL = varyingProperty('float', 'vLn');
+  const u = { t: uniform(0), cur: uniform(-10), op: uniform(0), glow: uniform(1), w: uniform(2), gw: uniform(10), shim: uniform(0), shimS: uniform(1) }, m = skyMat({ blend: 'alpha', depthTest: false }), vD = varyingProperty('float', 'vD'), vC = varyingProperty('vec3', 'vC'), vH = varyingProperty('float', 'vH'), vT = varyingProperty('float', 'vAl'), vL = varyingProperty('float', 'vLn');
   m.vertexNode = Fn(() => {
     const near = float(1), A = cameraViewMatrix.mul(vec4(ia('aA', 'vec3'), 1)).toVar(), B = cameraViewMatrix.mul(vec4(ia('aB', 'vec3'), 1)).toVar();
     // clip the link to the space in front of the camera, so a line running past you never flips
@@ -121,7 +122,7 @@ const constellation = (() => {   // each link a screen-space ribbon: a 2 px line
   })();
   m.fragmentNode = Fn(() => {
     const d = length(vec2(max(0, max(vT.negate(), vT.sub(vL))), vD)), core = smoothstep(u.w.mul(.5).add(.5), u.w.mul(.5).sub(.5), d), glow = exp(d.div(u.gw.mul(.45)).pow(2).negate()).mul(.1);
-    const k = u.op.mul(min(u.glow, 1.5)).mul(vH.mul(.5).add(.7)).mul(.6), a = clamp(max(core, glow).mul(k), 0, 1);   // blended, not added: where links cross they don't pile up into white. Distance to the segment itself, so each link ends in a round cap right on its star and the next starts from the same point
+    const sh = sin(vT.div(90).sub(U.now.mul(u.shimS)).add(vC.r.mul(11).add(vC.g.mul(7)))).mul(.5).add(.5), k = u.op.mul(min(u.glow, 1.5)).mul(vH.mul(.5).add(.7)).mul(.6).mul(float(1).sub(u.shim.mul(.45)).add(u.shim.mul(.9).mul(sh.mul(sh)))), a = clamp(max(core, glow).mul(k), 0, 1);   /* a slow shimmer running along the lines */   // blended, not added: where links cross they don't pile up into white. Distance to the segment itself, so each link ends in a round cap right on its star and the next starts from the same point
     return vec4(mix(vC, mix(vC, vec3(1), .5), core), a);
   })();
   const mesh = layer(new THREE.Mesh(g, m), scene, 3); mesh.u = u; mesh.buf = { pa, pb, col, sq }; return mesh;

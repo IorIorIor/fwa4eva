@@ -258,7 +258,7 @@ const HALO = (() => {
     if (gal.t < 0) return; gal.t += rdt / Math.max(.1, LOOK.ringSlideTime ?? .6); const x = Math.min(1, gal.t); pt.slide.value = x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
     if (gal.t >= 1) { gal.k = gal.nk; pt.cur = gal.list[gal.k]; pt.taps.forEach(t => t.value = pt.cur); pt.slide.value = 0; gal.t = -1 }
   }
-  const update0 = update; function updateAll(dt) { update0(dt); portalUpdate(dt); sparks.update(dt); slideStep(Math.min(.05, dt / Math.max(.03, slowmo.k))) }   // (the slide runs in real time, whatever bullet time does)
+  const update0 = update; function updateAll(dt) { const rdt = Math.min(.05, dt / Math.max(.03, slowmo.k)); update0(dt); portalUpdate(dt); sparks.update(dt); slideStep(rdt); wave.update(rdt); ringRiser(S.mode === 'fly' && LOOK.rings && Number.isFinite(minTs) ? 1 - sstep(minTs, 0, LOOK.ringRiseTime ?? 2.5) : 0) }   // (the slide runs in real time, whatever bullet time does)
   const popAt = h => { sparks.burst(h.c, h.r) };   // through: the picture has just shrunk to its point, and it bursts into sparks   // straight to the sparks
   return { update: updateAll, pop: popAt, nextPic, live, u, portal, pt, pInfo, get ts() { return minTs } };
 })();
@@ -273,6 +273,30 @@ const slowmo = { k: 1, after: 1e9,
     this.k = 1 - amt * (1 - k);
   },
 };
+/* the shockwave: from the ring you took, a bright shell runs out through the stars round it, lighting each as it passes */
+const wave = (() => {
+  const tex = radialTex(256, [[0, 'rgba(255,255,255,0)'], [.82, 'rgba(255,255,255,0)'], [.94, 'rgba(255,240,215,.75)'], [.985, 'rgba(255,255,255,.25)'], [1, 'rgba(255,255,255,0)']]);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); sp.visible = false; sp.frustumCulled = false; scene.add(sp);
+  let t = -1, c = new V3(), r0 = 1;
+  return {
+    go(i) { if (!(LOOK.ringWave ?? 1)) return; t = 0; starPos(i, c); r0 = starR(i) * (LOOK.ringSize ?? 1.6); stars.u.wc.value.copy(c); sp.position.copy(c) },
+    update(rdt) {
+      if (t < 0) return; t += rdt; const T = Math.max(.2, LOOK.ringWaveTime ?? 1.8), x = Math.min(1, t / T), e = 1 - Math.pow(1 - x, 2.2), R = r0 + (LOOK.ringWaveReach ?? 90000) * e, k = (LOOK.ringWave ?? 1) * (1 - x) * (1 - x);
+      stars.u.wr.value = R; stars.u.ww.value = 2500 + R * .08; stars.u.wk.value = k; sp.visible = S.mode === 'fly' && k > .003; sp.scale.setScalar(R * 2.1); sp.material.opacity = k * .55;
+      if (x >= 1) { t = -1; stars.u.wk.value = 0; sp.visible = false }
+    },
+  };
+})();
+/* the collection moment: the winner's title stamps in large in the middle, holds, then shrinks away into the collected count */
+const stamp = (() => {
+  const el = document.createElement('div'); el.id = 'stamp'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el); let an = null;
+  return i => {
+    if (!(LOOK.ringStamp ?? 1)) return; const d = D[i], t = new Date(d.date + 'T00:00:00Z'); el.innerHTML = `<small>${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}</small><b>${esc(d.title)}</b>`;
+    if (an) an.cancel(); const p = $('gotPill').getBoundingClientRect(), dx = (p.left + p.width / 2) - innerWidth / 2, dy = (p.top + p.height / 2) - innerHeight * .42, hold = (LOOK.ringStampHold ?? .9) * 1000, wait = (LOOK.ringStampWait ?? .35) * 1000;
+    an = el.animate([{ opacity: 0, transform: 'translate(-50%,-50%) scale(1.25)', filter: 'blur(8px)' }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1)', filter: 'blur(0)', offset: .18 }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1)', filter: 'blur(0)', offset: .62 }, { opacity: 0, transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.12)`, filter: 'blur(0)' }], { duration: hold / .44 + 0, delay: wait, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' });
+    an.onfinish = () => { const g = $('gotPill'); g.classList.remove('pop'); void g.offsetWidth; g.classList.add('pop') };
+  };
+})();
 function collectSound(v = 1) {   // two quick rising notes, bright and glassy, with a soft whoosh under them
   if (!AC || AC.state !== 'running' || !master) return; const t = AC.currentTime + .005;
   [0, 7, 12].forEach((st, k) => { const f = 880 * Math.pow(2, st / 12), o = AC.createOscillator(), g = AC.createGain(); o.type = k ? 'sine' : 'triangle'; o.frequency.setValueAtTime(f * .985, t + k * .055); o.frequency.exponentialRampToValueAtTime(f, t + k * .055 + .03); g.gain.setValueAtTime(0, t + k * .055); g.gain.linearRampToValueAtTime(.18 * v / (1 + k * .5), t + k * .055 + .006); g.gain.exponentialRampToValueAtTime(.0001, t + k * .055 + .55); o.connect(g); g.connect(master); o.start(t + k * .055); o.stop(t + k * .055 + .6) });
@@ -285,7 +309,7 @@ function collect(i) {
     relockNext = false; const v = _rk.copy(player.vel).normalize(), pp = player.pos; let best = -1, bd = Infinity;
     for (let j = 0; j < N; j++) { if (j === i || TA[j] < 1 || GOT[j] && LOOK.ringNextNew) continue; const dx = P[j * 3] - pp.x, dy = P[j * 3 + 1] - pp.y, dz = P[j * 3 + 2] - pp.z, d = Math.hypot(dx, dy, dz); if (d < 1 || (dx * v.x + dy * v.y + dz * v.z) / d < .2) continue; if (d < bd) { bd = d; best = j } }
     if (best >= 0) { focus(best); aimSlow = LOOK.ringNextTime ?? 2.5 }
-  } ascent.sparkle(GOT[i] ? .6 : 1);
+  } ascent.sparkle(GOT[i] ? .6 : 1); ringBell(i); wave.go(i); stamp(i);
   if (lockI === i) { lockI = -1; auto = null }   // through it: the camera's free again
   player.vel.multiplyScalar(1 + Math.max(0, LOOK.ringBurst ?? .25)); engineLook.peak = Math.max(engineLook.peak || 0, 1.3 * (LOOK.ringPopBurst ?? .6)); ringPop = 1; boostK = Math.max(boostK, LOOK.ringBoost ?? .8); collectSound(GOT[i] ? .6 : 1);   // a festive kick: speed, a burst of light from the engine, the boost look   // a kick: speed, the engine flaring, a bright little sound
   ringHide.set(i, performance.now() + (LOOK.ringBallDelay ?? 1) * 1000);   // the star itself comes back only a moment after you're through

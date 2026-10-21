@@ -85,6 +85,19 @@ function tingle(dec = 1, seed, pan = 0) {
     [car, mod, oc].forEach(o => { o.start(t); o.stop(t + dur + .1) });
   }
 }
+/* rings: a tone that builds as a ring you can't miss comes at you, and a big bell on the pass, pitched by the winner's year */
+let riser = null;
+function ringRiser(k) {   // k: 0 (none) … 1 (right at the ring)
+  const vol = (LOOK.ringSound ?? 1) * (LOOK.ringRise ?? .5); if (!AC || AC.state !== 'running' || !out) return;
+  if (!riser) { if (k <= .001 || !vol) return; const o1 = AC.createOscillator(), o2 = AC.createOscillator(), lp = AC.createBiquadFilter(), g = AC.createGain(); o1.type = 'sawtooth'; o2.type = 'sine'; o2.detune.value = 7; lp.type = 'lowpass'; lp.Q.value = 6; g.gain.value = 0; o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(out); o1.start(); o2.start(); riser = { o1, o2, lp, g } }
+  const t = AC.currentTime, f = 110 * Math.pow(2, 2 * k), muted = S.mode !== 'fly' ? 0 : 1;
+  riser.o1.frequency.setTargetAtTime(f, t, .05); riser.o2.frequency.setTargetAtTime(f * 2, t, .05); riser.lp.frequency.setTargetAtTime(300 + 4200 * k * k, t, .05); riser.g.gain.setTargetAtTime(.05 * vol * k * k * muted, t, .06);
+}
+function ringBell(i) {   // the pass: a deep chord struck like a bell, keyed to the winner's year
+  const vol = LOOK.ringSound ?? 1; if (!vol || !AC || AC.state !== 'running' || !out) return; const t = AC.currentTime + .01, yr = D[i].year - 2000, root = 48 + (yr * 5) % 12;
+  [0, 7, 12, 16, 19, 24].forEach((st, k) => { const f = 440 * Math.pow(2, (root + st - 69) / 12), o = AC.createOscillator(), m = AC.createOscillator(), mg = AC.createGain(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = f; m.frequency.value = f * 2.76; mg.gain.setValueAtTime(f * 1.2, t); mg.gain.exponentialRampToValueAtTime(f * .01, t + 1.2); m.connect(mg); mg.connect(o.frequency);
+    const v = .09 * vol / (1 + k * .5); g.gain.setValueAtTime(0, t + k * .03); g.gain.linearRampToValueAtTime(v, t + k * .03 + .006); g.gain.exponentialRampToValueAtTime(.0001, t + 3.5 - k * .3); o.connect(g); g.connect(out); [o, m].forEach(x => { x.start(t + k * .03); x.stop(t + 3.6) }) });
+}
 function zoneBlip(f, pan = 0) {   // hovering a year or month on the map: a very soft glassy tick, higher for newer times (f: 0 = oldest, 1 = newest)
   const L = LOOK, vol = L.zoneSnd ?? .3; if (!vol || !AC || !out) return; if (AC.state !== 'running') AC.resume().catch(() => { });
   const t = AC.currentTime + .005, fq = (L.zoneSndBase ?? 520) * Math.pow(2, (L.zoneSndRange ?? 12) * Math.max(0, Math.min(1, f)) / 12), dur = L.zoneSndLen ?? .35, v = .07 * vol * (L.mapSfx ?? 1);
