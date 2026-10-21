@@ -65,10 +65,18 @@ const endPtr = e => {
     else if (rmenu.panel) { rmenu.close(); if (fly && !down.touch && !locked() && !lockFailed) requestLock() }
     else if (fly && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it (or just take the pointer back)
     else if (fly) { const i = hov(cx, cy); if (i >= 0) { if (i !== lockI) focus(i) } else if (lockI >= 0) unlock() }   // a star (inside its ring, for a 3D one): lock on; anywhere else: let go
-    else { const h = mapHover(e.clientX, e.clientY), i = coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (h.ring) ringZoom(h.ring); else mapZone.click() }   // map: a star once you're close, else the ring under the cursor, else the menu
+    else { const h = mapHover(e.clientX, e.clientY), rg = mapRingAt(e.clientX, e.clientY), i = rg >= 0 ? rg : coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (!mapZone.click() && h.ring) ringZoom(h.ring)   /* a lit zone (year or month) wins over the old time ring under it */ }   // map: a star once you're close, else the ring under the cursor, else the menu
   }
   if (!ptrs.size) down = null;
 };
+// map: the winner whose ring (big enough to see as a ring) is under the pointer, nearest first
+function mapRingAt(x, y) {
+  _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360); let best = -1, bw = Infinity;
+  for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5) continue;
+    const r = starR(i) * (LOOK.ringSize ?? 1.6) * H / (2 * th * w); if (r < 8) continue; const X = ((e[0] * px + e[4] * py + e[8] * pz + e[12]) / w * .5 + .5) * W, Y = (-(e[1] * px + e[5] * py + e[9] * pz + e[13]) / w * .5 + .5) * H;
+    if (Math.hypot(X - x, Y - y) < r && w < bw) { bw = w; best = i } }
+  return best;
+}
 /* map: the rings are what you point at. Find the ground point under the cursor (on the galaxy plane), then the nearest
    ring that's showing at this zoom, if it's within a few pixels. Clicking one dives in close enough to see its stars. */
 const _rc = new THREE.Raycaster(), _gp = new THREE.Plane(), _hit = new V3(), _sx = new V3(), _pa = new V3(), _pb = new V3();

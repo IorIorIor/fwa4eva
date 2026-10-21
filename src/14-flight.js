@@ -37,6 +37,7 @@ function orbitPose() { const o = orbit, p = new V3(Math.sin(o.phi) * Math.sin(o.
 const mapView = () => { let p = (90 - (LOOK.mapAngle ?? 70)) * Math.PI / 180; p = ((p + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; return { phi: Math.min(Math.PI - 1e-3, Math.max(1e-3, Math.abs(p))), flip: p < 0 } };   // the angle goes all the way round: past 90° over the top to the far side, past 180° underneath
 const mapPhi = () => mapView().phi;
 const mapFlip = () => { const f = mapView().flip; if (orbit.flip != null && f !== orbit.flip) orbit.theta += Math.PI; orbit.flip = f };   // crossing a pole swings the view round
+const mapCamD = () => camera.position.distanceTo(orbit.target) / mapDistK();   // how far out the map camera really is right now (orbit.dist jumps to where a move will end)
 const mapHomeD = () => (GAL_R0 + GAL_LEN) * 1.6;   // the whole disk, filling the view
 
 const panV = new V3(); let panT = 0;   // the map's drag speed (world units per second): let go and it coasts on
@@ -57,7 +58,8 @@ function setMode(m) {
 function focus(i) {
   if (i < 0) return; S.sel = i; const p = starPos(i);
   if (S.mode === 'fly') { if (lockI !== i) buzz(14); lockI = i; auto = null; if (i !== passedI) passedI = -1 }   // lock only turns the ship toward it; W takes you there
-  else { S.mapPick = i; orbit.target.copy(p); orbit.dist = LOOK.rings ? Math.max(MAP_MIN, starR(i) * (LOOK.ringSize ?? 1.6) / (Math.tan(LOOK.fov * Math.PI / 360) * (LOOK.mapRingFill ?? .9))) : CR[i] * 14;   /* rings: close enough that the ring fills the screen */ const o = orbitPose(); tweenCam(o.p, o.q, 1.8) }
+  else { S.mapPick = i; orbit.target.copy(p); orbit.dist = Math.max(MAP_MIN, starR(i) * (LOOK.ringSize ?? 1.6) / (Math.tan(LOOK.fov * Math.PI / 360) * (LOOK.mapRingFill ?? .85)));
+    { const q = orbitPose().q, cd = orbit.dist * mapDistK(), hw = Math.tan(mapFovNow() * Math.PI / 360) * camera.aspect * cd; orbit.target.addScaledVector(new V3(1, 0, 0).applyQuaternion(q), hw * (LOOK.mapRingLeft ?? .28)) }   /* the ring sits left of centre, so its full record fits on its right */   /* rings: close enough that the ring fills the screen */ const o = orbitPose(); tweenCam(o.p, o.q, 1.8) }
 }
 function goHome() {
   if (S.mode === 'map') { mapFlip(); Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), phi: orbit.mir ? Math.PI - mapPhi() : mapPhi() }); const o = orbitPose(); tweenCam(o.p, o.q, 1.6); return }

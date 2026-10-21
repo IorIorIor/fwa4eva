@@ -72,7 +72,7 @@ let L_ix = 1, ringFarK = 0, conK = 0, volK = 0, shipR0 = 0, shipOnMap = false;  
 function updateTimeRings(dt) {
   const L = LOOK, u = timeRings.u, map = S.mode === 'map' || mapK > .005, fr = (L.flyYearLines ?? 1) > 0, lp = toLocal(map ? orbit.target : camera.position, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   if (map) {   // how many years fit across the view where you're looking decides which rings show
-    const uu = Math.max(.03, Math.min(1, (Math.max(GAL_R0, rr) - GAL_R0) / GAL_LEN)), span = 2 * orbit.dist * Math.tan(LOOK.fov * Math.PI / 360) * Math.min(1, camera.aspect);
+    const uu = Math.max(.03, Math.min(1, (Math.max(GAL_R0, rr) - GAL_R0) / GAL_LEN)), span = 2 * mapCamD() * Math.tan(LOOK.fov * Math.PI / 360) * Math.min(1, camera.aspect);
     mapYrs = span * yrsPerU(uu) / GAL_LEN;
     mapLvl[0] = mapK; mapLvl[1] = mapK * (1 - sstep(mapYrs, L.mapYears, L.mapYears * 1.6)); mapLvl[2] = mapK * (1 - sstep(mapYrs, 1.3, 2.6));   /* the whole ruler fades in and out with the map transition */ mapStars = orbit.dist < (L.mapDayDist ?? 60000) * 2.5 ? 1 : 0;
     ringFarK = 0;
@@ -279,7 +279,7 @@ function updateHover(dt) {
     tip.classList.toggle('full', !!full); tip.classList.toggle('side', !!side); tip.classList.remove('dock'); tip.hidden = false };
   const PI = HALO.pInfo;
   const pRpx = PI.on ? PI.r * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(PI.c))) : 0;
-  if (PI.on && !map && S.mode === 'fly' && pRpx * 2 >= (LOOK.ringInfoPx ?? 500) && tmp.copy(PI.c).project(camera).z < 1) {   // while it's up, it's all you see: hovering other stars doesn't swap it for their tooltip   // a ring up close: once its portal is big on screen, the full record (text only) floats beside it, never over it
+  if (PI.on && (S.mode === 'fly' || (map && !tween)) && pRpx * 2 >= Math.min(map ? innerHeight * .4 : 1e9, LOOK.ringInfoPx ?? 500) && tmp.copy(PI.c).project(camera).z < 1) {   // while it's up, it's all you see: hovering other stars doesn't swap it for their tooltip   // a ring up close: once its portal is big on screen, the full record (text only) floats beside it, never over it
     const cx = (tmp.x * .5 + .5) * innerWidth, cy = (-tmp.y * .5 + .5) * innerHeight;
     {
       put('q' + PI.i, tipHTML(PI.i) + tipMore(PI.i), true, true); const w = tip.offsetWidth, h = tip.offsetHeight, gap = 24, right = cx + pRpx * (L_ix = LOOK.ringInfoX ?? 1) + gap * L_ix, left = cx - pRpx * L_ix - gap * L_ix - w;

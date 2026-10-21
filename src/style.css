@@ -668,3 +668,9 @@ body.map:not(.nosearch):not(.rm-open) #mapSearch{display:block}
 #mapSearch{z-index:10}@media (min-width:760px){body.map.panel-open #mapSearch{left:calc(50% + 154px);width:min(420px,calc(100vw - 360px))}}   /* centred in the space beside the filters */
 #splashStars.fly{position:fixed;z-index:54}   /* during the opening: over the black, under the ship and logo */
 body.rm-ring:not(.rm-panel) #rmVeil{opacity:0}   /* the radial menu itself: no blur or dimming behind it */
+body.opening #dash{opacity:0 !important;transition:none}   /* the speed console only once the opening is over */
+@media (min-width:760px){body.map.panel-open #mapSearch{left:50%;width:min(420px,calc(100vw - 32px))}}   /* always in the middle */
+/* on the map the full search opens right from the search bar, in place: no veil, no blur */
+body.map #rmPanel.p-search{top:calc(62px + env(safe-area-inset-top,0px));transform:translate(-50%,0) scale(.98);transform-origin:50% 0;width:min(420px,calc(100vw - 32px))}
+body.map #rmPanel.p-search.in{transform:translate(-50%,0)}
+body.map:has(#rmPanel.p-search:not([hidden])) #rmVeil{opacity:0}
