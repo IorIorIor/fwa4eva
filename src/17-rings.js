@@ -44,58 +44,59 @@ const whiteout = (() => {
    GPU: each has a direction and a speed, and the shader places it by the burst's age (game time, so bullet time slows them too) */
 const _cd = new V3();
 const sparks = (() => {
-  // through a ring the tip of the ship sheds a stream of sparks for a moment. Each is born where the tip is at that instant and
-  // stays in space (keeping only a little of the ship's motion), so the ship flies on past them, like dust off a comet. Each
-  // flies out along its own direction (flung back along your course), eased from birth to death, and is drawn as a short
-  // streak from where it was a moment ago. Worked out on the CPU relative to the camera, drawn like the constellation lines
-  const n = 360, dirs = new Float32Array(n * 3), sp = new Float32Array(n), r = mulberry32(77);
-  for (let i = 0; i < n; i++) { const z = r() * 2 - 1, a = r() * 6.2832, s = Math.sqrt(1 - z * z); dirs.set([Math.cos(a) * s, z, Math.sin(a) * s], i * 3); sp[i] = Math.pow(r(), 1.8) * .85 + .15 }
+  /* the comet: through a ring, white light trails are born just in front of the ship's tip and stream back past it, spreading
+     as they go, like a comet's tail. Each trail lives in the ship's frame as it was at its birth (so it follows the ship but
+     lags when you turn), measured in camera distances so it looks the same at any speed. Drawn as glowing ribbons from head
+     to tail, worked out on the CPU */
+  const n = 360, rn = new Float32Array(n * 4), r = mulberry32(77);
+  for (let i = 0; i < n; i++) rn.set([r() * 6.2832, Math.sqrt(r()), r(), r()], i * 4);   // angle round the axis, radius (even over a disc), speed, twinkle
   const g = new THREE.InstancedBufferGeometry(); g.index = QUAD.index; g.setAttribute('position', QUAD.attributes.position); g.setAttribute('uv', QUAD.attributes.uv);
-  const pa = new Float32Array(n * 3), pb = new Float32Array(n * 3), fa = new Float32Array(n);
+  const pa = new Float32Array(n * 3), pb = new Float32Array(n * 3), fa = new Float32Array(n), sp = new Float32Array(n); for (let i = 0; i < n; i++) sp[i] = rn[i * 4 + 3];
   [['aA', pa, 3], ['aB', pb, 3], ['aS', sp, 1], ['aF', fa, 1]].forEach(([k, arr, c]) => g.setAttribute(k, new THREE.InstancedBufferAttribute(arr, c).setUsage(THREE.DynamicDrawUsage))); g.instanceCount = n;
-  const u = { t: uniform(0), sz: uniform(3), k: uniform(1) }, m = skyMat(), vD = varyingProperty('float', 'vSd'), vAl = varyingProperty('float', 'vSal'), vLn = varyingProperty('float', 'vSln'), vA = varyingProperty('float', 'vSa');
-  m.vertexNode = Fn(() => {
-    const s = ia('aS', 'float'), tl = ia('aF', 'float'), A = vec4(cameraViewMatrix.mul(vec4(ia('aA', 'vec3'), 0)).xyz, 1), B = vec4(cameraViewMatrix.mul(vec4(ia('aB', 'vec3'), 0)).xyz, 1);
+  const u = { t: uniform(0), sz: uniform(3), k: uniform(1), glow: uniform(1) }, m = skyMat(), vD = varyingProperty('float', 'vSd'), vAl = varyingProperty('float', 'vSal'), vLn = varyingProperty('float', 'vSln'), vA = varyingProperty('float', 'vSa'), vW = varyingProperty('float', 'vSw');
+  m.vertexNode = Fn(() => {   // aA = head, aB = tail (camera-relative); aF = 0..1 life (outside: hidden)
+    const tl = ia('aF', 'float'), A = vec4(cameraViewMatrix.mul(vec4(ia('aA', 'vec3'), 0)).xyz, 1), B = vec4(cameraViewMatrix.mul(vec4(ia('aB', 'vec3'), 0)).xyz, 1);
     const cA = cameraProjectionMatrix.mul(A), cB = cameraProjectionMatrix.mul(B), half = U.res.mul(.5), sA = cA.xy.div(cA.w).mul(half), sB = cB.xy.div(cB.w).mul(half);
-    const dv = sB.sub(sA), L = max(length(dv), 1e-3), dir = dv.div(L), nrm = vec2(dir.y.negate(), dir.x), hw = u.sz.mul(.5).mul(U.dpr).mul(s.mul(.6).add(.7)).mul(float(1).sub(tl.mul(.5))), t = uv().x, side = positionGeometry.y.mul(2);
+    const dv = sB.sub(sA), L = max(length(dv), 1e-3), dir = dv.div(L), nrm = vec2(dir.y.negate(), dir.x), hw = u.sz.mul(.5).mul(U.dpr).mul(u.glow.mul(2).add(1)), t = uv().x, side = positionGeometry.y.mul(2);
     const c = mix(cA, cB, t), off = nrm.mul(side.mul(hw)).add(dir.mul(t.mul(2).sub(1).mul(hw)));
-    vD.assign(side.mul(hw)); vAl.assign(t.mul(2).sub(1).mul(hw).add(t.mul(L))); vLn.assign(L);
-    const tw = sin(u.t.mul(s.mul(23).add(9)).add(s.mul(41))).mul(.35).add(.65); vA.assign(sq(max(0, float(1).sub(tl))).mul(tw).mul(u.k).mul(step(tl, 1)).mul(step(0, tl)));
+    vD.assign(side.mul(hw)); vAl.assign(t.mul(2).sub(1).mul(hw).add(t.mul(L))); vLn.assign(L); vW.assign(u.sz.mul(.5).mul(U.dpr));
+    const tw = sin(u.t.mul(ia('aS', 'float').mul(17).add(6))).mul(.15).add(.85); vA.assign(smoothstep(0, .08, tl).mul(sq(float(1).sub(tl))).mul(tw).mul(u.k).mul(step(tl, 1)).mul(step(0, tl)));
     return c.add(vec4(off.div(half).mul(c.w), 0, 0));
   })();
-  m.fragmentNode = Fn(() => {
-    const d = length(vec2(max(0, max(vAl.negate(), vAl.sub(vLn))), vD)), along = smoothstep(0, vLn.max(1), vAl).mul(.75).add(.25);
-    const k = clamp(exp(sq(d).mul(-.35)).mul(along).mul(vA).mul(1.6), 0, 1); return vec4(vec3(1, .98, .94).mul(k), k);   // brightest at the head, fading down the trail
+  m.fragmentNode = Fn(() => {   // like the ship's trail: a white-hot core in a soft glow, brightest at the head, fading to nothing at the tail
+    const d = length(vec2(max(0, max(vAl.negate(), vAl.sub(vLn))), vD)).div(vW.max(.5)), along = pow(clamp(float(1).sub(vAl.div(vLn.max(1))), 0, 1), 1.4);
+    const core = exp(sq(d).mul(-2.5)), halo = exp(sq(d).mul(-.25)).mul(.35).mul(u.glow);
+    const k = clamp(core.add(halo).mul(along).mul(vA), 0, 1); return vec4(vec3(k), k);
   })();
   const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; mesh.renderOrder = 3; mesh.visible = false; shipScene.add(mesh);
-  const bp = new Float32Array(n * 3), bv = new Float32Array(n * 3), dz = new Float32Array(n * 3), tb = new Float32Array(n), born = new Uint8Array(n), bk = new V3(), tip = new V3(), cp = new V3();
-  let on = false, Rr = 1, R = 1, ez = 3, tr = .15, life = 1.6, emit = .5, keep = .15, t = 0;
-  let cone = 1.4;
-  const aimBack = () => { const sp0 = player.vel.length(); bk.copy(sp0 > 1 ? player.vel : bk.set(0, 0, -1).applyQuaternion(player.base)).normalize().negate() };
-  const aim = i => { const k = i * 3; _cd.set(dirs[k] + bk.x * cone, dirs[k + 1] + bk.y * cone, dirs[k + 2] + bk.z * cone).normalize(); dz[k] = _cd.x; dz[k + 1] = _cd.y; dz[k + 2] = _cd.z };
-  const ease = x => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), ez);
+  const tb = new Float32Array(n), fq = new Float32Array(n * 4), q = new THREE.Quaternion(), hd = new V3(), tlv = new V3();
+  let on = false, t = 0, emit = .5;
+  const born = (i, at0) => { tb[i] = at0; fq.set([player.base.x, player.base.y, player.base.z, player.base.w], i * 4) };   // the ship's frame at birth
+  const ez = (x, e) => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), e);
+  // where trail i is at age a, in the ship's frame (x right, y up, z back), in camera distances
+  const at = (i, a, life, out) => { const L = LOOK, k = ez(a / life, L.ringCometEase ?? 2.5), s = .6 + .4 * rn[i * 4 + 2], rr = rn[i * 4 + 1] * ((L.ringCometSpread0 ?? .05) + (L.ringCometSpread ?? .5) * k * s), an = rn[i * 4];
+    return out.set(Math.cos(an) * rr, Math.sin(an) * rr, -(L.ringCometAhead ?? .35) + (L.ringCometBack ?? 2.5) * k * s) };
   return {
     mesh, u,
-    burst(at, Rring) {
-      const L = LOOK; if (!(L.ringSpark ?? 1)) return; const ah = L.ringSparkAhead ?? 1.2; Rr = ah > 0 ? Math.max(1e-3, camera.position.distanceTo(player.pos)) : Rring; R = Rr * (L.ringSparkSpread ?? .8);
-      if (ah <= 0) tip.copy(at); life = L.ringSparkLife ?? 1.6; emit = L.ringSparkEmit ?? .5; keep = L.ringSparkKeep ?? .5; ez = L.ringSparkEase ?? 3; tr = L.ringSparkTrail ?? .15; u.sz.value = L.ringSparkSize ?? 5; u.k.value = L.ringSpark ?? 1;
-      aimBack();
-      if (L.ringSparkLoop) emit = life; cone = L.ringSparkCone ?? 1.4;
-      for (let i = 0; i < n; i++) { aim(i); tb[i] = emit * i / n; born[i] = 0 }
-      t = 0; u.t.value = 0; on = true;
+    burst() {
+      const L = LOOK; if (!(L.ringSpark ?? 1)) return; emit = Math.max(.01, L.ringCometEmit ?? .6); t = 0; on = true;
+      const nn = Math.min(n, L.ringCometN ?? 160); for (let i = 0; i < n; i++) tb[i] = i < nn ? emit * i / nn : 1e9;   // born one after another over the emit time
+      for (let i = 0; i < n; i++) fq.set([player.base.x, player.base.y, player.base.z, player.base.w], i * 4);
     },
     update(dt) {
-      const loop = !!LOOK.ringSparkLoop; if (loop && !on) this.burst(player.pos, 1);   // the toggle: the tip sheds sparks forever, to play with
-      if (!on) { mesh.visible = false; return } t += dt; u.t.value = t; if (!loop && t > emit + life) { on = false; mesh.visible = false; return }
-      if (loop) { aimBack(); life = LOOK.ringSparkLife ?? 1.6; keep = LOOK.ringSparkKeep ?? .5; ez = LOOK.ringSparkEase ?? 3; tr = LOOK.ringSparkTrail ?? .15; cone = LOOK.ringSparkCone ?? 1.4; u.sz.value = LOOK.ringSparkSize ?? 5; u.k.value = LOOK.ringSpark || 1; R = Rr * (LOOK.ringSparkSpread ?? .8); for (let i = 0; i < n; i++) if (born[i] && t - tb[i] >= life) { tb[i] += life; born[i] = 0; aim(i) } }
-      const ah = LOOK.ringSparkAhead ?? 1.2; if (ah > 0) tip.set(0, 0, -1).applyQuaternion(player.base).multiplyScalar(Rr * ah).add(player.pos);   // the emitter sits on the tip of the ship
-      cp.copy(camera.position);
+      const L = LOOK, loop = !!L.ringSparkLoop; if (loop && !on) this.burst();   // the toggle: the comet streams forever, to play with
+      if (!on) { mesh.visible = false; return } t += dt; u.t.value = t;
+      const life = Math.max(.05, L.ringCometLife ?? 1.2), tailK = L.ringCometTail ?? .35, nn = Math.min(n, L.ringCometN ?? 160);
+      if (!loop && t > emit + life) { on = false; mesh.visible = false; return }
+      u.sz.value = L.ringCometW ?? 2; u.k.value = L.ringSpark || 1; u.glow.value = L.ringCometGlow ?? 1;
+      const cd = Math.max(1e-3, camera.position.distanceTo(player.pos)), cp = camera.position, P = player.pos;
       for (let i = 0; i < n; i++) {
-        const k = i * 3; if (!born[i] && t >= tb[i]) { born[i] = 1; bp[k] = tip.x; bp[k + 1] = tip.y; bp[k + 2] = tip.z; bv[k] = player.vel.x * keep; bv[k + 1] = player.vel.y * keep; bv[k + 2] = player.vel.z * keep }   // born here and now, then left in space
-        const ag = t - tb[i]; fa[i] = born[i] ? ag / life : -1; if (!born[i]) continue;
-        const s = sp[i] * R, aA = Math.max(0, ag - tr * life), eB = ease(ag / life), eA = ease(aA / life);
-        pb[k] = bp[k] - cp.x + bv[k] * ag + dz[k] * s * eB; pb[k + 1] = bp[k + 1] - cp.y + bv[k + 1] * ag + dz[k + 1] * s * eB; pb[k + 2] = bp[k + 2] - cp.z + bv[k + 2] * ag + dz[k + 2] * s * eB;
-        pa[k] = bp[k] - cp.x + bv[k] * aA + dz[k] * s * eA; pa[k + 1] = bp[k + 1] - cp.y + bv[k + 1] * aA + dz[k + 1] * s * eA; pa[k + 2] = bp[k + 2] - cp.z + bv[k + 2] * aA + dz[k + 2] * s * eA;
+        if (i >= nn) { fa[i] = -1; continue }
+        if (loop && t - tb[i] >= life) born(i, tb[i] + life * Math.floor((t - tb[i]) / life))   // reborn at the tip, in the ship's frame now
+        const a = t - tb[i], k3 = i * 3; if (a < 0 || a > life) { fa[i] = -1; continue } fa[i] = a / life;
+        q.set(fq[i * 4], fq[i * 4 + 1], fq[i * 4 + 2], fq[i * 4 + 3]);
+        at(i, a, life, hd).applyQuaternion(q).multiplyScalar(cd).add(P).sub(cp); at(i, Math.max(0, a - tailK * life), life, tlv).applyQuaternion(q).multiplyScalar(cd).add(P).sub(cp);
+        pa[k3] = hd.x; pa[k3 + 1] = hd.y; pa[k3 + 2] = hd.z; pb[k3] = tlv.x; pb[k3 + 1] = tlv.y; pb[k3 + 2] = tlv.z;
       }
       g.attributes.aA.needsUpdate = g.attributes.aB.needsUpdate = g.attributes.aF.needsUpdate = true; mesh.visible = S.mode === 'fly';
     },
