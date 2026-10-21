@@ -52,7 +52,7 @@ function navStep(dir, from = lockI >= 0 ? lockI : cardI >= 0 ? cardI : nav.pick,
 }
 const nav = (() => {
   const q = $('navQ'), res = $('navRes'), tl = $('navTl'), cv = tl.querySelector('canvas'), g = cv.getContext('2d'), dayEl = $('navDay');
-  q.placeholder = `Search ${N.toLocaleString('en')} FWAs   /`;
+  q.placeholder = `Search ${N.toLocaleString('en')} FWAs, agencies or a date`;
   let cur = W_DAY[N - 1], pick = -1, idle = 0, hits = [], sel = 0, lastTick = 0;
   // the winner nearest a day (matching the filter)
   const nearestOn = day => {
@@ -97,9 +97,34 @@ const nav = (() => {
   tl.addEventListener('pointermove', e => { if (!dn) return; const dx = e.clientX - dn.x; if (Math.abs(dx) < 1) return; dn.x = e.clientX; dn.moved = true; scrub(dx * .35 * Math.pow(1 + Math.abs(dx) / 3, 1.9)) });
   tl.addEventListener('pointerup', e => { if (dn && !dn.moved) { const r = cv.getBoundingClientRect(); show((e.clientX - r.left) / r.width * NAV_DAYS); tl.classList.add('live'); idle = .01 } dn = null });
   dayEl.onclick = () => flyTo(pick);
-  // search: title or agency, every word must match; best first (title starts with it, then jury score)
+  // dates, typed any way: "2012", "march 2012", "mar 12", "12 march", "12/3/2012", "2012-03-12", "3rd of may"… → which year, month, day
+  const MON_N = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+  const fixY = n => n < 100 ? 2000 + n : n;
+  function parseDate(s) {
+    s = s.toLowerCase().trim(); if (!s) return null; let r;
+    if ((r = s.match(/^(\d{4})[-\/.](\d{1,2})(?:[-\/.](\d{1,2}))?$/))) return chk(+r[1], +r[2] - 1, r[3] ? +r[3] : null);
+    if ((r = s.match(/^(\d{1,2})[-\/.](\d{1,2})(?:[-\/.](\d{2}|\d{4}))?$/))) { let d = +r[1], m = +r[2]; if (m > 12 && d <= 12) [d, m] = [m, d]; return chk(r[3] ? fixY(+r[3]) : null, m - 1, d) }   // day first, unless that can't be
+    let y = null, m = null, d = null;
+    for (const t of s.replace(/(\d)(st|nd|rd|th)\b/g, '$1').split(/[\s,\/.\-]+/).filter(w => w && w !== 'of' && w !== 'the')) {
+      if (/^\d+$/.test(t)) { const n = +t; if (t.length === 4 || n > 31) { if (y != null) return null; y = fixY(n) } else if (d == null) d = n; else if (y == null) y = fixY(n); else return null }
+      else { const k = t.length >= 3 ? MON_N.findIndex(n => n.startsWith(t)) : -1; if (k < 0 || m != null) return null; m = k }
+    }
+    if (d != null && m == null && y == null) return null;   // a lone small number isn't a date
+    if (d != null && m == null) { if (d <= 12 && y != null) { m = d - 1; d = null } else return null }   // "3 2012": March 2012
+    return chk(y, m, d);
+  }
+  function chk(y, m, d) { if (y != null && (y < 1995 || y > 2035)) return null; if (m != null && (m < 0 || m > 11)) return null; if (d != null && (d < 1 || d > 31)) return null; return y == null && m == null && d == null ? null : { y, m, d } }
+  const dateLabel = p => [p.d, p.m != null ? MONTHS[p.m] : null, p.y].filter(v => v != null).join(' ');
+  // search: a date (any way you type it) lists that day, month or year; otherwise title or agency, every word must match; best first
   function find() {
     const words = q.value.toLowerCase().split(/\s+/).filter(Boolean); hits = []; sel = 0;
+    const dp = parseDate(q.value);
+    if (dp) {
+      for (let i = 0; i < N; i++) { const [yy, mm, dd] = D[i].date.split('-').map(Number); if ((dp.y == null || yy === dp.y) && (dp.m == null || mm - 1 === dp.m) && (dp.d == null || dd === dp.d)) hits.push(i) }
+      const n = hits.length; hits.sort((a, b) => dp.y != null ? W_DAY[a] - W_DAY[b] : W_DAY[b] - W_DAY[a]); hits.length = Math.min(n, 400);
+      res.hidden = false; res.innerHTML = `<div class="rhd">${esc(dateLabel(dp))} · ${n ? n.toLocaleString('en') + (n === 1 ? ' FWA' : ' FWAs') : 'no FWAs'}${n > 400 ? ' · first 400' : ''}</div>` + hits.map((i, k) => `<button type="button" data-i="${i}" class="${k ? '' : 'on'}"><span>${esc(D[i].title)}</span><small>${fmtDay(W_DAY[i])}</small></button>`).join('');
+      return;
+    }
     if (words.length) for (let i = 0; i < N && hits.length < 400; i++) { const t = (D[i].title + ' ' + D[i].agency).toLowerCase(); if (words.every(w => t.includes(w))) hits.push(i) }
     hits.sort((a, b) => (D[b].title.toLowerCase().startsWith(words[0]) - D[a].title.toLowerCase().startsWith(words[0])) || D[b].score - D[a].score); hits.length = Math.min(hits.length, 8);
     res.hidden = !hits.length; res.innerHTML = hits.map((i, k) => `<button type="button" data-i="${i}" class="${k ? '' : 'on'}"><span>${esc(D[i].title)}</span><small>${esc(D[i].agency || '')} · ${fmtDay(W_DAY[i])}</small></button>`).join('');

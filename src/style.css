@@ -636,3 +636,17 @@ body.splash #shipLayer{visibility:hidden}   /* back on the splash: no ship over 
 body.intro #gl,body.intro #gl.hovering,body.intro{cursor:default !important}   /* the opening: your own plain arrow until the drawn one takes over */
 .glab.yr.ax.click{pointer-events:none}   /* year and month tags never block dragging, zooming or picking the zone under them */
 #lookPanel .lx{background:none;border:0;color:#fff;font-size:20px;line-height:1;width:28px;height:28px;cursor:pointer;margin-left:6px}#lookPanel .lx:hover{background:#fff;color:#000}
+#navRes .rhd{padding:8px 10px 6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45)}
+#rmPanel #navRes{max-height:min(380px,46vh)}
+/* search results in the same language as the filter lists */
+#rmPanel #navRes{border:0;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;margin:0 -16px}
+#rmPanel #navRes button{font-family:"FF Good Pro",var(--body);font-size:14px;letter-spacing:.01em;border-bottom:0;padding:5px 16px;align-items:baseline}
+#rmPanel #navRes button small{font-family:var(--mono);font-size:9.5px;color:rgba(255,255,255,.4)}
+#rmPanel #navRes button.on,#rmPanel #navRes button:hover{background:rgba(255,255,255,.08)}
+#rmPanel #navRes .rhd{padding:4px 16px 8px}
+/* filters menu: the two boxes side by side */
+#rmPanel.p-filters{width:min(680px,calc(100vw - 32px))}
+#rmPanel.p-filters .rb{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
+#rmPanel.p-filters .fblk{margin:0;height:min(460px,58vh)}
+#rmPanel.p-filters #agList,#rmPanel.p-filters #catList{max-height:none;flex:1}
+#rmPanel.p-filters .rfoot{grid-column:1 / -1}

@@ -113,6 +113,7 @@ addEventListener('keydown', e => {
   if (k === 'h') goHome();
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
   // (R did the rings game on/off; off for now)
+  if (k === 'l' && !e.repeat) { clearTimeout(recHoldT); recHoldT = setTimeout(() => { if (keys.l) recorder.toggle() }, 2000) }   // hold L two seconds: start (or stop) recording
   if (k === 'escape' && tour.on) stopTour();
   if (k === 'escape' && mapZone.on) mapZone.clear();
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }
@@ -135,7 +136,7 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in
 /* ───────────────────────── picking ───────────────────────── */
 // ← and →: every winner by distance from you. With nothing locked either key goes to the nearest one, wherever it is;
 // from the one you're locked on, ← steps to the next nearer and → to the next farther
-let passedI = -1, aimSlow = 0, relockNext = false; const _an = new V3(), _anq = new Q4();   // the ring you just went through: the arrows skip it until you lock onto another
+let recHoldT = 0; let passedI = -1, aimSlow = 0, relockNext = false; const _an = new V3(), _anq = new Q4();   // the ring you just went through: the arrows skip it until you lock onto another
 function stepByDist(dir) {
   coach.arrow = true; if (dir < 0) coach.qd = true; else coach.ed = true;
   const cand = [], pp = player.pos; for (let i = 0; i < N; i++) { if (TA[i] < 1 || i === passedI) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z; cand.push([dx * dx + dy * dy + dz * dz, i]) }
