@@ -99,7 +99,8 @@ const bodyCand = [];
 /* constellations: filtered winners joined in date order, each award to the next: still lines with a soft glow */
 const CON_MAX = Math.max(1500, N);   // enough segments to chain any filter, date to date
 const AG_PAL = ['#ffb547', '#5ee0b0', '#ff6fae', '#7aa2ff', '#c58bff', '#ffd166', '#6ff0d0', '#ff8a5b'], agCol = new Map();
-const agColor = a => agCol.get(a) || '#ffb547';
+const fPicks = () => S.agencies.size + S.cats.size, agColor = a => fPicks() === 1 ? '#ffffff' : agCol.get(a) || '#ffb547';   // one filter picked: white; several: each its own colour
+const catColor = c => fPicks() === 1 ? '#ffffff' : CAT_COL[CATS.indexOf(c)];
 const constellation = (() => {   // each link a screen-space ribbon: a 2 px line with a soft glow round it, the same width near or far
   const g = new THREE.InstancedBufferGeometry(); g.index = QUAD.index; g.setAttribute('position', QUAD.attributes.position); g.setAttribute('uv', QUAD.attributes.uv);
   const pa = new Float32Array(CON_MAX * 3), pb = new Float32Array(CON_MAX * 3), col = new Float32Array(CON_MAX * 3), sq = new Float32Array(CON_MAX);

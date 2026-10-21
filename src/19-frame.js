@@ -5,7 +5,7 @@ const dayLab = (() => {
   const box = $('dayLabels'), els = new Map(), cand = [], v = new V3();   // one label per winner, so each fades in and out on its own
   return function update() {
     const L = LOOK, on = S.mode === 'map' && !(tween && tween.mode) && (L.mapDays ?? 1) > 0 && booted, now = performance.now(); box.style.setProperty('--dls', (L.mapDaySize ?? 8) + 'px'); box.style.opacity = L.mapDays ?? 1;
-    cand.length = 0; if (on) { const R = (L.mapDayDist ?? 60000) * mapDistK(), R2 = R * R, cp = camera.position, zh = mapZone.on ? mapZone : mapZone.hov && mapZone.hov.lvl === 12 ? mapZone.hov : null; for (let i = 0; i < N; i++) { if (TA[i] < 1 || (zh && (D[i].t < zh.t0 || D[i].t >= zh.t1))) continue; const dx = P[i * 3] - cp.x, dy = P[i * 3 + 1] - cp.y, dz = P[i * 3 + 2] - cp.z, d2 = dx * dx + dy * dy + dz * dz; if (zh || d2 < R2) cand.push([d2, i]) }   /* an open (or lit) month shows every winner in it; otherwise only those within reach */ cand.sort((a, b) => a[0] - b[0]) }
+    cand.length = 0; if (on) { const R = (L.mapDayDist ?? 60000) * mapDistK(), R2 = R * R, cp = camera.position, zh = mapZone.on ? mapZone : null; for (let i = 0; i < N; i++) { if (TA[i] < 1 || (zh && (D[i].t < zh.t0 || D[i].t >= zh.t1))) continue; const dx = P[i * 3] - cp.x, dy = P[i * 3 + 1] - cp.y, dz = P[i * 3 + 2] - cp.z, d2 = dx * dx + dy * dy + dz * dz; if (zh || d2 < R2) cand.push([d2, i]) }   /* an open (or lit) month shows every winner in it; otherwise only those within reach */ cand.sort((a, b) => a[0] - b[0]) }
     const n = Math.min(cand.length, mapZone.on ? 400 : L.mapDayN ?? 60), seen = new Set();   // inside an open zone, every winner in it gets its date
     const occ = new Set(), cw = (L.mapDaySize ?? 8) * 7, ch = (L.mapDaySize ?? 8) * 1.6;   // declutter: a date only shows where it doesn't land on one already shown
     for (let c = 0; c < n; c++) { const i = cand[c][1]; v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]).project(camera); if (v.z > 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) continue;
@@ -70,11 +70,11 @@ function rulerScore(th, us) {   // how many of the dates would be on screen with
 }
 let L_ix = 1, ringFarK = 0, conK = 0, volK = 0, shipR0 = 0, shipOnMap = false;   // conK: a filter's constellation is up, the rest of the sky dims
 function updateTimeRings(dt) {
-  const L = LOOK, u = timeRings.u, map = S.mode === 'map', fr = !!L.ringFly, lp = toLocal(map ? orbit.target : camera.position, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
+  const L = LOOK, u = timeRings.u, map = S.mode === 'map' || mapK > .005, fr = !!L.ringFly, lp = toLocal(map ? orbit.target : camera.position, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   if (map) {   // how many years fit across the view where you're looking decides which rings show
     const uu = Math.max(.03, Math.min(1, (Math.max(GAL_R0, rr) - GAL_R0) / GAL_LEN)), span = 2 * orbit.dist * Math.tan(LOOK.fov * Math.PI / 360) * Math.min(1, camera.aspect);
     mapYrs = span * yrsPerU(uu) / GAL_LEN;
-    mapLvl[0] = 1; mapLvl[1] = 1 - sstep(mapYrs, L.mapYears, L.mapYears * 1.6); mapLvl[2] = 1 - sstep(mapYrs, 1.3, 2.6); mapStars = orbit.dist < (L.mapDayDist ?? 60000) * 2.5 ? 1 : 0;
+    mapLvl[0] = mapK; mapLvl[1] = mapK * (1 - sstep(mapYrs, L.mapYears, L.mapYears * 1.6)); mapLvl[2] = mapK * (1 - sstep(mapYrs, 1.3, 2.6));   /* the whole ruler fades in and out with the map transition */ mapStars = orbit.dist < (L.mapDayDist ?? 60000) * 2.5 ? 1 : 0;
     ringFarK = 0;
   } else {
     // far enough out (above the disk or past its rim) the timeline comes into view: the five-year marks, and the spiral itself
@@ -344,7 +344,7 @@ function tick(now) {
   PU.vV.value.copy(U.vdir.value).transformDirection(camera.matrixWorldInverse); PU.ty.value = Math.tan(camera.fov * Math.PI / 360); PU.tx.value = PU.ty.value * camera.aspect;
   { const v = PU.vV.value, z = Math.abs(v.z) > 1e-3 ? v.z : -1e-3, sg = z < 0 ? 1 : -1, x = sg * v.x / Math.abs(z) / PU.tx.value, y = sg * v.y / Math.abs(z) / PU.ty.value; PU.apex.value.set(Math.max(-2, Math.min(3, x * .5 + .5)), Math.max(-2, Math.min(3, (1 - y) * .5))) }   // the apex of your motion on screen (or the point you're leaving, if it's behind you)
   PU.nV.value.set(0, 1, 0).applyQuaternion(GQ).transformDirection(camera.matrixWorldInverse); PU.edge.value = L.edgeDim; { const a = Math.sin(L.edgeAngle * Math.PI / 180); PU.edgeA.value = a; PU.edgeB.value = Math.min(1, Math.max(a * 1.05 + .002, a * L.edgeSoft)) }
-  stars.u.far.value = fly ? 1 : 0; stars.u.thin.value = fly ? 0 : L.mapDots ?? 1; stars.u.faint.value = fly ? 0 : (L.mapFaint ?? 0) * mapK;
+  stars.u.far.value = fly ? 1 : 0; stars.u.thin.value = fly ? 0 : L.mapDots ?? 1; stars.u.faint.value = fly ? 0 : (L.mapFaint ?? 0) * mapK; stars.u.white.value = L.starWhite * (fPicks() > 1 ? 1 - .9 * mapK : 1);   /* several filters on the map: the stars show their filter's colour, not white-hot */
   { const d = (fly ? player.pos : camera.position).distanceTo(GC); tdil = L.bhTime ? Math.max(.12, 1 - .88 * Math.exp(-Math.max(0, d - BH.sh) / (BH.sh * 2.5))) : 1; worldT += dt * tdil }
   U.time.value = worldT; U.now.value = now * .001;
   updateLandmarks(dt); updateAndro(); updateTimeRings(dt);

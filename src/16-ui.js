@@ -4,10 +4,12 @@ let matchCount = N, cardI = -1, tipFor = -1, hovI = -1, lastHov = -1;
 const aimRingR = (() => { const el = $('aimRing'); let v = -1; return r => { const s = r.toFixed(2); if (s !== v) { v = s; el.setAttribute('r', s) } } })();
 
 /* colour + filter */
-const _tc = new C3();
+const _tc = new C3(), _hsl = {};
 function recolor() {
   D.forEach((d, i) => {
     if (S.agencies.has(d.agency)) _tc.set(agColor(d.agency));
+    else if (S.cats.has(d.category)) _tc.set(catColor(d.category));
+    if (fPicks() > 1 && (S.agencies.has(d.agency) || S.cats.has(d.category))) { _tc.getHSL(_hsl); _tc.setHSL(_hsl.h, 1, .42) }   // a picked filter's colour, deep enough to survive the star's white-hot core
     else if (S.colorBy === 'type') _tc.set(KINDS[KIND[i]][1]);
     else if (S.colorBy === 'category') _tc.set(CAT_COL[CATS.indexOf(d.category)]);
     else if (S.colorBy === 'award') _tc.set(AWARD_COL[d.award]);
@@ -89,7 +91,7 @@ function updateLabels() {
   const W = innerWidth, H = innerHeight, map = S.mode === 'map', boxes = []; _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   const bhD = camera.position.distanceTo(GC), bhR = LOOK.bhLens ? RP * BH.rs : 0, bhA = bhD > bhR ? Math.asin(bhR / bhD) * .9 : 0; _bhDir.copy(GC).sub(camera.position).normalize();   // labels the hole would bend away are hidden
   for (const l of labelEls) {
-    let fade = 1;
+    let fade = 1; const map = S.mode === 'map' || (l.ruler != null && mapK > .005);   // the ruler's dates fade out with it on the way back to flight
     if (l.ruler != null) { ringPoint(l.ruler, SPIRAL ? armPhase(GAL_R0 + l.ruler * GAL_LEN) : ruler.th, 0, l.pos); fade = map ? (l.lvl === 1 && SPIRAL && (LOOK.mapYearLines ?? 1) > 0 ? Math.max(mapLvl[1], LOOK.mapYearLabels ?? 1) : l.lvl === 2 && SPIRAL ? Math.min(1, LOOK.mapMonths ?? 1) * (1 - sstep(mapYrs, LOOK.mapMonthYrs ?? 8, (LOOK.mapMonthYrs ?? 8) * 1.7)) : mapLvl[l.lvl]) : l.lvl === 2 ? 0 : ringFarK }   // dates ride the turning ruler (from far out in flight, the five-year marks)
     let show = fade > .04 && !(map ? (l.mapFar && orbit.dist > l.mapFar) : (l.near && !(l.ruler != null && ringFarK > .05) && camera.position.distanceTo(l.pos) > l.near));   // local names only once you're close
     let x = 0, y = 0;
@@ -136,13 +138,13 @@ const fRow = (name, n, k) => { const b = document.createElement('button'); b.typ
   ag.addEventListener('click', e => { const b = e.target.closest('.frow'); if (!b) return; const a = b.dataset.k;
     if (S.agencies.has(a)) { S.agencies.delete(a); agCol.delete(a) } else { if (S.agencies.size >= AG_PAL.length) return; const used = new Set(agCol.values()); agCol.set(a, AG_PAL.find(c => !used.has(c))); S.agencies.add(a) }
     renderAgChips(); recolor(); applyFilter() });
-  cat.addEventListener('click', e => { const b = e.target.closest('.frow'); if (!b) return; const c = b.dataset.k; S.cats.has(c) ? S.cats.delete(c) : S.cats.add(c); renderAgChips(); applyFilter() });
+  cat.addEventListener('click', e => { const b = e.target.closest('.frow'); if (!b) return; const c = b.dataset.k; S.cats.has(c) ? S.cats.delete(c) : S.cats.add(c); renderAgChips(); recolor(); applyFilter() });
   $('agQ').oninput = e => { const q = e.target.value.trim().toLowerCase(); for (const r of ag.children) r.hidden = !!q && !r.dataset.k.toLowerCase().includes(q) };
 }
 function renderAgChips() {   // the lists show what's picked: a picked agency goes bold (the rest grey), a picked category bold with its colour dot
   for (const r of $('agList').children) { const on = S.agencies.has(r.dataset.k); r.classList.toggle('on', on); r.setAttribute('aria-selected', on); r.style.setProperty('--c', on ? agColor(r.dataset.k) : 'transparent') }
   $('fAg').classList.toggle('some', S.agencies.size > 0);
-  for (const r of $('catList').children) { const on = S.cats.has(r.dataset.k); r.classList.toggle('on', on); r.setAttribute('aria-selected', on) }
+  for (const r of $('catList').children) { const on = S.cats.has(r.dataset.k); r.classList.toggle('on', on); r.setAttribute('aria-selected', on); r.style.setProperty('--c', on ? catColor(r.dataset.k) : CAT_COL[CATS.indexOf(r.dataset.k)]) }
 }
 renderAgChips();
 $('country').onchange = e => { S.country = e.target.value; applyFilter() };
