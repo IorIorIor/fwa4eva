@@ -195,8 +195,8 @@ function updateTrail(dt, on) {
   // right at the engine the ribbon is as wide as the hole it comes out of, and it widens to its own width over a few ship lengths
   const holeW = HOLE.r * 2 * avatar.scale.x * L.trHead, blend = avatar.scale.x * 22;
   const put = (p, dir, t, c, a, w, run = 1e9) => {
-    if (v >= TR_MAX) return; _c.copy(camera.position).sub(p); _sdv.crossVectors(dir, _c); const l = _sdv.length(), cl = _c.length(), hmin = .75 * pxW * cl; let hw = (w * pxW * cl + (holeW * .5 - w * pxW * cl) * (1 - sstep(run, 0, blend)));
-    if (hw < hmin) { a *= hw / hmin; hw = hmin }   // never thinner than about 1.5 px: below that it gets fainter instead, so it fades out smoothly rather than flickering away
+    if (v >= TR_MAX) return; _c.copy(camera.position).sub(p); _sdv.crossVectors(dir, _c); const l = _sdv.length(), cl = _c.length(), hmin = (L.trMinPx ?? 1.5) * pxW * cl; /* pxW·cl is half a CSS pixel here (hw is a half-width), so this holds the ribbon at trMinPx px across */ let hw = (w * pxW * cl + (holeW * .5 - w * pxW * cl) * (1 - sstep(run, 0, blend)));
+    if (hw < hmin) { a *= Math.pow(hw / hmin, .8); hw = hmin }   // never thinner than that: below it the ribbon gets fainter instead (a sub-pixel strip just drops out of the raster), so it fades away smoothly
     if (l > 1e-6) _sdv.multiplyScalar(hw / l); else _sdv.set(0, 0, 0);
     const x = p.x - O.x, y = p.y - O.y, z = p.z - O.z, o = v * 6; trPos[o] = x + _sdv.x; trPos[o + 1] = y + _sdv.y; trPos[o + 2] = z + _sdv.z; trPos[o + 3] = x - _sdv.x; trPos[o + 4] = y - _sdv.y; trPos[o + 5] = z - _sdv.z;
     trT[v * 2] = trT[v * 2 + 1] = t; trC[o] = trC[o + 3] = c.r; trC[o + 1] = trC[o + 4] = c.g; trC[o + 2] = trC[o + 5] = c.b; trA[v * 2] = trA[v * 2 + 1] = a; v++;
