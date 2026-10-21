@@ -633,3 +633,4 @@ body.intro #shipLayer{z-index:55}   /* during the opening the 3D pointer is draw
 #rmPanel .dial .lens{left:0;right:0;height:32px;border-radius:0;background:#fff;box-shadow:none;opacity:1;z-index:0}
 #rmPanel .drum{z-index:1}
 body.splash #shipLayer{visibility:hidden}   /* back on the splash: no ship over the title card */
+body.intro #gl,body.intro #gl.hovering,body.intro{cursor:default !important}   /* the opening: your own plain arrow until the drawn one takes over */
