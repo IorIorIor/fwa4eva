@@ -64,6 +64,13 @@ function swapLook() {
   for (const key in LOOK_FLY) { const a = LOOK_FLY[key], b = LOOK_MAP[key]; LOOK_MIX[key] = typeof a === 'number' && typeof b === 'number' ? a + (b - a) * k : k < .5 ? a : b ?? a }
   LOOK = LOOK_MIX; applyLook();
 }
+/* a whole new galaxy at random: every galaxy, dark-lane and nebula setting somewhere inside its slider's range, then rebuilt */
+function randomGalaxy() {
+  const groups = ['Galaxy', 'Dark lanes', 'Sprite nebulae'], skip = new Set(['farStart', 'farDim']);
+  LOOK_DEF.forEach(([g, rows]) => { if (!groups.includes(g)) return; rows.forEach(([k, , t, d, lo, hi, st]) => {
+    if (skip.has(k)) return; if (t === 's' && Number.isFinite(lo) && Number.isFinite(hi)) { const v = lo + (hi - lo) * (.08 + .84 * Math.random()), q = st ? Math.round(v / st) * st : v; LOOK[k] = +q.toFixed(6) } }) });
+  saveLookNow(); setTimeout(() => location.reload(), 300);
+}
 function saveLookNow() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
 function saveLook() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
 (async () => {
@@ -122,7 +129,7 @@ function renderLook() {
     hd.onclick = () => { const o = sec.classList.toggle('open'); hd.setAttribute('aria-expanded', o); const i = openSecs.indexOf(title); if (o && i < 0) openSecs.push(title); if (!o && i >= 0) openSecs.splice(i, 1); store.set('sotd-look-open', JSON.stringify(openSecs)) };
     rows.forEach(([k, label, type, def, min, max, step]) => {
       if (ANDRO ? label.includes('(Generic)') : label.includes('(Andromeda)') || /^dust/.test(k)) return;   // only the settings for the galaxy you're in
-      if (type === 'b') { const w = document.createElement('div'); w.className = 'gsw'; w.innerHTML = `<span>${label}</span><button class="btn" type="button">Rebuild</button>`; w.querySelector('button').onclick = () => { saveLookNow(); setTimeout(() => location.reload(), 350) }; bodyEl.appendChild(w); return }
+      if (type === 'b') { const w = document.createElement('div'); w.className = 'gsw'; w.innerHTML = `<span>${label}</span><button class="btn" type="button">Rebuild</button><button class="btn" type="button" data-rnd>Randomize</button>`; w.querySelector('button').onclick = () => { saveLookNow(); setTimeout(() => location.reload(), 350) }; w.querySelector('[data-rnd]').onclick = randomGalaxy; bodyEl.appendChild(w); return }
       if (type === 'c') {
         const w = document.createElement('div'); w.className = 'gsw'; w.innerHTML = `<span>${label}</span><div class="seg"><button data-s="generic" aria-pressed="${!ANDRO}">Generic</button><button data-s="andromeda" aria-pressed="${ANDRO}">Andromeda</button></div>`;
         w.onclick = e => { const st = e.target.dataset && e.target.dataset.s; if (!st || st === STYLE) return; store.set('sotd-galaxy', st); saveLookNow(); setTimeout(() => location.reload(), 350) }; bodyEl.appendChild(w); return
