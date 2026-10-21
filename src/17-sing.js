@@ -12,7 +12,7 @@ const sing = (() => {
   function emerge() {   // the far side: well out beyond the galaxy along the way you were going, facing on, the galaxy behind
     const R = GAL_R0 + GAL_LEN, at = GC.clone().addScaledVector(S_.dir, R * (LOOK.singFar ?? 3));
     player.pos.copy(at); player.vel.set(0, 0, 0); aimAt(S_.dir.clone(), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
-    star.position.copy(at).addScaledVector(S_.dir, R * .35); star.scale.setScalar(R * .05); star.visible = true; S_.far = true; S_.ft = 0; ringBell(N - 1);
+    star.position.copy(at).addScaledVector(S_.dir, R * .35); star.scale.setScalar(R * .05); star.visible = true; S_.far = true; S_.ft = 0; ringBell(N - 1); document.body.classList.add('farside');
   }
   return {
     get busy() { return S_.t >= 0 },
@@ -27,7 +27,7 @@ const sing = (() => {
       } else S_.w = 0;
       whiteout.lv = Math.max(whiteout.lv, S_.w);
       if (S_.far) { S_.ft += rdt; const k = sstep(S_.ft, (L.singIn ?? 3) * .2, (L.singIn ?? 3) * .2 + 3); star.material.opacity = k; el.style.opacity = (k * (1 - sstep(player.pos.distanceTo(star.position) < 1 ? 0 : S_.ft, 14, 18))).toFixed(3);
-        if (player.pos.distanceTo(GC) < (GAL_R0 + GAL_LEN) * 1.5 || S.mode !== 'fly') { S_.far = false; star.visible = false; el.style.opacity = 0 } }   // back in the galaxy: the far side lets go
+        if (player.pos.distanceTo(GC) < (GAL_R0 + GAL_LEN) * 1.5 || S.mode !== 'fly') { S_.far = false; star.visible = false; el.style.opacity = 0; document.body.classList.remove('farside') } }   // back in the galaxy: the far side lets go
     },
   };
 })();

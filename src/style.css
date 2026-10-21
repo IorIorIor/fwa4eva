@@ -686,3 +686,4 @@ body.paper .frow,body.paper #agQ,body.paper #mapSearch,body.paper #rmPanel,body.
 body.paper .frow b,body.paper .flbl{color:rgba(0,0,0,.45)}body.paper #fAg.some .frow:not(.on){color:rgba(0,0,0,.35)}
 body.paper .frow:hover{background:rgba(0,0,0,.06)}body.paper #mapSearch{border-bottom-color:rgba(0,0,0,.3)}
 body.paper #tip .td,body.paper #tip .tt,body.paper #tip .ti{background:rgba(255,255,255,.9);color:#111}
+body.farside #labels,body.farside #dayLabels{opacity:0;transition:opacity 1s}   /* the far side is quiet: no tags */
