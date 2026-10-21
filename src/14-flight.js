@@ -236,7 +236,7 @@ function updateCamera(dt) {
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur || 1.2); const e = tween.mode ? easeMode(Math.min(1, tween.t)) : ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tmp, player.pos, e); else camera.position.lerpVectors(tween.fp, tmp, e); camera.quaternion.copy(tween.fq).slerp(rig.quat, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }
     else { camera.position.copy(tmp); camera.quaternion.copy(rig.quat) }
     if (Math.abs(bankCam) > 1e-5) camera.quaternion.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), bankCam));   // the bank leans the view in place
-    const fov = Math.min(150, L.fov + L.fovKick * sstep(Math.log10(Math.max(1, player.vel.length())), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) + boostK * L.boostFov + ringPop * (L.ringFov ?? 10));   // wider the faster you go
+    const fov = Math.min(150, L.fov + L.fovKick * sstep(Math.log10(Math.max(1, player.vel.length())), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) + boostK * L.boostFov + ringPop * (L.ringFov ?? 10) + (L.ringDilateFov ?? 15) * (1 - slowmo.k));   // wider the faster you go
     if (intro.active || Math.abs(fovS - camera.fov) > 40 && !whiteout.fov) fovS = camera.fov;
     if (tween && tween.mode && tween.f0) fovS = tween.f0 + (fov - tween.f0) * ease(Math.min(1, tween.t)); else fovS += (fov - fovS) * (1 - Math.exp(-4 * dt)); camera.fov = Math.min(170, fovS + whiteout.fov); camera.updateProjectionMatrix(); /* (the ring's lens stretch goes on top at once, not eased) */   // back from the map the lens widens with the move, so the narrow map lens doesn't snap open (that looked like a bounce back)
   } else {

@@ -169,7 +169,7 @@ const HALO = (() => {
   // the portal: inside the nearest ring, its winner's screenshot, set back behind the ring like a window into another room.
   // Each pixel follows your line of sight through the disc onto a plane some way behind it, so as you move the picture
   // shifts behind the opening. It starts loading a little before the ring appears
-  const pt = { cur: placeholderShot(D[0]), taps: [], hit: uniform(new THREE.Vector2()), st: uniform(0), white: uniform(0), brk: uniform(0), dis: uniform(0), bg: uniform(new C3(0, 0, 0)), depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85), lens: uniform(.6), ca: uniform(.5) };
+  const pt = { cur: placeholderShot(D[0]), taps: [], hit: uniform(new THREE.Vector2()), st: uniform(0), white: uniform(0), brk: uniform(0), dis: uniform(0), gl: uniform(0), lv: uniform(0), ex: uniform(0), bg: uniform(new C3(0, 0, 0)), depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85), lens: uniform(.6), ca: uniform(.5) };
   const pm = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
   pm.positionNode = Fn(() => { const q = positionLocal.xy.sub(pt.hit), w = exp(dot(q, q).mul(-3.2)); return positionLocal.add(vec3(0, 0, pt.st.mul(w))) })();
   pm.colorNode = Fn(() => {
@@ -182,7 +182,12 @@ const HALO = (() => {
     const bulge = pt.lens.mul(pow(rr, 4)).mul(.35), fr = pt.ca.mul(pow(rr, 4)).mul(.04), at = k => q0.mul(float(1).sub(bulge.add(k))).mul(.5).add(.5);
     const inside = uvI => step(0, uvI.x).mul(step(uvI.x, 1)).mul(step(0, uvI.y)).mul(step(uvI.y, 1));
     const uR = at(fr), uG = at(0), uB = at(fr.negate()), tap = uv => { const t = texture(pt.cur, uv); pt.taps.push(t); return t }, img = vec3(mix(pt.bg.r, tap(uR).r, inside(uR)), mix(pt.bg.g, tap(uG).g, inside(uG)), mix(pt.bg.b, tap(uB).b, inside(uB)));   // keep the sampling nodes, so a new winner's picture can be swapped in   // shadowed toward the rim (depth), lit by the ring's glow right at the edge
-    const c = img.mul(pt.dark).mul(rim.mul(.75).oneMinus()).add(pt.glow.mul(pow(rr, 6)).mul(.35)).add(mix(pt.glow, vec3(1), .5).mul(smoothstep(.93, .995, rr)).mul(.6));
+    // closing in: old-school levels (the white point comes down, so the picture goes whiter), exposure, and a glow (its own
+    // bright parts, blurred and added back), all rising the closer you get
+    const bl = (r, w) => [[1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]].map(([x, y]) => tap(uG.add(vec2(x * r, y * r * 1.6))).rgb).reduce((a, b) => a.add(b)).mul(w / 8);
+    const blur = bl(.02, .5).add(bl(.05, .5)), bright = blur.mul(smoothstep(.25, 1, dot(blur, vec3(.3, .55, .15))));
+    const imgL = clamp(img.mul(pt.ex.add(1)).div(float(1).sub(pt.lv.mul(.85))), 0, 1.5).add(bright.mul(pt.gl));
+    const c = imgL.mul(pt.dark).mul(rim.mul(.75).oneMinus()).add(pt.glow.mul(pow(rr, 6)).mul(.35)).add(mix(pt.glow, vec3(1), .5).mul(smoothstep(.93, .995, rr)).mul(.6));
     Discard(rr.greaterThan(1));
     const nz = noise3(vec3(positionGeometry.xy.mul(7), 3.1)).mul(.5).add(noise3(vec3(positionGeometry.xy.mul(19), 7.7)).mul(.25)).add(.5), cut = pt.brk.mul(1.15).sub(.08);
     Discard(pt.brk.greaterThan(.001).and(nz.lessThan(cut)));   // the break: it tears away in shards
@@ -205,12 +210,12 @@ const HALO = (() => {
     { const ac = pt.cur && pt.cur.avgCol, dk = 1 - (L.ringPortalBg ?? .6); if (ac) pt.bg.value.copy(ac).multiplyScalar(dk); else pt.bg.value.setRGB(0, 0, 0) }   // round the picture: its own average colour, darkened
     pt.ld = pt.cur && pt.cur.avgCol ? Math.min(1, (pt.ld || 0) + dt * 6) : 0;   // the picture fades in once it's loaded (no placeholder)
     const k = live.indexOf(h); pt.a.value = pt.ld * iA[k] / (GOT[pI] ? 1.3 : 1); pt.depth.value = L.ringPortalDepth ?? .8; pt.size.value = L.ringPortalSize ?? 1.25; pt.dark.value = L.ringPortalBright ?? .85; pt.lens.value = L.ringPortalLens ?? .6; pt.ca.value = L.ringPortalCA ?? .5;
-    pt.white.value = 0; pt.brk.value = 0; pt.hit.value.set(0, 0); pt.st.value = 0; pt.dis.value = 0;
+    pt.white.value = 0; pt.brk.value = 0; pt.hit.value.set(0, 0); pt.st.value = 0; pt.dis.value = 0; pt.gl.value = 0; pt.lv.value = 0; pt.ex.value = 0;
     let sh = 1; h.near = 0;
     if (!h.done && !L.ringPlay) {   // by how long until you reach it: clear on the way in, then in the last moment the picture is lensed harder and harder, turns white and shrinks to a point just as you arrive
       const n = h.nSet ? h.n : _mn.copy(player.pos).sub(h.c).normalize(), s = _mv.copy(player.pos).sub(h.c).dot(n), vn = -player.vel.dot(n), tt = vn > 1 && s > 0 ? s / vn : Infinity;
       const tin = L.ringMemIn ?? .5, near = tin > .001 ? Math.pow(Math.max(0, 1 - tt / tin), 1.4) : 0, shT = Math.max(.02, L.ringShrink ?? .25); h.near = near;
-      pt.dis.value = near * .3 * (L.ringMemWarp ?? 1); pt.white.value = sstep(near, .3, .9) * (L.ringMemWhite ?? 1); whiteout.near = Math.max(whiteout.near, 1 - sstep(player.pos.distanceTo(h.c), h.r * .1, h.r * (L.ringFlashDist ?? 1.5))); whiteout.at.copy(h.c);   // the whiteout goes by plain distance: only right up close
+      pt.dis.value = near * .3 * (L.ringMemWarp ?? 1); pt.white.value = sstep(near, .3, .9) * (L.ringMemWhite ?? 0); { const nd = 1 - sstep(player.pos.distanceTo(h.c), h.r * .2, h.r * (L.ringNearDist ?? 3)); pt.gl.value = nd * (L.ringNearGlow ?? 1.5); pt.lv.value = nd * (L.ringNearLevels ?? .6); pt.ex.value = nd * (L.ringNearExpo ?? .5) } whiteout.near = Math.max(whiteout.near, 1 - sstep(player.pos.distanceTo(h.c), h.r * .1, h.r * (L.ringFlashDist ?? 1.5))); whiteout.at.copy(h.c);   // the whiteout goes by plain distance: only right up close
     }
     _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(h.nSet ? _ldp.copy(h.c).add(h.n) : player.pos, h.c, _up);   /* once committed the portal stays put, facing the way you came */ portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5) * sh; portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005 && sh > .003; Object.assign(pInfo, { on: portal.visible && !h.done, i: pI, r: h.r }); pInfo.c.copy(h.c);   // just inside the ring's tube, so the ring still frames it
   }
