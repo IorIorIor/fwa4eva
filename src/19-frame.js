@@ -277,13 +277,13 @@ function updateHover(dt) {
     tip.classList.toggle('full', !!full); tip.classList.toggle('side', !!side); tip.classList.remove('dock'); tip.hidden = false };
   const PI = HALO.pInfo;
   const pRpx = PI.on ? PI.r * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(PI.c))) : 0;
-  if (PI.on && !map && S.mode === 'fly' && hovI < 0) {   // a ring up close: once its portal is big on screen, the full record (text only) floats beside it, never over it
-    tmp.copy(PI.c).project(camera); const cx = (tmp.x * .5 + .5) * innerWidth, cy = (-tmp.y * .5 + .5) * innerHeight;
-    if (pRpx * 2 >= (LOOK.ringInfoPx ?? 500) && tmp.z < 1) {
+  if (PI.on && !map && S.mode === 'fly' && (hovI < 0 || hovI === PI.i) && pRpx * 2 >= (LOOK.ringInfoPx ?? 500) && tmp.copy(PI.c).project(camera).z < 1) {   // (pointing at the ring's own star doesn't count as pointing elsewhere)   // a ring up close: once its portal is big on screen, the full record (text only) floats beside it, never over it
+    const cx = (tmp.x * .5 + .5) * innerWidth, cy = (-tmp.y * .5 + .5) * innerHeight;
+    {
       put('q' + PI.i, tipHTML(PI.i) + TNAV + tipMore(PI.i), true, true); const w = tip.offsetWidth, h = tip.offsetHeight, gap = 24, right = cx + pRpx + gap, left = cx - pRpx - gap - w;
-      const x = right + w <= innerWidth - 12 ? right : left >= 12 ? left : null;
-      if (x == null) tip.hidden = true; else { tip.style.left = x + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, cy - h / 2)) + 'px' }
-    } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
+      const x = right + w <= innerWidth - 12 ? right : left >= 12 ? left : cx >= innerWidth / 2 ? 12 : innerWidth - w - 12;   // beside it; once the ring outgrows the screen, held at the edge with the most room
+      tip.style.left = x + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, cy - h / 2)) + 'px';
+    }
   } else if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI) + TNAV, false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (ringHov && pin < 0) { put('r' + ringHov.y, ringTip(ringHov), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (pin >= 0) {
