@@ -155,7 +155,8 @@ const HALO = (() => {
       if (h.nSet && !h.done && away > R * 4) h.nSet = false;   // turned away without passing
       if (h.done && away > R + (L.ringReset ?? 200)) { h.done = false; h.nSet = false; fade.delete(i); if (ringIn === i) ringIn = -1 }   // clear of it: the ring is back (in its collected colour), portal and all
       h.r = R; const gone = h.done ? (fade.get(i) ?? 1) : 1; if (h.done) fade.set(i, Math.max(0, gone - dt * 4));
-      const a = (play ? 1 : sstep(rpx, 14, 34) * gone) * introK(); if (a <= .005 || h.r < 1e-3) { n++; continue }
+      if ((L.ringPortal ?? 1) && rpx > (L.ringPortalPre ?? 4)) shot(D[i]);   /* the picture starts loading well before the ring shows, for every ring nearby */
+      const sp = L.ringShowPx ?? 34, a = (play ? 1 : sstep(rpx, sp * .4, sp) * gone) * introK(); if (a <= .005 || h.r < 1e-3) { n++; continue }
       _q.setFromUnitVectors(_z, h.nSet ? h.n : _s.copy(player.pos).sub(c).normalize()); mesh.setMatrixAt(live.length, _m.compose(c, _q, _s.setScalar(h.r))); { const lz = lens[live.length], on = (L.ringLens ?? 0) > 0 && (L.ringLensMode ?? 1) > 0; lz.visible = on; if (on) { lz.matrix.compose(c, _q, _s.setScalar(h.r * (L.ringLensSize ?? 3))); lz.matrixWorldNeedsUpdate = true; lz.a.value = Math.min(1, a); lz.kb.value = 1 + (L.ringLensNear ?? 2) * (h.near || 0) } }
       const got = GOT[i], j = live.length * 3; iCol[j] = got ? 1 : COL[i * 3]; iCol[j + 1] = got ? .86 : COL[i * 3 + 1]; iCol[j + 2] = got ? .58 : COL[i * 3 + 2]; iA[live.length] = a * (got ? 1.3 : 1);
       { const tx = texCache.get(i), ac = tx && tx.avgCol, o = live.length * 4; if (ac) { iImg[o] = ac.r; iImg[o + 1] = ac.g; iImg[o + 2] = ac.b } iImg[o + 3] = ac ? Math.min(1, L.ringImgTint ?? .75) * (got ? .5 : 1) : 0 }   // the ring takes on the colour of the picture inside it
@@ -202,7 +203,8 @@ const HALO = (() => {
     if (near >= 0 && (near !== pI || texCache.get(near) !== pt.cur)) { pI = near; pt.cur = shot(D[near]); pt.taps.forEach(t => t.value = pt.cur); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
     const h = live.find(x => x.i === pI); if (!h || near < 0 || h.done) { portal.visible = false; return }   // a ring you've just taken has no picture until it's back
     { const ac = pt.cur && pt.cur.avgCol, dk = 1 - (L.ringPortalBg ?? .6); if (ac) pt.bg.value.copy(ac).multiplyScalar(dk); else pt.bg.value.setRGB(0, 0, 0) }   // round the picture: its own average colour, darkened
-    const k = live.indexOf(h); pt.a.value = iA[k] / (GOT[pI] ? 1.3 : 1); pt.depth.value = L.ringPortalDepth ?? .8; pt.size.value = L.ringPortalSize ?? 1.25; pt.dark.value = L.ringPortalBright ?? .85; pt.lens.value = L.ringPortalLens ?? .6; pt.ca.value = L.ringPortalCA ?? .5;
+    pt.ld = pt.cur && pt.cur.avgCol ? Math.min(1, (pt.ld || 0) + dt * 6) : 0;   // the picture fades in once it's loaded (no placeholder)
+    const k = live.indexOf(h); pt.a.value = pt.ld * iA[k] / (GOT[pI] ? 1.3 : 1); pt.depth.value = L.ringPortalDepth ?? .8; pt.size.value = L.ringPortalSize ?? 1.25; pt.dark.value = L.ringPortalBright ?? .85; pt.lens.value = L.ringPortalLens ?? .6; pt.ca.value = L.ringPortalCA ?? .5;
     pt.white.value = 0; pt.brk.value = 0; pt.hit.value.set(0, 0); pt.st.value = 0; pt.dis.value = 0;
     let sh = 1; h.near = 0;
     if (!h.done && !L.ringPlay) {   // by how long until you reach it: clear on the way in, then in the last moment the picture is lensed harder and harder, turns white and shrinks to a point just as you arrive
