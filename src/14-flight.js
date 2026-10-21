@@ -22,7 +22,7 @@ function aimAt(dir, k) {   // ease the rig toward a world direction, keeping its
 const lookQuat = (eye, target, up = new V3(0, 1, 0)) => new Q4().setFromRotationMatrix(new THREE.Matrix4().lookAt(eye, target, up));
 function tweenCam(pos, quat, dur, done, around = null) { tween = { fp: camera.position.clone(), fq: camera.quaternion.clone(), tp: pos, tq: quat, t: 0, dur, done, c: around } }
 // fly a camera from a to b around a centre: direction swings on the sphere, distance eases in log space (every ×10 takes as long)
-const _ta = new V3(), _tb = new V3(), _tx = new V3(), _tqq = new Q4();
+const _upB = new V3(), _ta = new V3(), _tb = new V3(), _tx = new V3(), _tqq = new Q4();
 function lerpLogPolar(out, a, b, c, e) {
   _ta.copy(a).sub(c); _tb.copy(b).sub(c); const da = Math.max(1e-3, _ta.length()), db = Math.max(1e-3, _tb.length()); _ta.divideScalar(da); _tb.divideScalar(db);
   const ang = Math.acos(Math.max(-1, Math.min(1, _ta.dot(_tb)))); _tx.crossVectors(_ta, _tb); if (_tx.lengthSq() < 1e-10) _tx.set(0, 1, 0); _tx.normalize();
@@ -48,13 +48,13 @@ function setMode(m) {
     // the whole galaxy, seen from the side your ship is on: one continuous pull back and up
     const rel = tmp.copy(player.pos).sub(GC).applyQuaternion(GQI), up = rel.y < 0 ? -1 : 1;
     Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), theta: (LOOK.mapTurn ?? 0) * Math.PI / 180 + (mapView().flip ? Math.PI : 0), phi: up > 0 ? mapPhi() : Math.PI - mapPhi(), mir: up < 0, flip: mapView().flip });   // the map's own view, from the face of the disk your ship is on   // from whichever face of the disk you were on
-    const o = orbitPose(); tweenCam(o.p, o.q, 2.4, null, GC.clone()); tween.mode = true;
-  } else { tween = { fp: camera.position.clone(), fq: camera.quaternion.clone(), t: 0, dur: 2.2, c: true, mode: true }; if (S.mapPick >= 0) { const i = S.mapPick; S.mapPick = -1; focus(i) } }
+    const o = orbitPose(); tweenCam(o.p, o.q, 2.4, null, GC.clone()); tween.mode = true; tween.f0 = camera.fov;
+  } else { tween = { fp: camera.position.clone(), fq: camera.quaternion.clone(), t: 0, dur: 2.2, c: true, mode: true, f0: camera.fov }; if (S.mapPick >= 0) { const i = S.mapPick; S.mapPick = -1; focus(i) } }
   refreshLabels(); updateLockUI();
 }
 function focus(i) {
   if (i < 0) return; S.sel = i; const p = starPos(i);
-  if (S.mode === 'fly') { if (lockI !== i) buzz(14); lockI = i; auto = null }   // lock only turns the ship toward it; W takes you there
+  if (S.mode === 'fly') { if (lockI !== i) buzz(14); lockI = i; auto = null; if (i !== passedI) passedI = -1 }   // lock only turns the ship toward it; W takes you there
   else { S.mapPick = i; orbit.target.copy(p); orbit.dist = CR[i] * 14; const o = orbitPose(); tweenCam(o.p, o.q, 1.8) }
 }
 function goHome() {
@@ -231,7 +231,7 @@ function updateCamera(dt) {
     else { camera.position.copy(tmp); camera.quaternion.copy(rig.quat) }
     if (Math.abs(bankCam) > 1e-5) camera.quaternion.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), bankCam));   // the bank leans the view in place
     const fov = Math.min(150, L.fov + L.fovKick * sstep(Math.log10(Math.max(1, player.vel.length())), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) + boostK * L.boostFov + ringPop * (L.ringFov ?? 10));   // wider the faster you go
-    camera.fov += (fov - camera.fov) * (1 - Math.exp(-4 * dt)); camera.updateProjectionMatrix();
+    if (tween && tween.mode && tween.f0) camera.fov = tween.f0 + (fov - tween.f0) * ease(Math.min(1, tween.t)); else camera.fov += (fov - camera.fov) * (1 - Math.exp(-4 * dt)); camera.updateProjectionMatrix();   // back from the map the lens widens with the move, so the narrow map lens doesn't snap open (that looked like a bounce back)
   } else {
     const mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), mz = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0), zq = (keys.q ? 1 : 0) - (keys.e ? 1 : 0);
     if ((mx || mz || zq) && !tween) {
@@ -241,9 +241,9 @@ function updateCamera(dt) {
     }
     if (orbit.ang !== LOOK.mapAngle) { if (orbit.ang != null && !tween) { mapFlip(); const want = orbit.mir ? Math.PI - mapPhi() : mapPhi(); orbit.phi += (want - orbit.phi) * Math.min(1, dt * 6); if (Math.abs(want - orbit.phi) < 1e-3) orbit.ang = LOOK.mapAngle } else if (orbit.ang == null) orbit.ang = LOOK.mapAngle }   // the angle slider tilts the map live
     if (tween && tween.mode) { const v = mapView(); orbit.theta = (LOOK.mapTurn ?? 0) * Math.PI / 180 + (v.flip ? Math.PI : 0); orbit.flip = v.flip; orbit.phi = orbit.mir ? Math.PI - v.phi : v.phi; orbit.ang = LOOK.mapAngle; const o = orbitPose(); tween.tp = o.p; tween.tq = o.q }   // aim at where the map camera really ends up, even as the lens and look (its angle and turn too) blend over to the map's on the way
-    if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur); const e = ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tween.tp, tween.c, e); else camera.position.lerpVectors(tween.fp, tween.tp, e); camera.quaternion.copy(tween.fq).slerp(tween.tq, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }
+    if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur); const e = ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tween.tp, tween.c, e); else camera.position.lerpVectors(tween.fp, tween.tp, e); if (tween.mode) { _upB.set(0, 1, 0).applyQuaternion(tween.fq).lerp(GAL_UP, e).normalize(); camera.quaternion.copy(tween.fq).slerp(lookQuat(camera.position, orbit.target, _upB), ease(sstep(tween.t, 0, .4))) } else camera.quaternion.copy(tween.fq).slerp(tween.tq, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }
     else { const o = orbitPose(); camera.position.copy(o.p); camera.quaternion.copy(o.q) }
-    { const mf = mapFovNow(), f = tween && tween.mode ? L.fov + (mf - L.fov) * ease(Math.min(1, tween.t)) : mf; if (Math.abs(camera.fov - f) > .01) { camera.fov = f; camera.updateProjectionMatrix() } }   // the lens narrows over the move out
+    { const mf = mapFovNow(), f0 = tween && tween.f0 || L.fov, f = tween && tween.mode ? f0 + (mf - f0) * ease(Math.min(1, tween.t)) : mf; if (Math.abs(camera.fov - f) > .01) { camera.fov = f; camera.updateProjectionMatrix() } }   // the lens narrows over the move out
     thrusting = false;
   }
   camera.updateMatrixWorld();

@@ -66,7 +66,7 @@ function rulerScore(th, us) {   // how many of the dates would be on screen with
   let n = 0; for (const uu of us) { const a = ringPoint(uu, th, 0, tmp2).project(camera); if (a.z < 1 && Math.abs(a.x) < .9 && Math.abs(a.y) < .86) n++ }
   const c = ringPoint(0, th, 0, tmp2).project(camera).clone(), e = ringPoint(1, th, 0, tmp2).project(camera); return n + .25 * Math.max(0, c.y - e.y) / Math.max(.01, Math.hypot(e.x - c.x, e.y - c.y));
 }
-let ringFarK = 0, conK = 0;   // conK: a filter's constellation is up, the rest of the sky dims
+let ringFarK = 0, conK = 0, volK = 0;   // conK: a filter's constellation is up, the rest of the sky dims
 function updateTimeRings(dt) {
   const L = LOOK, u = timeRings.u, map = S.mode === 'map', fr = !!L.ringFly, lp = toLocal(map ? orbit.target : camera.position, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   if (map) {   // how many years fit across the view where you're looking decides which rings show
@@ -306,8 +306,8 @@ function updateHover(dt) {
   { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = Math.round(camera.position.distanceTo(starPos(+m[1], tmp))).toLocaleString('en') }   // how far it is, live, to the unit
 }
 const RET = { ring: $('aimRing'), p: -1 };
-function updateBoostUI(dt = 0) {   // the reticle is a ring and a dot: boosting, the ring draws in and fills until it's all one white dot; it opens again as the boost refills
-  const p = S.mode === 'fly' ? sstep(1 - boostE, 0, 1) : 0; if (Math.abs(p - RET.p) < 1e-3) { crossEl.style.setProperty('--rs', LOOK.reticleSize ?? 1); return } RET.p = p;
+function updateBoostUI(dt = 0) {   // the reticle is a ring and a dot; it no longer changes with the boost (the console shows the power)
+  const p = 0; if (Math.abs(p - RET.p) < 1e-3) { crossEl.style.setProperty('--rs', LOOK.reticleSize ?? 1); return } RET.p = p;
   const r = RET.ring; r.setAttribute('r', (34.25 + (4.25 - 34.25) * p).toFixed(2)); r.style.setProperty('--rfa', (.88 * Math.pow(p, 1.3)).toFixed(3)); r.style.setProperty('--ra', (.4 + .48 * p).toFixed(3));
   crossEl.style.setProperty('--rs', LOOK.reticleSize ?? 1);
 }
@@ -419,7 +419,7 @@ function tick(now) {
     }
   }
   {   // volumetric gas
-    const on = !!L.volumetric, u = vol.u; vol.mesh.visible = on; PU.volOn.value = on ? 1 : 0;
+    volK += (Math.max(0, Math.min(1, +L.volumetric || 0)) - volK) * Math.min(1, dt * 2.5); const on = volK > .003, u = vol.u; vol.mesh.visible = on; PU.volOn.value = on ? volK : 0;   // it fades in and out instead of popping
     if (on) {
       u.cam.value.copy(camera.position); vol.mesh.worldToLocal(u.cam.value);
       u.glow.value = L.volGlow; u.dust.value = L.volDust; u.steps.value = L.volSteps; u.noise.value = L.volNoise; u.wispLo.value = L.volWispLo; u.wispHi.value = Math.max(L.volWispLo + (L.volEdge ?? .02), L.volWispHi); u.janim.value = L.volJitterMove ? 1 : 0; PU.volBlur.value = (L.volSmooth ?? 0) / LOOK.volRes;   u.warp.value = L.volWarp; u.armK.value = L.volArmK; u.thick.value = L.volThick;   // a hard wisp edge pops on and off as the clouds move: volEdge keeps it soft

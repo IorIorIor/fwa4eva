@@ -133,9 +133,10 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in
 /* ───────────────────────── picking ───────────────────────── */
 // ← and →: every winner by distance from you. With nothing locked either key goes to the nearest one, wherever it is;
 // from the one you're locked on, ← steps to the next nearer and → to the next farther
+let passedI = -1;   // the ring you just went through: the arrows skip it until you lock onto another
 function stepByDist(dir) {
   coach.arrow = true;
-  const cand = [], pp = player.pos; for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z; cand.push([dx * dx + dy * dy + dz * dz, i]) }
+  const cand = [], pp = player.pos; for (let i = 0; i < N; i++) { if (TA[i] < 1 || i === passedI) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z; cand.push([dx * dx + dy * dy + dz * dz, i]) }
   if (!cand.length) return; cand.sort((a, b) => a[0] - b[0]);
   const k = lockI >= 0 ? cand.findIndex(c => c[1] === lockI) : -1, j = k < 0 ? cand[0] : cand[Math.max(0, Math.min(cand.length - 1, k + dir))];
   if (!j || j[1] === lockI) return; focus(j[1]); auto = null; aimFast = .7;
