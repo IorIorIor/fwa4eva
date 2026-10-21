@@ -4,7 +4,7 @@ function applyLook() {
   const L = LOOK;
   U.rad.value = ANDRO ? L.radCol : 0; U.farK.value = L.farDim; U.far0.value = L.farStart; U.far1.value = L.farStart * 6;
   U.rc1.value.setHSL(L.radHue1, L.radSat, .6); U.rc2.value.setHSL(L.radHue2, L.radSat * .85, .5); U.rc3.value.setHSL(L.radHue3, L.radSat, .5);
-  PU.film.value = L.film ? 1 : 0; PU.vig.value = L.vignette; PU.grain.value = L.grain; PU.black.value = L.blackPt; PU.con.value = L.contrast; PU.sat.value = L.sat; PU.cool.value = L.cool;
+  PU.inv.value = L.invert ? 1 : 0; document.body.classList.toggle('inverted', !!L.invert); PU.film.value = L.film ? 1 : 0; PU.vig.value = L.vignette; PU.grain.value = L.grain; PU.black.value = L.blackPt; PU.con.value = L.contrast; PU.sat.value = L.sat; PU.cool.value = L.cool;
   // sprite nebulae, lanes, category nebulae
   const NU = NEB_U; NU.neb.value = L.nebGlow; NU.cloud.value = L.nebCloud; NU.fil.value = L.nebFil; NU.soft.value = L.nebSoft; NU.contrast.value = L.nebContrast; NU.hot.value = L.nebHot; NU.sat.value = L.nebSat; NU.scale.value = L.nebSize; NU.det.value = L.nebDetail ?? 0; NU.dsz.value = L.nebDetailSize ?? 4; NU.dsh.value = L.nebDetailSharp ?? 1;
   NU.hue.value = L.nebHue; NU.edge.value = L.nebEdge; NU.bright.value = L.nebBright; NU.alphaMax.value = L.nebAlphaMax; NU.sizeVar.value = L.nebSizeVar; NU.pulse.value = L.nebPulse; NU.radOn.value = L.nebRadial; NU.flatY.value = L.nebHeight; NU.nearK.value = L.nebNear; NU.drift.value = L.nebDrift; NU.mono.value = L.mono;
@@ -56,7 +56,7 @@ function saveLook() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_MAP) { st
     const snap = await lookDoc.get(), d = snap.exists && snap.data();
     if (d && d.look && typeof d.look === 'object') {
       Object.keys(d.look).forEach(k => { if (k in LOOK_DEFAULTS && typeof d.look[k] === 'number') LOOK[k] = d.look[k] }); migrateLook(LOOK);
-      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
+      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
     } else saveLook();
   } catch (e) { }
 })();
@@ -135,8 +135,8 @@ $('presets').innerHTML = Object.keys(PRESETS).map(n => `<button data-p="${n}">${
 $('presets').onclick = e => { const p = e.target.dataset && e.target.dataset.p; if (!p) return; const onMap = LOOK === LOOK_MAP, own = LOOK.mapOwnLook; LOOK = { ...LOOK_DEFAULTS, ...(p === 'reset' ? {} : PRESETS[p]), mapOwnLook: own }; if (onMap) LOOK_MAP = LOOK; else LOOK_FLY = LOOK; saveLook(); renderLook(); applyLook() };
 $('lookCopy').onclick = () => {
   const diff = {}; Object.keys(LOOK).forEach(k => { if (k[0] !== '_' && LOOK[k] !== LOOK_DEFAULTS[k]) diff[k] = LOOK[k] });
-  const txt = 'FWA FOREVER look settings: ' + JSON.stringify(diff), ta = $('lookOut'); ta.value = txt; ta.hidden = false;
+  const txt = 'FWA FOREVER look settings: ' + JSON.stringify(diff), ta = $('lookOut'); ta.value = txt; ta.hidden = true;   // straight to the clipboard; the text box only shows if the browser refuses
   const done = m => { $('lookMsg').textContent = m; clearTimeout(done.t); done.t = setTimeout(() => $('lookMsg').textContent = '', 2600) };
-  const fallback = () => { ta.focus(); ta.select(); done('Selected. Press Cmd/Ctrl+C') };
+  const fallback = () => { ta.hidden = false; ta.focus(); ta.select(); done('Selected. Press Cmd/Ctrl+C') };
   try { navigator.clipboard.writeText(txt).then(() => done('Copied. Paste it in the chat'), fallback) } catch (e) { fallback() }
 };

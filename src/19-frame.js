@@ -275,23 +275,26 @@ function updateHover(dt) {
     if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full && !side) { drawCardImg(cardI); cardFlicker() } }
     tip.classList.toggle('full', !!full); tip.classList.toggle('side', !!side); tip.classList.remove('dock'); tip.hidden = false };
   const PI = HALO.pInfo;
-  if (PI.on && !map && S.mode === 'fly' && hovI < 0) {   // a ring up close: its full record floats just right of the portal (the portal itself shows the picture)
-    put('q' + PI.i, tipHTML(PI.i) + TNAV + tipMore(PI.i), true, true); tmp.copy(PI.c).project(camera);
-    const d = Math.max(1, camera.position.distanceTo(PI.c)), rpx = PI.r * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), w = tip.offsetWidth, h = tip.offsetHeight;
-    let x = (tmp.x * .5 + .5) * innerWidth + rpx * 1.08 + 18, y = (-tmp.y * .5 + .5) * innerHeight - h / 2; if (x + w > innerWidth - 12) x = (tmp.x * .5 + .5) * innerWidth - rpx * 1.08 - 18 - w;
-    tip.style.left = Math.max(12, Math.min(innerWidth - w - 12, x)) + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, y)) + 'px';
+  const pRpx = PI.on ? PI.r * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(PI.c))) : 0;
+  if (PI.on && !map && S.mode === 'fly' && hovI < 0) {   // a ring up close: once its portal is big on screen, the full record (text only) floats beside it, never over it
+    tmp.copy(PI.c).project(camera); const cx = (tmp.x * .5 + .5) * innerWidth, cy = (-tmp.y * .5 + .5) * innerHeight;
+    if (pRpx * 2 >= (LOOK.ringInfoPx ?? 500) && tmp.z < 1) {
+      put('q' + PI.i, tipHTML(PI.i) + TNAV + tipMore(PI.i), true, true); const w = tip.offsetWidth, h = tip.offsetHeight, gap = 24, right = cx + pRpx + gap, left = cx - pRpx - gap - w;
+      const x = right + w <= innerWidth - 12 ? right : left >= 12 ? left : null;
+      if (x == null) tip.hidden = true; else { tip.style.left = x + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, cy - h / 2)) + 'px' }
+    } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
   } else if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI) + TNAV, false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (ringHov && pin < 0) { put('r' + ringHov.y, ringTip(ringHov), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (pin >= 0) {
     const d = Math.max(1, camera.position.distanceTo(starPos(pin, tmp))); tmp.project(camera);
     const edge = pin === lockI && pin !== cardI && !coarse && !(tmp.z < 1 && Math.abs(tmp.x) < 1 && Math.abs(tmp.y) < 1);
     if (edge) {   // the star you're locked on is off screen: its card waits at the edge, beside the arrow pointing to it
-      put('p' + pin, tipHTML(pin) + TNAV + tipMore(pin), false);
+      put('p' + pin, tipHTML(pin) + TNAV + (LOOK.rings ? '' : tipMore(pin)), false);
       let x = tmp.x, y = tmp.y; if (tmp.z >= 1) { x = -x; y = -y } const m = Math.max(Math.abs(x) / .92, Math.abs(y) / .88, 1e-6); x /= m; y /= m;
       const w = tip.offsetWidth, h = tip.offsetHeight, px = (x * .5 + .5) * innerWidth, py = (-y * .5 + .5) * innerHeight;
       tip.style.left = Math.max(12, Math.min(innerWidth - w - 12, px - (x > 0 ? w + 22 : -22))) + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, py - h / 2)) + 'px';
     } else if (tmp.z < 1 && Math.abs(tmp.x) < 1.3 && Math.abs(tmp.y) < 1.3) {
-      put('p' + pin, tipHTML(pin) + TNAV + tipMore(pin), pin === cardI);
+      put('p' + pin, tipHTML(pin) + TNAV + (LOOK.rings ? '' : tipMore(pin)), pin === cardI && !LOOK.rings);   // in the rings game the full record only comes with a big portal
       const rpx = starR(pin) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), full = pin === cardI;   // the star's own radius on screen
       let x = (tmp.x * .5 + .5) * innerWidth + (full ? rpx * .72 : 0), y = (-tmp.y * .5 + .5) * innerHeight - (full ? rpx * .5 : 0);
       if (full) {   // the full record sits beside the star (no more docking it top left)
@@ -333,6 +336,7 @@ function tick(now) {
   if (player.vel.lengthSq() > 1) U.vdir.value.copy(player.vel).normalize(); else U.vdir.value.set(0, 0, -1).applyQuaternion(rig.q);
   U.beta.value = Math.min(.995, beta * L.relativity); PU.betaC.value = Math.min(.8, beta * L.shift); PU.beam.value = L.beaming;
   PU.vV.value.copy(U.vdir.value).transformDirection(camera.matrixWorldInverse); PU.ty.value = Math.tan(camera.fov * Math.PI / 360); PU.tx.value = PU.ty.value * camera.aspect;
+  { const v = PU.vV.value, z = Math.abs(v.z) > 1e-3 ? v.z : -1e-3, sg = z < 0 ? 1 : -1, x = sg * v.x / Math.abs(z) / PU.tx.value, y = sg * v.y / Math.abs(z) / PU.ty.value; PU.apex.value.set(Math.max(-2, Math.min(3, x * .5 + .5)), Math.max(-2, Math.min(3, (1 - y) * .5))) }   // the apex of your motion on screen (or the point you're leaving, if it's behind you)
   PU.nV.value.set(0, 1, 0).applyQuaternion(GQ).transformDirection(camera.matrixWorldInverse); PU.edge.value = L.edgeDim; { const a = Math.sin(L.edgeAngle * Math.PI / 180); PU.edgeA.value = a; PU.edgeB.value = Math.min(1, Math.max(a * 1.05 + .002, a * L.edgeSoft)) }
   stars.u.far.value = fly ? 1 : 0; stars.u.thin.value = fly ? 0 : L.mapDots ?? 1;
   { const d = (fly ? player.pos : camera.position).distanceTo(GC); tdil = L.bhTime ? Math.max(.12, 1 - .88 * Math.exp(-Math.max(0, d - BH.sh) / (BH.sh * 2.5))) : 1; worldT += dt * tdil }

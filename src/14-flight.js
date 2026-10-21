@@ -10,7 +10,7 @@ const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist:
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
 const camRel = new V3(0, .8, 3.4).multiplyScalar(SHIP_SC), camRelV = new V3(), prevVel = new V3();
-let thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
+let bankPrev = 0, thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
 function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
@@ -46,8 +46,8 @@ function setMode(m) {
   if (m === 'map') {
     if (document.pointerLockElement) document.exitPointerLock();
     // the whole galaxy, seen from the side your ship is on: one continuous pull back and up
-    const rel = tmp.copy(camera.position).sub(GC).applyQuaternion(GQI), up = rel.y < 0 ? -1 : 1;
-    Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), theta: Math.atan2(rel.x, rel.z) + (mapView().flip ? Math.PI : 0), phi: up > 0 ? mapPhi() : Math.PI - mapPhi(), mir: up < 0, flip: mapView().flip });   // from whichever face of the disk you were on
+    const rel = tmp.copy(player.pos).sub(GC).applyQuaternion(GQI), up = rel.y < 0 ? -1 : 1;
+    Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), theta: (LOOK.mapTurn ?? 0) * Math.PI / 180 + (mapView().flip ? Math.PI : 0), phi: up > 0 ? mapPhi() : Math.PI - mapPhi(), mir: up < 0, flip: mapView().flip });   // the map's own view, from the face of the disk your ship is on   // from whichever face of the disk you were on
     const o = orbitPose(); tweenCam(o.p, o.q, 2.4, null, GC.clone()); tween.mode = true;
   } else { tween = { fp: camera.position.clone(), fq: camera.quaternion.clone(), t: 0, dur: 2.2, c: true, mode: true }; if (S.mapPick >= 0) { const i = S.mapPick; S.mapPick = -1; focus(i) } }
   refreshLabels(); updateLockUI();
@@ -88,7 +88,7 @@ function updatePlayer(dt) {
   const fw = (keys.w || keys.arrowup || touchThrust ? 1 : 0) - (keys.s || keys.arrowdown || touchBrake ? 1 : 0), rl = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);
   {   // A/D roll the ship itself. Options: inertia (it winds up and coasts on), a double-tap barrel roll with a sideways hop, and the camera rolling along
     const steerKeys = !!L.rollSteer;   // switch: A/D turn you left and right, banking into the turn (underside to the outside), instead of rolling
-    turnKey += ((steerKeys ? rl : 0) - turnKey) * Math.min(1, dt * (L.rollSteerEase ?? 5)); if (Math.abs(turnKey) > 1e-4) rotateRig(turnKey * (L.rollSteerRate ?? 1.1) * dt, 0);
+    turnKey += ((steerKeys ? rl : 0) - turnKey) * Math.min(1, dt * (L.rollSteerEase ?? 5)); if (Math.abs(turnKey) > 1e-4) rotateRig(turnKey * (L.rollSteerRate ?? 1.1) * dt, 0); { const bk = turnKey * (L.rollSteerBank ?? .7); camRollTo += (bk - bankPrev) * (L.rollSteerCam ?? 1); bankPrev = bk }   // the view leans with the ship's bank, on the same soft spring as the roll
     const inr = L.rollInertia ?? 0, wT = (steerKeys ? 0 : rl) * (L.rollSpeed ?? 2.2); rollW += (wT - rollW) * Math.min(1, dt * (inr > 0 ? 1.2 + 30 * (1 - inr) * (1 - inr) : 1e9));
     let dr = rollW * dt;
     if (rl && !rollHeld && L.rollBarrel) { const t = performance.now(); if (rollTap.d === rl && t - rollTap.t < 280) { barrel = { d: rl, t: 0 }; const side = _ax.set(-rl, 0, 0).applyQuaternion(p.base); p.vel.addScaledVector(side, (L.rollHop ?? .35) * Math.max(80, p.vel.length() * .25)) } rollTap = { d: rl, t } }   // double tap: a full barrel roll, hopping sideways
@@ -174,7 +174,7 @@ function updatePlayer(dt) {
       if (w > 0) { starPos(nearI, tmp); tmp2.copy(p.pos).sub(tmp).setLength(dockDist(nearI)).add(tmp).sub(p.pos); p.vel.addScaledVector(tmp2, 7 * w * L.wellPull * dt); p.vel.multiplyScalar(Math.exp(-3.5 * w * L.wellPull * dt)) }
     }
   }
-  if (braking && !auto) { const vb = p.vel.dot(fwd); if (vb < 0) p.vel.addScaledVector(fwd, -vb) }   // S only brakes, never reverses
+  if (braking && !auto) { const rv = L.reverseMax ?? 40, vb = p.vel.dot(fwd); if (rv > 0 && vb < rv * 2) p.vel.addScaledVector(fwd, -rv * (L.brakeStr ?? 5.5) * 1.3 * brakeK * dt); const vb2 = p.vel.dot(fwd); if (vb2 < -rv) p.vel.addScaledVector(fwd, -rv - vb2) }   // S brakes, and once you've all but stopped it backs you up, slowly
   // move, in substeps when touching a winner: its surface is a spring that stiffens toward the star, so you bounce off
   // along the normal and keep your sideways motion. The nose swings round to the new heading.
   let touch = 0;
@@ -232,6 +232,7 @@ function updateCamera(dt) {
       orbit.target.addScaledVector(r, mx * orbit.dist * .6 * dt).addScaledVector(fz, mz * orbit.dist * .6 * dt); if (zq) orbit.dist = Math.max(MAP_MIN, Math.min(4e7, orbit.dist * Math.exp(zq * 1.2 * dt)))
     }
     if (orbit.ang !== LOOK.mapAngle) { if (orbit.ang != null && !tween) { mapFlip(); const want = orbit.mir ? Math.PI - mapPhi() : mapPhi(); orbit.phi += (want - orbit.phi) * Math.min(1, dt * 6); if (Math.abs(want - orbit.phi) < 1e-3) orbit.ang = LOOK.mapAngle } else if (orbit.ang == null) orbit.ang = LOOK.mapAngle }   // the angle slider tilts the map live
+    if (tween && tween.mode) { const o = orbitPose(); tween.tp = o.p; tween.tq = o.q }   // aim at where the map camera really ends up, even as the lens and look settle on the way
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur); const e = ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tween.tp, tween.c, e); else camera.position.lerpVectors(tween.fp, tween.tp, e); camera.quaternion.copy(tween.fq).slerp(tween.tq, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }
     else { const o = orbitPose(); camera.position.copy(o.p); camera.quaternion.copy(o.q) }
     { const mf = mapFovNow(), f = tween && tween.mode ? L.fov + (mf - L.fov) * ease(Math.min(1, tween.t)) : mf; if (Math.abs(camera.fov - f) > .01) { camera.fov = f; camera.updateProjectionMatrix() } }   // the lens narrows over the move out

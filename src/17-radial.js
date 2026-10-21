@@ -53,22 +53,22 @@ const rmenu = (() => {
   build();
   let px = 0, py = 0, settleT = 0, homes = [], open = false, cx = 0, cy = 0, vx = 0, vy = 0, hot = null, which = null;
   const setHot = k => { if (k === hot) return; hot = k; segs.forEach(s => s.classList.toggle('hot', s.dataset.k === k)); if (k) nav.tick(); lean() };
-  const pickAt = (x, y) => { const r = Math.hypot(x, y); if (r < 1) return null;   // any nudge picks the segment in that direction
+  const pickAt = (x, y) => { const r = Math.hypot(x, y); if (r < 1) return null;   // by direction from the middle
     let a = Math.atan2(-y, x) * 180 / Math.PI; let best = null, bd = 40; for (const [k, , c] of SEG) { const d = Math.abs(((a - c + 540) % 360) - 180); if (d < bd) { bd = d; best = k } } return best };
   function show(x, y) {
     if (panel.hidden === false) close(); if (style !== ((LOOK.menuSun ?? 1) ? 'sun' : 'wedge')) build();
-    const m = R1 * 2 + 20; cx = Math.max(m, Math.min(innerWidth - m, x)); cy = Math.max(m, Math.min(innerHeight - m, y)); vx = vy = 0; px = x; py = y;
+    const m = R1 * 2 + 20; cx = Math.max(m, Math.min(innerWidth - m, x)); cy = Math.max(m, Math.min(innerHeight - m, y)); vx = x - cx; vy = y - cy; px = x; py = y;   // the pointer, relative to the menu's middle (it may sit off-centre near an edge)
     const R_ = document.documentElement.style; R_.setProperty('--rmb', (LOOK.menuBlur ?? 8) + 'px'); R_.setProperty('--rmd', LOOK.menuDim ?? .3);
     document.body.classList.add('rm-open', 'rm-ring'); tip.hidden = true;   // other tooltips step aside, and the world behind blurs
     el.style.left = cx + 'px'; el.style.top = cy + 'px'; el.hidden = false; void el.offsetWidth; el.classList.add('in'); open = true; setHot(null); lean();
     segs.find(s => s.dataset.k === 'map').querySelector('text').textContent = S.mode === 'map' ? 'Fly' : 'Map';
     segs.find(s => s.dataset.k === 'map').querySelector('.ri').innerHTML = RM_FILL[S.mode === 'map' ? 'fly' : 'map'];
-    dot.hidden = true; clearTimeout(settleT); el.classList.remove('settled'); settleT = setTimeout(() => el.classList.add('settled'), 450);   // no pointer at all: the direction you nudge picks
+    dot.hidden = !locked(); dot.style.transform = 'none'; clearTimeout(settleT); el.classList.remove('settled'); settleT = setTimeout(() => el.classList.add('settled'), 450);   // no pointer at all: the direction you nudge picks
   }
   function hide() { document.body.classList.remove('rm-ring'); document.body.classList.toggle('rm-open', !panel.hidden && !!which); open = false; el.classList.remove('in'); setTimeout(() => { if (!open) el.hidden = true }, 220); setHot(null) }
   function move(e) {   // captured pointer: a dot you steer inside the ring; free pointer: wherever the pointer is
     const dx = locked() ? e.movementX : e.clientX - px, dy = locked() ? e.movementY : e.clientY - py; px = e.clientX; py = e.clientY;
-    vx += dx; vy += dy; const r = Math.hypot(vx, vy), lim = 10; if (r > lim) { vx *= lim / r; vy *= lim / r } setHot(pickAt(vx, vy)); lean();   // kept on a short leash, so turning to another segment takes only a flick
+    vx += dx; vy += dy; const r = Math.hypot(vx, vy), lim = R1 * 2; if (r > lim) { vx *= lim / r; vy *= lim / r } if (locked()) dot.style.transform = `translate(${vx.toFixed(1)}px, ${vy.toFixed(1)}px)`; setHot(Math.hypot(vx, vy) > 16 ? pickAt(vx, vy) : null); lean();   // the hand points: whatever it's over (past a small dead zone in the middle) is picked
   }
   function choose(k = hot) {
     hide(); if (!k) return;

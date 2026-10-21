@@ -5,6 +5,7 @@ const hazePass = pass(hazeScene, camera, { samples: 0 }); hazeScene.background =
 const softPass = pass(softScene, camera, { samples: 0 });
 const arcPass = pass(arcScene, camera, { depthBuffer: false, samples: 0 });
 const PU = {   // pipeline uniforms
+  inv: uniform(0), apex: uniform(new THREE.Vector2(.5, .5)),   // apex: where on screen you're heading (or, looking back, coming from)   // the inverted monochrome look: black stars on white
   volOn: uniform(0), hazeScreen: uniform(1), volBlur: uniform(0),
   exp: uniform(1), film: uniform(1), vig: uniform(.45), grain: uniform(.03), ab: uniform(0), beta: uniform(0), black: uniform(0), con: uniform(1), sat: uniform(1), cool: uniform(0),
   bgK: uniform(1),   // the whole background (gas, haze, arcs) dims to this on the map, leaving the winners and the lines
@@ -78,11 +79,11 @@ const trailPass = pass(trailScene, camera, { samples: 4 }), trailTex = trailPass
 const finalNode = Fn(() => {
   const vUv = screenUV, uv0 = vUv;
   const S = p => min(min(sceneTex.sample(p).rgb, 1).add(bloomTex.sample(p).rgb), 1);
-  const d = vUv.sub(.5), r = length(d), o = d.mul(r).mul(PU.ab.mul(.03));
+  const d0 = vUv.sub(.5), d = vUv.sub(PU.apex), r = length(d0), ra = length(d), o = d.mul(ra).mul(PU.ab.mul(.03));   // the fringes and the light-speed streaks spread from the apex, wherever the camera looks from
   const c = vec3(S(uv0.add(o)).r, S(uv0).g, S(uv0.sub(o)).b).toVar();
   If(PU.beta.greaterThan(.01), () => {   // radial light-speed blur
     const acc = c.toVar();
-    for (let i = 1; i < 7; i++) acc.addAssign(S(uv0.sub(d.mul(PU.beta.mul(i / 6 * .06).mul(r)))));
+    for (let i = 1; i < 7; i++) acc.addAssign(S(uv0.sub(d.mul(PU.beta.mul(i / 6 * .06).mul(min(ra, 1.2))))));
     c.assign(acc.div(7));
   });
   If(PU.betaC.greaterThan(.002), () => {   // Doppler: light from ahead arrives bluer and brighter, from behind redder and dimmer
@@ -94,7 +95,8 @@ const finalNode = Fn(() => {
   const fc = c.mul(c.mul(2.51).add(.03)).div(c.mul(c.mul(2.43).add(.59)).add(.14)); c.assign(mix(min(c, 1), fc, PU.film));
   c.assign(pow(max(vec3(0), c.sub(PU.black).div(PU.black.oneMinus())), vec3(PU.con)));            // true blacks, then contrast
   const lu = dot(c, vec3(.2126, .7152, .0722)); c.assign(mix(vec3(lu), c, PU.sat)); c.assign(mix(c, lu.mul(vec3(.78, .9, 1.12)), PU.cool));   // grade toward cold
-  { const tc = trailTex.sample(vUv).rgb; c.addAssign(tc.div(max(1, max(max(tc.r, tc.g), tc.b)))) }   // the trails over the graded sky; where they pile up they brighten to full colour, never to white
+  If(PU.inv.greaterThan(.001), () => { c.assign(mix(c, vec3(dot(c, vec3(.2126, .7152, .0722)).oneMinus()), PU.inv)) });   // inverted: the sky turns white, the stars black
+  { const tc = trailTex.sample(vUv).rgb, tm = max(max(tc.r, tc.g), tc.b); c.assign(mix(c.add(tc.div(max(1, tm))), mix(c, tc.div(max(tm, 1e-4)), min(1, tm)), PU.inv)) }   // the trails over the graded sky (on white they're laid on like paint, keeping their colour)   // the trails over the graded sky; where they pile up they brighten to full colour, never to white
   c.mulAssign(min(1, PU.vig.add(PU.beta.mul(.45))).mul(smoothstep(PU.beta.mul(-.18).add(.32), .9, r)).oneMinus());
   c.addAssign(fract(sin(dot(vUv.mul(vec2(1733, 977)), vec2(12.9898, 78.233)).add(fract(U.now).mul(91.7))).mul(43758.5453)).sub(.5).mul(PU.grain));
   return vec4(clamp(c, 0, 1), 1);

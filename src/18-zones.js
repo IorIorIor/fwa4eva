@@ -1,15 +1,15 @@
-/* ───────────────────────── map zones: five years, then one ─────────────────────────
-   On the map, the stretch of spiral under the pointer lights up softly: a five-year span from far out. Click it and the
-   camera frames it; now each single year inside lights up as you point at it, and a click frames that year. While a zone
+/* ───────────────────────── map zones: a year, then a month ─────────────────────────
+   On the map, the stretch of spiral under the pointer lights up softly: a year. Click it and the camera frames it; now
+   each month inside lights up as you point at it (as they do anywhere once you're zoomed in close), and a click frames it. While a zone
    is open only its winners get day labels. Esc (or a click on empty sky) closes it. */
 const mapZone = (() => {
-  const Z = { on: false, t0: 0, t1: 0, lvl: 5, hov: null };
+  const Z = { on: false, t0: 0, t1: 0, lvl: 1, hov: null };
   if (!SPIRAL) { Z.update = () => { }; Z.click = () => false; Z.clear = () => { }; return Z }
   // the spiral sampled every few days: where it is (galaxy frame) and when
   const tS = Date.parse(D[0].date + 'T00:00:00Z'), tE = Date.parse(D[N - 1].date + 'T00:00:00Z'), SN = 2400, sx = new Float32Array(SN), sz = new Float32Array(SN), st = new Float64Array(SN);
   const at = t => { const r = GAL_R0 + yearU(t) * GAL_LEN, th = armPhase(r); return [Math.cos(th) * r, Math.sin(th) * r] };
   for (let k = 0; k < SN; k++) { const t = tS + (tE - tS) * k / (SN - 1), p = at(t); sx[k] = p[0]; sz[k] = p[1]; st[k] = t }
-  const span = (t, lvl) => { const y = new Date(t).getUTCFullYear(), y0 = lvl === 5 ? 2000 + Math.floor((y - 2000) / 5) * 5 : y; return [Date.UTC(y0, 0, 1), Date.UTC(y0 + lvl, 0, 1), y0] };
+  const span = (t, lvl) => { const d = new Date(t), y = d.getUTCFullYear(), m = d.getUTCMonth(); return lvl === 12 ? [Date.UTC(y, m, 1), Date.UTC(y, m + 1, 1), y] : [Date.UTC(y, 0, 1), Date.UTC(y + 1, 0, 1), y] };   // a year, or (lvl 12) a month
   // a soft glowing ribbon along the spiral between two dates
   const ribbon = () => {
     const n = 220, g = new THREE.BufferGeometry(), pos = new Float32Array((n + 1) * 2 * 3), aS = new Float32Array((n + 1) * 2), aV = new Float32Array((n + 1) * 2), idx = [];
@@ -33,7 +33,7 @@ const mapZone = (() => {
     if (map && !tween && mouse.in && hovPick < 0 && !rmenu.open && (L.mapZones ?? 1)) {
       const g = groundAt(mouse.x, mouse.y);
       if (g) { toLocal(g, _l); let best = -1, bd = Infinity; for (let k = 0; k < SN; k++) { const dx = sx[k] - _l.x, dz = sz[k] - _l.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = k } }
-        if (best >= 0 && Math.sqrt(bd) < (L.mapZoneHit ?? 22000)) { const t = st[best], inOpen = Z.on && t >= Z.t0 && t < Z.t1, lvl = Z.on && (Z.lvl === 1 || inOpen) && span(t, 5)[0] === span(Z.t0, 5)[0] ? 1 : 5, [t0, t1, y0] = span(t, lvl);
+        if (best >= 0 && Math.sqrt(bd) < (L.mapZoneHit ?? 22000)) { const t = st[best], inOpen = Z.on && t >= Z.t0 && t < Z.t1, lvl = (Z.on && Z.lvl === 1 && inOpen) || (Z.on && Z.lvl === 12 && span(t, 1)[0] === span(Z.t0, 1)[0]) || orbit.dist < (L.mapZoneMonths ?? 220000) ? 12 : 1, [t0, t1, y0] = span(t, lvl);
           if (!(Z.on && t0 === Z.t0 && t1 === Z.t1)) Z.hov = { t0: Math.max(t0, tS), t1: Math.min(t1, tE + 864e5), lvl, y0 } } }
     }
     if (Z.hov) hovR.set(Z.hov.t0, Z.hov.t1, W);
