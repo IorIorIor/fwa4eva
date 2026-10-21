@@ -135,6 +135,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
 [['brake', v => touchBrake = v]].forEach(([id, to]) => { const b = $(id), set = v => { to(v); b.classList.toggle('on', v) }; b.addEventListener('pointerdown', e => { e.preventDefault(); set(true); buzz(8); try { b.setPointerCapture(e.pointerId) } catch { } }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => set(false))); b.addEventListener('contextmenu', e => e.preventDefault()) });   // captured, so a thumb sliding off keeps braking
+$('dash').addEventListener('click', () => { if (S.mode === 'fly') setSpeedMode((speedMode + 1) % 3) });   // tap the console: the next speed mode
 // thrust: hold to fly; the button grows into a track above your thumb, and sliding up it to the top boosts
 { const b = $('thrust'); let y0 = 0, id = -1;
   const slide = k => { b.style.setProperty('--k', k.toFixed(3)); const on = k > .92; if (on !== touchBoost) { touchBoost = on; b.classList.toggle('boost', on); if (on) buzz(14) } };

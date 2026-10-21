@@ -39,7 +39,7 @@ const sStars = (() => {
   const flat = now => {
     if (!g) return; const live = !$('intro').hidden || (intro.active && S.k > 0 && S.after < 1e3); if (!live) { if (cv.width) g.clearRect(0, 0, cv.width, cv.height); requestAnimationFrame(flat); return } const W = cv.clientWidth, H = cv.clientHeight, d = Math.min(2, devicePixelRatio || 1); if (cv.width !== Math.round(W * d)) { cv.width = Math.round(W * d); cv.height = Math.round(H * d) }
     const t = now / 1000, fdt = Math.min(.1, Math.max(0, (now - (S.prevT ?? now)) / 1000)); S.prevT = now; g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, W, H);
-    let v = 0; if (intro.active && S.run >= 0) { S.run += fdt; v = Math.min(LOOK.splashMaxV ?? 60, (LOOK.splashRush ?? .25) * (Math.exp((LOOK.splashAccel ?? 1.4) * S.run) - 1)) }   // still until Start, then exponentially faster
+    let v = $('intro').hidden ? 0 : LOOK.splashDrift ?? .12; if (intro.active && S.run >= 0) { S.run += fdt; v = Math.min(LOOK.splashMaxV ?? 60, (LOOK.splashRush ?? .25) * (Math.exp((LOOK.splashAccel ?? 1.4) * S.run) - 1) + (LOOK.splashDrift ?? .12)) }   // still until Start, then exponentially faster
     const dz = v * fdt, tl = v * (LOOK.splashStreak ?? .12), fk = intro.active ? S.k : 1, hw = W / 2, hh = H / 2, ar = Math.max(1, W / H), am = Math.max(1, H / W); g.lineCap = 'round';
     for (let i = 0; i < n; i++) {
       if (dz) { Z[i] -= dz; if (Z[i] < .04) spawn(i, Z[i] + ZF - .4) }
