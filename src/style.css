@@ -553,11 +553,11 @@ body.inverted{background:#fff}body.inverted #labels,body.inverted #dayLabels,bod
 
 /* the winner compass: a hairline circle round the ship, dots for the nearest winners, their dates beside them */
 #wcmp{position:fixed;inset:0;pointer-events:none;z-index:3}
-#wcmp .c{position:absolute;border-radius:50%;border:1px solid rgba(255,255,255,.12)}
+#wcmp .c{display:none}
 #wcmp .m{position:absolute;left:0;top:0;transition:opacity .3s}
-#wcmp .m i{position:absolute;left:-2.5px;top:-2.5px;width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.7)}
+#wcmp .m i{position:absolute;left:-2px;top:-6px;width:4px;height:12px;background:rgba(255,255,255,.7);clip-path:polygon(50% 0,100% 28%,100% 100%,0 100%,0 28%);transform-origin:50% 50%}   /* a small pointed bar, its tip pointing the way the winner lies */
 #wcmp .m span{position:absolute;left:0;top:0;white-space:nowrap;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums}
-#wcmp .m.first i{background:#fff;box-shadow:0 0 6px rgba(255,255,255,.7)}#wcmp .m.first span{color:#fff}
+#wcmp .m.first i{background:#fff}#wcmp .m.first span{color:#fff}
 #wcmp .m.back{opacity:.4}
 body.intro #wcmp,body.map #wcmp{opacity:0}
 body.inverted #wcmp{filter:invert(1) hue-rotate(180deg)}

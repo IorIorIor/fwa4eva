@@ -247,8 +247,8 @@ function updateCompass() {
     m.g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`); m.p.setAttribute('transform', `rotate(${(a * 180 / Math.PI + 90).toFixed(1)})`); m.t.setAttribute('y', y > 0 ? 14 : -8); m.g.style.opacity = _cv.z < 0 ? .95 : .4
   }
 }
-/* the winner compass: a thin circle round the ship, most of the screen across, with the nearest winners as dots on it
-   in the direction they lie, each tagged with its date. Where tags would stack, only the nearest keeps its place */
+/* the winner compass: round the ship, most of the screen across (no circle drawn), the nearest winners as small pointed
+   marks in the direction they lie, each tagged with its date. Where tags would stack, only the nearest keeps its place */
 const winCompass = (() => {
   const el = document.createElement('div'); el.id = 'wcmp'; el.className = 'hud'; el.setAttribute('aria-hidden', 'true'); el.innerHTML = '<i class="c"></i>'; document.body.appendChild(el);
   const circ = el.querySelector('.c'), MK = Array.from({ length: 8 }, () => { const m = document.createElement('div'); m.className = 'm'; m.innerHTML = '<i></i><span></span>'; el.appendChild(m); return { m, dot: m.firstChild, t: liveText(m.lastChild), lab: m.lastChild, i: -1 } });
@@ -268,7 +268,7 @@ const winCompass = (() => {
       if (v.z < 0) { sp.copy(starPos(i, sp)).project(camera); a = Math.atan2((-sp.y * .5 + .5) * H - cy, (sp.x * .5 + .5) * W - cx) } else a = Math.atan2(-v.y, v.x);   // in front: where it shows from the ship; behind: which way to turn
       if (placed.some(b => Math.abs(((a - b + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < gap)) { k.m.hidden = true; return } placed.push(a);
       if (k.i !== i) { k.i = i; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
-      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R; k.m.hidden = false; k.m.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R; k.m.hidden = false; k.m.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`; k.dot.style.transform = `rotate(${(a * 180 / Math.PI + 90).toFixed(1)}deg)`;
       const ins = y + Math.sin(a) * 14 + 12 > H || y + Math.sin(a) * 14 - 12 < 0 || x + Math.cos(a) * 90 > W || x + Math.cos(a) * 90 < 0, o = ins ? -1 : 1, ca = Math.cos(a) * o;   // a tag that would leave the screen goes inside the circle
       k.lab.style.transform = `translate(${(ca < -.3 ? -100 : ca > .3 ? 0 : -50)}%,0) translate(${(ca * 10).toFixed(1)}px,${(Math.sin(a) * 14 * o - 7).toFixed(1)}px)`;
       k.m.classList.toggle('first', j === 0); k.m.classList.toggle('back', v.z >= 0);

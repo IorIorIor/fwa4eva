@@ -66,7 +66,7 @@ function rulerScore(th, us) {   // how many of the dates would be on screen with
   let n = 0; for (const uu of us) { const a = ringPoint(uu, th, 0, tmp2).project(camera); if (a.z < 1 && Math.abs(a.x) < .9 && Math.abs(a.y) < .86) n++ }
   const c = ringPoint(0, th, 0, tmp2).project(camera).clone(), e = ringPoint(1, th, 0, tmp2).project(camera); return n + .25 * Math.max(0, c.y - e.y) / Math.max(.01, Math.hypot(e.x - c.x, e.y - c.y));
 }
-let ringFarK = 0, conK = 0, volK = 0;   // conK: a filter's constellation is up, the rest of the sky dims
+let ringFarK = 0, conK = 0, volK = 0, shipR0 = 0, shipOnMap = false;   // conK: a filter's constellation is up, the rest of the sky dims
 function updateTimeRings(dt) {
   const L = LOOK, u = timeRings.u, map = S.mode === 'map', fr = !!L.ringFly, lp = toLocal(map ? orbit.target : camera.position, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   if (map) {   // how many years fit across the view where you're looking decides which rings show
@@ -240,7 +240,7 @@ function engineLook(dt) {
 
 /* lock-on marker, reticle and tooltip */
 const fmtDist = v => v < 1000 ? v.toFixed(0) + ' u' : v < 1e6 ? (v / 1000).toFixed(v < 1e4 ? 1 : 0) + 'k u' : (v / 1e6).toFixed(2) + 'M u';
-const TNAV = '<span class="tnav"><b data-n="-1" title="Previous (←)">‹</b><b data-n="1" title="Next (→)">›</b><i class="tdist"></i></span>';   // step through the archive from the star you're on
+const TNAV = '<span class="tnav"><i class="tdist"></i></span>';   /* (no ‹ › arrows: the arrow keys do that) */   // step through the archive from the star you're on
 const lockMark = $('lockMark');
 function updateLockMark() {
   if (S.mode === 'fly' && lockI >= 0) {
@@ -330,7 +330,10 @@ function tick(now) {
   } else if (booted) { nearest(camera.position) }   // on the map, the winners right around you become suns as you zoom in
   if (!intro.active) updateCamera(dt); else intro.update(dt);
   engineLook(dt);
-  avatar.visible = fly; youMark.visible = !fly; if (!fly) { youMark.position.copy(player.pos); youMark.scale.setScalar(.028 * (1 + .18 * Math.sin(now * .005))) }
+  { if (!shipR0) { const sc = avatar.scale.x || 1; shipR0 = new THREE.Box3().setFromObject(avatar).getSize(tmp).length() / 2 / sc }   // the ship's own radius at scale 1, measured once
+    const d = Math.max(1e-3, camera.position.distanceTo(player.pos)), px = 2 * shipR0 * avatar.scale.x / d * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360)); tmp.copy(player.pos).project(camera);
+    shipOnMap = !fly && px > 5 && tmp.z < 1 && Math.abs(tmp.x) < 1.1 && Math.abs(tmp.y) < 1.1 }   // on the map (and on the way there) the ship stays, full quality, while it's in view and over 5 px across
+  avatar.visible = fly || shipOnMap; youMark.visible = !fly && !shipOnMap; if (!fly) { youMark.position.copy(player.pos); youMark.scale.setScalar(.028 * (1 + .18 * Math.sin(now * .005))) }
   updateBodies();
   // relativity: real aberration of where things appear, and a Doppler shift (exaggerated to taste) in the final pass
   beta = fly ? Math.min(.995, player.vel.length() / LIGHT) : 0;
@@ -428,7 +431,7 @@ function tick(now) {
     }
   }
   PU.beta.value = fly ? Math.min(1, beta * L.relativity) : 0; PU.ab.value += ((fly ? Math.min(1.5, player.cruise * .35 + beta * 1.2 + boostK * .8) * L.aberr : 0) - PU.ab.value) * Math.min(1, dt * 4);
-  updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { if (!(intro.active && veil.material.opacity > .999) || intro.wipe) { intro.wipe = false; pipeline.render() } shipCam.copy(camera); shipCam.near = camera.near * SHIP_SC * (intro.active ? .01 : .1); shipCam.far = 2e5; shipCam.updateProjectionMatrix(); shipRenderer.render(shipScene, shipCam) } perf.ms = performance.now() - t0;   // under the opening's black veil the galaxy isn't drawn at all
+  updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { if (!(intro.active && veil.material.opacity > .999) || intro.wipe) { intro.wipe = false; pipeline.render() } shipCam.copy(camera); shipCam.near = camera.near * SHIP_SC * (intro.active ? .01 : .1); shipCam.far = Math.max(2e5, camera.position.distanceTo(player.pos) * 2); shipCam.updateProjectionMatrix(); shipRenderer.render(shipScene, shipCam) } perf.ms = performance.now() - t0;   // under the opening's black veil the galaxy isn't drawn at all
 }
 let loopErrs = 0;
 function loop(now) { requestAnimationFrame(loop); if (!booted && !introActive) { last = now; return } { const cap = LOOK.fpsCap ?? 0; if (cap > 0 && now - last < 1000 / cap - 2) return }   /* the frame-rate cap: skip display frames until it's time */   // nothing to draw behind the splash: leave the GPU to the loading

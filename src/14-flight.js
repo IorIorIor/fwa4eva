@@ -119,7 +119,7 @@ function updatePlayer(dt) {
   const obT = L.orbit && !L.rings && nearI >= 0 && lockI !== nearI ? 1 - sstep(nearCD, starR(nearI) * Math.max(L.orbitZone, L.orbitR * 1.5) * .6, starR(nearI) * Math.max(L.orbitZone, L.orbitR * 1.5)) : 0;   // inside a star's gravity
   if (steerTo) { const ang = p.base.angleTo(steerTo); if (!auto && pedal) turnAmt = sstep(ang, .06, .5); if (ang > 1e-4) { const rate = SM.turn * L.turnRate * (1 - L.turnHeavy * sstep(sp0, 3000, 800000)) * (1 + (L.turnSlow ?? 2.5) * (1 - sstep(sp0, 40, 4000))) * (1 + 9 * obT * (1 - sstep(sp0, 20, 2000))); const want = rate * Math.min(1, ang / Math.max(.02, L.turnEase ?? .45)); turnW += (want - turnW) * Math.min(1, dt * (L.turnAccel ?? 7)); p.base.slerp(steerTo, Math.min(1, turnW * dt / ang)) } } else turnW *= Math.exp(-8 * dt)   // in a star's gravity, from a standstill you turn ten times quicker; the turn winds up and eases out as the nose lines up
   fwd.set(0, 0, -1).applyQuaternion(p.base);
-  const bt = 1 + ((L.ringBrake ?? 4) - 1) * (1 - slowmo.k);   // in bullet time the brake bites harder (it works in slowed time too)
+  const bt = 1 + ((L.ringBrake ?? 3) / Math.max(slowmo.k, .03) - 1) * (1 - slowmo.k);   // in bullet time the brake bites as hard in real time as it would unslowed, times ringBrake
   const braking = fw < 0; brakeK += ((braking ? 1 : 0) - brakeK) * Math.min(1, dt * (L.brakeEase ?? 3));   // the brake squeezes on and lets go over a moment, never a jolt
   // W drives along the nose; boost on its own keeps the course you're already on
   if (keys.x) { if (!holdDir) holdDir = sp0 > 1 ? p.vel.clone().divideScalar(sp0) : fwd.clone() } else holdDir = null;   // X: the course you're on stays your course, whatever W, S or the mouse do

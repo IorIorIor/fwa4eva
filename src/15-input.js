@@ -133,7 +133,7 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in
 /* ───────────────────────── picking ───────────────────────── */
 // ← and →: every winner by distance from you. With nothing locked either key goes to the nearest one, wherever it is;
 // from the one you're locked on, ← steps to the next nearer and → to the next farther
-let passedI = -1;   // the ring you just went through: the arrows skip it until you lock onto another
+let passedI = -1, aimSlow = 0, relockNext = false; const _an = new V3(), _anq = new Q4();   // the ring you just went through: the arrows skip it until you lock onto another
 function stepByDist(dir) {
   coach.arrow = true;
   const cand = [], pp = player.pos; for (let i = 0; i < N; i++) { if (TA[i] < 1 || i === passedI) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z; cand.push([dx * dx + dy * dy + dz * dz, i]) }
@@ -168,6 +168,7 @@ function pick(x, y) {
 let magI = -1, magS = 1;
 function aimAssist(dt) {
   let s = 1; magI = -1; if (!booted || introActive) return;
+  if (aimSlow > 0 && lockI >= 0 && S.mode === 'fly') { aimSlow -= dt; const k = 1 - Math.exp(-(LOOK.ringNextRate ?? 1.8) * dt), dir = starPos(lockI, tmp).sub(player.pos).normalize(); aimAt(_an.copy(starPos(lockI, _an)).sub(camera.position), k); player.base.slerp(lookAtQ(dir, _an.set(0, 1, 0).applyQuaternion(player.base), _anq), k) }   // through a ring you were locked on: the view and the ship come round slowly to the next one
   if (aimFast > 0 && lockI >= 0 && S.mode === 'fly') { aimFast -= dt; aimAt(starPos(lockI, tmp).sub(camera.position), 1 - Math.exp(-12 * dt)) }   // a quick swing onto a star you stepped to
   if (S.mode === 'fly' && LOOK.magnet > 0 && (locked() || coarse) && openA < .3 && !auto) { const Rr = LOOK.magnetR, h = pickNear(innerWidth / 2, innerHeight / 2, Rr); if (h) { magI = h.i; aimAt(starPos(h.i, tmp).sub(camera.position), 1 - Math.exp(-LOOK.magnet * 7 * dt)); s = .35 + .65 * Math.min(1, h.d / h.R) } }
   if (lockI >= 0) { s = 1; magI = -1 }   // locked on: the reticle holds still
