@@ -666,3 +666,4 @@ body.map:not(.nosearch):not(.rm-open) #mapSearch{display:block}
 #radial.in::before{opacity:1}
 #radial.sunm::before{display:none}
 #mapSearch{z-index:10}@media (min-width:760px){body.map.panel-open #mapSearch{left:calc(50% + 154px);width:min(420px,calc(100vw - 360px))}}   /* centred in the space beside the filters */
+#splashStars.fly{position:fixed;z-index:54}   /* during the opening: over the black, under the ship and logo */
