@@ -42,47 +42,54 @@ const whiteout = (() => {
    GPU: each has a direction and a speed, and the shader places it by the burst's age (game time, so bullet time slows them too) */
 const _cd = new V3();
 const sparks = (() => {
-  // each spark flies out along its direction, eased from birth to death (ease 1 = steady, higher = a fast burst that slows),
-  // drawn as a short screen-space streak from where it was a moment ago (the trail) to where it is. Worked out on the CPU,
-  // relative to the camera (precise this far out), and drawn like the constellation lines
+  // through a ring the tip of the ship sheds a stream of sparks for a moment. Each is born where the tip is at that instant and
+  // stays in space (keeping only a little of the ship's motion), so the ship flies on past them, like dust off a comet. Each
+  // flies out along its own direction (flung back along your course), eased from birth to death, and is drawn as a short
+  // streak from where it was a moment ago. Worked out on the CPU relative to the camera, drawn like the constellation lines
   const n = 360, dirs = new Float32Array(n * 3), sp = new Float32Array(n), r = mulberry32(77);
   for (let i = 0; i < n; i++) { const z = r() * 2 - 1, a = r() * 6.2832, s = Math.sqrt(1 - z * z); dirs.set([Math.cos(a) * s, z, Math.sin(a) * s], i * 3); sp[i] = Math.pow(r(), 1.8) * .85 + .15 }
   const g = new THREE.InstancedBufferGeometry(); g.index = QUAD.index; g.setAttribute('position', QUAD.attributes.position); g.setAttribute('uv', QUAD.attributes.uv);
-  const pa = new Float32Array(n * 3), pb = new Float32Array(n * 3);
-  [['aA', pa, 3], ['aB', pb, 3], ['aS', sp, 1]].forEach(([k, arr, c]) => g.setAttribute(k, new THREE.InstancedBufferAttribute(arr, c).setUsage(THREE.DynamicDrawUsage))); g.instanceCount = n;
-  const u = { t: uniform(9), sz: uniform(3), life: uniform(1.6), k: uniform(1) }, m = skyMat(), vD = varyingProperty('float', 'vSd'), vAl = varyingProperty('float', 'vSal'), vLn = varyingProperty('float', 'vSln'), vA = varyingProperty('float', 'vSa');
+  const pa = new Float32Array(n * 3), pb = new Float32Array(n * 3), fa = new Float32Array(n);
+  [['aA', pa, 3], ['aB', pb, 3], ['aS', sp, 1], ['aF', fa, 1]].forEach(([k, arr, c]) => g.setAttribute(k, new THREE.InstancedBufferAttribute(arr, c).setUsage(THREE.DynamicDrawUsage))); g.instanceCount = n;
+  const u = { t: uniform(0), sz: uniform(3), k: uniform(1) }, m = skyMat(), vD = varyingProperty('float', 'vSd'), vAl = varyingProperty('float', 'vSal'), vLn = varyingProperty('float', 'vSln'), vA = varyingProperty('float', 'vSa');
   m.vertexNode = Fn(() => {
-    const s = ia('aS', 'float'), tl = u.t.div(u.life), A = vec4(cameraViewMatrix.mul(vec4(ia('aA', 'vec3'), 0)).xyz, 1), B = vec4(cameraViewMatrix.mul(vec4(ia('aB', 'vec3'), 0)).xyz, 1);
+    const s = ia('aS', 'float'), tl = ia('aF', 'float'), A = vec4(cameraViewMatrix.mul(vec4(ia('aA', 'vec3'), 0)).xyz, 1), B = vec4(cameraViewMatrix.mul(vec4(ia('aB', 'vec3'), 0)).xyz, 1);
     const cA = cameraProjectionMatrix.mul(A), cB = cameraProjectionMatrix.mul(B), half = U.res.mul(.5), sA = cA.xy.div(cA.w).mul(half), sB = cB.xy.div(cB.w).mul(half);
     const dv = sB.sub(sA), L = max(length(dv), 1e-3), dir = dv.div(L), nrm = vec2(dir.y.negate(), dir.x), hw = u.sz.mul(.5).mul(U.dpr).mul(s.mul(.6).add(.7)).mul(float(1).sub(tl.mul(.5))), t = uv().x, side = positionGeometry.y.mul(2);
     const c = mix(cA, cB, t), off = nrm.mul(side.mul(hw)).add(dir.mul(t.mul(2).sub(1).mul(hw)));
     vD.assign(side.mul(hw)); vAl.assign(t.mul(2).sub(1).mul(hw).add(t.mul(L))); vLn.assign(L);
-    const tw = sin(u.t.mul(s.mul(23).add(9)).add(s.mul(41))).mul(.35).add(.65); vA.assign(sq(max(0, float(1).sub(tl))).mul(tw).mul(u.k).mul(step(tl, 1)));
+    const tw = sin(u.t.mul(s.mul(23).add(9)).add(s.mul(41))).mul(.35).add(.65); vA.assign(sq(max(0, float(1).sub(tl))).mul(tw).mul(u.k).mul(step(tl, 1)).mul(step(0, tl)));
     return c.add(vec4(off.div(half).mul(c.w), 0, 0));
   })();
   m.fragmentNode = Fn(() => {
-    const hwF = vLn.mul(0).add(1), d = length(vec2(max(0, max(vAl.negate(), vAl.sub(vLn))), vD)), core = exp(sq(d.div(max(abs(vD).max(.5), 1))).negate()), along = smoothstep(0, vLn.max(1), vAl).mul(.75).add(.25);
+    const d = length(vec2(max(0, max(vAl.negate(), vAl.sub(vLn))), vD)), along = smoothstep(0, vLn.max(1), vAl).mul(.75).add(.25);
     const k = clamp(exp(sq(d).mul(-.35)).mul(along).mul(vA).mul(1.6), 0, 1); return vec4(vec3(1, .98, .94).mul(k), k);   // brightest at the head, fading down the trail
   })();
   const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; mesh.renderOrder = 3; mesh.visible = false; shipScene.add(mesh);
-  const c = new V3(), o = new V3(), v0 = new V3(), bk = new V3(), dz = new Float32Array(n * 3); let on = false, Rr = 1, R = 1, ez = 3, tr = .15, keep = .6;
-  const ease = t => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), ez);
+  const bp = new Float32Array(n * 3), bv = new Float32Array(n * 3), dz = new Float32Array(n * 3), tb = new Float32Array(n), born = new Uint8Array(n), bk = new V3(), tip = new V3(), cp = new V3();
+  let on = false, Rr = 1, R = 1, ez = 3, tr = .15, life = 1.6, emit = .5, keep = .15, t = 0;
+  const ease = x => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), ez);
   return {
     mesh, u,
-    burst(at, Rring) {   // like dust off a comet: shaped by the ship's motion, flung back from its course and carried on with part of its momentum
-      const L = LOOK; if (!(L.ringSpark ?? 1)) return; Rr = (L.ringSparkAhead ?? 1.2) > 0 ? Math.max(1e-3, camera.position.distanceTo(player.pos)) : Rring;
-      c.copy(at); if ((L.ringSparkAhead ?? 1.2) > 0) c.set(0, 0, -1).applyQuaternion(player.base).multiplyScalar(Rr * (L.ringSparkAhead ?? 1.2)).add(player.pos);
-      v0.copy(player.vel); const sp0 = v0.length(); bk.copy(sp0 > 1 ? v0 : bk.set(0, 0, -1).applyQuaternion(player.base)).normalize().negate();   // back along the course
-      const cone = L.ringSparkCone ?? 1.4; for (let i = 0; i < n; i++) { const k = i * 3; _cd.set(dirs[k] + bk.x * cone, dirs[k + 1] + bk.y * cone, dirs[k + 2] + bk.z * cone).normalize(); dz[k] = _cd.x; dz[k + 1] = _cd.y; dz[k + 2] = _cd.z }
-      const fk = 1 + (L.ringSparkSpeed ?? 1) * Math.min(3, Math.log10(1 + sp0) / 3); R = Rr * (L.ringSparkSpread ?? 2.5); keep = Rr * (L.ringSparkDrift ?? 2.5) * fk; /* the faster you go, the faster it streams off the back */ u.t.value = 0; u.life.value = L.ringSparkLife ?? 1.6; u.sz.value = L.ringSparkSize ?? 5; u.k.value = L.ringSpark ?? 1; ez = L.ringSparkEase ?? 3; tr = L.ringSparkTrail ?? .15; on = true;
+    burst(at, Rring) {
+      const L = LOOK; if (!(L.ringSpark ?? 1)) return; const ah = L.ringSparkAhead ?? 1.2; Rr = ah > 0 ? Math.max(1e-3, camera.position.distanceTo(player.pos)) : Rring; R = Rr * (L.ringSparkSpread ?? .8);
+      if (ah <= 0) tip.copy(at); life = L.ringSparkLife ?? 1.6; emit = L.ringSparkEmit ?? .5; keep = L.ringSparkKeep ?? .5; ez = L.ringSparkEase ?? 3; tr = L.ringSparkTrail ?? .15; u.sz.value = L.ringSparkSize ?? 5; u.k.value = L.ringSpark ?? 1;
+      const sp0 = player.vel.length(); bk.copy(sp0 > 1 ? player.vel : bk.set(0, 0, -1).applyQuaternion(player.base)).normalize().negate(); const cone = L.ringSparkCone ?? 1.4;
+      for (let i = 0; i < n; i++) { const k = i * 3; _cd.set(dirs[k] + bk.x * cone, dirs[k + 1] + bk.y * cone, dirs[k + 2] + bk.z * cone).normalize(); dz[k] = _cd.x; dz[k + 1] = _cd.y; dz[k + 2] = _cd.z; tb[i] = emit * i / n; born[i] = 0 }
+      t = 0; u.t.value = 0; on = true;
     },
     update(dt) {
-      if (!on) { mesh.visible = false; return } u.t.value += dt; const life = u.life.value, t = u.t.value; if (t > life) { on = false; mesh.visible = false; return }
-      const tA = Math.max(0, t - tr * life), eB = ease(t / life), eA = ease(tA / life);
-      const ah = LOOK.ringSparkAhead ?? 1.2; if (ah > 0) c.set(0, 0, -1).applyQuaternion(player.base).multiplyScalar(Rr * ah).add(player.pos);   // it rides with the ship (in the ship's frame, like a comet's coma)
-      o.copy(c).sub(camera.position); const mB = keep * t, mA = keep * tA;   // and streams off the back of it, along the course you had
-      for (let i = 0; i < n; i++) { const k = i * 3, s = sp[i] * R; pb[k] = o.x + bk.x * mB + dz[k] * s * eB; pb[k + 1] = o.y + bk.y * mB + dz[k + 1] * s * eB; pb[k + 2] = o.z + bk.z * mB + dz[k + 2] * s * eB; pa[k] = o.x + bk.x * mA + dz[k] * s * eA; pa[k + 1] = o.y + bk.y * mA + dz[k + 1] * s * eA; pa[k + 2] = o.z + bk.z * mA + dz[k + 2] * s * eA }
-      g.attributes.aA.needsUpdate = g.attributes.aB.needsUpdate = true; mesh.visible = S.mode === 'fly';
+      if (!on) { mesh.visible = false; return } t += dt; u.t.value = t; if (t > emit + life) { on = false; mesh.visible = false; return }
+      const ah = LOOK.ringSparkAhead ?? 1.2; if (ah > 0) tip.set(0, 0, -1).applyQuaternion(player.base).multiplyScalar(Rr * ah).add(player.pos);   // the emitter sits on the tip of the ship
+      cp.copy(camera.position);
+      for (let i = 0; i < n; i++) {
+        const k = i * 3; if (!born[i] && t >= tb[i]) { born[i] = 1; bp[k] = tip.x; bp[k + 1] = tip.y; bp[k + 2] = tip.z; bv[k] = player.vel.x * keep; bv[k + 1] = player.vel.y * keep; bv[k + 2] = player.vel.z * keep }   // born here and now, then left in space
+        const ag = t - tb[i]; fa[i] = born[i] ? ag / life : -1; if (!born[i]) continue;
+        const s = sp[i] * R, aA = Math.max(0, ag - tr * life), eB = ease(ag / life), eA = ease(aA / life);
+        pb[k] = bp[k] - cp.x + bv[k] * ag + dz[k] * s * eB; pb[k + 1] = bp[k + 1] - cp.y + bv[k + 1] * ag + dz[k + 1] * s * eB; pb[k + 2] = bp[k + 2] - cp.z + bv[k + 2] * ag + dz[k + 2] * s * eB;
+        pa[k] = bp[k] - cp.x + bv[k] * aA + dz[k] * s * eA; pa[k + 1] = bp[k + 1] - cp.y + bv[k + 1] * aA + dz[k + 1] * s * eA; pa[k + 2] = bp[k + 2] - cp.z + bv[k + 2] * aA + dz[k + 2] * s * eA;
+      }
+      g.attributes.aA.needsUpdate = g.attributes.aB.needsUpdate = g.attributes.aF.needsUpdate = true; mesh.visible = S.mode === 'fly';
     },
   };
 })();
