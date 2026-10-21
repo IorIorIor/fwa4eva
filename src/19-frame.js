@@ -283,7 +283,7 @@ function updateHover(dt) {
     const cx = (tmp.x * .5 + .5) * innerWidth, cy = (-tmp.y * .5 + .5) * innerHeight;
     {
       put('q' + PI.i, tipHTML(PI.i) + tipMore(PI.i), true, true); const w = tip.offsetWidth, h = tip.offsetHeight, gap = 24, right = cx + pRpx * (L_ix = LOOK.ringInfoX ?? 1) + gap * L_ix, left = cx - pRpx * L_ix - gap * L_ix - w;
-      const x = right + w <= innerWidth - 12 ? right : left >= 12 ? left : cx >= innerWidth / 2 ? 12 : innerWidth - w - 12;   // beside it; once the ring outgrows the screen, held at the edge with the most room
+      const x = Math.min(right, innerWidth - w - 12);   // always on the right of the ring; with no room, it holds at the right edge   // beside it; once the ring outgrows the screen, held at the edge with the most room
       tip.style.left = x + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, cy - h / 2)) + 'px';
     }
   } else if (hovI >= 0 && hovI !== pin) { put('h' + hovI, tipHTML(hovI) + TNAV, false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }

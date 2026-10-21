@@ -97,7 +97,7 @@ const intro = {
     emitGlow = quint(sstep(this.t, on - .26, on));
     if (!this.lit && this.t >= on - .2) { this.lit = true; igniteK = 1; engineLook.burst = 1.5 }   // ignition: a big bloom that settles, as the engine lights in the last of the swing
     if (this.t >= on - .22 && !this.hud) { this.hud = true; document.body.classList.remove('intro'); flickIn(Math.max(.3, (on - this.t) * dur)) }   // and the instruments flicker in, all landed by then
-    if (!booted && this.t >= (reduceMotion ? 1 : on - 2 / dur)) { introActive = false; handOver() }   // yours to fly two seconds before the camera settles; it keeps easing in behind you
+    if (!booted && this.t >= 1) { introActive = false; handOver() }   // yours to fly only once it has landed, so nothing jumps at the end
     if (this.t >= 1) this.finish();   // landed exactly where the flight camera sits: nothing left to jump
   },
   finish() {
