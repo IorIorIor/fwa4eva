@@ -715,15 +715,26 @@ body.paper #panel,body.paper #lookPanel,body.paper #rmPanel{background:rgba(250,
   #thrust:not(.on) i{opacity:0;transition:opacity .15s ease}
 }
 /* phones: the record is one still card across the top */
-#tip.mtop{left:12px!important;right:12px;top:calc(60px + env(safe-area-inset-top,0px))!important;transform:none!important;white-space:normal;align-items:stretch;background:rgba(12,12,14,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.14);border-radius:10px;overflow:hidden;transition:none}
+#tip.mtop{left:12px!important;right:12px;top:calc(60px + env(safe-area-inset-top,0px))!important;transform:none!important;white-space:normal;align-items:stretch;background:rgba(12,12,14,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:0;border-radius:0;overflow:hidden;transition:none}
 #tip.mtop .td,#tip.mtop .tt,#tip.mtop .ti,#tip.mtop .tnav .tdist{background:none;-webkit-backdrop-filter:none;backdrop-filter:none}
 #tip.mtop .thd{display:block}
 #tip.mtop .td,#tip.mtop.full .td{font-size:10.5px;padding:8px 10px 2px}
 #tip.mtop .tt,#tip.mtop.full .tt{font-size:19px;padding:1px 10px 6px;max-width:none;white-space:normal;transition:none}
 #tip.mtop .tx{transition:none}
 #tip.mtop .ti{width:auto}
-#tip.mtop dl{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px;padding:6px 10px 8px;border-top:1px solid rgba(255,255,255,.1)}
+#tip.mtop dl{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px;padding:6px 10px 8px}
 #tip.mtop dd{font-size:13px;white-space:nowrap}
 #tip.mtop .ti a{padding:0 10px 9px;font-size:11px}
 #tip.mtop .tnav{display:none}
-body.paper #tip.mtop{background:rgba(250,250,248,.95);border-color:rgba(0,0,0,.12)}
+body.paper #tip.mtop{background:rgba(250,250,248,.95)}
+/* the interface always sits over the 3D layers (the ship's canvas, rings and portals included) */
+#logo,#gotPill,#brand,#topnav,#topbar,#nav,#mapSearch,#gauge,#dash,#thrust,#brake,#tiltBtn,#coach,#tourPill,#legend,#arrive{z-index:12}
+#tip{z-index:13}
+#tip,#tip *{border-radius:0!important}
+/* touch: Brake and Thrust either side of the speed console, all three the same height */
+@media (pointer:coarse){
+  #dash{height:52px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:140px}
+  #brake{left:calc(50% - 70px - 8px - 52px)!important;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  #thrust{left:calc(50% + 70px + 8px)!important;right:auto!important;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  #tiltBtn{left:calc(50% - 70px - 8px - 52px)!important;bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+}

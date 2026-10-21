@@ -307,7 +307,7 @@ function updateHover(dt) {
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
   { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = Math.round(camera.position.distanceTo(starPos(+m[1], tmp))).toLocaleString('en') }
-  if (phone) { tip.classList.toggle('mtop', !tip.hidden); if (!tip.hidden) { tip.style.left = ''; tip.style.top = '' } }   // phones: the record is one still card at the top, it just comes and goes   // how far it is, live, to the unit
+  if (phone) { const top = !tip.hidden && tip.classList.contains('full'); tip.classList.toggle('mtop', top); if (top) { tip.style.left = ''; tip.style.top = '' } }   // phones: the record is one still card at the top, it just comes and goes   // how far it is, live, to the unit
 }
 const RET = { ring: $('aimRing'), p: -1 };
 function updateBoostUI(dt = 0) {   // the reticle is a ring and a dot; it no longer changes with the boost (the console shows the power)

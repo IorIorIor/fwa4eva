@@ -35,7 +35,7 @@ canvas.addEventListener('pointerdown', e => {
 });
 canvas.addEventListener('pointermove', e => {
   if (e.pointerType === 'mouse') { mouse.x = e.clientX; mouse.y = e.clientY; mouse.in = true }
-  const prev = ptrs.get(e.pointerId); if (!prev || !down) return; if (rmenu.open) return;   // the menu is up: the pointer is for it
+  const prev = ptrs.get(e.pointerId); if (!prev || !down) return; if (rmenu.open) { if (e.pointerType !== 'mouse') rmenu.move(e); return }   // the menu is up: the pointer is for it (a finger slides toward a choice)
   const dx = e.clientX - prev.x, dy = e.clientY - prev.y; prev.x = e.clientX; prev.y = e.clientY;
   if (Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 6) dragged = true;
   if (!dragged) return;
@@ -60,7 +60,7 @@ const endPtr = e => {
     const hov = (x, y) => coarse || down.touch ? pick(x, y) : hovPick;   // with a mouse, only the star whose tooltip is showing; touch has no hover, so a tap picks
     const fly = S.mode === 'fly', cx = locked() ? innerWidth / 2 : e.clientX, cy = locked() ? innerHeight / 2 : e.clientY;
     const onPic = () => { if (!fly || !HALO.pInfo.on) return false; const P_ = HALO.pInfo, d = camera.position.distanceTo(P_.c), v = tmp.copy(P_.c).project(camera); if (v.z > 1) return false; const r = P_.r * .95 * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(d, 1e-6)); return Math.hypot((v.x * .5 + .5) * innerWidth - cx, (-v.y * .5 + .5) * innerHeight - cy) < r };   // the click landed on a ring's picture
-    if (rmenu.open) { rmenu.choose(); rmenu.held = false }   // let go: the segment you nudged toward, or nothing (the menu goes)
+    if (rmenu.open) { if (down.touch && rmenu.held && !rmenu.hot) rmenu.held = false; else rmenu.choose(); rmenu.held = false }   /* a finger let go without sliding to a choice: the menu stays for a tap */   // let go: the segment you nudged toward, or nothing (the menu goes)
     else if (!rmenu.panel && onPic()) HALO.nextPic();   // on a ring's picture: the next picture slides in
     else if (rmenu.panel) { rmenu.close(); if (fly && !down.touch && !locked() && !lockFailed) requestLock() }
     else if (fly && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it (or just take the pointer back)

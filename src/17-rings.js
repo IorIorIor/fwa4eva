@@ -343,7 +343,7 @@ $('gbtn').onclick = () => setRings(!LOOK.rings);
 { const k = +store.get('sotd-ship-k') || 0; if (k > 0 && gotN >= SHIP_UNLOCK(k)) setShip(k) }   // the pointer you flew last time
 const rings = (() => {
   const el = $('gotPill');
-  const show = () => { el.hidden = !LOOK.rings || S.mode !== 'fly'; el.innerHTML = `<b>${gotN.toLocaleString('en')}</b> / ${N.toLocaleString('en')} collected` };
+  const show = () => { el.hidden = !LOOK.rings || S.mode !== 'fly'; el.innerHTML = `<b>${gotN.toLocaleString('en')}</b> / ${N.toLocaleString('en')}` };
   show(); $('gbtn').setAttribute('aria-pressed', !!LOOK.rings);
   return {
     show,
