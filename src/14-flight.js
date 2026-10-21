@@ -10,7 +10,7 @@ const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist:
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
 const camRel = new V3(0, .8, 3.4).multiplyScalar(SHIP_SC), camRelV = new V3(), prevVel = new V3();
-let revT = 0, revK = 0, bankCam = 0, bankCamV = 0, bankPrev = 0, thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
+let fovS = 61, revT = 0, revK = 0, bankCam = 0, bankCamV = 0, bankPrev = 0, thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
 function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
@@ -237,7 +237,8 @@ function updateCamera(dt) {
     else { camera.position.copy(tmp); camera.quaternion.copy(rig.quat) }
     if (Math.abs(bankCam) > 1e-5) camera.quaternion.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), bankCam));   // the bank leans the view in place
     const fov = Math.min(150, L.fov + L.fovKick * sstep(Math.log10(Math.max(1, player.vel.length())), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) + boostK * L.boostFov + ringPop * (L.ringFov ?? 10));   // wider the faster you go
-    if (tween && tween.mode && tween.f0) camera.fov = tween.f0 + (fov - tween.f0) * ease(Math.min(1, tween.t)); else camera.fov += (fov - camera.fov) * (1 - Math.exp(-4 * dt)); camera.updateProjectionMatrix();   // back from the map the lens widens with the move, so the narrow map lens doesn't snap open (that looked like a bounce back)
+    if (intro.active || Math.abs(fovS - camera.fov) > 40 && !whiteout.fov) fovS = camera.fov;
+    if (tween && tween.mode && tween.f0) fovS = tween.f0 + (fov - tween.f0) * ease(Math.min(1, tween.t)); else fovS += (fov - fovS) * (1 - Math.exp(-4 * dt)); camera.fov = Math.min(170, fovS + whiteout.fov); camera.updateProjectionMatrix(); /* (the ring's lens stretch goes on top at once, not eased) */   // back from the map the lens widens with the move, so the narrow map lens doesn't snap open (that looked like a bounce back)
   } else {
     const mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), mz = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0), zq = (keys.q ? 1 : 0) - (keys.e ? 1 : 0);
     if ((mx || mz || zq) && !tween) {

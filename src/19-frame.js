@@ -78,7 +78,7 @@ function updateTimeRings(dt) {
     ringFarK = 0;
   } else {
     // far enough out (above the disk or past its rim) the timeline comes into view: the five-year marks, and the spiral itself
-    const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.ringFar ?? .55), still = fr && performance.now() - lastInput > (L.ringIdle ?? 3) * 1000 && !thrusting && !boosting; ringFarK += ((F > 0 ? sstep(out, F, F * 1.6) : 1) * (still ? 1 : 0) - ringFarK) * Math.min(1, dt * (still ? .8 : 3));   // far out and left alone a few seconds: the timeline fades in; touch anything and it goes
+    const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.ringFar ?? .55), still = false && fr && performance.now() - lastInput > (L.ringIdle ?? 3) * 1000 && !thrusting && !boosting; ringFarK += ((F > 0 ? sstep(out, F, F * 1.6) : 1) * (still ? 1 : 0) - ringFarK) * Math.min(1, dt * (still ? .8 : 3));   // far out and left alone a few seconds: the timeline fades in; touch anything and it goes
     const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = ringFarK; mapLvl[1] = ringFarK * inside; mapLvl[2] = 0; mapStars = 0;
   }
   const show = map || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0; ruler.visible = timeRings.mesh.visible && !SPIRAL;   // with the single spiral, the spiral itself is the timeline (it carries its own dates)
@@ -275,7 +275,7 @@ function updateHover(dt) {
   // what the tooltip shows: a winner you point at; else the one you're beside (opened up into its full record); else your lock
   const map = S.mode === 'map', pin = cardI >= 0 ? cardI : !map && lockI >= 0 ? lockI : -1;
   const put = (key, html, full, side) => {
-    if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full && !side) { drawCardImg(cardI); cardFlicker() } }
+    if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full) { if (!side) drawCardImg(cardI); cardFlicker() }   /* the ring's record too comes in piece by piece */ }
     tip.classList.toggle('full', !!full); tip.classList.toggle('side', !!side); tip.classList.remove('dock'); tip.hidden = false };
   const PI = HALO.pInfo;
   const pRpx = PI.on ? PI.r * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(PI.c))) : 0;

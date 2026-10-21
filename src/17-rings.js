@@ -23,12 +23,14 @@ function ringHit(h) {   // through the plane: it's yours, and time starts back u
    white clears quickly (in real time, whatever bullet time is doing) */
 const whiteout = (() => {
   const el = document.createElement('div'); el.id = 'whiteout'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el);
-  const W = { near: 0, at: new V3(), out: 0, k: 0 }, _p = new V3();
-  W.hit = () => { W.out = 1 };
+  const W = { near: 0, at: new V3(), out: 0, k: 0, kv: 0, fv: 0, fov: 0 }, _p = new V3();
+  W.hit = () => { W.out = 1; W.fv = 1 };
   W.update = rdt => {
-    const L = LOOK, amt = L.ringFlash ?? 1, inK = Math.pow(W.near, 1.6) * amt; W.near = 0;
+    const L = LOOK, amt = L.ringFlash ?? 1, inK = Math.pow(W.near, 1.6); W.near = 0;
     if (W.out > 0) W.out = Math.max(0, W.out - rdt / Math.max(.05, L.ringFlashOut ?? .35));
-    const k = S.mode === 'fly' ? Math.max(inK, amt * W.out * W.out * (3 - 2 * W.out)) : 0; if (Math.abs(k - W.k) < .002 && k !== 0) return; W.k = k;
+    if (W.fv > 0) W.fv = Math.max(0, W.fv - rdt / Math.max(.05, L.ringHitFovTime ?? .6)); W.fov = (L.ringHitFov ?? 50) * Math.pow(W.fv, 2.2);   // through: the lens stretches wide at once, then eases back
+    const b = S.mode === 'fly' ? Math.max(inK, W.out * W.out * (3 - 2 * W.out)) : 0; W.k = b;   // b drives the exposure and glow (their own sliders); the white veil is b × its amount
+    const k = b * amt; if (Math.abs(k - W.kv) < .002 && k !== 0) return; W.kv = k;
     if (k <= .002) { el.style.opacity = 0; return }
     _p.copy(W.at).project(camera); const x = ((_p.x * .5 + .5) * 100).toFixed(1), y = ((-_p.y * .5 + .5) * 100).toFixed(1), r = (20 + 140 * k).toFixed(0);
     el.style.background = `radial-gradient(circle at ${x}% ${y}%, #fff 0, #fff ${(r * .35).toFixed(0)}vmax, rgba(255,255,255,${Math.min(1, k * 1.4).toFixed(3)}) ${r}vmax), rgba(255,255,255,${Math.pow(k, 2.2).toFixed(3)})`;
