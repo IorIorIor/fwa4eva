@@ -555,7 +555,8 @@ body.inverted{background:#fff}body.inverted #labels,body.inverted #dayLabels,bod
 #wcmp{position:fixed;inset:0;pointer-events:none;z-index:3}
 #wcmp .c{display:none}
 #wcmp .m{position:absolute;left:0;top:0;transition:opacity .3s}
-#wcmp .m i{position:absolute;left:-2px;top:-6px;width:4px;height:12px;background:rgba(255,255,255,.7);clip-path:polygon(50% 0,100% 28%,100% 100%,0 100%,0 28%);transform-origin:50% 50%}   /* a small pointed bar, its tip pointing the way the winner lies */
+#wcmp .m i{position:absolute;left:-.5px;top:-7px;width:1px;height:14px;background:rgba(255,255,255,.75);transform-origin:50% 50%}   /* a short line, pointing the way the winner lies */
+#wcmp .m.star i{display:none}#wcmp .m.star span{color:rgba(255,255,255,.6)}
 #wcmp .m span{position:absolute;left:0;top:0;white-space:nowrap;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums}
 #wcmp .m.first i{background:#fff}#wcmp .m.first span{color:#fff}
 #wcmp .m.back{opacity:.4}

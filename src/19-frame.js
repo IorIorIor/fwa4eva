@@ -66,7 +66,7 @@ function rulerScore(th, us) {   // how many of the dates would be on screen with
   let n = 0; for (const uu of us) { const a = ringPoint(uu, th, 0, tmp2).project(camera); if (a.z < 1 && Math.abs(a.x) < .9 && Math.abs(a.y) < .86) n++ }
   const c = ringPoint(0, th, 0, tmp2).project(camera).clone(), e = ringPoint(1, th, 0, tmp2).project(camera); return n + .25 * Math.max(0, c.y - e.y) / Math.max(.01, Math.hypot(e.x - c.x, e.y - c.y));
 }
-let ringFarK = 0, conK = 0, volK = 0, shipR0 = 0, shipOnMap = false;   // conK: a filter's constellation is up, the rest of the sky dims
+let L_ix = 1, ringFarK = 0, conK = 0, volK = 0, shipR0 = 0, shipOnMap = false;   // conK: a filter's constellation is up, the rest of the sky dims
 function updateTimeRings(dt) {
   const L = LOOK, u = timeRings.u, map = S.mode === 'map', fr = !!L.ringFly, lp = toLocal(map ? orbit.target : camera.position, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   if (map) {   // how many years fit across the view where you're looking decides which rings show
@@ -280,7 +280,7 @@ function updateHover(dt) {
   if (PI.on && !map && S.mode === 'fly' && pRpx * 2 >= (LOOK.ringInfoPx ?? 500) && tmp.copy(PI.c).project(camera).z < 1) {   // while it's up, it's all you see: hovering other stars doesn't swap it for their tooltip   // a ring up close: once its portal is big on screen, the full record (text only) floats beside it, never over it
     const cx = (tmp.x * .5 + .5) * innerWidth, cy = (-tmp.y * .5 + .5) * innerHeight;
     {
-      put('q' + PI.i, tipHTML(PI.i) + TNAV + tipMore(PI.i), true, true); const w = tip.offsetWidth, h = tip.offsetHeight, gap = 24, right = cx + pRpx + gap, left = cx - pRpx - gap - w;
+      put('q' + PI.i, tipHTML(PI.i) + TNAV + tipMore(PI.i), true, true); const w = tip.offsetWidth, h = tip.offsetHeight, gap = 24, right = cx + pRpx * (L_ix = LOOK.ringInfoX ?? 1) + gap * L_ix, left = cx - pRpx * L_ix - gap * L_ix - w;
       const x = right + w <= innerWidth - 12 ? right : left >= 12 ? left : cx >= innerWidth / 2 ? 12 : innerWidth - w - 12;   // beside it; once the ring outgrows the screen, held at the edge with the most room
       tip.style.left = x + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, cy - h / 2)) + 'px';
     }

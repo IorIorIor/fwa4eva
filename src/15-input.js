@@ -60,7 +60,7 @@ const endPtr = e => {
     if (rmenu.open) { rmenu.choose(); rmenu.held = false }   // let go: the segment you nudged toward, or nothing (the menu goes)
     else if (rmenu.panel) { rmenu.close(); if (fly && !down.touch && !locked() && !lockFailed) requestLock() }
     else if (fly && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it (or just take the pointer back)
-    else if (fly) { const i = hov(cx, cy); if (i >= 0 && i !== lockI) focus(i); else if (i >= 0) unlock() }   // a star: lock on (again: let go)
+    else if (fly) { const i = hov(cx, cy); if (i >= 0) { if (i !== lockI) focus(i) } else if (lockI >= 0) unlock() }   // a star (inside its ring, for a 3D one): lock on; anywhere else: let go
     else { const h = mapHover(e.clientX, e.clientY), i = coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (h.ring) ringZoom(h.ring); else mapZone.click() }   // map: a star once you're close, else the ring under the cursor, else the menu
   }
   if (!ptrs.size) down = null;
@@ -146,11 +146,12 @@ const pxJS = () => innerHeight * .55 * DPR;                        // CPU twin o
 const starPx = (i, w) => SIZE[i] * LOOK.starSize * pxJS() / w / DPR;   // a winner's sprite size in CSS pixels at view depth w
 // aim assist: the visible winner (3 px or larger) nearest the screen centre, measured against its own capture radius:
 // the base radius plus the star's size on screen, so close-by winners are much easier to catch
+const ringPxAt = (i, w) => LOOK.rings ? starR(i) * (LOOK.ringSize ?? 1.6) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(w, 1)) : 0;   // a winner's ring radius on screen (px), in the rings game
 function pickNear(x, y, Rr) {
   _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight; let best = -1, bs = 1, bd = 0, bR = Rr;
   for (let i = 0; i < N; i++) {
     if (TA[i] < 1 || i === lockI) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5 || w > (LOOK.hoverDist ?? 4e5)) continue; const spx = starPx(i, w); if (spx < (LOOK.hoverPx ?? 2.5)) continue;   // aim assist reaches exactly as far as hovering does
-    const X = ((e[0] * px + e[4] * py + e[8] * pz + e[12]) / w * .5 + .5) * W, Y = (-(e[1] * px + e[5] * py + e[9] * pz + e[13]) / w * .5 + .5) * H, d = Math.hypot(X - x, Y - y), R_ = Rr + Math.min(Rr * 4, spx * .6), s = d / R_;
+    const X = ((e[0] * px + e[4] * py + e[8] * pz + e[12]) / w * .5 + .5) * W, Y = (-(e[1] * px + e[5] * py + e[9] * pz + e[13]) / w * .5 + .5) * H, d = Math.hypot(X - x, Y - y), rpx = ringPxAt(i, w), R_ = rpx > 18 ? rpx * .95 : Rr + Math.min(Rr * 4, spx * .6), s = d / R_;
     if (s < bs) { bs = s; best = i; bd = d; bR = R_ }
   }
   return best < 0 ? null : { i: best, d: bd, R: bR };
@@ -160,7 +161,7 @@ function pick(x, y) {
   for (let i = 0; i < N; i++) {
     if (TA[i] < 1) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5) continue;
     const X = ((e[0] * px + e[4] * py + e[8] * pz + e[12]) / w * .5 + .5) * W, Y = (-(e[1] * px + e[5] * py + e[9] * pz + e[13]) / w * .5 + .5) * H;
-    const d = Math.hypot(X - x, Y - y), rad = Math.max(14, starPx(i, w) * .5);
+    const rpx = ringPxAt(i, w), d = Math.hypot(X - x, Y - y), rad = rpx > 18 ? rpx * .95 : Math.max(14, starPx(i, w) * .5);   // a ring big enough to be a 3D ring: only inside it counts
     if (d < rad) { const score = d / rad + w * .000003; if (score < bd) { bd = score; best = i } }
   }
   return best;

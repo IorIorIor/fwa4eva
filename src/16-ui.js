@@ -276,7 +276,13 @@ const winCompass = (() => {
     MK.forEach((k, j) => {
       const c = near[j]; if (!c || j >= n) { k.m.hidden = true; return }
       const i = c[1]; starPos(i, v).applyMatrix4(camera.matrixWorldInverse); let a;
-      if (v.z < 0) { sp.copy(starPos(i, sp)).project(camera); a = Math.atan2((-sp.y * .5 + .5) * H - cy, (sp.x * .5 + .5) * W - cx) } else a = Math.atan2(-v.y, v.x);   // in front: where it shows from the ship; behind: which way to turn
+      let sx = 0, sy = 0, vis = false; if (v.z < 0) { sp.copy(starPos(i, sp)).project(camera); sx = (sp.x * .5 + .5) * W; sy = (-sp.y * .5 + .5) * H; vis = sx > 30 && sx < W - 140 && sy > 70 && sy < H - 30; a = Math.atan2(sy - cy, sx - cx) } else a = Math.atan2(-v.y, v.x);   // in front: where it shows from the ship; behind: which way to turn
+      if (vis) {   // it's right there on screen: the date sits beside the star itself instead of on the compass
+        { const m = !tip.hidden && /^[hpq](\d+)/.exec(tipFor); if (m && +m[1] === i) { k.m.hidden = true; return } }   // (unless its tooltip already says it)
+        if (k.i !== i) { k.i = i; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
+        k.m.hidden = false; k.m.classList.add('star'); k.m.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`; k.lab.style.transform = `translate(12px,-6px)`; k.m.classList.toggle('first', j === 0); k.m.classList.remove('back'); return;
+      }
+      k.m.classList.remove('star');
       if (placed.some(b => Math.abs(((a - b + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < gap)) { k.m.hidden = true; return } placed.push(a);
       if (k.i !== i) { k.i = i; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
       const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R; k.m.hidden = false; k.m.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`; k.dot.style.transform = `rotate(${(a * 180 / Math.PI + 90).toFixed(1)}deg)`;
