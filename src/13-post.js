@@ -103,4 +103,4 @@ const finalNode = Fn(() => {
 })();
 loadProg(.6);
 const pipeline = new THREE.RenderPipeline(renderer); pipeline.outputColorTransform = false; pipeline.outputNode = finalNode;
-function setPassScales() { volPass.setResolutionScale(LOOK.volRes); softPass.setResolutionScale(LOOK.softRes); hazePass.setResolutionScale(LOOK.softRes); U.minSoft.value = 1 / LOOK.softRes }
+function setPassScales() { arcPass.setResolutionScale(LOOK.arcRes ?? 1); volPass.setResolutionScale(LOOK.volRes); softPass.setResolutionScale(LOOK.softRes); hazePass.setResolutionScale(LOOK.softRes); U.minSoft.value = 1 / LOOK.softRes }

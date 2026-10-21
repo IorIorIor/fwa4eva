@@ -31,7 +31,7 @@ function nextStop() {
   const p = $('tourPill'); p.hidden = false; p.innerHTML = `<b>${esc(tour.name)}</b> ${tour.k + 1} / ${tour.ids.length}<button type="button" aria-label="Stop the tour">×</button>`;
 }
 function tourUpdate(dt) {
-  if (!tour.on) return; if (keys.w || keys.s || keys.arrowup || keys.arrowdown || keys.shift || touchThrust || touchBrake || S.mode !== 'fly') return stopTour();
+  if (!tour.on) return; if (keys.w || keys.s || keys.shift || touchThrust || touchBrake || S.mode !== 'fly') return stopTour();
   const i = tour.ids[tour.k]; if (warp || auto || nearI !== i) return; if ((tour.wait -= dt) <= 0) nextStop();
 }
 const TOURS = {

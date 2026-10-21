@@ -81,11 +81,17 @@ function collideOutpost(p) {   // in the outpost's own (unscaled) units: hub cap
 const steerCurve = v => { const a = Math.max(0, Math.abs(v) - .15) / .85; return Math.sign(v) * a * a };
 const _hf = new V3(), _hr = new V3(), _hq = new Q4(), fwd = new V3(), wish = new V3();
 const _nq = new Q4(), _vn = new V3(), _su = new V3(), _su2 = new V3(), _rf = new V3();
+// speed modes, ↑ ↓: Cruise, Sport (quick and nimble, lower top), Speed (all top end, slow to turn)
+const SPEED_MODES = ['Cruise', 'Sport', 'Speed'];
+let speedMode = Math.max(0, Math.min(2, +(store.get('sotd-smode') ?? 0) || 0));
+const smK = () => { const n = 'sm' + SPEED_MODES[speedMode], L = LOOK; return { top: L[n + 'Top'] ?? 1, acc: L[n + 'Acc'] ?? 1, turn: L[n + 'Turn'] ?? 1 } };
+function setSpeedMode(m) { m = Math.max(0, Math.min(2, m)); if (m === speedMode) return; speedMode = m; store.set('sotd-smode', String(m)); buzz(10); consolePing = 1 }
+let consolePing = 0;
 function updatePlayer(dt) {
   const p = player, L = LOOK;
   if (lockFailed && mouse.in && !down) rotateRig(-steerCurve(mouse.x / innerWidth * 2 - 1) * 1.8 * dt, -steerCurve(mouse.y / innerHeight * 2 - 1) * 1.4 * dt);   // lock-less desktop fallback
   rig.quat.copy(rig.q);
-  const fw = (keys.w || keys.arrowup || touchThrust ? 1 : 0) - (keys.s || keys.arrowdown || touchBrake ? 1 : 0), rl = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);
+  const fw = (keys.w || touchThrust ? 1 : 0) - (keys.s || touchBrake ? 1 : 0), SM = smK(), rl = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);
   {   // A/D roll the ship itself. Options: inertia (it winds up and coasts on), a double-tap barrel roll with a sideways hop, and the camera rolling along
     const steerKeys = !!L.rollSteer;   // switch: A/D turn you left and right, banking into the turn (underside to the outside), instead of rolling
     turnKey += ((steerKeys ? rl : 0) - turnKey) * Math.min(1, dt * (L.rollSteerEase ?? 5)); if (Math.abs(turnKey) > 1e-4) rotateRig(turnKey * (L.rollSteerRate ?? 1.1) * dt, 0); { const bk = turnKey * (L.rollSteerBank ?? .7); camRollTo += (bk - bankPrev) * (L.rollSteerCam ?? 1); bankPrev = bk }   // the view leans with the ship's bank, on the same soft spring as the roll
@@ -111,8 +117,9 @@ function updatePlayer(dt) {
   else if (auto && p.vel.lengthSq() > 4) steerTo = aimQ(p.vel.clone().normalize());
   let turnAmt = 0;
   const obT = L.orbit && !L.rings && nearI >= 0 && lockI !== nearI ? 1 - sstep(nearCD, starR(nearI) * Math.max(L.orbitZone, L.orbitR * 1.5) * .6, starR(nearI) * Math.max(L.orbitZone, L.orbitR * 1.5)) : 0;   // inside a star's gravity
-  if (steerTo) { const ang = p.base.angleTo(steerTo); if (!auto && pedal) turnAmt = sstep(ang, .06, .5); if (ang > 1e-4) { const rate = L.turnRate * (1 - L.turnHeavy * sstep(sp0, 3000, 800000)) * (1 + (L.turnSlow ?? 2.5) * (1 - sstep(sp0, 40, 4000))) * (1 + 9 * obT * (1 - sstep(sp0, 20, 2000))); const want = rate * Math.min(1, ang / Math.max(.02, L.turnEase ?? .45)); turnW += (want - turnW) * Math.min(1, dt * (L.turnAccel ?? 7)); p.base.slerp(steerTo, Math.min(1, turnW * dt / ang)) } } else turnW *= Math.exp(-8 * dt)   // in a star's gravity, from a standstill you turn ten times quicker; the turn winds up and eases out as the nose lines up
+  if (steerTo) { const ang = p.base.angleTo(steerTo); if (!auto && pedal) turnAmt = sstep(ang, .06, .5); if (ang > 1e-4) { const rate = SM.turn * L.turnRate * (1 - L.turnHeavy * sstep(sp0, 3000, 800000)) * (1 + (L.turnSlow ?? 2.5) * (1 - sstep(sp0, 40, 4000))) * (1 + 9 * obT * (1 - sstep(sp0, 20, 2000))); const want = rate * Math.min(1, ang / Math.max(.02, L.turnEase ?? .45)); turnW += (want - turnW) * Math.min(1, dt * (L.turnAccel ?? 7)); p.base.slerp(steerTo, Math.min(1, turnW * dt / ang)) } } else turnW *= Math.exp(-8 * dt)   // in a star's gravity, from a standstill you turn ten times quicker; the turn winds up and eases out as the nose lines up
   fwd.set(0, 0, -1).applyQuaternion(p.base);
+  const bt = 1 + ((L.ringBrake ?? 4) - 1) * (1 - slowmo.k);   // in bullet time the brake bites harder (it works in slowed time too)
   const braking = fw < 0; brakeK += ((braking ? 1 : 0) - brakeK) * Math.min(1, dt * (L.brakeEase ?? 3));   // the brake squeezes on and lets go over a moment, never a jolt
   // W drives along the nose; boost on its own keeps the course you're already on
   if (keys.x) { if (!holdDir) holdDir = sp0 > 1 ? p.vel.clone().divideScalar(sp0) : fwd.clone() } else holdDir = null;   // X: the course you're on stays your course, whatever W, S or the mouse do
@@ -146,19 +153,19 @@ function updatePlayer(dt) {
        under 1.3 × escape velocity √(2GM/r), so you can be captured and can always climb out. ob blends it in at the zone's edge. */
     let ob = 0, GM = 0, oR = 0;
     if (L.orbit && !L.rings && nearI >= 0 && lockI !== nearI) { const Rs = starR(nearI), r0 = Rs * L.orbitR, Ro = Rs * Math.max(L.orbitZone, L.orbitR * 1.5); GM = 4 * Math.PI * Math.PI * r0 * r0 * r0 / (L.orbitT * L.orbitT); oR = r0; ob = 1 - sstep(nearCD, Ro * .6, Ro); if (thrusting) { starPos(nearI, tmp2).sub(p.pos).normalize(); ob *= 1 - sstep(-wish.dot(tmp2), .2, .7) } }   // pushing away from the star breaks orbit: full engine, out you go
-    const T1 = Math.max(1, L.cruiseTime), T2 = Math.max(T1 + 1, L.lightTime), VT = Math.min(LIGHT * .97, L.topSpeed ?? Infinity), V1 = Math.min(L.cruiseSpeed, VT / 1.01), VL = Math.max(V1 * 1.01, VT);   // the top: light speed, or lower if you set it
+    const T1 = Math.max(1, L.cruiseTime), T2 = Math.max(T1 + 1, L.lightTime), VT = Math.min(LIGHT * .97, L.topSpeed ?? Infinity) * SM.top, V1 = Math.min(L.cruiseSpeed, VT / 1.01), VL = Math.max(V1 * 1.01, VT);   // the top: light speed, or lower if you set it
     const vAt = c => { const t = c * T2; return t <= T1 ? 150 * Math.pow(V1 / 150, t / T1) : V1 * Math.pow(VL / V1, Math.min(1, (t - T1) / (T2 - T1))) };   // cruise = seconds of straight thrust / T2
     const cAt = v => { v = Math.max(150, v); const t = v <= V1 ? T1 * Math.log(v / 150) / Math.log(V1 / 150) : T1 + (T2 - T1) * Math.log(v / V1) / Math.log(VL / V1); return Math.min(1, t / T2) };
     const hold = vAt(p.cruise) > capIn;   // held back near a star: cruise doesn't keep building, and drifts down to what's allowed
-    if (pedal) { if (!hold) p.cruise = Math.min(1, p.cruise + dt / T2 * (boosting ? L.boostCruise * (gasOn ? 1 : .8) : 1) * (1 - prox)); else p.cruise -= (p.cruise - cAt(capIn * 1.5)) * Math.min(1, dt * .8) }
+    if (pedal) { if (!hold) p.cruise = Math.min(1, p.cruise + dt / T2 * SM.acc * (boosting ? L.boostCruise * (gasOn ? 1 : .8) : 1) * (1 - prox)); else p.cruise -= (p.cruise - cAt(capIn * 1.5)) * Math.min(1, dt * .8) }
     else p.cruise = Math.max(0, p.cruise - dt / Math.max(.2, L.glide));
     if (turnAmt > 0) { const capC = T1 / T2 * Math.min(1, L.steerCap / V1); if (p.cruise > capC) p.cruise -= (p.cruise - capC) * Math.min(1, turnAmt * L.steerSlow * 2.5 * dt) }   // steering bleeds the build-up back to cruise
     const vC = vAt(p.cruise) * (1 + boostK * L.boostTop), spNow = p.vel.length();
     thrT = pedal ? thrT + dt : 0; const accIn = Math.pow(Math.min(1, thrT / Math.max(.02, L.accelIn ?? .35)), L.accelCurve ?? 3);   // a quick, heavy wind-up: the push builds from nothing to full over a moment
-    const accel = accIn * (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
+    const accel = SM.acc * accIn * (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
     p.vel.addScaledVector(wish, (accel + (GM / (oR * oR || 1) * L.orbitThrust - accel) * ob) * (1 - .5 * obT) * dt);   // and accelerate half as hard
     if (gasOn) { const vf = p.vel.dot(course); tmp.copy(p.vel).addScaledVector(course, -vf); p.vel.addScaledVector(tmp, -(1 - Math.exp(-2.8 * dt))) }
-    p.vel.multiplyScalar(Math.exp(-((thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - brakeK) + (L.brakeStr ?? 5.5) * brakeK) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
+    p.vel.multiplyScalar(Math.exp(-((thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - brakeK) + (L.brakeStr ?? 5.5) * brakeK * bt) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
     if (keys.x && !thrusting && !braking) { if (holdSp < 0) holdSp = p.vel.length(); p.vel.copy(course).multiplyScalar(holdSp); p.cruise = Math.max(p.cruise, cAt(holdSp)) } else { holdSp = -1; if (holdDir) p.vel.copy(holdDir).multiplyScalar(Math.max(0, p.vel.dot(holdDir))) }   // X: hold the speed you have, on the course you had; W and S only change the speed
     const vmax = Math.min(thrusting ? vC : Infinity, turnAmt > 0 ? Math.min(vC, L.steerCap) + Math.max(0, vC - L.steerCap) * (1 - turnAmt) : Infinity);
     { const sp = p.vel.length(); if (sp > vmax) p.vel.setLength(Math.max(vmax, sp * Math.exp(-(thrusting ? 4 : 1 / Math.max(.1, L.glide)) * dt))) }   // eases down, never snaps
@@ -232,7 +239,7 @@ function updateCamera(dt) {
       orbit.target.addScaledVector(r, mx * orbit.dist * .6 * dt).addScaledVector(fz, mz * orbit.dist * .6 * dt); if (zq) orbit.dist = Math.max(MAP_MIN, Math.min(4e7, orbit.dist * Math.exp(zq * 1.2 * dt)))
     }
     if (orbit.ang !== LOOK.mapAngle) { if (orbit.ang != null && !tween) { mapFlip(); const want = orbit.mir ? Math.PI - mapPhi() : mapPhi(); orbit.phi += (want - orbit.phi) * Math.min(1, dt * 6); if (Math.abs(want - orbit.phi) < 1e-3) orbit.ang = LOOK.mapAngle } else if (orbit.ang == null) orbit.ang = LOOK.mapAngle }   // the angle slider tilts the map live
-    if (tween && tween.mode) { const o = orbitPose(); tween.tp = o.p; tween.tq = o.q }   // aim at where the map camera really ends up, even as the lens and look settle on the way
+    if (tween && tween.mode) { const v = mapView(); orbit.theta = (LOOK.mapTurn ?? 0) * Math.PI / 180 + (v.flip ? Math.PI : 0); orbit.flip = v.flip; orbit.phi = orbit.mir ? Math.PI - v.phi : v.phi; orbit.ang = LOOK.mapAngle; const o = orbitPose(); tween.tp = o.p; tween.tq = o.q }   // aim at where the map camera really ends up, even as the lens and look (its angle and turn too) blend over to the map's on the way
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur); const e = ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tween.tp, tween.c, e); else camera.position.lerpVectors(tween.fp, tween.tp, e); camera.quaternion.copy(tween.fq).slerp(tween.tq, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }
     else { const o = orbitPose(); camera.position.copy(o.p); camera.quaternion.copy(o.q) }
     { const mf = mapFovNow(), f = tween && tween.mode ? L.fov + (mf - L.fov) * ease(Math.min(1, tween.t)) : mf; if (Math.abs(camera.fov - f) > .01) { camera.fov = f; camera.updateProjectionMatrix() } }   // the lens narrows over the move out

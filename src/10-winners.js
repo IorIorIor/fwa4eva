@@ -10,7 +10,7 @@ const stars = (() => {
   geo.setAttribute('aGot', new THREE.InstancedBufferAttribute(GOT, 1).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(COL, 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aAlpha', new THREE.InstancedBufferAttribute(ALPHA, 1).setUsage(THREE.DynamicDrawUsage));
-  const u = { coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), shine: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
+  const u = { coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), faint: uniform(0), shine: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
   const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vA = varyingProperty('float', 'vA'), vT = varyingProperty('float', 'vT'), vPs = varyingProperty('float', 'vPs'), vDot = varyingProperty('float', 'vDot'), vRing = varyingProperty('float', 'vRing'), vRon = varyingProperty('float', 'vRon'), vPx = varyingProperty('float', 'vPx'), vGot = varyingProperty('float', 'vGot');
   m.vertexNode = Fn(() => {
     const ab = aberrate(ia('aP', 'vec3')), al = ia('aAlpha', 'float');
@@ -20,7 +20,7 @@ const stars = (() => {
     vDot.assign(smoothstep(dot1.mul(2.6), dot1, ps)); vPs.assign(clamp(ps, mix(dot1, U.dpr.mul(4), on), 220)); vC.assign(ia('aColor', 'vec3')); vT.assign(ia('aType', 'float'));
     // on the map every winner stays a white pixel; in flight the far ones thin out and fade away
     const flyK = clamp(ps.div(dot1), .3, 1).mul(smoothstep(3.5e5, 1.2e6, z).oneMinus());
-    vA.assign(al.mul(mix(.95, 1, smoothstep(dot1, dot1.mul(2), ps))).mul(mix(1, flyK, u.far)).mul(mix(1, smoothstep(dot1.mul(.45), dot1.mul(1.4), ps), u.thin.mul(on.oneMinus()))));   // map, zoomed out: winners too small to see fade away instead of each staying a pixel
+    vA.assign(al.mul(mix(.95, 1, smoothstep(dot1, dot1.mul(2), ps))).mul(mix(1, flyK, u.far)).mul(mix(1, smoothstep(dot1.mul(.45), dot1.mul(1.4), ps), u.thin.mul(on.oneMinus()))).max(u.faint));   // (faint: on the map every winner stays at least a faint dot)   // map, zoomed out: winners too small to see fade away instead of each staying a pixel
     // the game: a ring of the star's real size (× ring size). Once it's a few px across the sprite grows to hold it and the ring takes over
     const rpx = ia('aR', 'float').mul(u.rsz).mul(pxScale).div(max(z, .01)), ron = smoothstep(2.5, 7, rpx).mul(u.ring).mul(smoothstep(40, 18, rpx)), side = max(vPs, rpx.mul(2.6)).mul(ron).add(vPs.mul(ron.oneMinus())).min(9000);   // up close the 3D halo takes over
     vRon.assign(ron); vRing.assign(rpx.div(side.mul(.5))); vPx.assign(side); vGot.assign(ia('aGot', 'float'));
@@ -35,16 +35,16 @@ const stars = (() => {
     const spk = u.spikes.mul(smoothstep(6, 24, vPs)).mul(smoothstep(36, 80, vPs).oneMinus()).mul(exp(abs(p.y).mul(-90)).add(exp(abs(p.x).mul(-90)))).mul(pow(max(0, r.oneMinus()), 2.2));
     const tw = sin(U.now.mul(fract(vC.r.mul(91.7)).mul(5).add(3)).add(vC.g.mul(71))).mul(u.twink).mul(.35).add(1);
     const col = mix(vC, vec3(1), u.white).mul(core).mul(1.5).add(vC.mul(halo).mul(.9)).add(mix(vC, vec3(1), .5).mul(spk)).mul(tw).toVar(), a = core.add(halo.mul(.7)).add(spk).toVar();
-    If(u.flare.greaterThan(.5).and(vT.greaterThan(.5)).and(vT.lessThan(1.5)), () => {      // Site of the Month: cross flare
+    If(u.flare.greaterThan(.5).and(u.ring.lessThan(.5)).and(vT.greaterThan(.5)).and(vT.lessThan(1.5)), () => {      // Site of the Month: cross flare
       const fx = exp(abs(p.y).mul(-110)).mul(smoothstep(0, .5, abs(p.x)).oneMinus()), fy = exp(abs(p.x).mul(-110)).mul(smoothstep(0, .5, abs(p.y)).oneMinus()), f = fx.add(fy).mul(.85);
       col.addAssign(mix(vC, vec3(1), .55).mul(f)); a.addAssign(f);
-    }).ElseIf(u.flare.greaterThan(.5).and(vT.greaterThan(1.5)), () => {                     // FWA of the Year: a small sun, slow-turning rays, corona
+    }).ElseIf(u.flare.greaterThan(.5).and(u.ring.lessThan(.5)).and(vT.greaterThan(1.5)), () => {                     // FWA of the Year: a small sun, slow-turning rays, corona
       const ang = atan(p.y, p.x), r1 = pow(abs(cos(ang.mul(4).add(U.now.mul(.25)))), 22), r2 = pow(abs(cos(ang.mul(7).sub(U.now.mul(.15)))), 40);
       const fall = smoothstep(.03, .5, d).oneMinus(), rays = r1.mul(.75).add(r2.mul(.45)).mul(fall).mul(fall), cx = d.sub(.14).mul(24), cor = exp(cx.mul(cx).negate()).mul(.55);
       col.addAssign(mix(vC, vec3(1, .94, .82), .6).mul(rays.add(cor)).add(vec3(1, .9, .7).mul(core).mul(.8))); a.addAssign(rays.add(cor));
     });
     // the month's and the year's best shine: a slow-turning twinkle that flares now and then (stronger for the year's), with a shimmer of colour round the core
-    If(u.shine.greaterThan(0).and(vT.greaterThan(.5)), () => {
+    If(u.shine.greaterThan(0).and(u.ring.lessThan(.5)).and(vT.greaterThan(.5)), () => {
       const yr = step(1.5, vT), ph = fract(vC.r.mul(17.3).add(vC.b.mul(5.1))).mul(6.28), fl = pow(sin(U.now.mul(mix(.9, 1.4, yr)).add(ph)).mul(.5).add(.5), 6).mul(mix(.8, 1.6, yr)).add(mix(.25, .5, yr));
       const an = atan(p.y, p.x).add(U.now.mul(mix(.12, -.2, yr))), nR = mix(4, 8, yr), rays = pow(abs(cos(an.mul(nR.div(2)))), mix(60, 90, yr)).mul(pow(max(0, d.mul(2).oneMinus()), 1.5));
       const hue = fract(an.div(6.2832).add(U.now.mul(.05))), rgb = clamp(abs(fract(vec3(hue).add(vec3(0, .667, .333))).mul(6).sub(3)).sub(1), 0, 1), dq = d.sub(.11).mul(30), irid = exp(dq.mul(dq).negate()).mul(mix(.25, .6, yr));
@@ -61,6 +61,12 @@ const stars = (() => {
       const gl = exp(sq(rf.sub(vRing).div(vRing.mul(.45).add(px1))).negate()).mul(.35), g = vGot;
       const rc = mix(mix(vC, vec3(1), .25), mix(vC, vec3(1, .88, .62), .7).mul(u.gotGlow), g), ra = band.add(gl.mul(mix(1, u.gotGlow, g)));
       col.assign(mix(col, rc.mul(band.mul(1.3).add(gl)), vRon)); a.assign(mix(a, ra, vRon));
+    });
+    // the rings game: no flares or rays, the month's and the year's best just burn brighter, their colour slowly cycling
+    If(u.ring.greaterThan(.5).and(u.shine.greaterThan(0)).and(vT.greaterThan(.5)), () => {
+      const yr = step(1.5, vT), hue = fract(U.now.mul(mix(.07, .12, yr)).add(vC.r.mul(3.1)).add(vC.b)), rgb = clamp(abs(fract(vec3(hue).add(vec3(0, .667, .333))).mul(6).sub(3)).sub(1), 0, 1);
+      const br = float(1).add(u.shine.mul(mix(.45, .9, yr)).mul(sin(U.now.mul(1.7).add(vC.g.mul(9))).mul(.3).add(.7))), mx = max(col.r, max(col.g, col.b));
+      col.assign(mix(col, mix(vec3(1), rgb, .85).mul(mx), u.shine.mul(mix(.4, .65, yr)).min(1)).mul(br));
     });
     const k = a.mul(vA); return vec4(col.mul(k), k);
   })();

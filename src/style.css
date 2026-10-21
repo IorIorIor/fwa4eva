@@ -64,10 +64,11 @@ button{cursor:pointer}
 .lk output{font-family:var(--mono);font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
 .lk input{grid-column:1/-1}
 .tg{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#d9dadf;cursor:pointer}
-.tg input{appearance:none;width:30px;height:17px;border-radius:999px;background:var(--faint);position:relative;cursor:pointer;transition:background .15s;margin:0}
-.tg input::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--ink);transition:transform .15s}
-.tg input:checked{background:#f5f5f7}
-.tg input:checked::after{transform:translateX(13px);background:#2c2d31}
+.tg input{appearance:none;flex:none;width:34px;height:18px;border-radius:999px;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.28);position:relative;cursor:pointer;transition:background .15s,box-shadow .15s;margin:0 0 0 10px}
+.tg input::after{content:"";position:absolute;top:4px;left:4px;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.38);transition:transform .15s,background .15s,width .15s,height .15s,top .15s,left .15s}
+.tg input:checked{background:#5ee0b0;box-shadow:inset 0 0 0 1.5px #5ee0b0}
+.tg input:checked::after{top:2px;left:2px;width:14px;height:14px;transform:translateX(16px);background:#0b0c0e}   /* off: a hollow outline, small grey knob left; on: filled green, knob right */
+.tg:has(input:not(:checked)) span{color:var(--dim)}
 .file{display:inline-flex;justify-content:center;cursor:pointer;text-align:center}
 .file:focus-within{outline:2px solid var(--flare);outline-offset:2px}
 #dStat{font-size:12px;color:var(--dim);line-height:1.45;min-height:1em}
@@ -202,6 +203,15 @@ body.idle #nav{opacity:.25}
 #lockMark.edge i{opacity:.7}
 #lockMark.edge::after{content:"";position:absolute;left:50%;top:50%;width:0;height:0;border-left:7px solid #fff;border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;transform:translate(-50%,-50%) rotate(var(--a)) translateX(18px)}
 @keyframes lkp{50%{opacity:.6}}
+#dash{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:4;pointer-events:none;width:132px;padding:6px 8px 5px;background:rgba(14,14,20,.42);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums;white-space:nowrap}
+#dash .r{display:flex;justify-content:space-between}
+#dash .r b{font-weight:400}#dash .r b+b{color:#fff}
+#dash .pw{display:block;height:2px;margin:5px 0;background:rgba(255,255,255,.14)}
+#dash .pw i{display:block;height:100%;background:#fff;transform-origin:left;transform:scaleX(1)}
+#dash .md{display:flex;justify-content:space-between;font-size:7.5px}
+#dash .md span{color:rgba(255,255,255,.3);transition:color .2s}#dash .md span.on{color:#fff}
+#dash.ping{box-shadow:0 0 0 1px rgba(255,255,255,.5)}
+body.map #dash,body.intro #dash,body.idle #dash{opacity:0}
 #youTime{position:fixed;z-index:4;pointer-events:none;transform:translate(8px,-50%);font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:rgba(255,255,255,.75);text-shadow:0 0 6px #000;white-space:nowrap}
 body.idle #youTime{opacity:.25 !important}
 /* tooltip: a stepped pair of flat plates, the date in condensed caps over the title */

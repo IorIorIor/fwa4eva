@@ -16,7 +16,7 @@ const dayLab = (() => {
 let boostK0 = 0; const shipCam = new THREE.PerspectiveCamera();   // the ship layer's camera: the main one, with a near plane small enough for the tiny ship   // the core glow's strength and size, for its volumetric version
 const _v2 = new THREE.Vector2();
 function resize() { renderer.setSize(innerWidth, innerHeight, false); shipRenderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.getDrawingBufferSize(_v2); U.res.value.copy(_v2); U.dpr.value = _v2.y / Math.max(1, innerHeight) }
-function setDpr(d, force) { d = Math.max(.5, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); shipRenderer.setPixelRatio(Math.min(3, Math.max(d, devicePixelRatio || 1))); resize() } }   // the ship's own layer always draws at full resolution
+function setDpr(d, force) { d = Math.max(.25, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); shipRenderer.setPixelRatio(Math.min(LOOK.shipDpr ?? 3, Math.max(d, devicePixelRatio || 1))); resize() } }   // the ship's own layer draws at full resolution (up to its own cap)
 addEventListener('resize', resize);
 // adaptive resolution: compare frame time with the display's own interval (60, 120, 144 Hz…); step the pixel ratio
 // down when frames run long, back up when there's headroom. Stalls (hidden tab, a shader compiling) don't count.
@@ -28,7 +28,7 @@ function adapt(dtMs) {
   perf.vsync = dtMs < perf.vsync ? perf.vsync + (dtMs - perf.vsync) * .2 : perf.vsync + (dtMs - perf.vsync) * .002;   // a slowly rising running minimum
   if (!LOOK.adaptive || !booted || document.hidden) return;
   if (perf.cool > 0) { perf.cool--; return }
-  const max = Math.min(LOOK.maxDpr, devicePixelRatio || 1), min = Math.min(max, .75);
+  const max = Math.min(LOOK.maxDpr, devicePixelRatio || 1), min = Math.min(max, LOOK.minDpr ?? .75);
   if (perf.avg > perf.vsync * 1.3) { perf.fast = 0; if (++perf.slow > 45 && DPR > min) { setDpr(Math.max(min, DPR - .25)); perf.slow = 0; perf.cool = 90; perf.avg = perf.vsync } }
   else if (perf.avg < perf.vsync * 1.08) { perf.slow = 0; if (++perf.fast > 300 && DPR < max) { setDpr(Math.min(max, DPR + .25)); perf.fast = 0; perf.cool = 120 } }
   else perf.slow = perf.fast = 0;
@@ -40,7 +40,7 @@ function updateAndro() {
   const L = LOOK, dGC = camera.position.distanceTo(GC), f = farDimJS(dGC);
   const inK = s => sstep(dGC, s * .12, s * .55);   // big glows fade once you're inside them, instead of whiting out the view
   const cg = 1 + ((L.coreGlows ?? 1) - 1) * coreIn;   // every big glow (core, bulge, haze, gas) scaled by "Glows in the core" while you're in it
-  coreGlow.material.opacity = L.core * .22 * f * inK(coreGlow.scale.x) * cg; haze.u.op.value = L.haze * L.hazeBright * cg;
+  coreGlow.material.opacity = L.core * .22 * f * inK(coreGlow.scale.x) * cg; haze.u.op.value = L.haze * L.hazeBright * cg * (1 + ((L.mapHaze ?? 1) - 1) * mapK);   // on the map the arm haze (the glowing band along the timeline) has its own strength
   wallSky.mesh.position.copy(camera.position); wallSky.u.op.value = L.wallpaper ? L.wallBlue : 0; wallSky.mesh.visible = !!L.wallpaper;
   sparkle.mesh.position.copy(camera.position); sparkle.u.op.value = L.wallpaper ? L.sparkle : 0; sparkle.mesh.visible = !!L.wallpaper && L.sparkle > 0;
   andro.visible = ANDRO; dustFil.visible = ANDRO && L.dustLanes > 0; dustFil2.visible = ANDRO && L.dust2 > 0; if (!ANDRO) return;
@@ -339,7 +339,7 @@ function tick(now) {
   PU.vV.value.copy(U.vdir.value).transformDirection(camera.matrixWorldInverse); PU.ty.value = Math.tan(camera.fov * Math.PI / 360); PU.tx.value = PU.ty.value * camera.aspect;
   { const v = PU.vV.value, z = Math.abs(v.z) > 1e-3 ? v.z : -1e-3, sg = z < 0 ? 1 : -1, x = sg * v.x / Math.abs(z) / PU.tx.value, y = sg * v.y / Math.abs(z) / PU.ty.value; PU.apex.value.set(Math.max(-2, Math.min(3, x * .5 + .5)), Math.max(-2, Math.min(3, (1 - y) * .5))) }   // the apex of your motion on screen (or the point you're leaving, if it's behind you)
   PU.nV.value.set(0, 1, 0).applyQuaternion(GQ).transformDirection(camera.matrixWorldInverse); PU.edge.value = L.edgeDim; { const a = Math.sin(L.edgeAngle * Math.PI / 180); PU.edgeA.value = a; PU.edgeB.value = Math.min(1, Math.max(a * 1.05 + .002, a * L.edgeSoft)) }
-  stars.u.far.value = fly ? 1 : 0; stars.u.thin.value = fly ? 0 : L.mapDots ?? 1;
+  stars.u.far.value = fly ? 1 : 0; stars.u.thin.value = fly ? 0 : L.mapDots ?? 1; stars.u.faint.value = fly ? 0 : (L.mapFaint ?? 0) * mapK;
   { const d = (fly ? player.pos : camera.position).distanceTo(GC); tdil = L.bhTime ? Math.max(.12, 1 - .88 * Math.exp(-Math.max(0, d - BH.sh) / (BH.sh * 2.5))) : 1; worldT += dt * tdil }
   U.time.value = worldT; U.now.value = now * .001;
   updateLandmarks(dt); updateAndro(); updateTimeRings(dt);
@@ -393,7 +393,7 @@ function tick(now) {
   updateLockMark();
   targetRing.visible = ringI >= 0; if (ringI >= 0) { starPos(ringI, targetRing.position); targetRing.quaternion.copy(camera.quaternion); targetRing.scale.setScalar(Math.max(CR[ringI] * 1.6, camera.position.distanceTo(targetRing.position) * .03) * (1 + .05 * Math.sin(now * .005))) }
   updateHover(dt); updateLabels();
-  if (fly) gauge.fly(); else gauge.map();
+  if (fly) gauge.fly(); else gauge.map(); consoleUI(rdt);
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
   updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt); musicMap(S.mode === 'map'); mapZone.update(dt); dayLab(); swapLook();
   if (tween && tween.mode) { const e = ease(Math.min(1, tween.t)); mapK = S.mode === 'map' ? sstep(e, 0, .55) : 1 - sstep(e, .45, 1) } else mapK += ((S.mode === 'map' ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); conK += ((conOn ? 1 : 0) - conK) * Math.min(1, dt * 3); { const dim = Math.max((L.mapFade ?? .85) * mapK, (L.conDim ?? .8) * conK); PU.bgK.value = 1 - dim; bgStars.u.op.value = L.bgStars * (1 - dim) }   // between map and flight the map's dimming follows the camera's move, so the galaxy never flares up while you're still far out; on the map it clears down to the winners
@@ -431,5 +431,5 @@ function tick(now) {
   updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { if (!(intro.active && veil.material.opacity > .999) || intro.wipe) { intro.wipe = false; pipeline.render() } shipCam.copy(camera); shipCam.near = camera.near * SHIP_SC * (intro.active ? .01 : .1); shipCam.far = 2e5; shipCam.updateProjectionMatrix(); shipRenderer.render(shipScene, shipCam) } perf.ms = performance.now() - t0;   // under the opening's black veil the galaxy isn't drawn at all
 }
 let loopErrs = 0;
-function loop(now) { requestAnimationFrame(loop); if (!booted && !introActive) { last = now; return }   // nothing to draw behind the splash: leave the GPU to the loading
+function loop(now) { requestAnimationFrame(loop); if (!booted && !introActive) { last = now; return } { const cap = LOOK.fpsCap ?? 0; if (cap > 0 && now - last < 1000 / cap - 2) return }   /* the frame-rate cap: skip display frames until it's time */   // nothing to draw behind the splash: leave the GPU to the loading
   try { tick(now) } catch (e) { if (loopErrs++ < 5) console.error(e) } }   // one bad frame never stops the sky

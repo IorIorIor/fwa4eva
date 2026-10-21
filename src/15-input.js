@@ -114,6 +114,7 @@ addEventListener('keydown', e => {
   if (k === 'escape' && mapZone.on) mapZone.clear();
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }
   if (k === '/') { e.preventDefault(); keys[k] = false; rmenu.sub('search') }   // / searches
+  if ((k === 'arrowup' || k === 'arrowdown') && S.mode === 'fly' && !rmenu.panel) { keys[k] = false; e.preventDefault(); if (!e.repeat) setSpeedMode(speedMode + (k === 'arrowup' ? 1 : -1)) }   // ↑ ↓: speed mode
   if ((k === 'arrowleft' || k === 'arrowright') && S.mode === 'fly' && !rmenu.panel) { keys[k] = false; e.preventDefault(); if (!e.repeat) stepByDist(k === 'arrowright' ? 1 : -1) }   // ← a nearer winner, → a farther one (of those in hover reach), locked on or not
   if (k === 'q' && S.mode === 'fly' && !e.repeat) { if (locked()) { freeMouse = true; document.exitPointerLock() } else { freeMouse = false; if (!lockFailed && !coarse) requestLock() } }   // Q: a plain mouse pointer to click things with (Q again, or a click on the sky, to fly)
 });

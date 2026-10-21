@@ -165,7 +165,7 @@ $('lbtn').onclick = () => togglePanel('lookPanel');
 /* screenshots: placeholders drawn per winner until the viewer drops in the real ones */
 const texCache = new Map();
 try { document.fonts && document.fonts.load('16px "Paper Mono"').then(() => { texCache.forEach(t => t.dispose()); texCache.clear(); SHOT.userData.i = -1 }) } catch (e) { }
-function avgColor(c) { const col = new C3(0xffb547); try { const s = document.createElement('canvas'); s.width = 8; s.height = 5; const g = s.getContext('2d'); g.drawImage(c, 0, 0, 8, 5); const p = g.getImageData(0, 0, 8, 5).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < p.length; i += 4) { r += p[i]; gg += p[i + 1]; b += p[i + 2] } const n = p.length / 4; col.setRGB(r / n / 255, gg / n / 255, b / n / 255); const h = {}; col.getHSL(h); col.setHSL(h.h, Math.min(1, h.s * 1.4), Math.max(.5, h.l)) } catch (e) { } return col }
+function avgColor(c) { const col = new C3(0xffb547); try { const s = document.createElement('canvas'); s.width = 16; s.height = 10; const g = s.getContext('2d'); g.drawImage(c, 0, 0, 16, 10); const p = g.getImageData(0, 0, 16, 10).data; let r = 0, gg = 0, b = 0, n = 0; for (let i = 0; i < p.length; i += 4) { const mx = Math.max(p[i], p[i + 1], p[i + 2]), mn = Math.min(p[i], p[i + 1], p[i + 2]), w = .03 + Math.pow((mx - mn) / 255, 2) * (mx / 255); r += p[i] * w; gg += p[i + 1] * w; b += p[i + 2] * w; n += w } col.setRGB(r / n / 255, gg / n / 255, b / n / 255);   /* weighted toward its vivid pixels, so it's the picture's colour, not its grey */ const h = {}; col.getHSL(h); col.setHSL(h.h, Math.min(1, h.s * 1.4), Math.max(.5, h.l)) } catch (e) { } return col }
 function shot(d) {
   if (texCache.has(d.i)) return texCache.get(d.i);
   const tex = placeholderShot(d);
@@ -291,6 +291,20 @@ const gauge = (() => {
     map() { setMode('map'); T.sites(matchCount.toLocaleString('en')); T.cons(String(chain.length)) },
   };
 })();
+
+/* the little console: where in the timeline you are, your speed, boost power and the speed mode */
+const consoleUI = (() => {
+  const el = $('dash'), tT = liveText(el.querySelector('[data-c="t"]')), tV = liveText(el.querySelector('[data-c="v"]')), pw = el.querySelector('.pw i'), md = [...el.querySelectorAll('.md span')]; let pwS = '', mdS = -1, on = null, pg = false;
+  return dt => {
+    const show = !!(LOOK.console ?? 1) && S.mode === 'fly'; if (show !== on) { on = show; el.hidden = !show } if (!show) return;
+    const pl = toLocal(player.pos, _cl), pr = Math.hypot(pl.x, pl.z), t = new Date(uToT((pr - GAL_R0) / GAL_LEN)); tT('Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[t.getUTCMonth()] + ' ' + t.getUTCFullYear());
+    tV(beta > .01 ? beta.toFixed(2) + ' c' : fmtSpd(player.vel.length()));
+    const w = boostE.toFixed(3); if (w !== pwS) { pwS = w; pw.style.transform = `scaleX(${w})` }
+    if (mdS !== speedMode) { mdS = speedMode; md.forEach((s, k) => s.classList.toggle('on', k === speedMode)) }
+    consolePing = Math.max(0, consolePing - dt * 2.5); if ((consolePing > 0) !== pg) { pg = consolePing > 0; el.classList.toggle('ping', pg) }
+  };
+})();
+const _cl = new V3();
 
 /* your own archive: a JSON/CSV export and screenshots, kept in this browser */
 $('srcNote').textContent = REMOTE ? `The FWA archive: ${REMOTE.length.toLocaleString('en')} real winners since ${REMOTE[0].date}; the ${(N - REMOTE.length).toLocaleString('en')} days before that borrow from them.` : USING_IMPORT ? `Your imported archive: ${N.toLocaleString('en')} winners, ${SHOT_KEYS.size.toLocaleString('en')} screenshots.` : 'Sample data shaped like FWA\'s archive; titles and screenshots are placeholders.';

@@ -72,7 +72,7 @@ const intro = {
     if (q >= 1) { logo3d.visible = false; curEl.style.display = 'none'; this.ph = 2 }   // through: the pointer becomes the ship and the camera starts in
   },
   pose(t) {   // the camera at a point of the move: from straight overhead round to just above and behind the ship, looking at it until, at the very end, it looks ahead past it
-    const ez = this.ez(t), w = quint(sstep(t, .3, 1));
+    const ez = this.ez(t), w = quint(sstep(ez, .86, 1));   // it keeps the pointer dead centre until it's all but landed, then looks ahead past it
     const b = _ib.copy(INTRO_END).normalize(), ang = Math.acos(b.y), d = Math.exp(Math.log(this.D0) * (1 - ez) + Math.log(INTRO_END.length()) * ez);
     camera.position.copy(_ia.set(0, 1, 0).applyAxisAngle(_ix.set(1, 0, 0), ang * ez).multiplyScalar(d)).applyQuaternion(rig.q).add(player.pos);
     const toShip = _ib.copy(player.pos).sub(camera.position).normalize(), fwd = _ix.set(0, 0, -1).applyQuaternion(rig.q), dir = toShip.lerp(fwd, w).normalize();

@@ -28,7 +28,7 @@ function applyLook() {
   $('cmp').style.display = L.compass ? '' : 'none'; $('hdg').style.display = L.heading ? '' : 'none'; $('gauge').style.visibility = L.gauge ? '' : 'hidden';
   if (!L.cards) $('arrive').classList.remove('show');
   rig.dist = L.camDist * SHIP_K * SHIP_SC;
-  setPassScales(); if (L.maxDpr !== applyLook.dpr) { applyLook.dpr = L.maxDpr; setDpr(Math.min(L.maxDpr, devicePixelRatio || 1), true) }
+  setPassScales(); if (L.maxDpr + ',' + L.shipDpr !== applyLook.dpr) { applyLook.dpr = L.maxDpr + ',' + L.shipDpr; setDpr(Math.min(L.maxDpr, devicePixelRatio || 1), true) }
   if (AC) { const t = AC.currentTime; if (musicGain) { musicGain.gain.setTargetAtTime(.6 * L.music, t, .1); musicMapOn = null } if (ambBus) ambBus.gain.setTargetAtTime(.33 * L.amb, t, .1); if (master) master.gain.setTargetAtTime(CHIME_K * L.ting, t, .1) }
 }
 
@@ -56,7 +56,7 @@ function saveLook() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_MAP) { st
     const snap = await lookDoc.get(), d = snap.exists && snap.data();
     if (d && d.look && typeof d.look === 'object') {
       Object.keys(d.look).forEach(k => { if (k in LOOK_DEFAULTS && typeof d.look[k] === 'number') LOOK[k] = d.look[k] }); migrateLook(LOOK);
-      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3 || fix4) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
+      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3 || fix4 || fix5 || fix6) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
     } else saveLook();
   } catch (e) { }
 })();
