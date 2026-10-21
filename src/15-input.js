@@ -29,7 +29,7 @@ canvas.addEventListener('pointerdown', e => {
   // hold (100 ms, no star in reach, not dragging): the radial menu opens round the press
   clearTimeout(holdT); if (booted && !rmenu.open && !rmenu.panel && e.button === 0 && ptrs.size === 1) holdT = setTimeout(() => {
     if (!down || dragged) return; const cx = locked() ? innerWidth / 2 : down.x, cy = locked() ? innerHeight / 2 : down.y;
-    const star = S.mode === 'fly' ? (down.touch ? pick(cx, cy) : hovPick) >= 0 || magI >= 0 : (hovPick >= 0 || !!mapHover(cx, cy).ring);
+    const star = S.mode === 'fly' ? false : (hovPick >= 0 || !!mapHover(cx, cy).ring);   // in flight a long press always opens the menu, whatever you're pointing at or locked on
     if (!star) { rmenu.show(cx, cy); rmenu.held = true }
   }, LOOK.menuHold ?? 100);
 });
@@ -137,7 +137,7 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in
 // from the one you're locked on, ← steps to the next nearer and → to the next farther
 let passedI = -1, aimSlow = 0, relockNext = false; const _an = new V3(), _anq = new Q4();   // the ring you just went through: the arrows skip it until you lock onto another
 function stepByDist(dir) {
-  coach.arrow = true;
+  coach.arrow = true; if (dir < 0) coach.qd = true; else coach.ed = true;
   const cand = [], pp = player.pos; for (let i = 0; i < N; i++) { if (TA[i] < 1 || i === passedI) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z; cand.push([dx * dx + dy * dy + dz * dz, i]) }
   if (!cand.length) return; cand.sort((a, b) => a[0] - b[0]);
   const k = lockI >= 0 ? cand.findIndex(c => c[1] === lockI) : -1, j = k < 0 ? cand[0] : cand[Math.max(0, Math.min(cand.length - 1, k + dir))];
@@ -173,7 +173,7 @@ function aimAssist(dt) {
   let s = 1; magI = -1; if (!booted || introActive) return;
   if (aimSlow > 0 && lockI >= 0 && S.mode === 'fly') { aimSlow -= dt; const k = 1 - Math.exp(-(LOOK.ringNextRate ?? 1.8) * dt), dir = starPos(lockI, tmp).sub(player.pos).normalize(); aimAt(_an.copy(starPos(lockI, _an)).sub(camera.position), k); player.base.slerp(lookAtQ(dir, _an.set(0, 1, 0).applyQuaternion(player.base), _anq), k) }   // through a ring you were locked on: the view and the ship come round slowly to the next one
   if (aimFast > 0 && lockI >= 0 && S.mode === 'fly') { aimFast -= dt; aimAt(starPos(lockI, tmp).sub(camera.position), 1 - Math.exp(-12 * dt)) }   // a quick swing onto a star you stepped to
-  if (S.mode === 'fly' && LOOK.magnet > 0 && (locked() || coarse) && openA < .3 && !auto) { const Rr = LOOK.magnetR, h = pickNear(innerWidth / 2, innerHeight / 2, Rr); if (h) { magI = h.i; aimAt(starPos(h.i, tmp).sub(camera.position), 1 - Math.exp(-LOOK.magnet * 7 * dt)); s = .35 + .65 * Math.min(1, h.d / h.R) } }
+  if (S.mode === 'fly' && LOOK.magnet > 0 && (locked() || coarse) && openA < .3 && !auto && !HALO.pInfo.on) {   /* (no pull once a ring's picture is showing) */ const Rr = LOOK.magnetR, h = pickNear(innerWidth / 2, innerHeight / 2, Rr); if (h) { magI = h.i; aimAt(starPos(h.i, tmp).sub(camera.position), 1 - Math.exp(-LOOK.magnet * 7 * dt)); s = .35 + .65 * Math.min(1, h.d / h.R) } }
   if (lockI >= 0) { s = 1; magI = -1 }   // locked on: the reticle holds still
   magS += (s - magS) * Math.min(1, dt * 10); crossEl.classList.toggle('mag', magI >= 0);
 }

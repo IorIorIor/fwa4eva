@@ -72,6 +72,7 @@ const rmenu = (() => {
   }
   function choose(k = hot) {
     hide(); if (!k) return;
+    close();   // whatever was open goes first
     if (k === 'map') { setMode(S.mode === 'map' ? 'fly' : 'map'); return }
     if (k === 'settings') { if (locked()) document.exitPointerLock(); if (!$('lookPanel').classList.contains('open')) togglePanel('lookPanel'); return }
     sub(k);
@@ -81,15 +82,15 @@ const rmenu = (() => {
   // ── the panels ──
   const head = (k, title) => { panel.querySelector('.ri').innerHTML = ico(k); panel.querySelector('header b').textContent = title };
   function sub(k) {
-    if (locked()) document.exitPointerLock(); hide(); which = k; panel.className = 'hud p-' + k; body.innerHTML = '';
+    if (locked()) document.exitPointerLock(); if (!panel.hidden) close(); hide(); which = k; panel.inert = false; panel.className = 'hud p-' + k; body.innerHTML = '';
     if (k === 'search') { head('search', 'Search'); searchPanel() } else if (k === 'date') { head('date', 'Date'); datePanel() } else if (k === 'filters') { head('filter', 'Filters'); filterPanel() } else if (k === 'upgrades') { head('ships', 'Upgrades'); shipsPanel() }
     panel.hidden = false; void panel.offsetWidth; panel.classList.add('in'); document.body.classList.add('rm-open');
   }
   function close() {
-    hide(); if (panel.hidden) return; panel.classList.remove('in'); which = null;
+    hide(); document.body.classList.remove('rm-open', 'rm-ring'); if (panel.hidden) return; panel.classList.remove('in'); which = null;
     homes.forEach(([g, par, nx]) => par.insertBefore(g, nx)); homes = [];   // the filter groups go home
     const box = $('nav'); if (!box.contains($('navQ'))) { box.querySelector('.nrow').insertBefore($('navQ'), $('navNext')); box.prepend($('navRes')) }
-    document.body.classList.remove('rm-open'); setTimeout(() => { if (!which) panel.hidden = true }, 200);
+    document.body.classList.remove('rm-open', 'rm-ring'); panel.inert = true; setTimeout(() => { if (!which) panel.hidden = true }, 200);   // gone at once for clicks (inert), hidden once faded
   }
   panel.querySelector('.x').onclick = close;
   window.__navPicked = close;

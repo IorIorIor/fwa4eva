@@ -33,7 +33,7 @@ function lerpLogPolar(out, a, b, c, e) {
 const GAL_UP = new V3(0, 1, 0).applyQuaternion(GQ);
 const mapFovNow = () => Math.max(5, Math.min(LOOK.fov, LOOK.mapFov ?? 30));   // the map's lens: narrower = flatter, closer to a plan
 const mapDistK = () => Math.tan(LOOK.fov * Math.PI / 360) / Math.tan(mapFovNow() * Math.PI / 360);   // and the camera stands that much further back, so the view's the same size
-function orbitPose() { const o = orbit, p = new V3(Math.sin(o.phi) * Math.sin(o.theta), Math.cos(o.phi), Math.sin(o.phi) * Math.cos(o.theta)).applyQuaternion(GQ).multiplyScalar(o.dist * mapDistK()).add(o.target); return { p, q: lookQuat(p, o.target, GAL_UP) } }
+function orbitPose() { const o = orbit, p = new V3(Math.sin(o.phi) * Math.sin(o.theta), Math.cos(o.phi), Math.sin(o.phi) * Math.cos(o.theta)).applyQuaternion(GQ).multiplyScalar(o.dist * mapDistK()).add(o.target), up = new V3(-Math.cos(o.phi) * Math.sin(o.theta), Math.sin(o.phi), -Math.cos(o.phi) * Math.cos(o.theta)).applyQuaternion(GQ); return { p, q: lookQuat(p, o.target, up) } }   // up: along the sphere toward the pole, so looking straight down is as steady as any other angle
 const mapView = () => { let p = (90 - (LOOK.mapAngle ?? 70)) * Math.PI / 180; p = ((p + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; return { phi: Math.min(Math.PI - 1e-3, Math.max(1e-3, Math.abs(p))), flip: p < 0 } };   // the angle goes all the way round: past 90° over the top to the far side, past 180° underneath
 const mapPhi = () => mapView().phi;
 const mapFlip = () => { const f = mapView().flip; if (orbit.flip != null && f !== orbit.flip) orbit.theta += Math.PI; orbit.flip = f };   // crossing a pole swings the view round
@@ -114,7 +114,7 @@ function updatePlayer(dt) {
   // the nose turns toward its target keeping the ship's own roll (so A/D rolls stick)
   const shipUp = _su.set(0, 1, 0).applyQuaternion(p.base), aimQ = d => lookAtQ(d, Math.abs(shipUp.dot(d)) > .995 ? _su2.set(0, 1, 0).applyQuaternion(rig.q) : shipUp, _hq);
   let steerTo = null;
-  if (lockI >= 0 && pedal && !auto) { const dir = starPos(lockI, tmp).sub(p.pos); if (dir.lengthSq() > 1) steerTo = aimQ(dir.normalize()) }   // locked: the ship keeps facing its star
+  if (lockI >= 0 && pedal && !auto && !(HALO.pInfo.on && HALO.pInfo.i === lockI)) {   /* close enough to see the ring's picture: you steer the last bit yourself */ const dir = starPos(lockI, tmp).sub(p.pos); if (dir.lengthSq() > 1) steerTo = aimQ(dir.normalize()) }   // locked: the ship keeps facing its star
   else if (!auto && !keys.x && (gasOn || (L.follow && lockI < 0))) steerTo = aimQ(_rf.set(0, 0, -1).applyQuaternion(rig.q));                // the nose follows the reticle (not while X holds your course)
   else if (auto && p.vel.lengthSq() > 4) steerTo = aimQ(p.vel.clone().normalize());
   let turnAmt = 0;

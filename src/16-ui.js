@@ -180,6 +180,7 @@ function togglePanel(which) {
   const any = isOpen('panel') || isOpen('lookPanel'); document.body.classList.toggle('panel-open', any); if (any && locked()) document.exitPointerLock();
 }
 $('lbtn').onclick = () => togglePanel('lookPanel');
+$('lookX').onclick = () => { if (isOpen('lookPanel')) togglePanel('lookPanel') };
 
 /* screenshots: placeholders drawn per winner until the viewer drops in the real ones */
 const texCache = new Map();

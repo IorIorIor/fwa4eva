@@ -15,7 +15,7 @@ const coach = {
     { t: `Move the ${K('mouse')} to steer`, ok: () => coach.look > 1 },
     { t: `Press ${K('shift')} to boost`, ok: () => boosting && (coach.hold += coach.dt) > .35 },
     { t: `Press ${K('s')} to brake`, ok: () => keys.s && brakeK > .6 },
-    { t: `${K('q')} ${K('e')} pick the nearest FWA`, ok: () => coach.arrow },
+    { t: `${K('q')} ${K('e')} pick the nearest FWA`, ok: () => coach.qd && coach.ed },   // both keys, nearer and farther
     { t: 'Visit and collect an FWA', s: () => `lock on with ${K('q')} ${K('e')}, then hold ${K('w')}`, ok: () => coach.ring || (!LOOK.rings && cardI >= 0) },
     { t: 'Click and hold for the menu', s: 'pick anything you like', ok: () => !!(rmenu.open || rmenu.panel) },
     { t: `Press ${K('m')} for the map`, ok: () => S.mode === 'map', skip: () => S.mode === 'map' },   // (skipped if the menu already took you there)
@@ -24,7 +24,7 @@ const coach = {
   ],
   start(again) { if ((TEST && !again) || (!again && (!LOOK.tutorial || store.get('sotd-coach') === '1'))) return; this.again = !!again; this.el = $('coach'); this.list = this.steps(); this.i = 0; this.t = 0; this.done = 0; this.prevQ.copy(rig.q); this.arrow = this.ring = false; this.show() },
   show() {
-    const s = this.list[this.i], e = this.el, v = x => typeof x === 'function' ? x() : x || ''; this.look = 0; this.hold = 0; this.arrow = this.ring = false;
+    const s = this.list[this.i], e = this.el, v = x => typeof x === 'function' ? x() : x || ''; this.look = 0; this.hold = 0; this.arrow = this.ring = this.qd = this.ed = false;
     e.innerHTML = `<span class="td">${this.i + 1} / ${this.list.length}</span><span class="tt">${v(s.t)}</span>` + (s.s ? `<span class="ts">${v(s.s)}</span>` : '');
     e.hidden = false; e.classList.remove('done'); if (intro.active) e.classList.add('away'); void e.offsetWidth; e.classList.add('in'); this.kb = [...e.querySelectorAll('kbd')];
   },

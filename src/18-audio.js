@@ -84,9 +84,9 @@ function tingle(dec = 1, seed, pan = 0) {
   }
 }
 function zoneBlip(f, pan = 0) {   // hovering a year or month on the map: a very soft glassy tick, higher for newer times (f: 0 = oldest, 1 = newest)
-  const L = LOOK, vol = L.zoneSnd ?? .3; if (!vol || !AC || AC.state !== 'running' || !master) return;
-  const t = AC.currentTime + .005, fq = (L.zoneSndBase ?? 520) * Math.pow(2, (L.zoneSndRange ?? 12) * Math.max(0, Math.min(1, f)) / 12), dur = L.zoneSndLen ?? .35, v = .09 * vol;
-  const pn = AC.createStereoPanner(); pn.pan.value = Math.max(-.7, Math.min(.7, pan * .6)); pn.connect(master);
+  const L = LOOK, vol = L.zoneSnd ?? .3; if (!vol || !AC || !out) return; if (AC.state !== 'running') AC.resume().catch(() => { });
+  const t = AC.currentTime + .005, fq = (L.zoneSndBase ?? 520) * Math.pow(2, (L.zoneSndRange ?? 12) * Math.max(0, Math.min(1, f)) / 12), dur = L.zoneSndLen ?? .35, v = .07 * vol * (L.mapSfx ?? 1);
+  const pn = AC.createStereoPanner(); pn.pan.value = Math.max(-.7, Math.min(.7, pan * .6)); pn.connect(out);   // straight out, not through the chimes' (very quiet) level
   [[1, 1], [2.01, .22]].forEach(([m, a]) => { const o = AC.createOscillator(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = fq * m; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * a, t + .008); g.gain.exponentialRampToValueAtTime(.0001, t + dur * (m > 1 ? .5 : 1)); o.connect(g); g.connect(pn); o.start(t); o.stop(t + dur + .05) });
 }
 canvas.addEventListener('pointerdown', () => { if (booted) audio() }); addEventListener('keydown', () => { if (booted) audio() });

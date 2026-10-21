@@ -635,3 +635,4 @@ body.intro #shipLayer{z-index:55}   /* during the opening the 3D pointer is draw
 body.splash #shipLayer{visibility:hidden}   /* back on the splash: no ship over the title card */
 body.intro #gl,body.intro #gl.hovering,body.intro{cursor:default !important}   /* the opening: your own plain arrow until the drawn one takes over */
 .glab.yr.ax.click{pointer-events:none}   /* year and month tags never block dragging, zooming or picking the zone under them */
+#lookPanel .lx{background:none;border:0;color:#fff;font-size:20px;line-height:1;width:28px;height:28px;cursor:pointer;margin-left:6px}#lookPanel .lx:hover{background:#fff;color:#000}
