@@ -27,16 +27,18 @@ const mapZone = (() => {
     };
     return mesh;
   };
-  const hovR = ribbon(), actR = ribbon(), _l = new V3(); Z.rib = [hovR, actR];
+  const hovR = ribbon(), actR = ribbon(), _l = new V3(), _sp = new V3(), tipEl = document.createElement('div'); tipEl.id = 'zoneTip'; tipEl.setAttribute('aria-hidden', 'true'); document.body.appendChild(tipEl); let tipKey = ''; Z.rib = [hovR, actR];
   Z.update = dt => {
     const L = LOOK, map = S.mode === 'map' && booted, W = L.mapZoneW ?? 70000; Z.hov = null;
     if (map && !tween && mouse.in && hovPick < 0 && !rmenu.open && (L.mapZones ?? 1)) {
       const g = groundAt(mouse.x, mouse.y);
       if (g) { toLocal(g, _l); let best = -1, bd = Infinity; for (let k = 0; k < SN; k++) { const dx = sx[k] - _l.x, dz = sz[k] - _l.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = k } }
-        if (best >= 0 && Math.sqrt(bd) < (L.mapZoneHit ?? 22000)) { const t = st[best], inOpen = Z.on && t >= Z.t0 && t < Z.t1, lvl = (Z.on && Z.lvl === 1 && inOpen) || (Z.on && Z.lvl === 12 && span(t, 1)[0] === span(Z.t0, 1)[0]) || orbit.dist < (L.mapZoneMonths ?? 220000) ? 12 : 1, [t0, t1, y0] = span(t, lvl);
+        const onScr = best >= 0 && (_sp.set(sx[best], 0, sz[best]).applyQuaternion(GQ).add(GC).project(camera), _sp.z < 1 && Math.hypot((_sp.x * .5 + .5) * innerWidth - mouse.x, (-_sp.y * .5 + .5) * innerHeight - mouse.y) < (L.mapZonePx ?? 40));   // only the stretch of timeline right under the pointer, on screen
+        if (onScr && Math.sqrt(bd) < (L.mapZoneHit ?? 22000)) { const t = st[best], inOpen = Z.on && t >= Z.t0 && t < Z.t1, lvl = (Z.on && Z.lvl === 1 && inOpen) || (Z.on && Z.lvl === 12 && span(t, 1)[0] === span(Z.t0, 1)[0]) || orbit.dist < (L.mapZoneMonths ?? 220000) ? 12 : 1, [t0, t1, y0] = span(t, lvl);
           if (!(Z.on && t0 === Z.t0 && t1 === Z.t1)) Z.hov = { t0: Math.max(t0, tS), t1: Math.min(t1, tE + 864e5), lvl, y0 } } }
     }
     if (Z.hov) hovR.set(Z.hov.t0, Z.hov.t1, W);
+    { const h = Z.hov, key = h ? h.t0 + '' : ''; if (key !== tipKey) { tipKey = key; if (h) { const d = new Date(h.t0); tipEl.textContent = h.lvl === 12 ? `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}` : String(d.getUTCFullYear()) } tipEl.classList.toggle('on', !!h) } if (h) tipEl.style.transform = `translate(${(mouse.x + 14).toFixed(0)}px,${(mouse.y + 12).toFixed(0)}px)` }   // a small tag by the pointer: which year (or month) lights up
     hovR.u.k.value += ((Z.hov ? .085 * (L.mapZoneGlow ?? 1) : 0) - hovR.u.k.value) * Math.min(1, dt * (Z.hov ? 16 : 2.2)); /* in quickly, out slowly */ hovR.visible = map && hovR.u.k.value > .002;
     actR.u.k.value += ((Z.on && map ? .045 * (L.mapZoneGlow ?? 1) : 0) - actR.u.k.value) * Math.min(1, dt * 6); actR.visible = map && actR.u.k.value > .002;
     if (!map && Z.on) Z.clear();

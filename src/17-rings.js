@@ -2,6 +2,7 @@
    With "rings" on every winner is a ring the size of its star. Fly through one and it's collected: it turns warm white
    and glows, you lose a little speed, a chime rings and its record opens for a few seconds. Collected winners are kept in
    this browser; the count sits at the top. */
+const introK = () => intro.active ? (intro.ph === 1 ? 0 : sstep(intro.t, .05, .35)) : 1;   // in the opening the rings stay away until the logo is gone, then fade in
 const ringHide = new Map(); let ringPop = 0, ringIn = -1, gotCard = { i: -1, t: 0 }, gotN = 0;
 for (let i = 0; i < N; i++) gotN += GOT[i];
 function ringCheck(p) {   // called by the flight after it moves you: you get a ring when you cross its plane inside it
@@ -143,7 +144,7 @@ const HALO = (() => {
       if (h.nSet && !h.done && away > R * 4) h.nSet = false;   // turned away without passing
       if (h.done && away > R + (L.ringReset ?? 200)) { h.done = false; h.nSet = false; fade.delete(i); if (ringIn === i) ringIn = -1 }   // clear of it: the ring is back (in its collected colour), portal and all
       h.r = R; const gone = h.done ? (fade.get(i) ?? 1) : 1; if (h.done) fade.set(i, Math.max(0, gone - dt * 4));
-      const a = play ? 1 : sstep(rpx, 14, 34) * gone; if (a <= .005 || h.r < 1e-3) { n++; continue }
+      const a = (play ? 1 : sstep(rpx, 14, 34) * gone) * introK(); if (a <= .005 || h.r < 1e-3) { n++; continue }
       _q.setFromUnitVectors(_z, h.nSet ? h.n : _s.copy(player.pos).sub(c).normalize()); mesh.setMatrixAt(live.length, _m.compose(c, _q, _s.setScalar(h.r))); { const lz = lens[live.length], on = (L.ringLens ?? 0) > 0 && (L.ringLensMode ?? 1) > 0; lz.visible = on; if (on) { lz.matrix.compose(c, _q, _s.setScalar(h.r * (L.ringLensSize ?? 3))); lz.matrixWorldNeedsUpdate = true; lz.a.value = Math.min(1, a); lz.kb.value = 1 + (L.ringLensNear ?? 2) * (h.near || 0) } }
       const got = GOT[i], j = live.length * 3; iCol[j] = got ? 1 : COL[i * 3]; iCol[j + 1] = got ? .86 : COL[i * 3 + 1]; iCol[j + 2] = got ? .58 : COL[i * 3 + 2]; iA[live.length] = a * (got ? 1.3 : 1);
       { const tx = texCache.get(i), ac = tx && tx.avgCol, o = live.length * 4; if (ac) { iImg[o] = ac.r; iImg[o + 1] = ac.g; iImg[o + 2] = ac.b } iImg[o + 3] = ac ? Math.min(1, L.ringImgTint ?? .75) * (got ? .5 : 1) : 0 }   // the ring takes on the colour of the picture inside it
@@ -266,7 +267,7 @@ const rings = (() => {
   return {
     show,
     update(dt) {
-      const L = LOOK, u = stars.u; u.ring.value = L.rings ? 1 : 0; u.rsz.value = (L.ringSize ?? 1.6) * L.bodySize; u.rw.value = L.ringWidth ?? .1; u.gotGlow.value = L.ringGlow ?? 1.8;
+      const L = LOOK, u = stars.u; u.ring.value = L.rings ? introK() : 0; u.rsz.value = (L.ringSize ?? 1.6) * L.bodySize; u.rw.value = L.ringWidth ?? .1; u.gotGlow.value = L.ringGlow ?? 1.8;
       if (gotCard.t > 0) gotCard.t -= dt; ringPop *= Math.exp(-dt / Math.max(.05, L.ringPopTime ?? .7)); HALO.update(dt);
       const want = !L.rings || S.mode !== 'fly'; if (el.hidden !== want) show();
     },
