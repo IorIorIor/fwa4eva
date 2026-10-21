@@ -23,7 +23,8 @@ const stars = (() => {
     vA.assign(al.mul(mix(.95, 1, smoothstep(dot1, dot1.mul(2), ps))).mul(mix(1, flyK, u.far)).mul(mix(1, smoothstep(dot1.mul(.45), dot1.mul(1.4), ps), u.thin.mul(on.oneMinus()))).max(u.faint));   // (faint: on the map every winner stays at least a faint dot)   // map, zoomed out: winners too small to see fade away instead of each staying a pixel
     // the game: a ring of the star's real size (× ring size). Once it's a few px across the sprite grows to hold it and the ring takes over
     const rpx = ia('aR', 'float').mul(u.rsz).mul(pxScale).div(max(z, .01)), ron = smoothstep(2.5, 7, rpx).mul(u.ring).mul(smoothstep(40, 18, rpx)), side = max(vPs, rpx.mul(2.6)).mul(ron).add(vPs.mul(ron.oneMinus())).min(9000);   // up close the 3D halo takes over
-    vRon.assign(ron); vRing.assign(rpx.div(side.mul(.5))); vPx.assign(side); vGot.assign(ia('aGot', 'float'));
+    vRon.assign(ron); vA.assign(vA.mul(mix(1, smoothstep(34, 18, rpx), u.ring)));   // the rings game: once the 3D ring has taken over, no star dot left in its middle
+    vRing.assign(rpx.div(side.mul(.5))); vPx.assign(side); vGot.assign(ia('aGot', 'float'));
     return billboardPx(mv, side);
   })();
   m.fragmentNode = Fn(() => {

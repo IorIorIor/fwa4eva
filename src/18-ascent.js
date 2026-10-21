@@ -415,6 +415,7 @@ const ascent = (() => {
       e.M.pace = (1 - .4 * sb) * (1 + 2.5 * dk);   // faster: the notes come quicker; in bullet time they stretch out
       n.bend.offset.setTargetAtTime(-650 * dk, t, .12);   // the tape slows: everything sinks in pitch
       n.revSend.gain.setTargetAtTime(1.6 * P.revMix * (1 + 1.2 * dk), t, .2); n.delFb.gain.setTargetAtTime(Math.min(.85, P.delFb + .4 * dk), t, .2);
+      { const rn = fly && LOOK.rings ? 1 - sstep(HALO.ts, .1, 2) : 0, ek = (L.mEcho ?? 1) * Math.max(rn, Math.min(1, dl * 1.3)), et = Math.min(2.9, P.delTime * (1 + 2.2 * ek)); n.delL.delayTime.setTargetAtTime(et, t, .35); n.delR.delayTime.setTargetAtTime(et, t, .35); n.delSend.gain.setTargetAtTime(Math.min(1, P.delMix * .9 * (1 + 1.5 * ek)), t, .3) }   // near and through a ring the echoes stretch out (the repeats slide in pitch as they do) and come forward
       n.out.gain.setTargetAtTime(P.volume * (1 - (L.mVoid ?? .45) * (1 - gal)) * (1 + .25 * sb), t, .8);   // fullest in the galaxy, thinner out in the void
     },
   };
