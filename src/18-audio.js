@@ -2,7 +2,7 @@
    The Ascent instrument (18-ascent); an engine of filtered noise and a soft drone that rises with speed; a hum near the
    outpost; and hovering a star strikes a glass bell in a vast space, the same chord every time for the same star. */
 let musicFx = null, musicMapOn = null, AC = null, out = null, master = null, ambBus = null, musicGain = null, ENG = null, hum = null, lastTing = 0;
-let muted = store.get('sotd-muted') === '1';
+let muted = store.get('sotd-muted') === '1', musicOff = store.get('sotd-music-off') === '1', musicMute = null;   // muted: the sounds; musicOff: the music, each its own switch
 const KEYROOT = [72, 74, 76, 79, 81, 84], PENTA = [0, 2, 4, 7, 9];
 const CHIME_K = .9;   // the chime bus level (× the Hover tingles slider)
 function spaceIR(sec) {   // a room: quick onset, then a tail that darkens as it dies away
@@ -30,7 +30,7 @@ function audio() {
       // the map's filter: everything through a lowpass that closes (with a little resonance), plus a soft echo that only the map hears
       const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 20000; lp.Q.value = .7; const dl = AC.createDelay(1), fb = AC.createGain(), wet = AC.createGain(); dl.delayTime.value = .34; fb.gain.value = .38; wet.gain.value = 0;
       src.connect(lp); lp.connect(musicGain); lp.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(musicGain); musicFx = { lp, wet };
-      musicGain.connect(out); ascent.boot(AC, src);
+      musicMute = AC.createGain(); musicMute.gain.value = musicOff ? 0 : 1; musicGain.connect(musicMute); musicMute.connect(AC.destination); ascent.boot(AC, src);   // the music has its own switch, past the sounds'
     } catch (e) { }
     // chimes: their own bus, loud enough to sit clearly over the music: the dry bell up front, a short bright room behind it,
     // and two soft echoes panned left and right
@@ -64,8 +64,10 @@ function updateEngine() {
   ENG.eng.gain.setTargetAtTime(LOOK.engine * (fly ? 1 : LOOK.mapSfx ?? 1), t, .1);
 }
 const ICON_SOUND = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg>', ICON_MUTED = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 8a5 5 0 0 1 1.912 4.934m-1.377 2.602a5 5 0 0 1 -.535 .464"/><path d="M17.7 5a9 9 0 0 1 2.362 11.086m-1.676 2.299a9 9 0 0 1 -.686 .615"/><path d="M9.069 5.054l.431 -.554a.8 .8 0 0 1 1.5 .5v2m0 4v8a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l1.294 -1.664"/><path d="M3 3l18 18"/></svg>';   // Tabler icons (outline)
-function setMuted(m) { muted = m; store.set('sotd-muted', m ? '1' : '0'); const b = $('sbtn'); b.innerHTML = '' + (m ? ICON_MUTED : ICON_SOUND); b.title = m ? 'Sound off' : 'Sound on'; b.setAttribute('aria-pressed', !m); { const n = $('sndNav'); if (n) { n.textContent = m ? 'Sound off' : 'Sound on'; n.classList.toggle('off', m) } } if (out) out.gain.setTargetAtTime(m ? 0 : 1, AC.currentTime, .05) }
+function setMuted(m) { muted = m; store.set('sotd-muted', m ? '1' : '0'); const b = $('sbtn'); b.innerHTML = '' + (m ? ICON_MUTED : ICON_SOUND); b.title = m ? 'Sound off' : 'Sound on'; b.setAttribute('aria-pressed', !m); { const n = $('sndNav'); if (n) n.classList.toggle('on', !m) } if (out) out.gain.setTargetAtTime(m ? 0 : 1, AC.currentTime, .05) }
 $('sbtn').onclick = () => { audio(); setMuted(!muted) }; setMuted(muted);
+function setMusicOff(m) { musicOff = m; store.set('sotd-music-off', m ? '1' : '0'); const n = $('musNav'); if (n) n.classList.toggle('on', !m); if (musicMute) musicMute.gain.setTargetAtTime(m ? 0 : 1, AC.currentTime, .05) }
+setMusicOff(musicOff);
 // hovering a star strikes a small glass bell: two or three notes of a pentatonic chord rolled like a harp, panned to where
 // the star sits on screen. Same star, same chord. Each note: a sine with a bright FM strike that fades into a pure tone.
 function tingle(dec = 1, seed, pan = 0) {

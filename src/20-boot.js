@@ -146,7 +146,7 @@ function begin(withSound, e) {
   { const m = document.querySelector('#intro .mark'), r0 = m && m.getBoundingClientRect(); intro.logoAt = r0 && r0.width ? { x: r0.left + r0.width * LOGO_THRU[0] / 509, y: r0.top + r0.height * LOGO_THRU[1] / 149, w: r0.width } : null }   // the 3D logo starts exactly over the splash's
   { const r = $('enter').getBoundingClientRect(); intro.at = e && e.detail && e.clientX ? { x: e.clientX, y: e.clientY } : r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null }   // the pointer appears right where you clicked Start
   if (e && e.pointerType !== 'touch' && e.clientX) { mouse.x = e.clientX; mouse.y = e.clientY; mouse.in = true }   // the pointer is already where you clicked: no second click to wake it
-  if (withSound) { setMuted(false); audio() }
+  if (withSound) { setMuted(false); setMusicOff(false); audio() }
   if (!coarse && !lockFailed && !TEST) { let f = Math.max(0, LOOK.introCurFrames ?? 4); const go = () => f-- > 0 ? requestAnimationFrame(go) : requestLock(); go() }   // your own pointer stays a few frames more, until the drawn one is surely in its place
   $('intro').hidden = true; document.body.classList.remove('splash');   // straight to black: then only the pointer fades in
   if (!TEST) { intro.start(); const skip = e => { if (booted) return removeEventListener('keydown', skip); if (e.key !== 'Escape' && e.key !== ' ') return; intro.finish(); removeEventListener('keydown', skip) }; setTimeout(() => addEventListener('keydown', skip), 400) }   // clicks never skip it; Esc or Space does
@@ -155,7 +155,7 @@ function begin(withSound, e) {
 if (TEST) { $('intro').hidden = true; document.body.classList.remove('intro'); LOOK.adaptive = 0; handOver() }
 else {
   const enter = $('enter'); if (window.__introProgress) window.__introProgress(1); else document.body.classList.add('ready');   // the ring opens Start when it closes
-  enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); begin(false, e) };
+  enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) };
   addEventListener('keydown', function k(e) { if ($('intro').classList.contains('gone')) return removeEventListener('keydown', k); if (e.target.closest && e.target.closest('#intro button')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeEventListener('keydown', k); begin(true) } });
 }
 /* the ship back to where it starts, at once: still, facing the core, no trail behind it */
@@ -170,7 +170,7 @@ function toSplash() {
   if (S.mode !== 'fly') { setMode('fly'); tween = null }
   if (intro.active) intro.finish(); toSpawn(); player.vel.set(0, 0, 0); lockI = -1; auto = null; warp = null; sparks.stop(); coach.end && coach.i >= 0 && coach.end();
   const el = $('intro'); el.hidden = false; el.classList.remove('gone'); document.body.classList.add('intro', 'ready', 'splash');
-  const enter = $('enter'); enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); begin(false, e) };
+  const enter = $('enter'); enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) };
 }
 let vt = performance.now();
 if (!TEST) requestAnimationFrame(t => { last = t; loop(t) });

@@ -184,6 +184,6 @@ const recorder = (() => {
 (() => {
   const nav = $('topnav'), mapB = nav.querySelector('[data-k="map"]');
   nav.addEventListener('pointerdown', e => e.stopPropagation());
-  nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (k === 'rec') { recorder.toggle(); return } if (k === 'sound') { $('sbtn').click(); return } if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
+  nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (k === 'rec') { recorder.toggle(); return } if (k === 'sound') { $('sbtn').click(); return } if (k === 'music') { audio(); setMusicOff(!musicOff); return } if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
   setInterval(() => { mapB.textContent = S.mode === 'map' ? 'Fly' : 'Map' }, 300);
 })();
