@@ -112,7 +112,7 @@ addEventListener('keydown', e => {
   if (k === 'enter' && coach.skip()) { e.preventDefault(); return }   // the first-flight steps: Enter skips one
   if (k === 'h') goHome();
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
-  if (k === 'r' && !e.repeat) setRings(!LOOK.rings);   // R: rings game on/off
+  // (R did the rings game on/off; off for now)
   if (k === 'escape' && tour.on) stopTour();
   if (k === 'escape' && mapZone.on) mapZone.clear();
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }

@@ -15,9 +15,12 @@ const coach = {
     { t: `Move the ${K('mouse')} to steer`, ok: () => coach.look > 1 },
     { t: `Press ${K('shift')} to boost`, ok: () => boosting && (coach.hold += coach.dt) > .35 },
     { t: `Press ${K('s')} to brake`, ok: () => keys.s && brakeK > .6 },
-    { t: `${K('q')} ${K('e')} pick the nearest winners`, ok: () => coach.arrow },
-    { t: 'Fly through a ring', s: () => LOOK.rings ? `lock on with ${K('q')} ${K('e')}, then hold ${K('w')}` : `${K('r')} switches the rings game on`, ok: () => coach.ring },
-    { t: `Press ${K('m')} for the map`, ok: () => S.mode === 'map' },
+    { t: `${K('q')} ${K('e')} pick the nearest FWA`, ok: () => coach.arrow },
+    { t: 'Visit and collect an FWA', s: () => `lock on with ${K('q')} ${K('e')}, then hold ${K('w')}`, ok: () => coach.ring || (!LOOK.rings && cardI >= 0) },
+    { t: 'Click and hold for the menu', s: 'pick anything you like', ok: () => !!(rmenu.open || rmenu.panel) },
+    { t: `Press ${K('m')} for the map`, ok: () => S.mode === 'map', skip: () => S.mode === 'map' },   // (skipped if the menu already took you there)
+    { t: `Press ${K('m')} to go back to your ship`, ok: () => S.mode === 'fly' && !(tween && tween.mode), map: true },
+    { t: `Press ${K('f')} to get your mouse back`, ok: () => !locked(), skip: () => lockFailed },
   ],
   start(again) { if ((TEST && !again) || (!again && (!LOOK.tutorial || store.get('sotd-coach') === '1'))) return; this.again = !!again; this.el = $('coach'); this.list = this.steps(); this.i = 0; this.t = 0; this.done = 0; this.prevQ.copy(rig.q); this.arrow = this.ring = false; this.show() },
   show() {
@@ -31,12 +34,13 @@ const coach = {
     this.dt = dt; this.t += dt; this.look += this.prevQ.angleTo(rig.q); this.prevQ.copy(rig.q);
     this.kb.forEach(k => k.classList.toggle('dn', k.dataset.k === 'mouse' ? performance.now() - lastInput < 120 && this.look > .02 : !!keys[k.dataset.k]));
     this.place();
-    if (this.done > 0) { this.done -= dt; if (this.done <= 0) { this.i++; this.t = 0; if (this.i >= this.list.length) this.end(); else this.show() } return }
-    if (this.list[this.i].ok()) { this.done = .9; this.el.classList.add('done'); buzz(12) }
+    if (this.done > 0) { this.done -= dt; if (this.done <= 0) { this.i++; while (this.i < this.list.length && this.list[this.i].skip && this.list[this.i].skip()) this.i++; this.t = 0; if (this.i >= this.list.length) this.end(); else this.show() } return }
+    if (this.list[this.i].ok()) { this.done = 1.8; this.el.classList.add('done'); buzz(12) }
   },
   place() {   // it floats just above the ship
-    const e = this.el, hide = S.mode !== 'fly' || rmenu.panel || document.body.classList.contains('panel-open'); e.classList.toggle('away', hide); if (hide) return;
-    const p = tmp.copy(player.pos).project(camera), x = Math.max(160, Math.min(innerWidth - 160, (p.x * .5 + .5) * innerWidth)), y = Math.max(90, Math.min(innerHeight - 40, (-p.y * .5 + .5) * innerHeight - (LOOK.coachUp ?? 90)));
+    const e = this.el, st = this.list[this.i], hide = st && st.map ? S.mode !== 'map' || !!rmenu.panel : S.mode !== 'fly' || rmenu.panel || document.body.classList.contains('panel-open'); e.classList.toggle('away', hide); if (hide) return;
+    const top = (LOOK.coachTop ?? 1) > 0, p = tmp.copy(player.pos).project(camera), x = top ? innerWidth / 2 : Math.max(160, Math.min(innerWidth - 160, (p.x * .5 + .5) * innerWidth));
+    const y = top ? (LOOK.coachTopY ?? 110) + (e.offsetHeight || 0) : Math.max(90, Math.min(innerHeight - 40, (-p.y * .5 + .5) * innerHeight - (LOOK.coachUp ?? 90)));   // at the top of the screen (it hangs up from its anchor), or floating over the ship
     e.style.left = x.toFixed(1) + 'px'; e.style.top = y.toFixed(1) + 'px';
   },
   skip() { if (this.i < 0 || this.done > 0) return false; this.done = .3; this.el.classList.add('done'); return true },

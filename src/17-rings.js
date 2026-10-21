@@ -271,7 +271,7 @@ function collectSound(v = 1) {   // two quick rising notes, bright and glassy, w
 }
 function collect(i) {
   coach.ring = true; passedI = i;
-  if (relockNext && (LOOK.ringNext ?? 1)) {   // you were locked on it: lock onto the next ring ahead (the nearest in front of you), and swing round to it slowly
+  if (relockNext && (LOOK.ringNext ?? 0)) {   // you were locked on it: lock onto the next ring ahead (the nearest in front of you), and swing round to it slowly
     relockNext = false; const v = _rk.copy(player.vel).normalize(), pp = player.pos; let best = -1, bd = Infinity;
     for (let j = 0; j < N; j++) { if (j === i || TA[j] < 1 || GOT[j] && LOOK.ringNextNew) continue; const dx = P[j * 3] - pp.x, dy = P[j * 3 + 1] - pp.y, dz = P[j * 3 + 2] - pp.z, d = Math.hypot(dx, dy, dz); if (d < 1 || (dx * v.x + dy * v.y + dz * v.z) / d < .2) continue; if (d < bd) { bd = d; best = j } }
     if (best >= 0) { focus(best); aimSlow = LOOK.ringNextTime ?? 2.5 }

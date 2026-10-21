@@ -85,7 +85,7 @@ const _hf = new V3(), _hr = new V3(), _hq = new Q4(), fwd = new V3(), wish = new
 const _nq = new Q4(), _vn = new V3(), _su = new V3(), _su2 = new V3(), _rf = new V3();
 // speed modes, ↑ ↓: Cruise, Sport (quick and nimble, lower top), Speed (all top end, slow to turn)
 const SPEED_MODES = ['Cruise', 'Sport', 'Speed'];
-let speedMode = Math.max(0, Math.min(2, +(store.get('sotd-smode') ?? 0) || 0));
+let speedMode = Math.max(0, Math.min(2, +(store.get('sotd-smode') ?? 1) || 0));   // Sport by default
 const smK = () => { const n = 'sm' + SPEED_MODES[speedMode], L = LOOK; return { top: L[n + 'Top'] ?? 1, acc: L[n + 'Acc'] ?? 1, turn: L[n + 'Turn'] ?? 1 } };
 function setSpeedMode(m) { m = Math.max(0, Math.min(2, m)); if (m === speedMode) return; speedMode = m; store.set('sotd-smode', String(m)); buzz(10); consolePing = 1 }
 let consolePing = 0;

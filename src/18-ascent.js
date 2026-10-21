@@ -4,6 +4,7 @@
    settings can be pasted in (Sound → Import). The game plays it: speed brightens it and quickens it, bullet time bends
    it down like slowing tape and opens the room, it's fullest in the galaxy and thins out in the void, a ring throws a
    shower of bell notes, and on the map it goes underwater (the map filter in 18-audio). */
+let dustHissK = 0;   // how much speed dust you're in (0..1), for the hiss
 const ascent = (() => {
   const FLATS = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
   const SHARPS = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
@@ -416,7 +417,7 @@ const ascent = (() => {
       n.bend.offset.setTargetAtTime(-650 * dk, t, .12);   // the tape slows: everything sinks in pitch
       n.revSend.gain.setTargetAtTime(1.6 * P.revMix * (1 + 1.2 * dk), t, .2); n.delFb.gain.setTargetAtTime(Math.min(.85, P.delFb + .4 * dk), t, .2);
       { const rn = fly && LOOK.rings ? 1 - sstep(HALO.ts, .1, 2) : 0, ek = (L.mEcho ?? 1) * Math.max(rn, Math.min(1, dl * 1.3)), et = Math.min(2.9, P.delTime * (1 + 2.2 * ek)); n.delL.delayTime.setTargetAtTime(et, t, .35); n.delR.delayTime.setTargetAtTime(et, t, .35); n.delSend.gain.setTargetAtTime(Math.min(1, P.delMix * .9 * (1 + 1.5 * ek)), t, .3) }   // near and through a ring the echoes stretch out (the repeats slide in pitch as they do) and come forward
-      { const dk = streaks.visible ? Math.min(1, streaks.u.op.value / .32 * Math.min(1, streakDens * 1.5)) : 0; n.hissGain.gain.setTargetAtTime(.035 * (P.hiss + (L.mDustHiss ?? .6) * dk), t, .25) }   // the tape hiss rises with the speed dust you're flying through, like a faint Geiger counter
+      { const dk = fly ? sstep(player.vel.length(), 150, 4000) * Math.min(1, streakDens * 1.5) : 0; dustHissK = dk; n.hissGain.gain.setTargetAtTime(.035 * P.hiss + .05 * (L.mDustHiss ?? .6) * dk, t, .25) }   // the tape hiss rises with the speed dust you're flying through, like a faint Geiger counter
       n.out.gain.setTargetAtTime(P.volume * (1 - (L.mVoid ?? .45) * (1 - gal)) * (1 + .25 * sb), t, .8);   // fullest in the galaxy, thinner out in the void
     },
   };

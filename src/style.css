@@ -248,7 +248,7 @@ body.idle #youTime{opacity:.25 !important}
 #coach .td{font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:11px;line-height:1;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.62);padding:5px 8px 3px}
 #coach .tt{font-family:"FF Good Pro",var(--body);font-size:22px;line-height:1.1;color:#fff;padding:3px 12px 6px;transition:color .3s}
 #coach.done .tt{color:#9dffcf}
-#coach.done{opacity:0;transition-delay:.45s}
+#coach.done{opacity:0;transition-delay:1.1s}
 .glab{position:absolute;transform:translate(-50%,-100%);font-family:var(--display);font-weight:400;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);white-space:nowrap;text-shadow:0 0 8px var(--void)}
 .glab.dec small{font-size:7px;margin-left:3px}
 .glab small{font-family:var(--mono);font-size:10px;color:var(--dim);margin-left:5px}
@@ -611,3 +611,7 @@ body.intro #shipLayer{z-index:55}   /* during the opening the 3D pointer is draw
 .lhd{border-radius:0;font-family:"FF Good Pro",var(--body);font-size:13px;letter-spacing:.01em;text-transform:none;color:#fff;margin:0 -10px}
 .lsec.open>.lhd{background:rgba(255,255,255,.12);color:#fff}.lsec.open>.lhd svg{stroke:#fff}
 #pilots .pr{font-family:"FF Good Pro",var(--body)}
+/* a step done: the box turns white with dark text, fading in like a small achievement */
+#coach .td,#coach .tt,#coach .ts,#coach .tt kbd{transition:background-color .6s ease,color .6s ease,border-color .6s ease}
+#coach.done .tt,#coach.done .td,#coach.done .ts{background:#fff;color:#000}
+#coach.done .tt kbd{border-color:#000;color:#000}
