@@ -34,7 +34,7 @@ const intro = {
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
     INTRO_END.set(0, rig.dist * (LOOK.camHeight ?? .42), rig.dist).multiplyScalar(LOOK.introDist ?? 1);   /* it lands right where the flight camera sits, so nothing moves on afterwards */ this.lit = false;   // where the opening ends up: close behind the pointer
     this.goal = null; this.av.x = this.av.y = 0;
-    this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 1; camNearGo = false; this.active = introActive = true;
+    this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 0; camNearGo = false; camHold = null; this.active = introActive = true;
     document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.wipe = true;   // one frame through the black veil, so the warm-up's last picture doesn't linger on the canvas
     setDpr(.5, true); this.lowDpr = true;   // nothing but black, the pointer and the logo to draw at first: the lowest resolution is plenty
     const wantLogo = LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d())); if (logo3d) logo3d.visible = false;
@@ -103,7 +103,7 @@ const intro = {
   finish() {
     if (logo3d) logo3d.visible = false; curEl.style.display = 'none'; this.ph = 2; if (this.lowDpr) { this.lowDpr = false; setDpr(Math.min(LOOK.maxDpr, devicePixelRatio || 1), true) }
     if (!this.active) return; this.active = introActive = false; veil.visible = false; emitGlow = 1; camera.clearViewOffset(); this.at = null;
-    camRel.copy(INTRO_END); camRelV.set(0, 0, 0); if (!this.hud) { document.body.classList.remove('intro'); flickIn() } if (!booted) handOver();
+    camRel.copy(INTRO_END); camRelV.set(0, 0, 0); camHold = { z0: INTRO_END.z, y0: INTRO_END.y, z: INTRO_END.z, prev: player.pos.clone() }; if (!this.hud) { document.body.classList.remove('intro'); flickIn() } if (!booted) handOver();
   },
 };
 // the instruments fade in together as the opening ends
@@ -162,7 +162,7 @@ else {
 function toSpawn() {
   if (S.mode !== 'fly') { setMode('fly'); tween = null }
   warp = null; auto = null; lockI = -1; stopTour(); sparks.stop(); player.pos.copy(HOME_P); player.vel.set(0, 0, 0); player.cruise = 0;
-  aimAt(GC.clone().sub(player.pos), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
+  aimAt(GC.clone().sub(player.pos), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0); camHold = null;
 }
 /* back to the splash, to record the opening again: everything closes, the title card and Start come back */
 function toSplash() {
