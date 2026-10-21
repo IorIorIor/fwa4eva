@@ -147,7 +147,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 body.panel-open #gauge{display:none}
 #gauge,#cross,#labels,#brand,#topbar,#logo,#tip,#speed{transition:opacity 1.4s ease}
 body.idle #thrust,body.idle #brake{opacity:.2}
-body.idle #speed,body.idle #gauge,body.idle #labels,body.idle #brand,body.idle #topbar,body.idle #logo{opacity:0}
+body.idle #speed,body.idle #gauge,body.idle #brand,body.idle #topbar,body.idle #logo{opacity:0}
 body.idle #cross{opacity:.18}
 #speed{left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);pointer-events:none;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums;white-space:nowrap;text-shadow:0 0 6px var(--void);display:flex;flex-direction:column;align-items:center;gap:6px}
 #speed b{font-weight:400}
@@ -523,8 +523,8 @@ body.map #gl,body.map #gl.hovering{cursor:pointer!important}   /* on the map the
 #tip .td .tsc{font-weight:500;color:#fff}
 @media (min-width:760px){body.map #panel{left:max(16px,env(safe-area-inset-left,0px));right:auto}}   /* on the map the filters sit on the left, next to an open Look panel on the right */
 #tip.side .tshot{display:none}   /* beside a portal: the portal already shows the picture */
-body.map .glab.yr.ax:not(.mo){color:#fff;background:rgba(26,20,40,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:3px 6px 2px;font-size:10px;letter-spacing:.06em}   /* year numbers on the map sit in a little box, like the tooltips */
-body.map .glab.yr.ax.maj{font-size:12px;padding:4px 7px 3px}
+.glab.yr.ax:not(.mo){text-shadow:none;color:#fff;background:rgba(26,20,40,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:3px 6px 2px;font-size:10px;letter-spacing:.06em}   /* year numbers sit in a little box, like the tooltips */
+/* (in flight too: on the white core a bare number blurred into grey) */ .glab.yr.ax.maj{font-size:12px;padding:4px 7px 3px}
 #dayLabels span{transition:opacity .35s ease;opacity:0}#dayLabels span.on{opacity:1}
 body.inverted{background:#fff}body.inverted #labels,body.inverted #dayLabels,body.inverted #cross,body.inverted #lockMark,body.inverted #logo,body.inverted #brand{filter:invert(1) hue-rotate(180deg)}   /* inverted look: the overlays flip with the sky */
 #tip .tshot{display:none}   /* never the picture in the record: the portal shows it */

@@ -17,7 +17,7 @@ const mapZone = (() => {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); g.setAttribute('aS', new THREE.BufferAttribute(aS, 1)); g.setAttribute('aV', new THREE.BufferAttribute(aV, 1)); g.setIndex(idx);
     for (let k = 0; k <= n; k++) { aS[k * 2] = aS[k * 2 + 1] = k / n; aV[k * 2] = -1; aV[k * 2 + 1] = 1 }
     const u = { k: uniform(0) }, m = skyMat({ side: THREE.DoubleSide, depthTest: false }), vS = varying(attribute('aS', 'float')), vV = varying(attribute('aV', 'float'));
-    m.fragmentNode = Fn(() => { const a = u.k.mul(exp(vV.mul(vV).mul(-3.2)).sub(.04).max(0)).mul(smoothstep(0, .08, vS)).mul(smoothstep(1, .92, vS)); return vec4(vec3(.85, .9, 1).mul(a), a) })();   // soft across, soft at both ends
+    m.fragmentNode = Fn(() => { const a = u.k.mul(exp(vV.mul(vV).mul(-3.2)).sub(.04).max(0)).mul(smoothstep(0, .08, vS)).mul(smoothstep(1, .92, vS)).mul(bhMask()); return vec4(vec3(.85, .9, 1).mul(a), a) })();   // soft across, soft at both ends
     const mesh = new THREE.Mesh(g, m); mesh.position.copy(GC); mesh.quaternion.copy(GQ); layer(mesh, scene, 2); mesh.visible = false; mesh.u = u; mesh.key = '';
     mesh.set = (t0, t1, W) => {   // rebuild along [t0, t1)
       const key = t0 + ',' + t1 + ',' + W; if (mesh.key === key) return; mesh.key = key;

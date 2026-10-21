@@ -66,7 +66,7 @@ function rulerScore(th, us) {   // how many of the dates would be on screen with
   let n = 0; for (const uu of us) { const a = ringPoint(uu, th, 0, tmp2).project(camera); if (a.z < 1 && Math.abs(a.x) < .9 && Math.abs(a.y) < .86) n++ }
   const c = ringPoint(0, th, 0, tmp2).project(camera).clone(), e = ringPoint(1, th, 0, tmp2).project(camera); return n + .25 * Math.max(0, c.y - e.y) / Math.max(.01, Math.hypot(e.x - c.x, e.y - c.y));
 }
-let ringFarK = 0;
+let ringFarK = 0, conK = 0;   // conK: a filter's constellation is up, the rest of the sky dims
 function updateTimeRings(dt) {
   const L = LOOK, u = timeRings.u, map = S.mode === 'map', fr = !!L.ringFly, lp = toLocal(map ? orbit.target : camera.position, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   if (map) {   // how many years fit across the view where you're looking decides which rings show
@@ -76,12 +76,13 @@ function updateTimeRings(dt) {
     ringFarK = 0;
   } else {
     // far enough out (above the disk or past its rim) the timeline comes into view: the five-year marks, and the spiral itself
-    const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.ringFar ?? .55), still = performance.now() - lastInput > (L.ringIdle ?? 3) * 1000 && !thrusting && !boosting; ringFarK += (sstep(out, F, F * 1.6) * (still ? 1 : 0) - ringFarK) * Math.min(1, dt * (still ? .8 : 3));   // far out and left alone a few seconds: the timeline fades in; touch anything and it goes
-    const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = fr ? 1 : ringFarK; mapLvl[1] = fr ? inside : 0; mapLvl[2] = 0; mapStars = 0;
+    const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.ringFar ?? .55), still = fr && performance.now() - lastInput > (L.ringIdle ?? 3) * 1000 && !thrusting && !boosting; ringFarK += ((F > 0 ? sstep(out, F, F * 1.6) : 1) * (still ? 1 : 0) - ringFarK) * Math.min(1, dt * (still ? .8 : 3));   // far out and left alone a few seconds: the timeline fades in; touch anything and it goes
+    const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = ringFarK; mapLvl[1] = ringFarK * inside; mapLvl[2] = 0; mapStars = 0;
   }
-  const show = map || fr || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0; ruler.visible = timeRings.mesh.visible && !SPIRAL;   // with the single spiral, the spiral itself is the timeline (it carries its own dates)
+  const show = map || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0; ruler.visible = timeRings.mesh.visible && !SPIRAL;   // with the single spiral, the spiral itself is the timeline (it carries its own dates)
   if (monthTicks) { monthTicks.visible = map && (L.mapMonths ?? 1) + (L.mapYearLines ?? 1) > 0; monthTicks.u.a.value = .55 * (L.mapMonths ?? 1) * (1 - sstep(mapYrs, L.mapMonthYrs ?? 8, (L.mapMonthYrs ?? 8) * 1.7)); monthTicks.u.ya.value = .6 * (L.mapYearLines ?? 1); monthTicks.setLen(L.mapTickLen ?? 1500, L.mapYearLen ?? 24000, L.mapEraLen ?? L.mapYearLen ?? 24000); monthTicks.u.fade.value = L.mapTickFade ?? .6 }   // month dividers once a few years fill the view
-  if (spiralLine) { spiralLine.visible = show; spiralLine.u.a.value = (map ? .55 : .5 * ringFarK + (fr ? .35 : 0)) * Math.max(.3, Math.min(2, L.eraRings || 1)) }
+  BHM.c.value.copy(GC).applyMatrix4(camera.matrixWorldInverse); BHM.r.value = RP * BH.rs * (L.bhLens ? 1 : 0);   // the lines fade where the hole would bend them
+  if (spiralLine) { spiralLine.visible = show; spiralLine.u.a.value = (map ? .55 : .5 * ringFarK) * Math.max(.3, Math.min(2, L.eraRings || 1)) }
   u.era.value = .3 * L.eraRings * mapLvl[0] * (map ? 1.3 : 1); u.yr.value = .13 * L.ringYear * mapLvl[1] * (map ? 1.4 : 1); u.mo.value = .1 * L.ringMonth * mapLvl[2] * (map ? 1.3 : 1);
   u.moR.value = map ? orbit.dist * 1.4 : L.monthRange; u.armOnly.value = SPIRAL ? 1 : L.ringArms; u.y0.value = S.y0; u.y1.value = S.y1;
   u.hiA.value += ((map && (ringHov || ringLab) ? 1 : 0) - u.hiA.value) * Math.min(1, dt * (ringHov || ringLab ? 14 : 3));
@@ -97,7 +98,7 @@ function updateTimeRings(dt) {
   } else if (ruler.th !== THR) { ruler.turn(THR); rulerGoal = THR }
   // you-are-here ring + date
   const pl = toLocal(player.pos, tmp2), pr = Math.hypot(pl.x, pl.z), inMe = S.mode === 'fly' ? (1 - sstep(Math.abs(pl.y), 40000, 140000)) * (1 - sstep(pr, Rr * 1.01, Rr * 1.08)) * sstep(pr, GAL_R0 * .9, GAL_R0 * 1.2) : 0;
-  youRing.scale.setScalar(Math.max(1, pr)); youRing.material.opacity = .4 * L.youRing * inMe; youRing.visible = fr && inMe > .01 && L.youRing > 0;   // the date still rides along; the ring only with time rings on
+  youRing.scale.setScalar(Math.max(1, pr)); youRing.material.opacity = .4 * L.youRing * inMe; youRing.visible = ringFarK > .01 && inMe > .01 && L.youRing > 0;   // the date still rides along; the ring only with time rings on
   const yt = $('youTime');
   if (inMe > .01 && L.youRing > 0) {
     const t = new Date(uToT((pr - GAL_R0) / GAL_LEN)); _yt(MON3[t.getUTCMonth()] + ' ' + t.getUTCFullYear());
@@ -106,7 +107,7 @@ function updateTimeRings(dt) {
   } else yt.hidden = true;
   // day ticks beside the nearest winners
   let v = 0;
-  if (S.mode === 'fly' && L.dayTicks && fr) for (const [d2, i] of bodyCand.slice(0, DAY_N)) {
+  if (S.mode === 'fly' && L.dayTicks && ringFarK > .01) for (const [d2, i] of bodyCand.slice(0, DAY_N)) {
     if (d2 > 8000 * 8000) continue; const sl = toLocal(starPos(i, tmp), tmp), r0 = Math.hypot(sl.x, sl.z), ang = Math.atan2(sl.z, sl.x), rad = tmp2.set(Math.cos(ang), 0, Math.sin(ang)), tg = new V3(-rad.z, 0, rad.x), side = starR(i) * 2.4, uD = GAL_R0 + yearU(D[i].t) * GAL_LEN;
     for (let k = -3; k <= 3; k++) {
       const dr = GAL_R0 + yearU(D[i].t + k * 864e5) * GAL_LEN - uD, L2 = (k ? starR(i) * .25 : starR(i) * .55), cR = r0 + dr;
@@ -395,7 +396,7 @@ function tick(now) {
   if (fly) gauge.fly(); else gauge.map();
   netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
   updatePeers(dt); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt); musicMap(S.mode === 'map'); mapZone.update(dt); dayLab(); swapLook();
-  if (tween && tween.mode) { const e = ease(Math.min(1, tween.t)); mapK = S.mode === 'map' ? sstep(e, 0, .55) : 1 - sstep(e, .45, 1) } else mapK += ((S.mode === 'map' ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); PU.bgK.value = 1 - (L.mapFade ?? .85) * mapK; bgStars.u.op.value = L.bgStars * (1 - (L.mapFade ?? .85) * mapK);   // between map and flight the map's dimming follows the camera's move, so the galaxy never flares up while you're still far out; on the map it clears down to the winners
+  if (tween && tween.mode) { const e = ease(Math.min(1, tween.t)); mapK = S.mode === 'map' ? sstep(e, 0, .55) : 1 - sstep(e, .45, 1) } else mapK += ((S.mode === 'map' ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); conK += ((conOn ? 1 : 0) - conK) * Math.min(1, dt * 3); { const dim = Math.max((L.mapFade ?? .85) * mapK, (L.conDim ?? .8) * conK); PU.bgK.value = 1 - dim; bgStars.u.op.value = L.bgStars * (1 - dim) }   // between map and flight the map's dimming follows the camera's move, so the galaxy never flares up while you're still far out; on the map it clears down to the winners
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,
       look = sstep(fw.dot(toC.divideScalar(Math.max(d, 1))), .9, .995) * (1 - sstep(d, Rr * 2, Rr * 8)), inside = 1 - sstep(d, Rr * .6, Rr * 1.6); coreK += (Math.max(look, inside) - coreK) * Math.min(1, dt * 3); coreIn += (inside - coreIn) * Math.min(1, dt * 3) }   // looking into the core, or sitting in it
   {   // bloom swells near light speed and follows the core settings; exposure too

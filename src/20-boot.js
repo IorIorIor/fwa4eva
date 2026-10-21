@@ -12,10 +12,9 @@ const quint = x => x < .5 ? 16 * x ** 5 : 1 - Math.pow(-2 * x + 2, 5) / 2;
 const veil = (() => { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 1, side: THREE.BackSide, depthWrite: false })); m.renderOrder = 9999; m.frustumCulled = false; m.visible = false; camera.add(m); return m })();   // blacks out all but the ship
 // the 3D logo the opening flies through: the FWA mark extruded a little, white faces and grey sides, built once.
 // Its origin is the point under the middle of the W (svg 244, 102), where the camera passes through.
-let LOGO_THRU = [244, 102];   // the point of the logo the camera passes through: the middle of the hole in the A (found below)
+const LOGO_THRU = [244, 102];   // the point of the logo the camera passes through: under the middle of the W
 const logoShapes = (() => { let sh = null; return () => { if (sh) return sh; const svg = document.querySelector('#logo svg'); if (!svg) return null; sh = new SVGLoader().parse(svg.outerHTML).paths.flatMap(p => SVGLoader.createShapes(p));
-  let best = null; sh.forEach(S => S.holes.forEach(h => { const pts = h.getPoints(24), xs = pts.map(p => p.x), ys = pts.map(p => p.y), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2; if (!best || cx > best[0]) best = [cx, cy] }));   // the rightmost hole: the A's
-  if (best) LOGO_THRU = best; return sh } })();
+  return sh } })();
 let logo3d = null;
 function makeLogo3d() {
   const shapes = logoShapes(); if (!shapes) return null;
@@ -49,7 +48,7 @@ const intro = {
       curEl.src = pic.url; curEl.style.width = curEl.style.height = pic.size / dpr + 'px'; this.cur = { hx: pic.hx / dpr, hy: pic.hy / dpr };
       this.pose(0);
     }
-    if (wantLogo && this.at) {   // phase one: you're still just a mouse pointer, and the FWA logo flies at you until you pass through the hole in its A
+    if (wantLogo && this.at) {   // phase one: you're still just a mouse pointer, and the FWA logo flies at you until you pass through it, under the middle of the W
       this.ph = 1; this.lt = 0; curEl.style.display = 'block'; this.placeCur();
       camera.updateMatrixWorld(); const W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), Z0 = this.D0 * .6, s = this.logoAt.w / H * 2 * Z0 * th / 509;
       this.lg = { Z0, s, x0: (this.logoAt.x / W * 2 - 1) * th * W / H * Z0, y0: (1 - this.logoAt.y / H * 2) * th * Z0, dz: s * 149 * (LOOK.logoDepth ?? .12) };
@@ -66,7 +65,7 @@ const intro = {
     g.x = Math.max(0, Math.min(innerWidth, g.x)); g.y = Math.max(0, Math.min(innerHeight, g.y));
   },
   placeCur() { if (this.at && this.cur) curEl.style.transform = `translate(${(this.at.x - this.tipOff.x - this.cur.hx).toFixed(1)}px,${(this.at.y - this.tipOff.y - this.cur.hy).toFixed(1)}px)` },
-  logoStep(dt) {   // the logo in the camera's frame: from the splash's spot, rushing at you while the A's hole slides to the middle and you pass through it
+  logoStep(dt) {   // the logo in the camera's frame: from the splash's spot, rushing at you while the gap under the W's middle slides to the middle and you pass through it
     const T = Math.max(.5, LOOK.logoTime ?? 2.6), q = Math.min(1, (this.lt += dt) / T), e = Math.pow(q, LOOK.logoAccel ?? 2.2), G = this.lg;
     const z = -G.Z0 + (G.Z0 + G.dz * 1.6 + G.Z0 * .02) * e, c = sstep(e, 0, .8), W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), dx = this.at ? this.at.x - W / 2 : 0, dy = this.at ? this.at.y - H / 2 : 0;
     logo3d.position.set(G.x0 * (1 - c) - dx / W * 2 * th * W / H * -z, G.y0 * (1 - c) + dy / H * 2 * th * -z, z).applyQuaternion(camera.quaternion).add(camera.position); logo3d.quaternion.copy(camera.quaternion);   // undo the frame shift that keeps the pointer under the mouse: the logo stays put

@@ -18,7 +18,7 @@ document.addEventListener('pointerlockerror', lockErr);
 document.addEventListener('pointerlockchange', () => { if (locked()) { freeMouse = false; lockErrs = 0; lockFailed = false; updateLockUI() } else { lastUnlock = performance.now(); for (const k in keys) keys[k] = false } });
 function requestLock() { if (!canvas.requestPointerLock) { lockErr(); return } try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(lockErr) } catch (e) { lockErr() } }
 // the menu takes the mouse, but the view still drifts a little with it
-document.addEventListener('mousemove', e => { if (rmenu.open) { rmenu.move(e); if (locked() && S.mode === 'fly' && !introActive) rotateRig(-e.movementX * SENS * LOOK.sens * (LOOK.menuSteer ?? .15), -e.movementY * SENS * LOOK.sens * (LOOK.menuSteer ?? .15)); return } if (intro.active && !booted) { intro.mouse(e); return } if (!locked() || S.mode !== 'fly' || introActive) return; rotateRig(-e.movementX * SENS * LOOK.sens, -e.movementY * SENS * LOOK.sens) });
+document.addEventListener('mousemove', e => { if (rmenu.open) { rmenu.move(e); if (locked() && S.mode === 'fly' && !introActive) rotateRig(-e.movementX * SENS * LOOK.sens * (LOOK.menuSteer ?? .15), -e.movementY * SENS * LOOK.sens * (LOOK.menuSteer ?? .15)); return } if (intro.active) { if (!booted) intro.mouse(e); return }   /* the opening lands facing the core: the mouse only steers once it's over */ if (!locked() || S.mode !== 'fly' || introActive) return; rotateRig(-e.movementX * SENS * LOOK.sens, -e.movementY * SENS * LOOK.sens) });
 // pointer events: map orbit, touch look, click/tap to focus
 const ptrs = new Map();
 canvas.addEventListener('pointerdown', e => {

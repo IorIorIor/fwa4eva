@@ -7,7 +7,7 @@ const shipEnv = (() => {
   const tex = new THREE.CanvasTexture(c); tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
   const mats = []; avatar.traverse(o => { const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; ms.forEach(m => { if (m.isMeshStandardMaterial && !mats.includes(m)) mats.push(m) }) });
   const base = mats.map(m => ({ m, r: m.roughness, mt: m.metalness }));
-  const d = new V3(), lp = new V3(), lc = new V3(), sc = new C3(); let t = 1, on = '';
+  const d = new V3(), lp = new V3(), lc = new V3(), sc = new C3(); let t = 1, on = '', fxNow = -1;
   const Rg = GAL_R0 + GAL_LEN;
   // fake reflected stars: fixed sparks scattered over the panorama, brighter the deeper in the star clouds you are
   const SPARK = Array.from({ length: 260 }, (_, k) => { const r = mulberry32(31 + k); return [(r() * W) | 0, (r() * H) | 0, Math.pow(r(), 3) * 2.5 + .4, r()] });
@@ -53,7 +53,8 @@ const shipEnv = (() => {
     update(dt) {
       if (LT.hemi && LT.key && LT.rim) lights();
       // wh: the white paint glows a little of its own, so it reads white, not grey, whatever the light
-      const k = LOOK.shipReflect ?? 1, gl = LOOK.shipGloss ?? .5, sc = LOOK.shipScuff ?? 1, wh = LOOK.shipWhite ?? .75, key = k + ',' + gl + ',' + sc + ',' + wh; SHIP_MAT.white.emissiveIntensity = wh; if (key !== on) { on = key; base.forEach(({ m, r, mt }) => { m.envMap = k > 0 ? tex : null; m.envMapIntensity = k * 2.5; m.roughness = r * (1 - .6 * Math.min(1, k * gl)); m.metalness = Math.max(mt, .35 * Math.min(1, k)); if (m.isMeshPhysicalMaterial) { m.clearcoat = Math.min(1, k); m.clearcoatRoughness = .02 + .3 * (1 - gl) } if (m.bumpMap) m.bumpScale = .35 * sc; m.needsUpdate = true }) }   // the lacquer (clearcoat) mirrors the panorama sharply; gloss tightens it
+      const k = LOOK.shipReflect ?? 1, gl = LOOK.shipGloss ?? .5, sc = LOOK.shipScuff ?? 1, wh = LOOK.shipWhite ?? .75, key = k + ',' + gl + ',' + sc + ',' + wh; SHIP_MAT.white.emissiveIntensity = wh; if (key !== on) { on = key; base.forEach(({ m, r, mt }) => { m.envMap = k > 0 ? tex : null; m.envMapIntensity = k * 2.5; m.roughness = r * (1 - .6 * Math.min(1, k * gl)); m.metalness = Math.max(mt, .35 * Math.min(1, k)); if (m.isMeshPhysicalMaterial) { m.clearcoat = Math.min(1, k); m.clearcoatRoughness = .02 + .3 * (1 - gl) } if (m.bumpMap) m.bumpScale = .35 * sc; m.needsUpdate = true }); fxNow = -1 }   // the lacquer (clearcoat) mirrors the panorama sharply; gloss tightens it
+      { const fx = intro.active ? (intro.ph === 1 ? 0 : sstep(intro.t, .5, .92)) : 1; if (fx !== fxNow) { fxNow = fx; base.forEach(({ m, r }) => { m.envMapIntensity = k * 2.5 * fx; m.roughness = r * (1 - .6 * Math.min(1, k * gl) * fx) + .5 * (1 - fx); if (m.isMeshPhysicalMaterial) m.clearcoat = Math.max(.001, Math.min(1, k) * fx); if (m.bumpMap) m.bumpScale = .35 * sc * fx }) } }   // in the opening the arrow is tiny and its glints, lacquer and scuffs only shimmer: they come in once it's close
       if (k > 0 && (t -= dt) <= 0) { t = .5; draw() }
     },
   };

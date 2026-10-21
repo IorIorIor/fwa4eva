@@ -97,7 +97,7 @@ const constellation = (() => {   // each link a screen-space ribbon: a 2 px line
   const g = new THREE.InstancedBufferGeometry(); g.index = QUAD.index; g.setAttribute('position', QUAD.attributes.position); g.setAttribute('uv', QUAD.attributes.uv);
   const pa = new Float32Array(CON_MAX * 3), pb = new Float32Array(CON_MAX * 3), col = new Float32Array(CON_MAX * 3), sq = new Float32Array(CON_MAX);
   [['aA', pa, 3], ['aB', pb, 3], ['aCol', col, 3], ['aSeq', sq, 1]].forEach(([k, a, n]) => g.setAttribute(k, new THREE.InstancedBufferAttribute(a, n).setUsage(THREE.DynamicDrawUsage))); g.instanceCount = 0;
-  const u = { t: uniform(0), cur: uniform(-10), op: uniform(0), glow: uniform(1), w: uniform(2), gw: uniform(10) }, m = skyMat({ blend: 'alpha', depthTest: false }), vD = varyingProperty('float', 'vD'), vC = varyingProperty('vec3', 'vC'), vH = varyingProperty('float', 'vH');
+  const u = { t: uniform(0), cur: uniform(-10), op: uniform(0), glow: uniform(1), w: uniform(2), gw: uniform(10) }, m = skyMat({ blend: 'alpha', depthTest: false }), vD = varyingProperty('float', 'vD'), vC = varyingProperty('vec3', 'vC'), vH = varyingProperty('float', 'vH'), vT = varyingProperty('float', 'vAl'), vL = varyingProperty('float', 'vLn');
   m.vertexNode = Fn(() => {
     const near = float(1), A = cameraViewMatrix.mul(vec4(ia('aA', 'vec3'), 1)).toVar(), B = cameraViewMatrix.mul(vec4(ia('aB', 'vec3'), 1)).toVar();
     // clip the link to the space in front of the camera, so a line running past you never flips
@@ -106,14 +106,14 @@ const constellation = (() => {   // each link a screen-space ribbon: a 2 px line
     const cA = cameraProjectionMatrix.mul(A), cB = cameraProjectionMatrix.mul(B), half = U.res.mul(.5), sA = cA.xy.div(cA.w).mul(half), sB = cB.xy.div(cB.w).mul(half);
     const dv = sB.sub(sA), L = max(length(dv), 1e-3), dir = dv.div(L), nrm = vec2(dir.y.negate(), dir.x), hw = u.w.mul(.5).add(u.gw).mul(U.dpr), t = uv().x, side = positionGeometry.y.mul(2);
     const c = mix(cA, cB, t), off = nrm.mul(side.mul(hw)).add(dir.mul(t.mul(2).sub(1).mul(hw)));   // a little past each end, so joins round off
-    vD.assign(side.mul(hw).div(U.dpr)); vC.assign(ia('aCol', 'vec3'));
+    vD.assign(side.mul(hw).div(U.dpr)); vT.assign(t.mul(2).sub(1).mul(hw).div(U.dpr).add(t.mul(L).div(U.dpr))); vL.assign(L.div(U.dpr)); vC.assign(ia('aCol', 'vec3'));   // across, and along (from A, in px; past each end by the cap)
     const seg = floor(ia('aSeq', 'float')), cur = abs(seg.sub(u.cur)).lessThan(.5), prev = abs(seg.sub(u.cur.sub(1))).lessThan(.5); vH.assign(select(cur, 1, select(prev, .55, 0)));
     const behind = A.z.greaterThan(near.negate().mul(.999)).and(B.z.greaterThan(near.negate().mul(.999)));
     return select(behind, vec4(0, 0, 2, 1), c.add(vec4(off.div(half).mul(c.w), 0, 0)));
   })();
   m.fragmentNode = Fn(() => {
-    const d = abs(vD), core = smoothstep(u.w.mul(.5).add(.5), u.w.mul(.5).sub(.5), d), glow = exp(d.div(u.gw.mul(.45)).pow(2).negate()).mul(.22);
-    const k = u.op.mul(min(u.glow, 1.5)).mul(vH.mul(.5).add(.7)), a = clamp(max(core, glow).mul(k), 0, 1);   // blended, not added: where links cross they don't pile up into white
+    const d = length(vec2(max(0, max(vT.negate(), vT.sub(vL))), vD)), core = smoothstep(u.w.mul(.5).add(.5), u.w.mul(.5).sub(.5), d), glow = exp(d.div(u.gw.mul(.45)).pow(2).negate()).mul(.22);
+    const k = u.op.mul(min(u.glow, 1.5)).mul(vH.mul(.5).add(.7)), a = clamp(max(core, glow).mul(k), 0, 1);   // blended, not added: where links cross they don't pile up into white. Distance to the segment itself, so each link ends in a round cap right on its star and the next starts from the same point
     return vec4(mix(vC, mix(vC, vec3(1), .5), core), a);
   })();
   const mesh = layer(new THREE.Mesh(g, m), scene, 3); mesh.u = u; mesh.buf = { pa, pb, col, sq }; return mesh;

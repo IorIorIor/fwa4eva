@@ -85,15 +85,17 @@ function refreshLabels() {
   labelEls.sort((a, b) => b.pri - a.pri);   // important names claim their space first
   requestAnimationFrame(() => labelEls.forEach(l => { const d = l.e.style.display; l.e.style.display = ''; l.w = l.e.offsetWidth + 6; l.h = l.e.offsetHeight + 4; l.e.style.display = d }));   // one layout read per refresh
 }
-let ringLab = 0;
+let ringLab = 0; const _bhDir = new V3();
 function updateLabels() {
-  const W = innerWidth, H = innerHeight, map = S.mode === 'map', boxes = [], fr = !!LOOK.ringFly; _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const W = innerWidth, H = innerHeight, map = S.mode === 'map', boxes = []; _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const bhD = camera.position.distanceTo(GC), bhR = LOOK.bhLens ? RP * BH.rs : 0, bhA = bhD > bhR ? Math.asin(bhR / bhD) * .9 : 0; _bhDir.copy(GC).sub(camera.position).normalize();   // labels the hole would bend away are hidden
   for (const l of labelEls) {
     let fade = 1;
-    if (l.ruler != null) { ringPoint(l.ruler, SPIRAL ? armPhase(GAL_R0 + l.ruler * GAL_LEN) : ruler.th, 0, l.pos); fade = map ? (l.lvl === 1 && SPIRAL && (LOOK.mapYearLines ?? 1) > 0 ? Math.max(mapLvl[1], LOOK.mapYearLabels ?? 1) : l.lvl === 2 && SPIRAL ? Math.min(1, LOOK.mapMonths ?? 1) * (1 - sstep(mapYrs, LOOK.mapMonthYrs ?? 8, (LOOK.mapMonthYrs ?? 8) * 1.7)) : mapLvl[l.lvl]) : l.lvl === 2 ? 0 : fr ? 1 : l.lvl === 0 ? ringFarK : 0 }   // dates ride the turning ruler (from far out in flight, the five-year marks)
+    if (l.ruler != null) { ringPoint(l.ruler, SPIRAL ? armPhase(GAL_R0 + l.ruler * GAL_LEN) : ruler.th, 0, l.pos); fade = map ? (l.lvl === 1 && SPIRAL && (LOOK.mapYearLines ?? 1) > 0 ? Math.max(mapLvl[1], LOOK.mapYearLabels ?? 1) : l.lvl === 2 && SPIRAL ? Math.min(1, LOOK.mapMonths ?? 1) * (1 - sstep(mapYrs, LOOK.mapMonthYrs ?? 8, (LOOK.mapMonthYrs ?? 8) * 1.7)) : mapLvl[l.lvl]) : l.lvl === 2 ? 0 : ringFarK }   // dates ride the turning ruler (from far out in flight, the five-year marks)
     let show = fade > .04 && !(map ? (l.mapFar && orbit.dist > l.mapFar) : (l.near && !(l.ruler != null && ringFarK > .05) && camera.position.distanceTo(l.pos) > l.near));   // local names only once you're close
     let x = 0, y = 0;
     if (show) { tmp.copy(l.pos).applyMatrix4(_vp); show = tmp.z <= 1 && tmp.z >= -1 && Math.abs(tmp.x) <= 1.1 && Math.abs(tmp.y) <= 1.1; x = Math.round((tmp.x * .5 + .5) * W); y = Math.round((-tmp.y * .5 + .5) * H) }
+    if (show && bhA > 0 && l.pos.distanceTo(camera.position) > bhD - bhR && _bhDir.angleTo(tmp2.copy(l.pos).sub(camera.position)) < bhA) show = false;
     if (show && l.w) {   // declutter: a label only shows if it doesn't land on a more important one
       const cx = x, cy = l.mid ? y : y - l.h / 2, hw = l.w / 2, hh = l.h / 2;
       for (const b of boxes) if (Math.abs(b[0] - cx) < b[2] + hw && Math.abs(b[1] - cy) < b[3] + hh) { show = false; break }

@@ -52,13 +52,16 @@ const youRing = (() => {
 // day ticks: a tiny ruler beside each nearby winner, one notch per day either side of its date
 const DAY_N = 12, dayPos = new Float32Array(DAY_N * 7 * 2 * 3);
 const dayTicks = (() => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(dayPos, 3).setUsage(THREE.DynamicDrawUsage)); return layer(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false })), scene, 1) })();
+// the black hole bends everything behind it, but these thin lines are drawn on top: where they'd cross its lensed sphere they fade out
+const BHM = { c: uniform(new V3()), r: uniform(0) };   // the hole's centre in view space, and its lensing radius
+const bhMask = () => { const d = normalize(positionView), t = dot(BHM.c, d), m = length(BHM.c.sub(d.mul(t))); return select(t.greaterThan(0), smoothstep(BHM.r.mul(.45), BHM.r.mul(.9), m), float(1)) };
 // the single spiral's own line, core (today) to rim (2000): on the map, and in flight once you're far enough out to see it whole
 const spiralLine = SPIRAL ? (() => {
   const pos = [], n = 2400, tNow = Math.min(T_B, Date.now()), tau0 = 1 - tFrac(tNow);
   for (let k = 0; k <= n; k++) { const tau = tau0 + (1 - tau0) * k / n, r = GAL_R0 + spRho(tau) * GAL_LEN, th = armPhase(r); pos.push(Math.cos(th) * r, 0, Math.sin(th) * r) }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   const u = { a: uniform(0) }, m = new THREE.LineBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
-  m.colorNode = vec3(.92, .95, 1); m.opacityNode = u.a;
+  m.colorNode = vec3(.92, .95, 1); m.opacityNode = u.a.mul(bhMask());
   const mesh = new THREE.Line(g, m); mesh.position.copy(GC); mesh.quaternion.copy(GQ); layer(mesh, scene, 1); mesh.u = u; mesh.visible = false; return mesh;
 })() : null;
 // month dividers along the spiral timeline: a short tick across the line at the start of every month (a longer one each January)
@@ -70,7 +73,7 @@ const monthTicks = SPIRAL ? (() => {
   const u = { a: uniform(0), ya: uniform(0), fade: uniform(.6) }, vE = varying(attribute('aE', 'float'));
   const mk = (p, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setAttribute('aE', new THREE.Float32BufferAttribute(p.map((_, k) => k % 6 < 3 ? -1 : 1).filter((_, k) => k % 3 === 0), 1));
     const m = new THREE.LineBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }); m.positionNode = positionGeometry; m.colorNode = vec3(.92, .95, 1);
-    m.opacityNode = op.mul(smoothstep(1, float(1).sub(u.fade).clamp(0, .999), abs(vE)).mul(u.fade).add(u.fade.oneMinus()));   // each line fades out toward both its tips
+    m.opacityNode = op.mul(smoothstep(1, float(1).sub(u.fade).clamp(0, .999), abs(vE)).mul(u.fade).add(u.fade.oneMinus())).mul(bhMask());   // each line fades out toward both its tips
     const l = new THREE.LineSegments(g, m); l.userData.base = new Float32Array(p); l.frustumCulled = false; return l };
   const mesh = mk(pos[0], u.a), years = mk(pos[1], u.ya), eras = mk(pos[2], u.ya); mesh.add(years, eras); mesh.years = years;   // the year lines stay on at any zoom; months only up close
   mesh.position.copy(GC); mesh.quaternion.copy(GQ); layer(mesh, scene, 1); years.renderOrder = eras.renderOrder = mesh.renderOrder; mesh.u = u; mesh.visible = false;
