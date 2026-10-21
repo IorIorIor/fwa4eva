@@ -264,11 +264,11 @@ const winCompass = (() => {
   const el = document.createElement('div'); el.id = 'wcmp'; el.className = 'hud'; el.setAttribute('aria-hidden', 'true'); el.innerHTML = '<i class="c"></i>'; document.body.appendChild(el);
   const circ = el.querySelector('.c'), MK = Array.from({ length: 8 }, () => { const m = document.createElement('div'); m.className = 'm'; m.innerHTML = '<i></i><span></span>'; el.appendChild(m); return { m, dot: m.firstChild, t: liveText(m.lastChild), lab: m.lastChild, i: -1 } });
   const near = [], v = new V3(), sp = new V3(), MO = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
-  let on = null;
+  let on = null, lastT = 0;
   return () => {
     const L = LOOK, show = !!(L.winCompass ?? 1) && S.mode === 'fly' && booted && !intro.active; if (show !== on) { on = show; el.hidden = !show } if (!show) return;
-    const W = innerWidth, H = innerHeight, R = Math.min(W, H) * (L.winCompassSize ?? .8) / 2, n = Math.max(1, Math.min(8, Math.round(L.winCompassN ?? 5)));
-    sp.copy(player.pos).project(camera); const cx = W / 2, cy = H / 2 + ((-sp.y * .5 + .5) * H - H / 2) * (L.winCompassFollow ?? .3);   // centred on the screen, drawn a little toward the ship (which sits low), so the whole circle stays in view
+    const now = performance.now(), cdt = Math.min(.1, (now - (lastT || now)) / 1000); lastT = now; const edge = !!(L.winCompassEdge ?? 1), W = innerWidth, H = innerHeight, R = edge ? Math.min(W, H) / 2 : Math.min(W, H) * (L.winCompassSize ?? .8) / 2, n = Math.max(1, Math.min(8, Math.round(L.winCompassN ?? 5)));
+    sp.copy(player.pos).project(camera); const cx = W / 2, cy = edge ? (100 + H) / 2 : H / 2 + ((-sp.y * .5 + .5) * H - H / 2) * (L.winCompassFollow ?? .3);   // centred on the screen, drawn a little toward the ship (which sits low), so the whole circle stays in view
     circ.style.cssText = `left:${(cx - R).toFixed(1)}px;top:${(cy - R).toFixed(1)}px;width:${(2 * R).toFixed(1)}px;height:${(2 * R).toFixed(1)}px`;
     near.length = 0; const pp = player.pos;   // the n nearest (that the filter shows)
     for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z, d2 = dx * dx + dy * dy + dz * dz; if (near.length < n) { near.push([d2, i]); near.sort((a, b) => a[0] - b[0]) } else if (d2 < near[n - 1][0]) { near[n - 1] = [d2, i]; near.sort((a, b) => a[0] - b[0]) } }
@@ -284,9 +284,10 @@ const winCompass = (() => {
       }
       k.m.classList.remove('star');
       if (placed.some(b => Math.abs(((a - b + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < gap)) { k.m.hidden = true; return } placed.push(a);
-      if (k.i !== i) { k.i = i; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
-      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R; k.m.hidden = false; k.m.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`; k.dot.style.transform = `rotate(${(a * 180 / Math.PI + 90).toFixed(1)}deg)`;
-      const ins = y + Math.sin(a) * 14 + 12 > H || y + Math.sin(a) * 14 - 12 < 0 || x + Math.cos(a) * 90 > W || x + Math.cos(a) * 90 < 0, o = ins ? -1 : 1, ca = Math.cos(a) * o;   // a tag that would leave the screen goes inside the circle
+      if (k.i !== i) { k.i = i; k.sa = a; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
+      { let da = ((a - k.sa + 3 * Math.PI) % (2 * Math.PI)) - Math.PI; k.sa += da * Math.min(1, cdt * (L.winCompassEase ?? 6)); a = k.sa }   // eased round the edge, so camera moves don't make it jump
+      let x, y; if (edge) { const c = Math.cos(a), s2 = Math.sin(a), tx = c > 0 ? (W - 22 - cx) / c : c < 0 ? (22 - cx) / c : Infinity, ty = s2 > 0 ? (H - 22 - cy) / s2 : s2 < 0 ? (100 - cy) / s2 : Infinity, tt = Math.min(tx, ty); x = cx + c * tt; y = cy + s2 * tt } else { x = cx + Math.cos(a) * R; y = cy + Math.sin(a) * R }   // round the screen's edge (clear of the top 100 px with the menu), or on the circle k.m.hidden = false; k.m.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`; k.dot.style.transform = `rotate(${(a * 180 / Math.PI + 90).toFixed(1)}deg)`;
+      const ins = edge || y + Math.sin(a) * 14 + 12 > H || y + Math.sin(a) * 14 - 12 < 0 || x + Math.cos(a) * 90 > W || x + Math.cos(a) * 90 < 0, o = ins ? -1 : 1, ca = Math.cos(a) * o;   // a tag that would leave the screen goes inside the circle
       k.lab.style.transform = `translate(${(ca < -.3 ? -100 : ca > .3 ? 0 : -50)}%,0) translate(${(ca * 10).toFixed(1)}px,${(Math.sin(a) * 14 * o - 7).toFixed(1)}px)`;
       k.m.classList.toggle('first', j === 0); k.m.classList.toggle('back', v.z >= 0);
     });

@@ -212,7 +212,7 @@ const slowmo = { k: 1, after: 1e9,
     const L = LOOK, amt = L.rings ? L.ringSlow ?? 1 : 0; this.after += rdt * this.k; if (amt <= 0 || L.ringPlay) { this.k = 1; return }
     const lo = Math.max(.001, L.ringSlowMin ?? .06), F = Math.max(.05, L.ringSlowFrom ?? .5), ts = HALO.ts, sm = x => Math.pow(Math.max(0, Math.min(1, x)), 1.6);   // a soft start, then each moment a fixed share slower
     let k = Math.pow(lo, sm(1 - ts / F));   // softly in, then exponentially slower: all but still at the moment you cross
-    k = Math.min(k, Math.pow(lo, sm(1 - this.after / F)));   // and out again the same way, mirror image
+    k = Math.min(k, Math.pow(lo, sm(1 - this.after / Math.max(.02, L.ringSlowAfter ?? F))));   // and out again the same way, mirror image
     this.k = 1 - amt * (1 - k);
   },
 };
