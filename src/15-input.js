@@ -60,7 +60,7 @@ const endPtr = e => {
     const hov = (x, y) => coarse || down.touch ? pick(x, y) : hovPick;   // with a mouse, only the star whose tooltip is showing; touch has no hover, so a tap picks
     const fly = S.mode === 'fly', cx = locked() ? innerWidth / 2 : e.clientX, cy = locked() ? innerHeight / 2 : e.clientY;
     const onPic = () => { if (!fly || !HALO.pInfo.on) return false; const P_ = HALO.pInfo, d = camera.position.distanceTo(P_.c), v = tmp.copy(P_.c).project(camera); if (v.z > 1) return false; const r = P_.r * .95 * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(d, 1e-6)); return Math.hypot((v.x * .5 + .5) * innerWidth - cx, (-v.y * .5 + .5) * innerHeight - cy) < r };   // the click landed on a ring's picture
-    if (rmenu.open) { if (down.touch && rmenu.held && !rmenu.hot) rmenu.held = false; else rmenu.choose(); rmenu.held = false }   /* a finger let go without sliding to a choice: the menu stays for a tap */   // let go: the segment you nudged toward, or nothing (the menu goes)
+    if (rmenu.open) { rmenu.choose(); rmenu.held = false }   // let go: the choice you slid to, or nothing (the menu goes)   // let go: the segment you nudged toward, or nothing (the menu goes)
     else if (!rmenu.panel && onPic()) HALO.nextPic();   // on a ring's picture: the next picture slides in
     else if (rmenu.panel) { rmenu.close(); if (fly && !down.touch && !locked() && !lockFailed) requestLock() }
     else if (fly && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it (or just take the pointer back)
@@ -136,14 +136,16 @@ addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
 [['brake', v => touchBrake = v]].forEach(([id, to]) => { const b = $(id), set = v => { to(v); b.classList.toggle('on', v) }; b.addEventListener('pointerdown', e => { e.preventDefault(); set(true); buzz(8); try { b.setPointerCapture(e.pointerId) } catch { } }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => set(false))); b.addEventListener('contextmenu', e => e.preventDefault()) });   // captured, so a thumb sliding off keeps braking
 $('dash').addEventListener('click', () => { if (S.mode === 'fly') setSpeedMode((speedMode + 1) % 3) });   // tap the console: the next speed mode
-// thrust: hold to fly; the button grows into a track above your thumb, and sliding up it to the top boosts
-{ const b = $('thrust'); let y0 = 0, id = -1;
-  const slide = k => { b.style.setProperty('--k', k.toFixed(3)); const on = k > .92; if (on !== touchBoost) { touchBoost = on; b.classList.toggle('boost', on); if (on) buzz(14) } };
-  const end = () => { if (id < 0) return; id = -1; touchThrust = false; b.classList.remove('on'); slide(0) };
-  b.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; y0 = e.clientY; touchThrust = true; b.classList.add('on'); slide(0); buzz(8); try { b.setPointerCapture(id) } catch { } });
-  b.addEventListener('pointermove', e => { if (e.pointerId !== id) return; const span = Math.max(40, Math.min(232, innerHeight * .46) - 52); slide(Math.min(1, Math.max(0, (y0 - e.clientY) / span))) });
+// thrust: hold to fly. While held, Boost waits above it and Brake to its left: slide your thumb into one
+{ const b = $('thrust'); let id = -1, zone = '';
+  b.innerHTML = '<span>Thrust</span><i class="tbo">Boost</i><i class="tbr">Brake</i>'; b.setAttribute('aria-label', 'Thrust (hold; slide up to boost, left to brake)');
+  const setZone = z => { if (z === zone) return; zone = z; touchThrust = z === 't' || z === 'b'; touchBoost = z === 'b'; touchBrake = z === 'k'; b.classList.remove('z-t', 'z-b', 'z-k'); if (z) { b.classList.add('z-' + z); buzz(z === 't' ? 8 : 14) } };
+  const zoneAt = (x, y) => { const r = b.getBoundingClientRect(); return y < r.top - 10 && x > r.left - 24 ? 'b' : x < r.left - 10 ? 'k' : 't' };
+  const end = () => { if (id < 0) return; id = -1; b.classList.remove('on'); setZone('') };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; b.classList.add('on'); setZone('t'); try { b.setPointerCapture(id) } catch { } });
+  b.addEventListener('pointermove', e => { if (e.pointerId === id) setZone(zoneAt(e.clientX, e.clientY)) });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, e => { if (e.pointerId === id) end() })); b.addEventListener('contextmenu', e => e.preventDefault());
-  addEventListener('pointerup', e => { if (e.pointerId === id) end() }, true); ['touchend', 'touchcancel'].forEach(t => addEventListener(t, e => { if (id >= 0 && ![...e.touches].some(x => b.contains(x.target))) end() }, true)); addEventListener('blur', end); document.addEventListener('visibilitychange', end) }   // let go anywhere, any way: the thrust stops
+  addEventListener('pointerup', e => { if (e.pointerId === id) end() }, true); ['touchend', 'touchcancel'].forEach(t => addEventListener(t, e => { if (id >= 0 && ![...e.touches].some(x => b.contains(x.target))) end() }, true)); addEventListener('blur', end); document.addEventListener('visibilitychange', end) }   // let go anywhere, any way: everything stops
 
 /* ───────────────────────── picking ───────────────────────── */
 // ← and →: every winner by distance from you. With nothing locked either key goes to the nearest one, wherever it is;
