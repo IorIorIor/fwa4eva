@@ -53,9 +53,9 @@
     </div>
     <div class="grp"><div class="lbl">Search</div><input type="search" id="q" placeholder="Title or agency"></div>
     <div class="grp"><div class="lbl">Award</div><div class="chips" id="cAward"></div></div>
-    <div class="grp keep"><div class="lbl">Category</div><div class="chips" id="cCat"></div></div>
     <div class="grp"><div class="lbl">Technology</div><div class="chips" id="cTech"></div></div>
-    <div class="grp keep"><div class="lbl"><span>Agencies</span><span>each one a constellation</span></div><select id="agency" aria-label="Add an agency constellation"></select><div class="chips" id="cAg"></div></div>
+    <div class="grp keep fblk" id="fAg"><div class="flbl"><span>Agencies</span><span>FWAs</span></div><input type="search" id="agQ" placeholder="Search agencies" aria-label="Search agencies" autocomplete="off" spellcheck="false"><div class="flist" id="agList" role="listbox" aria-multiselectable="true"></div></div>
+    <div class="grp keep fblk" id="fCat"><div class="flbl"><span>Categories</span></div><div class="flist" id="catList" role="listbox" aria-multiselectable="true"></div></div>
     <div class="grp"><div class="lbl">Country</div><select id="country"></select></div>
     <div class="grp"><div class="lbl"><span>Min jury score</span><span id="scTxt">7.0</span></div><input type="range" id="score" min="7" max="9.8" step="0.1" value="7"></div>
     <div class="grp">

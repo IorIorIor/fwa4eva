@@ -116,11 +116,9 @@ function chips(el, items, set, col, label = x => x) {
   });
 }
 chips($('cAward'), AWARDS, S.awards, a => AWARD_COL[a], a => AWARD_NAME[a]);
-chips($('cCat'), CATS, S.cats, c => CAT_COL[CATS.indexOf(c)]);
 chips($('cTech'), TECHS, S.techs, t => TECH_COL[t]);
 {
   const cnt = k => { const m = new Map(); D.forEach(d => m.set(d[k], (m.get(d[k]) || 0) + 1)); return [...m].sort((a, b) => b[1] - a[1]) };
-  $('agency').innerHTML = '<option value="">Add an agency…</option>' + cnt('agency').map(([a, n]) => `<option value="${esc(a)}">${esc(a)} (${n})</option>`).join('');
   $('country').innerHTML = '<option value="">All countries</option>' + cnt('country').map(([a, n]) => `<option value="${esc(a)}">${esc(a)} (${n})</option>`).join('');
 }
 histBtns = YEARS.map(y => { const b = document.createElement('button'); b.title = y; b.setAttribute('aria-label', 'Only ' + y); b.onclick = () => { S.y0 = S.y1 = y; $('y0').value = $('y1').value = y; applyFilter() }; $('hist').appendChild(b); return b });
@@ -128,13 +126,26 @@ $('y0').oninput = e => { S.y0 = +e.target.value; if (S.y0 > S.y1) { S.y1 = S.y0;
 $('y1').oninput = e => { S.y1 = +e.target.value; if (S.y1 < S.y0) { S.y0 = S.y1; $('y0').value = S.y0 } applyFilter() };
 $('yrAll').onclick = () => { S.y0 = 2000; S.y1 = 2026; $('y0').value = 2000; $('y1').value = 2026; applyFilter() };
 $('q').oninput = e => { S.q = e.target.value.trim(); applyFilter() };
-$('agency').onchange = e => { const a = e.target.value; e.target.value = ''; if (!a || S.agencies.has(a) || S.agencies.size >= AG_PAL.length) return; const used = new Set(agCol.values()); agCol.set(a, AG_PAL.find(c => !used.has(c))); S.agencies.add(a); renderAgChips(); recolor(); applyFilter() };
-function renderAgChips() {
-  const el = $('cAg'); el.innerHTML = ''; S.agencies.forEach(a => {
-    const b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed', 'true'); b.style.setProperty('--c', agColor(a));
-    b.innerHTML = `<i></i>${esc(a)} <span aria-hidden="true">×</span>`; b.setAttribute('aria-label', 'Remove ' + a); b.onclick = () => { S.agencies.delete(a); agCol.delete(a); renderAgChips(); recolor(); applyFilter() }; el.appendChild(b)
-  })
+/* the filter lists: agencies ranked by how many FWAs they won (pick any: each becomes a constellation), and categories */
+const AG_RANK = (() => { const m = new Map(); D.forEach(d => d.agency && m.set(d.agency, (m.get(d.agency) || 0) + 1)); return [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])) })();
+const fRow = (name, n, k) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'frow'; b.dataset.k = k; b.setAttribute('role', 'option'); b.innerHTML = `<i></i><span>${esc(name)}</span><b>${n}</b>`; return b };
+{
+  const ag = $('agList'), cat = $('catList');
+  AG_RANK.forEach(([a, n]) => ag.appendChild(fRow(a, n, a)));
+  const catN = new Map(); D.forEach(d => catN.set(d.category, (catN.get(d.category) || 0) + 1));
+  CATS.forEach(c => { const r = fRow(c, catN.get(c) || 0, c); r.style.setProperty('--c', CAT_COL[CATS.indexOf(c)]); cat.appendChild(r) });
+  ag.addEventListener('click', e => { const b = e.target.closest('.frow'); if (!b) return; const a = b.dataset.k;
+    if (S.agencies.has(a)) { S.agencies.delete(a); agCol.delete(a) } else { if (S.agencies.size >= AG_PAL.length) return; const used = new Set(agCol.values()); agCol.set(a, AG_PAL.find(c => !used.has(c))); S.agencies.add(a) }
+    renderAgChips(); recolor(); applyFilter() });
+  cat.addEventListener('click', e => { const b = e.target.closest('.frow'); if (!b) return; const c = b.dataset.k; S.cats.has(c) ? S.cats.delete(c) : S.cats.add(c); renderAgChips(); applyFilter() });
+  $('agQ').oninput = e => { const q = e.target.value.trim().toLowerCase(); for (const r of ag.children) r.hidden = !!q && !r.dataset.k.toLowerCase().includes(q) };
 }
+function renderAgChips() {   // the lists show what's picked: a picked agency goes bold (the rest grey), a picked category bold with its colour dot
+  for (const r of $('agList').children) { const on = S.agencies.has(r.dataset.k); r.classList.toggle('on', on); r.setAttribute('aria-selected', on); r.style.setProperty('--c', on ? agColor(r.dataset.k) : 'transparent') }
+  $('fAg').classList.toggle('some', S.agencies.size > 0);
+  for (const r of $('catList').children) { const on = S.cats.has(r.dataset.k); r.classList.toggle('on', on); r.setAttribute('aria-selected', on) }
+}
+renderAgChips();
 $('country').onchange = e => { S.country = e.target.value; applyFilter() };
 $('score').oninput = e => { S.minScore = +e.target.value; $('scTxt').textContent = S.minScore.toFixed(1); applyFilter() };
 $('colorBy').onchange = e => { S.colorBy = e.target.value; recolor() };

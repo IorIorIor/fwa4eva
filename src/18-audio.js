@@ -61,7 +61,7 @@ function updateEngine() {
   ENG.tG.gain.setTargetAtTime(fly ? (.012 + th * .035 + move * .012) : 0, t, th ? .15 : .8);
   ENG.lp.frequency.setTargetAtTime(240 + k * 900 + th * 300, t, .3);
   const f = (42 + k * 58) * (brk ? .88 : 1) * (1 + boostK * .25); ENG.oscs.forEach(o => o.frequency.setTargetAtTime(f, t, .35));
-  ENG.eng.gain.setTargetAtTime(LOOK.engine, t, .1);
+  ENG.eng.gain.setTargetAtTime(LOOK.engine * (fly ? 1 : LOOK.mapSfx ?? 1), t, .1);
 }
 const ICON_SOUND = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg>', ICON_MUTED = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 8a5 5 0 0 1 1.912 4.934m-1.377 2.602a5 5 0 0 1 -.535 .464"/><path d="M17.7 5a9 9 0 0 1 2.362 11.086m-1.676 2.299a9 9 0 0 1 -.686 .615"/><path d="M9.069 5.054l.431 -.554a.8 .8 0 0 1 1.5 .5v2m0 4v8a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l1.294 -1.664"/><path d="M3 3l18 18"/></svg>';   // Tabler icons (outline)
 function setMuted(m) { muted = m; store.set('sotd-muted', m ? '1' : '0'); const b = $('sbtn'); b.innerHTML = '' + (m ? ICON_MUTED : ICON_SOUND); b.title = m ? 'Sound off' : 'Sound on'; b.setAttribute('aria-pressed', !m); if (out) out.gain.setTargetAtTime(m ? 0 : 1, AC.currentTime, .05) }
@@ -88,5 +88,5 @@ canvas.addEventListener('pointerdown', () => { if (booted) audio() }); addEventL
 function musicMap(on) {   // map on: the music sinks underwater, slowly; back to flying, it surfaces
   if (!musicFx || !AC || on === musicMapOn) return; musicMapOn = on; const m = on ? (LOOK.mapMuffle ?? .8) : 0, t = AC.currentTime, T = on ? .9 : .5;
   musicFx.lp.frequency.setTargetAtTime(20000 * Math.pow(480 / 20000, m), t, T); musicFx.lp.Q.setTargetAtTime(.7 + 5 * m, t, T); musicFx.wet.gain.setTargetAtTime(.32 * m, t, T);
-  musicGain.gain.setTargetAtTime(.6 * LOOK.music * (1 - .3 * m), t, T);
+  musicGain.gain.setTargetAtTime(.6 * LOOK.music * (1 - .3 * m) * (on ? LOOK.mapMusic ?? 1 : 1), t, T); if (master) master.gain.setTargetAtTime(CHIME_K * LOOK.ting * (on ? LOOK.mapSfx ?? 1 : 1), t, T);   // the map has its own music and sound levels
 }

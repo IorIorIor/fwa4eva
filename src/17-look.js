@@ -38,8 +38,16 @@ const lookData = () => { const d = {}; Object.keys(LOOK).forEach(k => { if (k[0]
 // the map can have a look of its own: with the switch on, the Look panel edits a separate set of settings while you're on the map
 const MAP_KEY = 'sotd-look-map';
 let LOOK_FLY = LOOK, LOOK_MAP = { ...LOOK, ...store.json(MAP_KEY, {}) };
+const INV_KEY = 'sotd-look-inv';   // the inverted look: with the inverted switch on, every slider edits this set instead (fly and map alike)
+let LOOK_INV = { ...LOOK, ...store.json(INV_KEY, {}), invert: 1 }, invOn = store.get('sotd-inv-on') === '1';
 const LOOK_MIX = {};   // in between: every slider part way from the flying look to the map's, following the camera's move
 function swapLook() {
+  if (LOOK === LOOK_INV) { if (LOOK_INV.invert) return; invOn = false; store.set('sotd-inv-on', '0'); LOOK_INV.invert = 1; saveLookNow(); LOOK = LOOK_FLY; LOOK.invert = 0; saveLookNow(); renderLook(); applyLook(); return }   // inverted switched off: back to your normal look
+  if (LOOK !== LOOK_MIX && (LOOK.invert || invOn)) {   // switched on (or it was on last time): the inverted look takes over
+    if (LOOK.invert && !store.get(INV_KEY)) Object.assign(LOOK_INV, LOOK);   // the first time, it starts as a copy of the look you have
+    if (LOOK === LOOK_MAP) LOOK_MAP.invert = 0; else LOOK_FLY = LOOK; LOOK_FLY.invert = 0; LOOK_INV.invert = 1; invOn = true; store.set('sotd-inv-on', '1'); store.set(LOOK_KEY, JSON.stringify(LOOK_FLY)); store.set(MAP_KEY, JSON.stringify(LOOK_MAP));   // the normal looks are kept as they were, inverted off
+    LOOK = LOOK_INV; saveLookNow(); renderLook(); applyLook(); return;
+  }
   if (LOOK === LOOK_MAP) LOOK_FLY.mapOwnLook = LOOK_MAP.mapOwnLook; else if (LOOK !== LOOK_MIX) { LOOK_FLY = LOOK; LOOK_MAP.mapOwnLook = LOOK.mapOwnLook }
   if (S.mode !== swapLook.mode) { swapLook.mode = S.mode; swapLook.tw = tween }   // a mode switch: blend over the move that goes with it (and only that one)
   const toMap = S.mode === 'map' && LOOK_FLY.mapOwnLook, e = tween && tween === swapLook.tw ? ease(Math.min(1, tween.t)) : 1, k = LOOK_FLY.mapOwnLook ? (toMap ? e : 1 - e) : 0;
@@ -47,8 +55,8 @@ function swapLook() {
   for (const key in LOOK_FLY) { const a = LOOK_FLY[key], b = LOOK_MAP[key]; LOOK_MIX[key] = typeof a === 'number' && typeof b === 'number' ? a + (b - a) * k : k < .5 ? a : b ?? a }
   LOOK = LOOK_MIX; applyLook();
 }
-function saveLookNow() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
-function saveLook() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
+function saveLookNow() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
+function saveLook() { if (LOOK === LOOK_MIX) return; if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
 (async () => {
   try {
     if (!window.claude || !claude.use) return; const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]); if (!db || !user) return;
