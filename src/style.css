@@ -810,3 +810,10 @@ body.paper #mTabs button{background:rgba(255,255,255,.9);color:#333}body.paper #
   #thrust.z-k>i.bk{background:rgba(255,60,60,.75);color:#fff}
   #thrust.z-k>i.fill{opacity:0}
 }
+/* entering another stretch of time: one small label, month and year, like the rest of the interface */
+#arrive{top:calc(64px + env(safe-area-inset-top,0px));width:auto;letter-spacing:0;transition:opacity .6s ease}
+#arrive.show{letter-spacing:0}
+#arrive .eyebrow,#arrive p{display:none}
+#arrive h2{margin:0;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:12px;line-height:1;letter-spacing:.12em;text-shadow:none;color:rgba(255,255,255,.85);background:rgba(26,20,40,.56);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:5px 9px 4px}
+/* first-flight steps: much smaller on phones */
+@media (pointer:coarse){#coach .tt{font-size:14px;padding:2px 8px 4px}#coach .td{font-size:9px;padding:4px 6px 2px}#coach .ts{font-size:11px;padding:0 8px 4px}}

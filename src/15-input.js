@@ -146,7 +146,9 @@ $('dash').addEventListener('click', () => { if (S.mode === 'fly') setSpeedMode((
   b.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; b.classList.add('on'); setZone('t', 0); buzz(8); try { b.setPointerCapture(id) } catch { } });
   b.addEventListener('pointermove', e => { if (e.pointerId === id && b.classList.contains('on')) setZone(...at(e.clientY)) });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, e => { if (e.pointerId === id) end() })); b.addEventListener('contextmenu', e => e.preventDefault());
-  addEventListener('pointerup', e => { if (e.pointerId === id) end() }, true); ['touchend', 'touchcancel'].forEach(t => addEventListener(t, e => { if (id >= 0 && ![...e.touches].some(x => b.contains(x.target))) end() }, true)); addEventListener('blur', end); document.addEventListener('visibilitychange', end) }   // let go anywhere, any way: everything stops
+  addEventListener('pointerup', e => { if (e.pointerId === id) end() }, true); ['touchend', 'touchcancel'].forEach(t => addEventListener(t, e => { if (id >= 0 && ![...e.touches].some(x => b.contains(x.target))) end() }, true)); addEventListener('blur', end); document.addEventListener('visibilitychange', end);
+  let fingers = 0; ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(t => addEventListener(t, e => { fingers = e.touches.length }, { capture: true, passive: true }));
+  setInterval(() => { if (id >= 0 && coarse && fingers === 0) end() }, 150) }   // let go anywhere, any way: everything stops (and if a release went missing, no finger on the glass ends it)
 
 /* ───────────────────────── picking ───────────────────────── */
 // ← and →: every winner by distance from you. With nothing locked either key goes to the nearest one, wherever it is;

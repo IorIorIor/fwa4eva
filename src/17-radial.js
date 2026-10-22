@@ -23,7 +23,7 @@ const RM_FILL = {   // Tabler's own filled icons (v3), for the ring's choices
 const ico = (k, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RM_ICON[k]}</svg>`;
 const rmenu = (() => {
   const R0 = 14, R1 = 75, GAP = 3;   // inner and outer radius (px), gap between segments (px)
-  const SEG = [['filters', 'Filters', 194], ['map', 'Map', 142], ['upgrades', 'Upgrades', 90], ['search', 'Search', 38], ['settings', 'Settings', -14]];   /* (dates are typed into Search now) */   // centre angles, counter-clockwise from the right
+  const SEG = [['filters', 'Filters', 194], ['map', 'Map', 90], ['upgrades', 'Upgrades', 142], ['search', 'Search', 38], ['settings', 'Settings', -14]];   /* (dates are typed into Search now) */   // centre angles, counter-clockwise from the right
   const el = $('radial'), svg = el.querySelector('svg'), dot = $('rmDot'), panel = $('rmPanel'), body = panel.querySelector('.rb');
   const P = (r, a) => [r * Math.cos(a * Math.PI / 180), -r * Math.sin(a * Math.PI / 180)];
   const sector = (a, span) => {   // an annular sector with straight gaps of GAP px either side

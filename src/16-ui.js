@@ -318,14 +318,11 @@ function regionOf(p) {
 function regionName(r) {
   if (r === 'out') return 'Outpost'; if (typeof r === 'string' && r.startsWith('sat')) return SATS[+r.slice(3)].name; if (r === 'bh') return 'Black hole'; if (typeof r === 'number') return ERAS[r].name; return 'Deep space'
 }
-function arrive(r) {
-  const el = $('arrive'); if (r === 'void') { el.classList.remove('show'); return }
-  const set = (e, t, s) => { $('arE').textContent = e; $('arT').textContent = t; $('arS').textContent = s };
-  if (r === 'out') set('Home', 'The Outpost', `${N.toLocaleString('en')} winners spiralling in toward the present`);
-  else if (r === 'bh') set('Event horizon', 'The present', 'The newest winners circle the black hole · time runs slow here');
-  else if (typeof r === 'string' && r.startsWith('sat')) { const sa = SATS[+r.slice(3)]; set('Satellite galaxy', sa.name, sa.name === 'M32' ? 'A compact elliptical hugging the disk' : 'A big, faint elliptical drifting nearby') }
-  else { const e = ERAS[r]; set('Entering', e.name, (matchCount < N ? `${galCount[r].toLocaleString('en')} of ` : '') + `${galTotal[r].toLocaleString('en')} winners · ${e.y0}–${r === NERA - 1 ? 'today' : e.y0 + GAL_YRS - 1}`) }
-  el.classList.add('show'); clearTimeout(arriveTimer); arriveTimer = setTimeout(() => el.classList.remove('show'), 3800);
+function arrive(r) {   // entering another stretch of time: just its month and year, small, for a moment
+  const el = $('arrive'); if (r === 'void' || r === 'out' || (typeof r === 'string' && r.startsWith('sat'))) { el.classList.remove('show'); return }
+  const pl = toLocal(player.pos, _cl), t = new Date(uToT((Math.hypot(pl.x, pl.z) - GAL_R0) / GAL_LEN));
+  $('arE').textContent = ''; $('arS').textContent = ''; $('arT').textContent = MON3[t.getUTCMonth()] + ' ' + t.getUTCFullYear();
+  el.classList.add('show'); clearTimeout(arriveTimer); arriveTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
 /* instruments: built once, then only the values change */
