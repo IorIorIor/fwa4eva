@@ -7,7 +7,8 @@
    tempo, its title the melody, its agency the bass. The usual music fades out while either plays. */
 const rec = (() => {
   const st = { mode: null, i: -1, duck: 0, phi: null, budget: 0, spin: 0, next: 0, step: 0, seq: null };
-  const AZ = new Float32Array(N), UU = new Float32Array(N), _v = new V3(), _r = new V3();
+  const AZ = new Float32Array(N), UU = new Float32Array(N), _v = new V3(), _r = new V3(), _ax = new V3(0, 1, 0).applyQuaternion(GQ);
+  const turn = d => { orbit.theta += d; orbit.target.sub(GC).applyAxisAngle(_ax, d).add(GC) };   // the record turns round the galaxy's own centre, wherever the map has been dragged to
   for (let i = 0; i < N; i++) { _v.set(P[i * 3] - GC.x, P[i * 3 + 1] - GC.y, P[i * 3 + 2] - GC.z).applyQuaternion(GQI); AZ[i] = Math.atan2(_v.z, _v.x); UU[i] = Math.max(0, Math.min(1, (Math.hypot(_v.x, _v.z) - GAL_R0) / GAL_LEN)) }   // each winner's angle round the core and how far out (0 core … 1 rim)
   // sound: its own bus into the music's switch (past the sounds' mute), a soft lowpass and a slow echo
   let bus = null;
@@ -60,7 +61,7 @@ const rec = (() => {
     get galaxy() { return st.mode === 'galaxy' },
     scratch(x, y, dx, dy) {   // turn the record by hand: the angle swept round the core's spot on screen
       _v.copy(GC).project(camera); const cx = (_v.x * .5 + .5) * innerWidth, cy = (-_v.y * .5 + .5) * innerHeight, a1 = Math.atan2(y - cy, x - cx), a0 = Math.atan2(y - dy - cy, x - dx - cx); let da = a1 - a0; da -= Math.round(da / (2 * Math.PI)) * 2 * Math.PI;
-      orbit.theta += da * (camera.up.y >= 0 ? 1 : -1) * (LOOK.recScratchDir ?? 1); st.hand = .35; st.budget = Math.max(st.budget, 2);
+      turn(da * (camera.up.y >= 0 ? 1 : -1) * (LOOK.recScratchDir ?? 1)); st.hand = .35; st.budget = Math.max(st.budget, 2);
       if (ensure() && Math.abs(da) > .002) { const t = AC.currentTime, len = .06, b = AC.createBuffer(1, AC.sampleRate * len | 0, AC.sampleRate), ch = b.getChannelData(0); for (let k = 0; k < ch.length; k++) ch[k] = (Math.random() * 2 - 1) * (1 - k / ch.length);   // the needle's rasp: a short burst of noise, pitched by how fast you pull
         const src = AC.createBufferSource(), bp = AC.createBiquadFilter(), g = AC.createGain(); src.buffer = b; src.playbackRate.value = Math.min(4, .4 + Math.abs(da) * 40); bp.type = 'bandpass'; bp.frequency.value = 900 + Math.min(3000, Math.abs(da) * 30000); bp.Q.value = 2; g.gain.value = Math.min(.12, Math.abs(da) * 2) * (LOOK.recVol ?? .6); src.connect(bp); bp.connect(g); g.connect(bus); src.start(t) }
     },
@@ -85,7 +86,7 @@ const rec = (() => {
         return;
       }
       // the galaxy: turn it, and play what passes the needle
-      st.hand = Math.max(0, (st.hand || 0) - rdt); if (!st.hand) orbit.theta += rdt * 2 * Math.PI / Math.max(4, L.recTurn ?? 48);   /* (a hand on it holds it still) */
+      st.hand = Math.max(0, (st.hand || 0) - rdt); if (!st.hand) turn(rdt * 2 * Math.PI / Math.max(4, L.recTurn ?? 48));   /* (a hand on it holds it still) */
       _r.set(1, 0, 0).applyQuaternion(camera.quaternion).applyQuaternion(GQI); const phi = Math.atan2(_r.z, _r.x);   // the needle: the screen's right, laid in the disk
       { _v.copy(GC).project(camera); _r.copy(GC).addScaledVector(new V3(1, 0, 0).applyQuaternion(camera.quaternion), GAL_R0 + GAL_LEN).project(camera); const x0 = (_v.x * .5 + .5) * innerWidth, y0 = (-_v.y * .5 + .5) * innerHeight, x1 = (_r.x * .5 + .5) * innerWidth, y1 = (-_r.y * .5 + .5) * innerHeight;
         needle.style.left = x0.toFixed(1) + 'px'; needle.style.top = y0.toFixed(1) + 'px'; needle.style.width = Math.hypot(x1 - x0, y1 - y0).toFixed(1) + 'px'; needle.style.transform = `rotate(${Math.atan2(y1 - y0, x1 - x0)}rad)` }
