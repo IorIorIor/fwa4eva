@@ -92,16 +92,13 @@ const rmenu = (() => {
   function close() {
     hide(); document.body.classList.remove('rm-open', 'rm-ring'); if (panel.hidden) return; panel.classList.remove('in'); which = null;
     homes.forEach(([g, par, nx]) => par.insertBefore(g, nx)); homes = [];   // the filter groups go home
-    const box = $('nav'); if (!box.contains($('navQ'))) { box.querySelector('.nrow').insertBefore($('navQ'), $('navNext')); box.prepend($('navRes')) }
+    { const bar = $('mapSearch'); if (!bar.contains($('navQ'))) bar.append($('navQ'), $('navRes')) }   // the search field lives in the bar up top
     document.body.classList.remove('rm-open', 'rm-ring'); panel.inert = true; setTimeout(() => { if (!which) panel.hidden = true }, 200);   // gone at once for clicks (inert), hidden once faded
   }
   panel.querySelector('.x').onclick = close;
   window.__navPicked = close;
   function searchPanel() {
-    body.append($('navQ'), $('navRes')); const q = $('navQ'); q.value = ''; $('navRes').hidden = true; setTimeout(() => q.focus(), 30);
-    const t = document.createElement('div'); t.className = 'rtours'; t.innerHTML = '<span>Tours</span>' + Object.keys(TOURS).map(n => `<button type="button">${n}</button>`).join('');
-    t.onclick = e => { const b = e.target.closest('button'); if (!b) return; const n = b.textContent, ids = TOURS[n](); if (ids.length) { close(); startTour(ids, n) } else b.classList.add('none') };
-    body.append(t);
+    const q = $('navQ'); document.body.classList.remove('nosearch'); setTimeout(() => { close(); q.focus() }, 0);   // search is the bar up top now
   }
   function filterPanel() {
     homes = [...$('panel').querySelectorAll('.grp.keep')].map(g => [g, g.parentNode, g.nextSibling]); homes.forEach(([g]) => body.appendChild(g));
@@ -188,8 +185,10 @@ const recorder = (() => {
   const nav = $('topnav'), mapB = nav.querySelector('[data-k="map"]');
   nav.addEventListener('pointerdown', e => e.stopPropagation());
   nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (S.mode === 'map' && k === 'filters') { togglePanel('panel'); return } if (S.mode === 'map' && k === 'search') { document.body.classList.toggle('nosearch'); if (!document.body.classList.contains('nosearch')) return; rmenu.close(); return }   // on the map these two are switches: the filters panel and the search bar
+    if (k === 'scroll') { rmenu.close(); scrollMode.on ? scrollMode.exit() : scrollMode.enter(); return }
     if (k === 'flag') { flagDlg.open(); return } if (k === 'say') { say.open(); return } if (k === 'rec') { recorder.toggle(); return } if (k === 'sound') { audio(); const off = !(muted && musicOff); setMuted(off); setMusicOff(off); return }   /* one switch: everything off, or everything on */ if (k === 'music') { audio(); setMusicOff(!musicOff); return } if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
   const fB = nav.querySelector('[data-k="filters"]'), sB = nav.querySelector('[data-k="search"]');
-  setInterval(() => { const m = S.mode === 'map'; mapB.textContent = m ? 'Fly' : 'Map'; fB.classList.toggle('on', m && $('panel').classList.contains('open')); sB && sB.classList.toggle('on', m && !document.body.classList.contains('nosearch')) }, 200);
-  $('mapSearch').onclick = () => rmenu.sub('search');   // the map's search bar: a click opens the full search
+  const scB = nav.querySelector('[data-k="scroll"]');
+  setInterval(() => { const m = S.mode === 'map'; mapB.textContent = m ? 'Fly' : 'Map'; scB && scB.classList.toggle('on', scrollMode.on); fB.classList.toggle('on', m && $('panel').classList.contains('open')); sB && sB.classList.toggle('on', m && !document.body.classList.contains('nosearch')) }, 200);
+  { const bar = $('mapSearch'), q = $('navQ'); q.placeholder = 'Search anything'; bar.append(q, $('navRes')); q.addEventListener('focus', () => { rmenu.close(); document.body.classList.add('srch') }); q.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== q) document.body.classList.remove('srch') }, 160)); bar.addEventListener('pointerdown', e => e.stopPropagation()) }   // the search bar up top is the search: you type right there and the results drop down under it
 })();

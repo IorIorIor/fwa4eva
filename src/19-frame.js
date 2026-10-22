@@ -149,7 +149,7 @@ function updateStreaks(dt) {
   const lp = toLocal(player.pos, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   const g = L.streakRamp ?? .8, da = armDist(lp.x, lp.z) / (armWAt(rr) / (SHAPE.widen + 1)), sw = Math.max(.02, L.streakSpine ?? .45), arm = Math.exp(-((da / sw) ** 2)), hy = Math.exp(-((lp.y / Math.max(1000, L.streakInH)) ** 2)), disk = hy * (1 - sstep(rr, Rr * 1.02, Rr * 1.3));   // thickest along the spiral's spine, thinning the further you are from it (across, above or below)
   const cR = L.streakCoreR ?? 1.4, core = Math.exp(-Math.pow(rr / (Rr * .22 * cR), 2)) * (1 - sstep(Math.abs(lp.y), Rr * .08 * cR, Rr * .25 * cR));   // round the core: a thick swarm (its own sliders)
-  streakDens = Math.max(disk * (arm * (1 - .15 * g) + .15 * (1 - g) + .04), core * (L.streakCore ?? 2.5));
+  streakDens = Math.max(disk * (arm * (1 - .15 * g) + .15 * (1 - g) + .04), core * (L.streakCore ?? 2.5)) * (1 - sstep(Math.abs(lp.y), Math.max(1000, L.streakInH) * .8, Math.max(1000, L.streakInH)));   // a hard ceiling: none at all further above or below the galaxy's plane than this (the core's swarm too)
   streaks.geometry.setDrawRange(0, Math.floor(Math.min(SL_N, SL_N / 3 * L.streakAmt * streakDens)) * 2);
   su.op.value += (sstep(sp, 150, 4000) * .32 * L.streakBright * Math.min(1, streakDens * (3 - 2.4 * g)) * (1 + (L.streakCoreBright ?? 1.5) * core) - su.op.value) * Math.min(1, dt * 6);
   const mu = motes.u, B = L.moteBox * SHIP_K; mu.box.value = B; mu.size.value = L.moteSize * SHIP_K; mu.follow.value = L.moteFollow; mu.core.value = L.moteCore; mu.sB.value = bulgeR * .42 * (L.bulgePuffSpread ?? 1) * L.moteCoreReach; mu.bhR.value = BH.rs * Math.max(3.5, L.bhDiskOut); mu.bhZ.value = L.moteBhZone; mu.bhH.value = L.moteBhH;

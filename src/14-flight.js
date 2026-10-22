@@ -11,6 +11,7 @@ const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
 const camRel = new V3(0, .8, 3.4).multiplyScalar(SHIP_SC), camRelV = new V3(), prevVel = new V3(), _cw = new V3(), _cm = new V3(); let camHold = null;
 let fovS = 61, revT = 0, revK = 0, bankCam = 0, bankCamV = 0, bankPrev = 0, thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
+let scrollMode = { on: false, zoom: -1 };   // (scroll mode: 18-scroll)
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
 function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
@@ -42,7 +43,7 @@ const mapHomeD = () => (GAL_R0 + GAL_LEN) * 1.6;   // the whole disk, filling th
 
 const panV = new V3(); let panT = 0;   // the map's drag speed (world units per second): let go and it coasts on
 function setMode(m) {
-  if (m === S.mode) return; S.mode = m; document.body.classList.toggle('map', m === 'map');
+  if (m === S.mode) return; if (m === 'fly' && scrollMode.on) scrollMode.exit(); S.mode = m; document.body.classList.toggle('map', m === 'map');
   if (booted && (LOOK.mapFilters ?? 1) && !phone) { const el = $('panel'), on = m === 'map' && store.get('sotd-map-filters') !== '0';   /* (closed on the map once: stays closed) */ el.classList.toggle('open', on); el.inert = !on; $('fbtn').setAttribute('aria-expanded', on); document.body.classList.toggle('panel-open', on || $('lookPanel').classList.contains('open')) }   // the filters are out whenever you're on the map (docked left, so the Look panel can stay open too)
   $('vFly').setAttribute('aria-pressed', m === 'fly'); $('vMap').setAttribute('aria-pressed', m === 'map');
   player.vel.set(0, 0, 0); player.cruise = 0; auto = null; lockI = -1; sparks.stop(); camHold = null;
@@ -59,7 +60,7 @@ function setMode(m) {
 function focus(i) {
   if (i < 0) return; S.sel = i; const p = starPos(i);
   if (S.mode === 'fly') { if (lockI !== i) buzz(14); lockI = i; auto = null; if (i !== passedI) passedI = -1 }   // lock only turns the ship toward it; W takes you there
-  else { S.mapPick = i; orbit.target.copy(p); orbit.dist = Math.max(MAP_MIN, starR(i) * (LOOK.ringSize ?? 1.6) / (Math.tan(LOOK.fov * Math.PI / 360) * (LOOK.mapRingFill ?? .85)));
+  else { if (scrollMode.on) scrollMode.zoomed(i); S.mapPick = i; orbit.target.copy(p); orbit.dist = Math.max(MAP_MIN, starR(i) * (LOOK.ringSize ?? 1.6) / (Math.tan(LOOK.fov * Math.PI / 360) * (LOOK.mapRingFill ?? .85)));
     { const q = orbitPose().q, cd = orbit.dist * mapDistK(), hw = Math.tan(mapFovNow() * Math.PI / 360) * camera.aspect * cd; orbit.target.addScaledVector(new V3(1, 0, 0).applyQuaternion(q), hw * (LOOK.mapRingLeft ?? .28)) }   /* the ring sits left of centre, so its full record fits on its right */   /* rings: close enough that the ring fills the screen */ const o = orbitPose(); tweenCam(o.p, o.q, 1.8) }
 }
 function goHome() {
@@ -264,14 +265,15 @@ function updateCamera(dt) {
     if (tween && tween.mode && tween.f0) fovS = tween.f0 + (fov - tween.f0) * ease(Math.min(1, tween.t)); else fovS += (fov - fovS) * (1 - Math.exp(-4 * dt)); camera.fov = Math.min(170, fovS + whiteout.fov); camera.updateProjectionMatrix(); /* (the ring's lens stretch goes on top at once, not eased) */   // back from the map the lens widens with the move, so the narrow map lens doesn't snap open (that looked like a bounce back)
   } else {
     const mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), mz = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0), zq = (keys.q ? 1 : 0) - (keys.e ? 1 : 0);
-    if ((mx || mz || zq) && !tween) {
+    if (scrollMode.on) scrollMode.step(dt);   // scroll mode drives the map camera along the spiral
+    if ((mx || mz || zq) && !tween && !scrollMode.on) {
       const o = orbitPose(), r = tmp.set(1, 0, 0).applyQuaternion(o.q).projectOnPlane(GAL_UP), fz = tmp2.set(0, 0, -1).applyQuaternion(o.q).projectOnPlane(GAL_UP);
       if (fz.lengthSq() < 1e-4) fz.set(0, 1, 0).applyQuaternion(o.q).projectOnPlane(GAL_UP); r.normalize(); fz.normalize();
       orbit.target.addScaledVector(r, mx * orbit.dist * .6 * dt).addScaledVector(fz, mz * orbit.dist * .6 * dt); if (zq) orbit.dist = Math.max(MAP_MIN, Math.min(4e7, orbit.dist * Math.exp(zq * 1.2 * dt)))
     }
     if (!down && !tween && panV.lengthSq() > 0) { orbit.target.addScaledVector(panV, dt * (LOOK.mapCoast ?? 1)); panV.multiplyScalar(Math.exp(-dt / Math.max(.02, LOOK.mapCoastTime ?? .45))); if (panV.length() < orbit.dist * .002) panV.set(0, 0, 0) }   // let go of a drag: the map glides on and settles
     if (orbit.ang !== LOOK.mapAngle) { if (orbit.ang != null && !tween) { mapFlip(); const want = orbit.mir ? Math.PI - mapPhi() : mapPhi(); orbit.phi += (want - orbit.phi) * Math.min(1, dt * 6); if (Math.abs(want - orbit.phi) < 1e-3) orbit.ang = LOOK.mapAngle } else if (orbit.ang == null) orbit.ang = LOOK.mapAngle }   // the angle slider tilts the map live
-    if (tween && tween.mode) { const v = mapView(); orbit.theta = (tween.th ?? (LOOK.mapTurn ?? 0) * Math.PI / 180) + (v.flip ? Math.PI : 0); orbit.flip = v.flip; orbit.phi = orbit.mir ? Math.PI - v.phi : v.phi; orbit.ang = LOOK.mapAngle; const o = orbitPose(); tween.tp = o.p; tween.tq = o.q }   // aim at where the map camera really ends up, even as the lens and look (its angle and turn too) blend over to the map's on the way
+    if (tween && tween.mode && !scrollMode.on) { const v = mapView(); orbit.theta = (tween.th ?? (LOOK.mapTurn ?? 0) * Math.PI / 180) + (v.flip ? Math.PI : 0); orbit.flip = v.flip; orbit.phi = orbit.mir ? Math.PI - v.phi : v.phi; orbit.ang = LOOK.mapAngle; const o = orbitPose(); tween.tp = o.p; tween.tq = o.q }   // aim at where the map camera really ends up, even as the lens and look (its angle and turn too) blend over to the map's on the way
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur); const e = tween.mode ? easeMode(Math.min(1, tween.t)) : ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tween.tp, tween.c, e); else camera.position.lerpVectors(tween.fp, tween.tp, e); if (tween.mode) camera.quaternion.copy(tween.fq).slerp(tween.tq, sstep(e, 0, .8));   /* one turn, the shortest way, done a little before it lands (the old two-step turn swung round much more) */ else camera.quaternion.copy(tween.fq).slerp(tween.tq, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }
     else { const o = orbitPose(); camera.position.copy(o.p); camera.quaternion.copy(o.q) }
     { const mf = mapFovNow(), f0 = tween && tween.f0 || L.fov, f = tween && tween.mode ? f0 + (mf - f0) * ease(Math.min(1, tween.t)) : mf; if (Math.abs(camera.fov - f) > .01) { camera.fov = f; camera.updateProjectionMatrix() } }   // the lens narrows over the move out

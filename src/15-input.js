@@ -42,6 +42,7 @@ canvas.addEventListener('pointermove', e => {
   if (S.mode === 'fly') { if (down.touch || lockFailed) rotateRig(-dx * .005, -dy * .005); return }   // touch (and lock-less mouse) drag looks around
   if (tween) return;
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0) zoom((pinch0 - d) * 4); pinch0 = d; return }
+  if (scrollMode.on) { if (scrollMode.zoom < 0) scrollMode.drag(dy); return }   // scroll mode: dragging scrolls
   if (rec.galaxy) { rec.scratch(e.clientX, e.clientY, dx, dy); return }   // the record's playing: drag turns it by hand, back and forth (a scratch)
   const dk = LOOK.mapDrag ?? .35;
   if (down.btn === 2 || down.shift) { orbit.theta -= dx * .005 * dk; orbit.phi = orbit.phi > Math.PI / 2 ? Math.max(Math.PI - 1.5, Math.min(Math.PI - .01, orbit.phi + dy * .005 * dk)) : Math.max(.01, Math.min(1.5, orbit.phi - dy * .005 * dk)) }   // right-drag (or Shift) turns the view
@@ -66,7 +67,7 @@ const endPtr = e => {
     else if (rmenu.panel) { rmenu.close(); if (fly && !down.touch && !locked() && !lockFailed) requestLock() }
     else if (fly && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it (or just take the pointer back)
     else if (fly) { const i = hov(cx, cy); if (i >= 0) { if (i !== lockI) focus(i) } else if (lockI >= 0) unlock() }   // a star (inside its ring, for a 3D one): lock on; anywhere else: let go
-    else { const h = mapHover(e.clientX, e.clientY), rg = mapRingAt(e.clientX, e.clientY), i = rg >= 0 ? rg : coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (!mapZone.click() && h.ring) ringZoom(h.ring)   /* a lit zone (year or month) wins over the old time ring under it */ }   // map: a star once you're close, else the ring under the cursor, else the menu
+    else { const h = mapHover(e.clientX, e.clientY), rg = mapRingAt(e.clientX, e.clientY), i = rg >= 0 ? rg : coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (!scrollMode.on && !mapZone.click() && h.ring) ringZoom(h.ring)   /* a lit zone (year or month) wins over the old time ring under it */ }   // map: a star once you're close, else the ring under the cursor, else the menu
   }
   if (!ptrs.size) down = null;
 };
@@ -113,7 +114,7 @@ function zoom(dy, x = innerWidth / 2, y = innerHeight / 2) {
   if (P && P.distanceTo(orbit.target) < orbit.dist * 8) orbit.target.sub(P).multiplyScalar(k).add(P);   // the point under the cursor stays put
   orbit.dist = d1;
 }
-canvas.addEventListener('wheel', e => { e.preventDefault(); if (S.mode === 'map') zoom(e.deltaY, e.clientX, e.clientY); else rig.dist = Math.max(1.2 * SHIP_SC, Math.min(9 * SHIP_SC, rig.dist * Math.exp(e.deltaY * .001))) }, { passive: false });
+canvas.addEventListener('wheel', e => { e.preventDefault(); if (scrollMode.on && scrollMode.zoom < 0) { scrollMode.wheel(e); return } if (S.mode === 'map') zoom(e.deltaY, e.clientX, e.clientY); else rig.dist = Math.max(1.2 * SHIP_SC, Math.min(9 * SHIP_SC, rig.dist * Math.exp(e.deltaY * .001))) }, { passive: false });
 ['keydown', 'mousemove', 'pointerdown', 'wheel', 'touchstart'].forEach(t => addEventListener(t, () => { lastInput = performance.now() }, { passive: true }));
 addEventListener('keydown', e => {
   if (e.target.matches('input,select,textarea')) return;
