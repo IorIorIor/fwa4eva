@@ -105,4 +105,4 @@ const finalNode = Fn(() => {
 })();
 loadProg(.6);
 const pipeline = new THREE.RenderPipeline(renderer); pipeline.outputColorTransform = false; pipeline.outputNode = finalNode;
-function setPassScales() { arcPass.setResolutionScale(LOOK.arcRes ?? 1); volPass.setResolutionScale(LOOK.volRes); softPass.setResolutionScale(LOOK.softRes); hazePass.setResolutionScale(LOOK.softRes); U.minSoft.value = 1 / LOOK.softRes }
+function setPassScales() { arcPass.setResolutionScale(LOOK.arcs > 0 ? LOOK.arcRes ?? 1 : 1 / 32); volPass.setResolutionScale(LOOK.volumetric ? LOOK.volRes : 1 / 32);   /* (a layer that's switched off still renders: at a postage stamp it costs nothing) */ softPass.setResolutionScale(LOOK.softRes); hazePass.setResolutionScale(LOOK.softRes); U.minSoft.value = 1 / LOOK.softRes }
