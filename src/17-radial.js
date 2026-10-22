@@ -76,6 +76,7 @@ const rmenu = (() => {
     hide(); if (!k) return;
     close();   // whatever was open goes first
     if (k === 'map') { setMode(S.mode === 'map' ? 'fly' : 'map'); return }
+    if (k === 'filters' && !phone) { if (!isOpen('panel')) togglePanel('panel'); return }   // flying or on the map: the same filters panel, docked left
     if (k === 'settings') { if (locked()) document.exitPointerLock(); if (!$('lookPanel').classList.contains('open')) togglePanel('lookPanel'); return }
     if (k === 'park') { flagDlg.open(); return } if (k === 'say') { say.open(); return }
     sub(k);
@@ -184,11 +185,11 @@ const recorder = (() => {
 (() => {
   const nav = $('topnav'), mapB = nav.querySelector('[data-k="map"]');
   nav.addEventListener('pointerdown', e => e.stopPropagation());
-  nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (S.mode === 'map' && k === 'filters') { togglePanel('panel'); return } if (S.mode === 'map' && k === 'search') { document.body.classList.toggle('nosearch'); if (!document.body.classList.contains('nosearch')) return; rmenu.close(); return }   // on the map these two are switches: the filters panel and the search bar
+  nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (k === 'filters' && !phone) { togglePanel('panel'); return } if (S.mode === 'map' && k === 'search') { document.body.classList.toggle('nosearch'); if (!document.body.classList.contains('nosearch')) return; rmenu.close(); return }   // on the map these two are switches: the filters panel and the search bar
     if (k === 'scroll') { rmenu.close(); scrollMode.on ? scrollMode.exit() : scrollMode.enter(); return }
     if (k === 'flag') { flagDlg.open(); return } if (k === 'say') { say.open(); return } if (k === 'rec') { recorder.toggle(); return } if (k === 'sound') { audio(); const off = !(muted && musicOff); setMuted(off); setMusicOff(off); return }   /* one switch: everything off, or everything on */ if (k === 'music') { audio(); setMusicOff(!musicOff); return } if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
   const fB = nav.querySelector('[data-k="filters"]'), sB = nav.querySelector('[data-k="search"]');
   const scB = nav.querySelector('[data-k="scroll"]');
-  setInterval(() => { const m = S.mode === 'map'; mapB.textContent = m ? 'Fly' : 'Map'; scB && scB.classList.toggle('on', scrollMode.on); fB.classList.toggle('on', m && $('panel').classList.contains('open')); sB && sB.classList.toggle('on', m && !document.body.classList.contains('nosearch')) }, 200);
+  setInterval(() => { const m = S.mode === 'map'; mapB.textContent = m ? 'Fly' : 'Map'; scB && scB.classList.toggle('on', scrollMode.on); fB.classList.toggle('on', $('panel').classList.contains('open')); sB && sB.classList.toggle('on', m && !document.body.classList.contains('nosearch')) }, 200);
   { const bar = $('mapSearch'), q = $('navQ'); q.placeholder = 'Search anything'; bar.append(q, $('navRes')); q.addEventListener('focus', () => { rmenu.close(); document.body.classList.add('srch') }); q.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== q) document.body.classList.remove('srch') }, 160)); bar.addEventListener('pointerdown', e => e.stopPropagation()) }   // the search bar up top is the search: you type right there and the results drop down under it
 })();

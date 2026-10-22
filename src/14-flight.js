@@ -32,7 +32,7 @@ function lerpLogPolar(out, a, b, c, e) {
 }
 // the map orbits in the galaxy's own frame: phi is measured from the disk's axis, so the map looks down on the disk
 const GAL_UP = new V3(0, 1, 0).applyQuaternion(GQ);
-const mapFovNow = () => Math.max(5, Math.min(LOOK.fov, LOOK.mapFov ?? 30));   // the map's lens: narrower = flatter, closer to a plan
+const mapFovNow = () => scrollMode.on && (LOOK.scrollFov ?? 0) > 0 ? Math.max(5, LOOK.scrollFov) : Math.max(5, Math.min(LOOK.fov, LOOK.mapFov ?? 30));   // the map's lens: narrower = flatter, closer to a plan
 const mapDistK = () => Math.tan(LOOK.fov * Math.PI / 360) / Math.tan(mapFovNow() * Math.PI / 360);   // and the camera stands that much further back, so the view's the same size
 function orbitPose() { const o = orbit, p = new V3(Math.sin(o.phi) * Math.sin(o.theta), Math.cos(o.phi), Math.sin(o.phi) * Math.cos(o.theta)).applyQuaternion(GQ).multiplyScalar(o.dist * mapDistK()).add(o.target), up = new V3(-Math.cos(o.phi) * Math.sin(o.theta), Math.sin(o.phi), -Math.cos(o.phi) * Math.cos(o.theta)).applyQuaternion(GQ); return { p, q: lookQuat(p, o.target, up) } }   // up: along the sphere toward the pole, so looking straight down is as steady as any other angle
 const mapView = () => { let p = (90 - (LOOK.mapAngle ?? 70)) * Math.PI / 180; p = ((p + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; return { phi: Math.min(Math.PI - 1e-3, Math.max(1e-3, Math.abs(p))), flip: p < 0 } };   // the angle goes all the way round: past 90° over the top to the far side, past 180° underneath

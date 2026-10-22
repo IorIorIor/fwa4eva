@@ -904,3 +904,12 @@ body.paper #mapSearch #navQ{color:#111}body.paper #mapSearch #navQ::placeholder{
 #scrollUi .sx:hover,#scrollUi .sexit:hover{background:#fff;color:#000}
 #scrollUi .sexit{position:absolute;right:24px;bottom:calc(24px + env(safe-area-inset-bottom,0px));padding:8px 12px;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
 body.scrolling #nav,body.scrolling #mTabs,body.scrolling #recPlay{display:none!important}
+@media (min-width:760px){#panel{left:max(16px,env(safe-area-inset-left,0px));right:auto}}   /* the filters sit on the left in flight too, as on the map */
+#navRes .sgrp span{font-weight:500}#navRes .sgrp small{color:rgba(255,255,255,.55)}#navRes .sgrp.picked span::before{content:'✓ '}   /* search: a category, award, agency or country to filter by */
+/* smaller screens: the search bar sits top right (the score moves left of it); focused, it opens wide, leftward over the menu */
+@media (max-width:1180px){
+  #mapSearch{left:auto!important;right:max(16px,env(safe-area-inset-right,0px));transform:none;width:190px!important;transition:width .35s cubic-bezier(.2,.9,.25,1)}
+  body.srch #mapSearch{width:min(460px,calc(100vw - 32px))!important;z-index:30}
+  body:not(.nosearch):not(.intro) #gotPill{right:calc(max(16px,env(safe-area-inset-right,0px)) + 206px)}
+}
+@media (max-width:760px){#mapSearch{width:150px!important}body:not(.nosearch):not(.intro) #gotPill{right:calc(max(16px,env(safe-area-inset-right,0px)) + 164px)}}

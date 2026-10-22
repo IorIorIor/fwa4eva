@@ -125,9 +125,19 @@ const nav = (() => {
       res.hidden = false; res.innerHTML = `<div class="rhd">${esc(dateLabel(dp))} · ${n ? n.toLocaleString('en') + (n === 1 ? ' FWA' : ' FWAs') : 'no FWAs'}${n > 400 ? ' · first 400' : ''}</div>` + hits.map((i, k) => `<button type="button" data-i="${i}" class="${k ? '' : 'on'}"><span>${esc(D[i].title)}</span><small>${fmtDay(W_DAY[i])}</small></button>`).join('');
       return;
     }
-    if (words.length) for (let i = 0; i < N && hits.length < 400; i++) { const t = (D[i].title + ' ' + D[i].agency).toLowerCase(); if (words.every(w => t.includes(w))) hits.push(i) }
+    // first: categories, awards, agencies and countries the words name (a click filters by it)
+    const qq = words.join(' '), grp = []; if (qq.length >= 2) {
+      const has = n => n.toLowerCase().includes(qq), cN = new Map(), coN = new Map(); D.forEach(d => { cN.set(d.category, (cN.get(d.category) || 0) + 1); d.country && coN.set(d.country, (coN.get(d.country) || 0) + 1) });
+      [['SOTM', 'Site of the Month'], ['FOTY', 'FWA of the Year']].forEach(([k, n]) => { if (has(n) || has(k)) grp.push(['award', k, n, 'Award', D.filter(d => d.award === k).length]) });
+      CATS.forEach(c => { if (has(c)) grp.push(['cat', c, c, 'Category', cN.get(c) || 0]) });
+      AG_RANK.filter(([a]) => has(a)).slice(0, 4).forEach(([a, n]) => grp.push(['agency', a, a, 'Agency', n]));
+      [...coN].filter(([c]) => has(c)).slice(0, 2).forEach(([c, n]) => grp.push(['country', c, c, 'Country', n]));
+    }
+    const on = g => g[0] === 'award' ? S.awards.has(g[1]) : g[0] === 'cat' ? S.cats.has(g[1]) : g[0] === 'agency' ? S.agencies.has(g[1]) : S.country === g[1];
+    const grpHTML = grp.map(g => `<button type="button" class="sgrp${on(g) ? ' picked' : ''}" data-g="${g[0]}" data-k="${esc(g[1])}"><span>${esc(g[2])}</span><small>${g[3]} · ${g[4].toLocaleString('en')}${on(g) ? ' · filtering' : ' · filter'}</small></button>`).join('');
+    if (words.length) for (let i = 0; i < N && hits.length < 400; i++) { const d = D[i], t = (d.title + ' ' + d.agency + ' ' + d.category + ' ' + (d.country || '') + ' ' + (d.tech || []).join(' ')).toLowerCase(); if (words.every(w => t.includes(w))) hits.push(i) }
     hits.sort((a, b) => (D[b].title.toLowerCase().startsWith(words[0]) - D[a].title.toLowerCase().startsWith(words[0])) || D[b].score - D[a].score); hits.length = Math.min(hits.length, 8);
-    res.hidden = !hits.length; res.innerHTML = hits.map((i, k) => `<button type="button" data-i="${i}" class="${k ? '' : 'on'}"><span>${esc(D[i].title)}</span><small>${esc(D[i].agency || '')} · ${fmtDay(W_DAY[i])}</small></button>`).join('');
+    res.hidden = !hits.length && !grp.length; res.innerHTML = grpHTML + hits.map((i, k) => `<button type="button" data-i="${i}" class="${k ? '' : 'on'}"><span>${esc(D[i].title)}</span><small>${esc(D[i].agency || '')} · ${fmtDay(W_DAY[i])}</small></button>`).join('');
   }
   const choose = i => { if (i == null || i < 0) return; show(W_DAY[i], i); flyTo(i); q.value = ''; res.hidden = true; q.blur(); window.__navPicked?.() };
   q.oninput = find;
@@ -140,7 +150,13 @@ const nav = (() => {
   q.onkeyup = e => e.stopPropagation();
   q.onblur = () => setTimeout(() => { if (document.activeElement !== q) res.hidden = true }, 150);
   q.onfocus = () => { if (document.pointerLockElement) document.exitPointerLock(); if (q.value) find() };
-  res.onpointerdown = e => { const b = e.target.closest('button'); if (b) { e.preventDefault(); choose(+b.dataset.i) } };
+  res.onpointerdown = e => { const b = e.target.closest('button'); if (!b) return; e.preventDefault();
+    if (b.dataset.g) {   // a category, award, agency or country: toggle it as a filter, the same as in the filters panel
+      const g = b.dataset.g, k = b.dataset.k, row = sel_ => [...$(sel_).children].find(r => r.dataset.k === k);
+      if (g === 'cat') row('catList')?.click(); else if (g === 'award') row('awList')?.click(); else if (g === 'agency') row('agList')?.click(); else { const c = $('country'); c.value = S.country === k ? '' : k; c.dispatchEvent(new Event('change')) }
+      find(); return;
+    }
+    choose(+b.dataset.i) };
   $('tourPill').onclick = e => { if (e.target.closest('button')) stopTour() };
   $('navPrev').onclick = () => navStep(-1); $('navNext').onclick = () => navStep(1);
   $('navFilter').onclick = () => { togglePanel('panel'); $('navFilter').setAttribute('aria-expanded', $('panel').classList.contains('open')) };
