@@ -55,9 +55,9 @@ const sStars = (() => {
   S.update = dt => {   // the fade: a while after you're through the logo
     if (!intro.active) return;
     S.t += dt; if (intro.ph === 2) { if (S.after < 0) S.after = 0; S.after += dt }
-    S.k = 1 - sstep(S.after, LOOK.splashStarsHold ?? 1, (LOOK.splashStarsHold ?? 1) + (LOOK.splashStarsFade ?? 1));
+    S.k = Math.min(S.lk ?? 1, 1 - sstep(S.after, LOOK.splashStarsHold ?? 1, (LOOK.splashStarsHold ?? 1) + (LOOK.splashStarsFade ?? 1)));
   };
-  S.reset = () => { S.after = -1; S.t = 0; S.k = 1; S.run = 0; if (cv && cv.parentNode !== document.body) { document.body.appendChild(cv); cv.classList.add('fly') } };   // from Start the canvas leaves the title card and floats over everything
+  S.reset = () => { S.after = -1; S.t = 0; S.k = 1; S.lk = 1; S.run = 0; if (cv && cv.parentNode !== document.body) { document.body.appendChild(cv); cv.classList.add('fly') } };   // from Start the canvas leaves the title card and floats over everything
   S.home = () => { S.run = -1; if (cv && cv.parentNode === document.body) { $('intro').prepend(cv); cv.classList.remove('fly') } };
   S.far = () => 0;
   return S;
@@ -92,7 +92,7 @@ const intro = {
       this.ph = 1; this.lt = 0; curEl.style.display = 'block'; this.placeCur();
       camera.updateMatrixWorld(); const W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), Z0 = this.D0 * .6, s = this.logoAt.w / H * 2 * Z0 * th / 509;
       this.lg = { Z0, s, x0: (this.logoAt.x / W * 2 - 1) * th * W / H * Z0, y0: (1 - this.logoAt.y / H * 2) * th * Z0, dz: s * 149 * (LOOK.logoDepth ?? .12) };
-      logo3d.scale.set(s, s, s * (LOOK.logoDepth ?? .12)); logo3d.visible = true; this.logoStep(0);
+      logo3d.scale.set(s, s, s * .003); logo3d.visible = true; this.logoStep(0);
     }
   },
   ez(t) {   // the zoom: creeping at first, faster and faster (exponentially), then landing softly
@@ -109,6 +109,8 @@ const intro = {
     const T = Math.max(.5, LOOK.logoTime ?? 2.6), q = Math.min(1, (this.lt += dt) / T), e = Math.pow(q, LOOK.logoAccel ?? 2.2), G = this.lg;
     const z = -G.Z0 + (G.Z0 + G.dz * 1.6 + G.Z0 * .02) * e, c = sstep(e, 0, .8), W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), dx = 0, dy = 0;   /* (no frame shift to undo: see update) */
     logo3d.position.set(G.x0 * (1 - c) - dx / W * 2 * th * W / H * -z, G.y0 * (1 - c) + dy / H * 2 * th * -z, z).applyQuaternion(camera.quaternion).add(camera.position); logo3d.quaternion.copy(camera.quaternion);   // undo the frame shift that keeps the pointer under the mouse: the logo stays put
+    const ext = Math.max(.003, sstep(q, 0, Math.max(.02, LOOK.logoExtrude ?? .35))), dzNow = G.dz * ext; logo3d.scale.z = G.s * (LOOK.logoDepth ?? .12) * ext;   // it starts flat, as on the splash, and extrudes back away from you
+    sStars.lk = 1 - sstep(z, 0, Math.max(1e-6, dzNow));   // the stars are gone by the time you come out of the back of it
     this.lshift = (G.Z0 + G.dz * 1.6 + G.Z0 * .02) * e;   // how far the logo has come at you: the stars come with it
     if (q >= 1) { logo3d.visible = false; this.curHide = 3; this.ph = 2 }   // the flat pointer stays a few frames more, until the 3D one is surely drawn in its place   // through: the pointer becomes the ship and the camera starts in
   },
