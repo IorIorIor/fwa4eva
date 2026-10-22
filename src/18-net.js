@@ -122,10 +122,10 @@ function updatePeers(dt) {
     const n = v.pts.length; v.tr.visible = n > 1; if (n < 2) continue;
     // as wide as your own trail at that speed (the same sliders); on the map a faint hairline
     const L = LOOK, lin = Math.max(0, Math.min(1, Math.log10(Math.max(sp, 20) / 20) / Math.max(.1, L.trRef - Math.log10(20)))), sT = Math.pow(lin, L.trColorCurve), mapK = fly ? 1 : L.peerMapTrail ?? .18;
-    v.tr.position.copy(v.cur); const w = fly ? Math.max(L.trMinPx ?? 1.5, L.trWMin + (L.trWMax - L.trWMin) * Math.pow(sT, L.trWCurve)) * (L.peerTrailW ?? .45) : .5;   /* (yours reads thinner than its width: a hot thread with soft edges; theirs are flat, so narrower) */
+    v.tr.position.copy(v.cur); const w = fly ? Math.max(L.trMinPx ?? 1.5, L.trWMin + (L.trWMax - L.trWMin) * Math.pow(sT, L.trWCurve)) * (L.peerTrailW ?? .45) : .5, wP = Math.min(w, L.peerTrailMax ?? 1);   /* never wider than this many px */   /* (yours reads thinner than its width: a hot thread with soft edges; theirs are flat, so narrower) */
     for (let k = 0; k < n; k++) {
       const P_ = v.pts[k].p; _pe.copy(v.pts[Math.min(k + 1, n - 1)].p).sub(v.pts[Math.max(k - 1, 0)].p); _ps.copy(camera.position).sub(P_); const cd = _ps.length(); _ps.crossVectors(_pe, _ps); const l = _ps.length();
-      if (l > 1e-6) _ps.multiplyScalar(w * pxW * cd / l); else _ps.set(0, 0, 0);
+      if (l > 1e-6) _ps.multiplyScalar(wP * pxW * cd / l); else _ps.set(0, 0, 0);
       const x = P_.x - v.cur.x, y = P_.y - v.cur.y, z = P_.z - v.cur.z, o = k * 6, th = v.pts[k].th, a = (1 - k / n) * (1 - k / n);
       if (th === 2) _pc.setHSL(.6, 1, .6); else if (th === 3) _pc.setHSL(.84, 1, .74); else _pc.copy(v.col);   // boost blue, both magenta, else their own colour
       _pc.multiplyScalar(a * 1.4 * mapK);

@@ -174,7 +174,7 @@ const recorder = (() => {
   let mr = null, chunks = [], stream = null; const btn = () => $('recBtn') || { classList: { add() { }, remove() { } } };   // (no Record button any more: L does it)
   const stop = () => { if (mr && mr.state !== 'inactive') mr.stop(); if (stream) stream.getTracks().forEach(t => t.stop()); stream = null };
   async function start() {
-    try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60, displaySurface: 'browser' }, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include' }) } catch (e) { return }
+    try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60, displaySurface: 'browser', cursor: 'never' }, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include' }) } catch (e) { return }
     const type = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported(t)) || '';
     chunks = []; mr = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 16e6 }); mr.ondataavailable = e => e.data.size && chunks.push(e.data);
     mr.onstop = () => { const b = new Blob(chunks, { type: mr.mimeType || 'video/webm' }), a = document.createElement('a'), d = new Date(), p = n => String(n).padStart(2, '0'); a.href = URL.createObjectURL(b); a.download = `fwa-forever-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${/mp4/.test(b.type) ? 'mp4' : 'webm'}`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 4000); mr = null; btn().textContent = 'Record'; btn().classList.remove('rec') };
