@@ -183,6 +183,73 @@ if (store.get('sotd-ship-k') != null) try {   // the start screen's mouse pointe
   const def = CURSORS[shipK] || CURSORS[0], a1 = cursorPic(def, 1), a2 = cursorPic(def, 2), hx = Math.round(a1.hx), hy = Math.round(a1.hy);
   $('intro').style.cursor = `url(${a1.url}) ${hx} ${hy}, auto`; $('intro').style.cursor = `-webkit-image-set(url(${a1.url}) 1x, url(${a2.url}) 2x) ${hx} ${hy}, auto`;
 } catch (e) { }
+/* the special opening (a test, from its own button on the splash): the FWA mark as a block of holographic glass with
+   a field of stars sealed inside it, bending the stars behind it like a lens. It holds where the splash logo was, then
+   you rush at it, into the top of the W's middle; everything goes black, and the galaxy is simply there */
+const specialIntro = (() => {
+  let run = null;
+  function build() {
+    const svg = document.querySelector('#logo svg'), path = new SVGLoader().parse(svg.outerHTML).paths[0], shapes = SVGLoader.createShapes(path), D = 509, H = 149, DEP = LOOK.spDepth ?? 46;
+    const geo = new THREE.ExtrudeGeometry(shapes, { depth: DEP, bevelEnabled: true, bevelThickness: 3, bevelSize: 2.2, bevelSegments: 3, curveSegments: 12 }); geo.translate(-D / 2, -H / 2, -DEP / 2); geo.scale(1, -1, 1); geo.computeVertexNormals();
+    const scn = new THREE.Scene(), t = uniform(0), refr = uniform(LOOK.spRefr ?? 1);
+    // glass: what's behind (the sealed stars, the sky) bent toward the edges and split into colours, a thin-film sheen that runs with the angle, bright rims
+    const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    m.colorNode = Fn(() => {
+      const n = normalize(normalView), v = normalize(positionView.negate()), fr = float(1).sub(abs(dot(n, v))), pl = positionLocal;
+      const off = n.xy.mul(refr.mul(.07)).mul(fr.mul(.85).add(.15)), ca = off.mul(.4);
+      const bg = vec3(viewportSharedTexture(screenUV.add(off.add(ca))).r, viewportSharedTexture(screenUV.add(off)).g, viewportSharedTexture(screenUV.add(off.sub(ca))).b);
+      const fh = fract(fr.mul(2.6).add(pl.x.mul(.004)).add(pl.y.mul(.006)).add(t.mul(.05))), film = clamp(abs(fract(vec3(fh).add(vec3(0, .667, .333))).mul(6).sub(3)).sub(1), 0, 1);
+      const glint = pow(max(noise3(pl.mul(.05).add(vec3(t.mul(.3), t.mul(-.2), 0))), 0), 18).mul(30).mul(fr);
+      const col = bg.mul(1.1).add(film.mul(pow(fr, 1.2)).mul(.55)).add(vec3(1).mul(pow(fr, 6).mul(1.1).add(glint))).add(vec3(.5, .55, .7).mul(.05));
+      return vec4(col, clamp(fr.mul(.55).add(.38), 0, 1));
+    })();
+    const logo = new THREE.Mesh(geo, m); logo.renderOrder = 2; scn.add(logo);
+    // the stars sealed inside: points scattered through the letters' volume (tested against the mark drawn flat)
+    const cv = document.createElement('canvas'); cv.width = D; cv.height = H; const g = cv.getContext('2d'); g.fillStyle = '#fff'; svg.querySelectorAll('path').forEach(pth => g.fill(new Path2D(pth.getAttribute('d')))); const px = g.getImageData(0, 0, D, H).data;
+    const rnd = mulberry32(77), N_IN = LOOK.spStars ?? 2600, N_BG = 1400, quad = new THREE.PlaneGeometry(1, 1);
+    const mkStars = (n, place) => { const sm = new THREE.MeshBasicMaterial({ map: softDot, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false }), im = new THREE.InstancedMesh(quad, sm, n), M4 = new THREE.Matrix4(), c = new C3(), p = new V3();
+      im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3); for (let i = 0; i < n; i++) { const sz = place(p, c); M4.makeScale(sz, sz, sz).setPosition(p); im.setMatrixAt(i, M4); im.setColorAt(i, c) } im.frustumCulled = false; return im };
+    const inside = mkStars(N_IN, (p, c) => { let x, y; for (let k = 0; k < 60; k++) { x = rnd() * D; y = rnd() * H; if (px[((y | 0) * D + (x | 0)) * 4 + 3] > 128) break } p.set(x - D / 2, H / 2 - y, (rnd() - .5) * DEP * .9); const b = .35 + .65 * Math.pow(rnd(), 2.5), hue = rnd(); c.setHSL(.55 + hue * .35, .5 * rnd(), .6).multiplyScalar(b * 2.2); return 1 + 2.8 * Math.pow(rnd(), 3) });
+    inside.renderOrder = 1; scn.add(inside);
+    const back = mkStars(N_BG, (p, c) => { const z = -300 - rnd() * 2600, r = Math.sqrt(rnd()) * (900 + -z * .9), a = rnd() * 6.283; p.set(Math.cos(a) * r, Math.sin(a) * r * .7, z); c.setScalar(.25 + .75 * Math.pow(rnd(), 3)); return 2 + 3 * rnd() });   // the sky behind it, for the glass to bend
+    back.renderOrder = 0; scn.add(back);
+    return { scn, logo, inside, back, t, D, H, DEP, geo, mats: [m, inside.material, back.material] };
+  }
+  function start(withSound) {
+    const B = build(), cam = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, .5, 20000), W = innerWidth, Hh = innerHeight, th = Math.tan(20 * Math.PI / 180);
+    const mk = document.querySelector('#intro .mark'), r0 = mk && mk.getBoundingClientRect(), w = r0 && r0.width ? r0.width : Math.min(240, W * .5), cx = r0 && r0.width ? r0.left + r0.width / 2 : W / 2, cy = r0 && r0.width ? r0.top + r0.height / 2 : Hh * .42;
+    const Z0 = 600, s = w / Hh * 2 * Z0 * th / B.D;   // the glass mark sits exactly where the splash logo was
+    B.logo.scale.setScalar(s); B.inside.scale.setScalar(s); B.logo.position.set((cx / W * 2 - 1) * th * W / Hh * Z0, (1 - cy / Hh * 2) * th * Z0, -Z0); B.inside.position.copy(B.logo.position);
+    const tgt = new V3(244 - B.D / 2, B.H / 2 - 34, B.DEP * .5 + 3).multiplyScalar(s).add(B.logo.position);   // the top of the W's middle, on the front face
+    const black = document.createElement('div'); black.id = 'spBlack'; document.body.appendChild(black); const fade = document.createElement('div'); fade.id = 'spFade'; document.body.appendChild(fade);
+    if (withSound) { setMuted(false); setMusicOff(false); audio() }
+    black.hidden = true; const go = () => { black.hidden = false; $('intro').hidden = true; document.body.classList.remove('splash'); document.body.classList.add('intro', 'opening') };   // the splash stays up while the glass compiles
+    setDpr(Math.min(LOOK.maxDpr, devicePixelRatio || 1), true);
+    const hold = LOOK.spHold ?? .9, fly = Math.max(.8, LOOK.spFly ?? 2.6), from = new V3(0, 0, 0), look = new V3();
+    run = { B, cam, done: false }; let t0 = -1;
+    const step = () => {
+      if (!run || run.done) return; if (t0 < 0) t0 = performance.now(); const T = TEST_EARLY || QS.has('sptime') ? window.__spT ?? 0 : (performance.now() - t0) / 1000;   /* (?sptime: a test sets the clock) */ B.t.value = T;   /* the clock starts with the first frame actually drawn */
+      const q = Math.max(0, Math.min(1, (T - hold) / fly)), k = LOOK.spAccel ?? 4.5, e = (Math.exp(k * q) - 1) / (Math.exp(k) - 1);   // still, then faster and faster (exponentially) into the glass
+      cam.position.lerpVectors(from, tgt, e); cam.position.z = from.z + (tgt.z - B.DEP * .3 * s - from.z) * e;   /* ending inside the glass */ look.copy(tgt).lerp(B.logo.position, 0).setZ(tgt.z - 200); cam.lookAt(look.lerpVectors(new V3(cam.position.x, cam.position.y, -1e4), look, sstep(q, 0, .6)));
+      B.logo.rotation.y = Math.sin(T * .7) * .05 * (1 - q); B.logo.rotation.x = Math.sin(T * .53) * .03 * (1 - q); B.inside.rotation.copy(B.logo.rotation);
+      cam.updateMatrixWorld(); shipRenderer.render(B.scn, cam);
+      fade.style.opacity = sstep(e, .86, .995).toFixed(3);   // the last moment, inside the glass: everything goes black
+      if (q >= 1) { run.done = true; finish(); return } requestAnimationFrame(step);
+    };
+    B.logo.updateMatrixWorld(); cam.updateMatrixWorld();
+    (shipRenderer.compileAsync ? shipRenderer.compileAsync(B.scn, cam).catch(() => { }) : Promise.resolve()).then(() => { go(); shipRenderer.render(B.scn, cam); requestAnimationFrame(() => requestAnimationFrame(step)) });   // shaders ready before the clock runs
+    function finish() {   // black: the galaxy is right there, at the ship, as the usual opening ends
+      B.geo.dispose(); B.mats.forEach(x => x.dispose()); shipRenderer.clear(); black.remove(); run = null;
+      intro.at = null; intro.logoAt = null; intro.start(); intro.finish();
+      const at = LOOK.spRevealAt ?? .3, dur = LOOK.spReveal ?? 1.2; fade.style.transition = `opacity ${dur}s ease ${at}s`; requestAnimationFrame(() => { fade.style.opacity = '0'; setTimeout(() => fade.remove(), (at + dur) * 1000 + 100) });
+    }
+  }
+  return { start, get on() { return !!run } };
+})();
+function beginSpecial(withSound) {
+  logoShapes(); if (!coarse && !lockFailed && !TEST) requestLock();
+  specialIntro.start(withSound);
+}
 function begin(withSound, e) {
   logoShapes();
   { const m = document.querySelector('#intro .mark'), r0 = m && m.getBoundingClientRect(); intro.logoAt = r0 && r0.width ? { x: r0.left + r0.width * LOGO_THRU[0] / 509, y: r0.top + r0.height * LOGO_THRU[1] / 149, w: r0.width } : null }   // the 3D logo starts exactly over the splash's
@@ -197,7 +264,7 @@ function begin(withSound, e) {
 if (TEST) { $('intro').hidden = true; document.body.classList.remove('intro'); LOOK.adaptive = 0; handOver() }
 else {
   const enter = $('enter'); if (window.__introProgress) window.__introProgress(1); else document.body.classList.add('ready');   // the ring opens Start when it closes
-  enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) };
+  enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) }; $('enterSpecial').onclick = () => beginSpecial(true);
   addEventListener('keydown', function k(e) { if ($('intro').classList.contains('gone')) return removeEventListener('keydown', k); if (e.target.closest && e.target.closest('#intro button')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeEventListener('keydown', k); begin(true) } });
 }
 /* the ship back to where it starts, at once: still, facing the core, no trail behind it */
@@ -212,10 +279,10 @@ function toSplash() {
   if (S.mode !== 'fly') { setMode('fly'); tween = null }
   if (intro.active) intro.finish(); toSpawn(); player.vel.set(0, 0, 0); lockI = -1; auto = null; warp = null; sparks.stop(); coach.end && coach.i >= 0 && coach.end();
   sStars.home(); const el = $('intro'); el.hidden = false; el.classList.remove('gone'); document.body.classList.add('intro', 'ready', 'splash');
-  const enter = $('enter'); enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) };
+  const enter = $('enter'); enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) }; $('enterSpecial').onclick = () => beginSpecial(true);
 }
 let vt = performance.now();
 if (!TEST) requestAnimationFrame(t => { last = t; loop(t) });
 else last = vt;
 window.__ready = true;
-window.__sky = { flags, flagDlg, say, portal, phone, togglePanel, sing, paperPics, shipScene, collect: i => collect(i), get camHold() { return camHold }, get camRel() { return camRel }, warpOn: () => !!warp, holdCam: () => { INTRO_END.set(0, rig.dist * (LOOK.camHeight ?? .42), rig.dist).multiplyScalar(LOOK.introDist ?? 1); camRel.copy(INTRO_END); camRelV.set(0, 0, 0); updateCamera(0); camHold = { from: player.pos.clone(), dir: INTRO_END.clone().normalize(), d0: INTRO_END.length() } }, ascent, sparks, whiteout, dustK: () => [dustHissK, streakDens, sstep(player.vel.length(), 150, 4000) * Math.min(1, streakDens * 1.5)], slowmo, mapZone, mouse,  HALOS: () => HALO.live, starR, hazeVis: v => haze.mesh.visible = v, softVis: v => softScene.children.forEach(o => { if (o.isMesh || o.isSprite || o.isGroup) o.visible = v }), starsVis: v => stars.mesh.visible = v, tickOnly(dtMs = 16.7) { vt += dtMs; tick(vt) }, lockI: () => lockI, applyFilter, matchCount: () => matchCount, avatar, outpost, ringPoint, stopR, aimAt, GQ, toLocal, async run(n = 1, dtMs = 16.7) { for (let i = 0; i < n; i++) { vt += dtMs; tick(vt) } await new Promise(r => requestAnimationFrame(r)); vt += dtMs; tick(vt); if (GPU) await renderer.backend.device.queue.onSubmittedWorkDone(); await new Promise(r => requestAnimationFrame(r)) }, keys, regionOf, setDpr, THREE, get LOOK() { return LOOK }, player, rig, camera, renderer, perf, S, setMode, focus, applyLook, D, P, GC, starPos, get GPU() { return GPU }, intro, pipeline, U, PU, orbit, zoom, rotateRig, mapHover, ringAt, ringZoom, mapLvl, get mapYrs() { return mapYrs }, ruler, timeRings, bh, BH, setBH, armPhase, nearest, get nearI() { return nearI }, get contact() { return contactK }, avatarTail: () => avatar.userData.tail, tip, get hovI() { return hovI }, updateHover, get ringHov() { return ringHov }, coach, runBench, bench, peerUpdate, Net, showCard, SATS, flyTo, navStep, GOT, setShip, CURSORS, HALO, get gotN() { return gotN }, startTour, TOURS, get tour() { return tour }, get warp() { return warp }, rmenu };
+window.__sky = { specialIntro, flags, flagDlg, say, portal, phone, togglePanel, sing, paperPics, shipScene, collect: i => collect(i), get camHold() { return camHold }, get camRel() { return camRel }, warpOn: () => !!warp, holdCam: () => { INTRO_END.set(0, rig.dist * (LOOK.camHeight ?? .42), rig.dist).multiplyScalar(LOOK.introDist ?? 1); camRel.copy(INTRO_END); camRelV.set(0, 0, 0); updateCamera(0); camHold = { from: player.pos.clone(), dir: INTRO_END.clone().normalize(), d0: INTRO_END.length() } }, ascent, sparks, whiteout, dustK: () => [dustHissK, streakDens, sstep(player.vel.length(), 150, 4000) * Math.min(1, streakDens * 1.5)], slowmo, mapZone, mouse,  HALOS: () => HALO.live, starR, hazeVis: v => haze.mesh.visible = v, softVis: v => softScene.children.forEach(o => { if (o.isMesh || o.isSprite || o.isGroup) o.visible = v }), starsVis: v => stars.mesh.visible = v, tickOnly(dtMs = 16.7) { vt += dtMs; tick(vt) }, lockI: () => lockI, applyFilter, matchCount: () => matchCount, avatar, outpost, ringPoint, stopR, aimAt, GQ, toLocal, async run(n = 1, dtMs = 16.7) { for (let i = 0; i < n; i++) { vt += dtMs; tick(vt) } await new Promise(r => requestAnimationFrame(r)); vt += dtMs; tick(vt); if (GPU) await renderer.backend.device.queue.onSubmittedWorkDone(); await new Promise(r => requestAnimationFrame(r)) }, keys, regionOf, setDpr, THREE, get LOOK() { return LOOK }, player, rig, camera, renderer, perf, S, setMode, focus, applyLook, D, P, GC, starPos, get GPU() { return GPU }, intro, pipeline, U, PU, orbit, zoom, rotateRig, mapHover, ringAt, ringZoom, mapLvl, get mapYrs() { return mapYrs }, ruler, timeRings, bh, BH, setBH, armPhase, nearest, get nearI() { return nearI }, get contact() { return contactK }, avatarTail: () => avatar.userData.tail, tip, get hovI() { return hovI }, updateHover, get ringHov() { return ringHov }, coach, runBench, bench, peerUpdate, Net, showCard, SATS, flyTo, navStep, GOT, setShip, CURSORS, HALO, get gotN() { return gotN }, startTour, TOURS, get tour() { return tour }, get warp() { return warp }, rmenu };

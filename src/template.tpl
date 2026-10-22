@@ -18,6 +18,7 @@
     <div class="go"><svg class="ring" viewBox="0 0 106 106" aria-hidden="true"><circle id="introBar" cx="53" cy="53" r="52.5" pathLength="1"/></svg><div id="introN" aria-hidden="true"><b>0</b><span>FWAs loaded</span></div><button class="btn" id="enter" type="button">Start</button></div>
   </div>
   <button id="enterQuiet" type="button">Start without sound</button>
+  <button id="enterSpecial" type="button">Do special intro</button>
 </div>
 <script>/* the splash fades in, piece by piece */
 (() => { const r = (a, b) => a + Math.random() * (b - a); let t = r(.15, .35);
