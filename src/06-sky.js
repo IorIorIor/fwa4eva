@@ -75,7 +75,7 @@ function cloudLayer(fields, u, frag, { blend = 'add', target = softScene, order 
     const dd = distance(cameraPosition, O);
     vA.assign(sin(U.time.mul(.6).add(rot.mul(13))).mul(u.pulse).mul(.5).add(1).mul(farDim(dd)).mul(ia('aAl', 'float')).mul(smoothstep(sc.mul(.1).mul(u.nearK), sc.mul(.75).mul(u.nearK), dd)));
     const mv = cameraViewMatrix.mul(vec4(O, 1));
-    return cameraProjectionMatrix.mul(vec4(mv.xy.add(q.mul(sc)), mv.z, 1));
+    return select(vA.lessThan(.002), vec4(2, 2, 2, 1), cameraProjectionMatrix.mul(vec4(mv.xy.add(q.mul(sc)), mv.z, 1)));   // a cloud faded right out (too near, too far) is dropped whole: no pixels at all
   })();
   m.fragmentNode = frag({ vUv, vCol, vCol2, vA, vQ: uv() });
   const geo = quads(n, { aOff: cat('off'), aSc: cat('sc'), aCol: cat('c1'), aCol2: cat('c2'), aRot: cat('rot'), aAl: cat('al'), aTile: cat('tl') });
@@ -84,9 +84,11 @@ function cloudLayer(fields, u, frag, { blend = 'add', target = softScene, order 
 const cloudU = (o = {}) => ({ scale: uniform(1), flatY: uniform(1), nearK: uniform(1), drift: uniform(0), sizeVar: uniform(1), pulse: uniform(0), radOn: uniform(1), ...o });
 const NEB_U = cloudU({ det: uniform(0), dsz: uniform(4), dsh: uniform(1), neb: uniform(1), mono: uniform(0), cloud: uniform(1), fil: uniform(1), soft: uniform(1), contrast: uniform(1), hot: uniform(1), sat: uniform(1), hue: uniform(0), edge: uniform(1), bright: uniform(1), alphaMax: uniform(1) });
 const nebula = cloudLayer([NEB_A, NEB_B], NEB_U, ({ vUv, vCol, vCol2, vA, vQ }) => Fn(() => {
-  const u = NEB_U, w = smoothstep(.5, u.soft.mul(-.2).add(.5), length(vQ.sub(.5))), t = texture(nebAtlas, vUv);
-  const dq = vec3(vUv.mul(u.dsz.mul(8)), 0), det = pow(noise3(dq).mul(.65).add(noise3(dq.mul(2.3).add(5.1)).mul(.35)).mul(1.5).sub(.15).max(0), u.dsh);   // fine detail: two octaves of noise breaking each cloud up
-  const dn = pow(t.r.mul(w).mul(mix(1, det, u.det)), u.contrast), fil = t.g.mul(w);
+  const u = NEB_U, w = smoothstep(.5, u.soft.mul(-.2).add(.5), length(vQ.sub(.5))); Discard(w.lessThanEqual(0));
+  const t = texture(nebAtlas, vUv); Discard(pow(t.r.mul(w).mul(2), u.contrast).mul(.32).mul(u.cloud).add(t.g.mul(w).mul(.22).mul(u.fil)).mul(vA).mul(u.neb).lessThan(.0004));   // pixels that would add next to nothing (even at full detail): out before the costly part
+  const dq = vec3(vUv.mul(u.dsz.mul(8)), 0), det = float(1).toVar();
+  If(u.det.greaterThan(0), () => { det.assign(mix(1, pow(noise3(dq).mul(.65).add(noise3(dq.mul(2.3).add(5.1)).mul(.35)).mul(1.5).sub(.15).max(0), u.dsh), u.det)) });   // fine detail: two octaves of noise breaking each cloud up (skipped when off)
+  const dn = pow(t.r.mul(w).mul(det), u.contrast), fil = t.g.mul(w);
   const c = mix(vCol2, vCol, smoothstep(u.edge.mul(.15), .85, dn)).add(vec3(1, .95, .9).mul(fil).mul(.4).mul(u.hot)).toVar();
   c.assign(hueRot(c, u.hue.mul(6.2832))); c.assign(mix(vec3(luma(c)), c, u.sat).mul(u.bright)); c.assign(monoTint(c, u.mono));
   const al = min(u.alphaMax, dn.mul(.32).mul(u.cloud).add(fil.mul(.22).mul(u.fil)).mul(vA).mul(u.neb));
