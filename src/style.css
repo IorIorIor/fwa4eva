@@ -656,7 +656,7 @@ body.map:not(.nosearch):not(.rm-open) #mapSearch{display:block}
 #radial.sunm::before{display:none}
 #mapSearch{z-index:10}@media (min-width:760px){body.map.panel-open #mapSearch{left:calc(50% + 154px);width:min(420px,calc(100vw - 360px))}}   /* centred in the space beside the filters */
 #splashStars.fly{position:fixed;z-index:54}   /* during the opening: over the black, under the ship and logo */
-body.rm-ring:not(.rm-panel) #rmVeil{opacity:0}   /* the radial menu itself: no blur or dimming behind it */
+/* (the radial menu blurs and darkens the world behind it, like its panels) */
 body.opening #dash{opacity:0 !important;transition:none}   /* the speed console only once the opening is over */
 @media (min-width:760px){body.map.panel-open #mapSearch{left:50%;width:min(420px,calc(100vw - 32px))}}   /* always in the middle */
 /* on the map the full search opens right from the search bar, in place: no veil, no blur */

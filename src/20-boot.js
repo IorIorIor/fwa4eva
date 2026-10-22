@@ -107,7 +107,7 @@ const intro = {
   placeCur() { if (this.at && this.cur) curEl.style.transform = `translate(${(this.at.x - this.tipOff.x - this.cur.hx).toFixed(1)}px,${(this.at.y - this.tipOff.y - this.cur.hy).toFixed(1)}px)` },
   logoStep(dt) {   // the logo in the camera's frame: from the splash's spot, rushing at you while the gap under the W's middle slides to the middle and you pass through it
     const T = Math.max(.5, LOOK.logoTime ?? 2.6), q = Math.min(1, (this.lt += dt) / T), e = Math.pow(q, LOOK.logoAccel ?? 2.2), G = this.lg;
-    const z = -G.Z0 + (G.Z0 + G.dz * 1.6 + G.Z0 * .02) * e, c = sstep(e, 0, .8), W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), dx = this.at ? this.at.x - W / 2 : 0, dy = this.at ? this.at.y - H / 2 : 0;
+    const z = -G.Z0 + (G.Z0 + G.dz * 1.6 + G.Z0 * .02) * e, c = sstep(e, 0, .8), W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), dx = 0, dy = 0;   /* (no frame shift to undo: see update) */
     logo3d.position.set(G.x0 * (1 - c) - dx / W * 2 * th * W / H * -z, G.y0 * (1 - c) + dy / H * 2 * th * -z, z).applyQuaternion(camera.quaternion).add(camera.position); logo3d.quaternion.copy(camera.quaternion);   // undo the frame shift that keeps the pointer under the mouse: the logo stays put
     this.lshift = (G.Z0 + G.dz * 1.6 + G.Z0 * .02) * e;   // how far the logo has come at you: the stars come with it
     if (q >= 1) { logo3d.visible = false; this.curHide = 3; this.ph = 2 }   // the flat pointer stays a few frames more, until the 3D one is surely drawn in its place   // through: the pointer becomes the ship and the camera starts in
@@ -130,7 +130,7 @@ const intro = {
       for (const a of ['x', 'y']) { this.av[a] += ((this.goal[a] - this.at[a]) * K - this.av[a] * C) * h; this.at[a] += this.av[a] * h }
     }
     if (this.curHide && --this.curHide <= 0) { this.curHide = 0; curEl.style.display = 'none' }
-    if (this.ph === 1) { this.pose(0); this.placeCur(); this.logoStep(dt); return }
+    if (this.ph === 1) { this.pose(0); camera.clearViewOffset(); camera.updateMatrixWorld(); this.placeCur(); this.logoStep(dt); return }   // through the logo the view is dead on: the vanishing point in the middle of the screen
     if (this.t < 1) this.t = Math.min(1, this.t + dt / (reduceMotion ? 2.5 : this.dur));
     this.pose(this.t);
     const dur = reduceMotion ? 2.5 : this.dur, on = 1 - 1 / dur;   // engine and instruments are fully on a second before the camera lands
@@ -230,8 +230,7 @@ const specialIntro = (() => {
     const step = () => {
       if (!run || run.done) return; if (t0 < 0) t0 = performance.now(); const T = TEST_EARLY || QS.has('sptime') ? window.__spT ?? 0 : (performance.now() - t0) / 1000;   /* (?sptime: a test sets the clock) */ B.t.value = T;   /* the clock starts with the first frame actually drawn */
       const q = Math.max(0, Math.min(1, (T - hold) / fly)), k = LOOK.spAccel ?? 4.5, e = (Math.exp(k * q) - 1) / (Math.exp(k) - 1);   // still, then faster and faster (exponentially) into the glass
-      cam.position.lerpVectors(from, tgt, e); cam.position.z = from.z + (tgt.z - B.DEP * .3 * s - from.z) * e;   /* ending inside the glass */ look.copy(tgt).lerp(B.logo.position, 0).setZ(tgt.z - 200); cam.lookAt(look.lerpVectors(new V3(cam.position.x, cam.position.y, -1e4), look, sstep(q, 0, .6)));
-      B.logo.rotation.y = Math.sin(T * .7) * .05 * (1 - q); B.logo.rotation.x = Math.sin(T * .53) * .03 * (1 - q); B.inside.rotation.copy(B.logo.rotation);
+      cam.position.lerpVectors(from, tgt, e); cam.position.z = from.z + (tgt.z - B.DEP * .3 * s - from.z) * e;   /* ending inside the glass */ look.copy(tgt).lerp(B.logo.position, 0).setZ(tgt.z - 200); cam.quaternion.identity();   /* always straight ahead: dead on, the vanishing point in the middle */
       cam.updateMatrixWorld(); shipRenderer.render(B.scn, cam);
       fade.style.opacity = sstep(e, .86, .995).toFixed(3);   // the last moment, inside the glass: everything goes black
       if (q >= 1) { run.done = true; finish(); return } requestAnimationFrame(step);

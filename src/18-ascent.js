@@ -197,11 +197,12 @@ const ascent = (() => {
       const peak = (bass ? 0.24 * P.bassLevel : 0.14) * vel / Math.sqrt(U);
       if (peak <= 0) return;
       const N = 64, shape = new Float32Array(N);
-      const curveAt = scale => { const c = new Float32Array(N); for (let i = 0; i < N; i++) c[i] = shape[i] * scale; return c; };
       for (let i = 0; i < N; i++) shape[i] = Math.pow(0.5 - 0.5 * Math.cos(Math.PI * i / (N - 1)), P.curve);
       const tRel = Math.max(t + atk + hold, t + atk + 1e-3), tEnd = tRel + rel * 1.25 + 0.05;
       const envelope = (param, scale) => {
-        param.setValueCurveAtTime(curveAt(scale), t, atk);   // (the release starts once the attack's curve is over: a value can't be set inside it)
+        // the attack as a run of short ramps along the same curve (a value curve can throw when another event lands on its
+        // edge, which left notes stuck at full volume until they cut off with a click), then the release
+        param.setValueAtTime(0, t); for (let k = 1; k <= 12; k++) { const i = Math.round(k / 12 * (N - 1)); param.linearRampToValueAtTime(shape[i] * scale, t + atk * k / 12) }
         param.setValueAtTime(scale, tRel);
         param.setTargetAtTime(0, tRel, rel / 5);
       };

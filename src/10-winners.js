@@ -10,12 +10,12 @@ const stars = (() => {
   geo.setAttribute('aGot', new THREE.InstancedBufferAttribute(GOT, 1).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(COL, 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aAlpha', new THREE.InstancedBufferAttribute(ALPHA, 1).setUsage(THREE.DynamicDrawUsage));
-  const u = { dim: uniform(1), gold: uniform(1), wc: uniform(new V3()), wr: uniform(0), ww: uniform(1), wk: uniform(0), coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), faint: uniform(0), shine: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
+  const u = { specB: uniform(2.2), specS: uniform(1.35), dim: uniform(1), gold: uniform(1), wc: uniform(new V3()), wr: uniform(0), ww: uniform(1), wk: uniform(0), coreW: uniform(.18), haloW: uniform(.12), fall: uniform(1.4), spikes: uniform(0), white: uniform(.55), twink: uniform(0), hi: uniform(0), size: uniform(1), glow: uniform(1), flare: uniform(1), sharp: uniform(0), far: uniform(1), thin: uniform(0), faint: uniform(0), shine: uniform(1), ring: uniform(0), rsz: uniform(1.6), rw: uniform(.1), gotGlow: uniform(1.8) };
   const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vA = varyingProperty('float', 'vA'), vT = varyingProperty('float', 'vT'), vPs = varyingProperty('float', 'vPs'), vDot = varyingProperty('float', 'vDot'), vRing = varyingProperty('float', 'vRing'), vRon = varyingProperty('float', 'vRon'), vPx = varyingProperty('float', 'vPx'), vGot = varyingProperty('float', 'vGot');
   m.vertexNode = Fn(() => {
     const ab = aberrate(ia('aP', 'vec3')), al = ia('aAlpha', 'float');
     const mv = cameraViewMatrix.mul(vec4(ab, 1)).toVar(), on = step(.5, al).mul(u.hi), z = mv.z.negate();
-    const ps = ia('aSize', 'float').mul(u.size).mul(on.mul(6).add(1)).mul(pxScale).div(z).toVar(), dot1 = U.dpr.mul(1.9);
+    const ps = ia('aSize', 'float').mul(u.size).mul(on.mul(6).add(1)).mul(pxScale).div(z).mul(select(ia('aType', 'float').greaterThan(.5), u.specS, 1)).toVar(), dot1 = U.dpr.mul(1.9);   // the month's and year's best: bigger
     // far away a winner is still a crisp white pixel, out past half the galaxy; beyond that it slowly dims
     vDot.assign(smoothstep(dot1.mul(2.6), dot1, ps)); vPs.assign(clamp(ps, mix(dot1, U.dpr.mul(4), on), 220)); vC.assign(mix(ia('aColor', 'vec3'), vec3(1, .74, .28), ia('aGot', 'float').mul(u.gold).mul(.85))); vT.assign(ia('aType', 'float'));   /* collected: gold */
     // on the map every winner stays a white pixel; in flight the far ones thin out and fade away
@@ -53,9 +53,10 @@ const stars = (() => {
       const sh = rays.mul(fl).mul(u.shine).mul(mix(1, 1.8, yr)), ir = irid.mul(u.shine).mul(fl.mul(.5).add(.5));
       col.addAssign(vec3(1, .97, .9).mul(sh).add(mix(vec3(1), rgb, .8).mul(ir))); a.addAssign(sh.add(ir));
     });
+    col.addAssign(vC.mul(halo.mul(1.2).add(core.mul(.5))).mul(u.specB.sub(1).max(0)).mul(step(.5, vT)));   // and brighter, in their own colour (added to the halo, so they don't just go white)
     col.mulAssign(mix(1, .62, u.sharp.mul(smoothstep(3, 16, vPs).oneMinus())));   // tiny stars stay crisp, below the bloom threshold
     // the far-off dot: a flat, near-white disc that fills its pixel instead of a point-spread too small to land on one
-    const dotA = smoothstep(.5, .32, d), dotC = mix(vC, vec3(1), .7).mul(mix(1.05, .85, u.far));   // on the map every winner is a full white pixel
+    const sp = step(.5, vT), dotA = smoothstep(.5, .32, d), dotC = mix(vC, vec3(1), mix(.7, .3, sp)).mul(mix(1.05, .85, u.far)).mul(mix(1, u.specB.mul(.6).max(1), sp));   /* the specials keep their colour even as a far-off dot */   // on the map every winner is a full white pixel
     col.assign(mix(col, dotC, vDot)); a.assign(mix(a, dotA, vDot));
     // the ring: a crisp band (never under a pixel) with a soft glow, its colour until collected, then warm white and brighter
     If(vRon.greaterThan(.001), () => {
