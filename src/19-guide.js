@@ -77,10 +77,25 @@ async function runBench() {
     bench.ms = []; await frames(150); const a = bench.ms.slice().sort((x, y) => x - y), avg = a.reduce((s, x) => s + x, 0) / Math.max(1, a.length), p95 = a[Math.floor(a.length * .95)] || avg;
     rows.push(`${poses[k][0].padEnd(20)} ${String(Math.round(1000 / avg)).padStart(4)} fps · p95 ${p95.toFixed(1)} ms`);
   }
+  // what each part costs on this machine: the same view with one thing taken away at a time
+  const costs = [], L = LOOK, dpr0 = DPR, sc = () => setPassScales(), parts = [
+    ['all on', () => { }, () => { }],
+    ['half resolution', () => setDpr(dpr0 * .5, true), () => setDpr(dpr0, true)],
+    ['no ship layer', () => { bench.noShip = true; shipCanvas.style.visibility = 'hidden' }, () => { bench.noShip = false; shipCanvas.style.visibility = '' }],
+    ['no trail layer', () => trailPass.setResolutionScale(1 / 32), () => trailPass.setResolutionScale(1)],
+    ['no arcs', () => { bench.k = L.arcs; L.arcs = 0; applyLook() }, () => { L.arcs = bench.k; applyLook() }],
+    ['no soft layers', () => { softPass.setResolutionScale(1 / 32); hazePass.setResolutionScale(1 / 32) }, sc],
+    ['black hole 60 steps', () => { bench.k = L.bhSteps; L.bhSteps = 60; applyLook() }, () => { L.bhSteps = bench.k; applyLook() }],
+  ];
+  poses[1][1]();
+  for (const [name, on, off] of parts) {
+    msg(`Measuring what costs what: ${name}…`); on(); await frames(30); bench.ms = []; await frames(90); off();
+    const a = bench.ms, avg = a.reduce((s, x) => s + x, 0) / Math.max(1, a.length); costs.push(`${name.padEnd(20)} ${avg.toFixed(1).padStart(6)} ms`);
+  }
   if (S.mode !== keep.mode) setMode(keep.mode); tween = null;
   player.pos.copy(keep.pos); player.base.copy(keep.base); player.quat.copy(keep.base); player.vel.copy(keep.vel); player.cruise = keep.cruise; rig.q.copy(keep.rig); LOOK.adaptive = keep.adaptive; setDpr(keep.dpr, true); bench.on = false;
   const ua = navigator.userAgent, br = (ua.match(/(Edg|Chrome|Firefox|Version)\/(\d+)/) || [])[0] || 'browser';
-  const txt = `FWA FOREVER benchmark · ${GPU ? 'WebGPU' : 'WebGL 2'} · ${gpuName()} · ${innerWidth}×${innerHeight} at ${Math.min(LOOK.maxDpr, devicePixelRatio || 1)}× · ${br}${/Mac/.test(ua) ? ' · Mac' : /Win/.test(ua) ? ' · Windows' : ''}\nBlack hole steps ${LOOK.bhSteps} · soft layers ${LOOK.softRes} · volumetric ${LOOK.volumetric ? 'on' : 'off'}\n` + rows.join('\n');
+  const txt = `FWA FOREVER benchmark · ${GPU ? 'WebGPU' : 'WebGL 2'} · ${gpuName()} · ${innerWidth}×${innerHeight} at ${devicePixelRatio || 1}× (renders at ${Math.min(LOOK.maxDpr, devicePixelRatio || 1)}×, ship layer ${Math.min(LOOK.shipDpr ?? 3, Math.max(Math.min(LOOK.maxDpr, devicePixelRatio || 1), devicePixelRatio || 1))}×) · ${br}${/Mac/.test(ua) ? ' · Mac' : /Win/.test(ua) ? ' · Windows' : ''}\nBlack hole steps ${LOOK.bhSteps} · soft layers ${LOOK.softRes} · volumetric ${LOOK.volumetric ? 'on' : 'off'}\n` + rows.join('\n') + '\nFrame time, inside an arm:\n' + costs.join('\n');
   const ta = $('lookOut'); ta.value = txt; ta.hidden = false;
   try { await navigator.clipboard.writeText(txt); msg('Benchmark copied. Paste it in the chat') } catch (e) { ta.focus(); ta.select(); msg('Done. Copy the report below') }
 }
