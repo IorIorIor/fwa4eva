@@ -194,9 +194,11 @@ const intro = {
     const z = -Z0 + (Z0 + dep * 1.05 + Z0 * .02) * e;   // the mark comes at you, faster and faster, until you're out of the back of its walls
     P.g.position.set(0, 0, z).applyQuaternion(camera.quaternion).add(camera.position); P.g.quaternion.copy(camera.quaternion); P.g.scale.set(s, -s, dep);
     P.inner.position.set(-(L.portalAimX ?? 244), -(L.portalAimY ?? 38), 0);   // the point you fly through sits dead centre
-    P.fillMat.opacity = 1 - sstep((performance.now() - this.pt0) / 1000, 0, Math.max(.01, L.portalFadeIn ?? 1.4));   // the galaxy fades up behind the letters
-    P.wallMat.opacity = 1 - sstep(q, L.portalOpenAt ?? .55, Math.max((L.portalOpenAt ?? .55) + .01, L.portalOpenEnd ?? .92));   // and round them the black goes, as you close in
-    P.rimMat.color.setScalar(L.portalRim ?? 1.08); P.haloAt(L.portalRimW ?? 6); P.sideMat.roughness = L.portalWallRough ?? .59;
+    const up = sstep((performance.now() - this.pt0) / 1000, 0, Math.max(.01, L.portalFadeIn ?? 1.4)), tint = L.portalTint ?? 0;   // the galaxy fades up behind the letters (under any tint)
+    P.fillMat.opacity = Math.max(1 - up, tint * .85); P.fillMat.color.setHSL(L.portalTintHue ?? .7, .7, .45 * up);
+    const oa = L.portalOpenAt ?? 1; P.wallMat.opacity = (L.portalSurround ?? 1) * (oa >= 1 ? 1 : 1 - sstep(q, oa, Math.max(oa + .01, L.portalOpenEnd ?? 1)));   // round them the black stays (or goes, as you close in, if you set it to)
+    P.rimMat.color.setHSL(L.portalRimHue ?? .72, L.portalRimSat ?? 0, .5).multiplyScalar(2 * (L.portalRim ?? 1.08)); P.haloAt(L.portalRimW ?? 6);
+    P.sideMat.roughness = L.portalWallRough ?? .59; P.sideMat.metalness = L.portalWallMetal ?? 1; P.sideMat.color.setHSL(L.portalWallHue ?? .7, L.portalWallSat ?? .3, L.portalWallBright ?? .012);
     $('plTxt').classList.toggle('gone', q > .03);
     if (q >= 1 && !lab) { P.g.visible = false; this.ph = 2; this.t = 0; this.portalOff && this.portalOff() }   // out the other side: the pointer, and the usual move in to the ship
   },
