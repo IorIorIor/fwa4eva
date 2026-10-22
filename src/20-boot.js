@@ -60,6 +60,29 @@ function makePortal() {
   g.visible = false; shipScene.add(g);
   return { g, inner, wallMat, fillMat, sideMat, sides, rimMat, haloAt };
 }
+/* the portal lab (a page of its own: window.__PORTAL_LAB, or #portal-lab): the opening held still under a scrubber, from
+   outside the mark (0) through it to the pointer (1) and on in to the ship (2), with the Look panel open on its sliders */
+const PORTAL_LAB = !!window.__PORTAL_LAB || /portal-?lab/.test(location.hash);
+function makePortalLab(I) {
+  const el = document.createElement('div'); el.id = 'portalLab';
+  el.innerHTML = '<button type="button" class="pl-play">Play</button><input type="range" id="plRange" min="0" max="2" step="0.001" value="0" aria-label="Opening progress"><span class="pl-v">Outside</span><button type="button" class="pl-look">Sliders</button>';
+  document.body.appendChild(el); document.body.classList.add('plab');
+  const r = el.querySelector('input'), lbl = el.querySelector('.pl-v'), pb = el.querySelector('.pl-play'), S_ = { v: 0, playing: false };
+  const setPlay = on => { S_.playing = on; pb.textContent = on ? 'Pause' : 'Play' };
+  r.oninput = () => { S_.v = +r.value; setPlay(false) };
+  pb.onclick = () => { if (!S_.playing && S_.v >= 1.999) S_.v = 0; setPlay(!S_.playing) };
+  el.querySelector('.pl-look').onclick = () => togglePanel('lookPanel');
+  S_.toggle = () => pb.click();
+  S_.wheel = e => { setPlay(false); S_.v = Math.max(0, Math.min(2, S_.v + (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0006 * (LOOK.portalScroll ?? 1))) };
+  S_.step = dt => {
+    const L = LOOK; if (S_.playing) { S_.v += dt / Math.max(.5, S_.v < 1 ? L.portalPlay ?? 3.5 : I.dur); if (S_.v >= 2) { S_.v = 2; setPlay(false) } }
+    r.value = S_.v; const v = S_.v;
+    if (v < 1) { I.ph = 0; I.pq = I.pqT = v; I.portalView(); I.pt.g.visible = true; avatar.visible = false; emitGlow = 0; I.portalStep(0, true); lbl.textContent = `Through the mark ${Math.round(v * 100)}%` }
+    else { I.ph = 2; I.pt.g.visible = false; I.t = Math.min(.999, v - 1); I.pose(I.t); avatar.visible = true; const on = 1 - 1 / I.dur; emitGlow = quint(sstep(I.t, on - .26, on)); lbl.textContent = `In to the ship ${Math.round((v - 1) * 100)}%` }
+  };
+  if (!isOpen('lookPanel')) togglePanel('lookPanel'); $('lookFind').value = 'opening'; findLook();   // the opening's sliders, ready
+  return S_;
+}
 /* the splash's star field: simple twinkling points around the logo, in 3D (they sit nearer and further than it). On the
    splash it's drawn flat on its own canvas; from Start the same stars, in the same places, are 3D points in front of the
    camera that rush past with the logo, then fade a second after you're through it, as the galaxy comes up */
@@ -140,26 +163,31 @@ const intro = {
     this.at = { x: innerWidth / 2, y: innerHeight / 2 }; this.start(true);
     this.ph = 0; this.pq = this.pqT = 0; this.play = 0; this.pt0 = performance.now(); this.heard = false;
     this.pose(0); this.P0 = { p: camera.position.clone(), q: camera.quaternion.clone() };   // where the usual opening starts: just above the pointer
-    const L = LOOK, R = GAL_R0 + GAL_LEN, D = R * (L.portalDist ?? 6), tl = (L.portalTilt ?? 35) * Math.PI / 180, d = player.pos.clone().sub(GC).projectOnPlane(GAL_UP).normalize().applyAxisAngle(GAL_UP, (L.portalTurn ?? 0) * Math.PI / 180);
-    const pv = GC.clone().addScaledVector(d, Math.cos(tl) * D).addScaledVector(GAL_UP, Math.sin(tl) * D);   // far out, on the ship's side, a little above the disk: the whole spiral in view
-    this.PV = { p: pv, q: new Q4().setFromRotationMatrix(new THREE.Matrix4().lookAt(pv, GC, GAL_UP)) };
+    this.portalView();
     this.pt.g.visible = true; this.portalStep(0);
     const gesture = () => { if (this.heard) return; this.heard = true; setMuted(false); setMusicOff(false); audio() };   // sound needs a click or a key, so the first one starts it
-    const go = () => { this.play = 1; gesture(); if (!coarse && !lockFailed) requestLock() };
+    const go = () => { if (this.lab) { this.lab.toggle(); return } this.play = 1; gesture(); if (!coarse && !lockFailed) requestLock() };
     let down = null;
-    const wheel = e => { e.preventDefault(); this.play = 0; this.pqT = Math.max(0, Math.min(1, this.pqT + (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0006 * (LOOK.portalScroll ?? 1))) };
-    const pdown = e => { down = { x: e.clientX, y: e.clientY, y0: e.clientY }; gesture() };
+    const off = e => e.target && e.target.closest && e.target.closest('#lookPanel,#portalLab');   // (the lab's own controls)
+    const wheel = e => { if (off(e)) return; e.preventDefault(); if (this.lab) { this.lab.wheel(e); return } this.play = 0; this.pqT = Math.max(0, Math.min(1, this.pqT + (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0006 * (LOOK.portalScroll ?? 1))) };
+    const pdown = e => { if (off(e)) return; down = { x: e.clientX, y: e.clientY, y0: e.clientY }; gesture() };
     const pmove = e => { if (!down || e.pointerType === 'mouse') return; this.play = 0; this.pqT = Math.max(0, Math.min(1, this.pqT + (down.y - e.clientY) * .0025 * (LOOK.portalScroll ?? 1))); down.y = e.clientY };   // a finger drags it, like scrolling a page
-    const pup = e => { if (down && Math.abs(e.clientY - down.y0) + Math.abs(e.clientX - down.x) < 8) go(); down = null };   // a click or a tap plays it through
-    const key = e => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); go() } else if (e.key === 'ArrowUp') { this.play = 0; this.pqT = Math.max(0, this.pqT - .1) } else if (e.key === 'Escape') { gesture(); this.finish() } };
+    const pup = e => { if (off(e)) { down = null; return } if (down && Math.abs(e.clientY - down.y0) + Math.abs(e.clientX - down.x) < 8) go(); down = null };   // a click or a tap plays it through
+    const key = e => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); go() } else if (e.key === 'ArrowUp') { this.play = 0; this.pqT = Math.max(0, this.pqT - .1) } else if (e.key === 'Escape' && !this.lab) { gesture(); this.finish() } };
     addEventListener('wheel', wheel, { passive: false }); addEventListener('pointerdown', pdown, true); addEventListener('pointermove', pmove, true); addEventListener('pointerup', pup, true); addEventListener('keydown', key, true);
     this.portalOff = () => { removeEventListener('wheel', wheel, { passive: false }); removeEventListener('pointerdown', pdown, true); removeEventListener('pointermove', pmove, true); removeEventListener('pointerup', pup, true); removeEventListener('keydown', key, true); $('portalLoad').hidden = true; this.portalOff = null };
     const load = $('portalLoad'); load.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => { load.classList.add('live'); $('plTxt').textContent = coarse ? 'Swipe up to continue' : 'Scroll to continue' }));   // the 3D mark is drawn in the same place: the flat one hands over
+    if (PORTAL_LAB) this.lab = makePortalLab(this);
     return true;
   },
-  portalStep(dt) {
-    const L = LOOK, P = this.pt; if (this.play) this.pqT = Math.min(1, this.pqT + dt / Math.max(.5, L.portalPlay ?? 3.5));
-    this.pq += (this.pqT - this.pq) * (1 - Math.exp(-dt * 6)); if (this.pqT >= 1 && this.pq > .996) this.pq = 1;
+  portalView() {   // where the dive starts: far out, on the ship's side, a little above the disk, the whole spiral in view
+    const L = LOOK, R = GAL_R0 + GAL_LEN, D = R * (L.portalDist ?? 6), tl = (L.portalTilt ?? 35) * Math.PI / 180, d = player.pos.clone().sub(GC).projectOnPlane(GAL_UP).normalize().applyAxisAngle(GAL_UP, (L.portalTurn ?? 0) * Math.PI / 180);
+    const pv = GC.clone().addScaledVector(d, Math.cos(tl) * D).addScaledVector(GAL_UP, Math.sin(tl) * D);
+    this.PV = { p: pv, q: new Q4().setFromRotationMatrix(new THREE.Matrix4().lookAt(pv, GC, GAL_UP)) };
+  },
+  portalStep(dt, lab = false) {
+    const L = LOOK, P = this.pt; if (!lab) { if (this.play) this.pqT = Math.min(1, this.pqT + dt / Math.max(.5, L.portalPlay ?? 3.5));
+      this.pq += (this.pqT - this.pq) * (1 - Math.exp(-dt * 6)); if (this.pqT >= 1 && this.pq > .996) this.pq = 1 }
     const q = this.pq, e = Math.pow(q, L.portalAccel ?? 2.2);
     lerpLogPolar(camera.position, this.PV.p, this.P0.p, player.pos, e); camera.quaternion.copy(this.PV.q).slerp(this.P0.q, sstep(e, .15, .9)); camera.updateMatrixWorld();   // the dive: from far out down to just above the pointer
     const W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), Z0 = this.D0 * .6, wpx = Math.min(W * (L.portalSize ?? .62), H * 2.2), s = wpx / H * 2 * Z0 * th / 509, dep = (L.portalDepth ?? 200) * s;
@@ -170,7 +198,7 @@ const intro = {
     P.wallMat.opacity = 1 - sstep(q, L.portalOpenAt ?? .55, Math.max((L.portalOpenAt ?? .55) + .01, L.portalOpenEnd ?? .92));   // and round them the black goes, as you close in
     P.rimMat.color.setScalar(L.portalRim ?? 1.08); P.haloAt(L.portalRimW ?? 6); P.sideMat.roughness = L.portalWallRough ?? .59;
     $('plTxt').classList.toggle('gone', q > .03);
-    if (q >= 1) { P.g.visible = false; this.ph = 2; this.t = 0; this.portalOff && this.portalOff() }   // out the other side: the pointer, and the usual move in to the ship
+    if (q >= 1 && !lab) { P.g.visible = false; this.ph = 2; this.t = 0; this.portalOff && this.portalOff() }   // out the other side: the pointer, and the usual move in to the ship
   },
   ez(t) {   // the zoom: creeping at first, faster and faster (exponentially), then landing softly
     const x = Math.min(1, Math.max(0, (t - .02) / .96)), k = LOOK.introEaseIn ?? 5, f = (Math.exp(k * x) - 1) / (Math.exp(k) - 1); return 1 - Math.pow(1 - f, LOOK.introEaseOut ?? 2.2);
@@ -204,6 +232,7 @@ const intro = {
   update(dt) {
     sStars.update(dt);
     avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = this.ph === 2; avatar.userData.flame.material.opacity = 0;
+    if (this.lab) { this.lab.step(dt); return }   // the portal lab: the scrubber drives it
     if (this.at && this.goal && dt > 0) {   // elastic: a soft spring with a touch of overshoot, so any flick of the mouse reads as one smooth swing
       const K = 90 * (LOOK.introSpring ?? 1), C = 2 * Math.sqrt(K) * .78, h = Math.min(dt, 1 / 30);
       for (const a of ['x', 'y']) { this.av[a] += ((this.goal[a] - this.at[a]) * K - this.av[a] * C) * h; this.at[a] += this.av[a] * h }
@@ -343,7 +372,7 @@ function begin(withSound, e) {
 }
 if (TEST) { $('intro').hidden = true; document.body.classList.remove('intro'); LOOK.adaptive = 0; handOver() }
 else {
-  const portalOn = document.documentElement.classList.contains('portal') && (LOOK.portalIntro ?? 1) && intro.startPortal(); if (!portalOn) { document.documentElement.classList.remove('portal'); $('portalLoad').hidden = true }   // the portal opening, or the old splash with its Start button
+  const portalOn = document.documentElement.classList.contains('portal') && ((LOOK.portalIntro ?? 1) || PORTAL_LAB) && intro.startPortal(); if (!portalOn) { document.documentElement.classList.remove('portal'); $('portalLoad').hidden = true }   // the portal opening, or the old splash with its Start button
   const enter = $('enter'); if (window.__introProgress) window.__introProgress(1); else document.body.classList.add('ready');   // the ring opens Start when it closes
   enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) };
   if (!portalOn) addEventListener('keydown', function k(e) { if ($('intro').classList.contains('gone')) return removeEventListener('keydown', k); if (e.target.closest && e.target.closest('#intro button')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeEventListener('keydown', k); begin(true) } });

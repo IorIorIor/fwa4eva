@@ -925,3 +925,13 @@ html.portal #portalLoad.live{background:transparent}
 #plTxt{position:absolute;left:0;right:0;top:calc(50% + var(--pw) * .2181 + 34px);margin:0;text-align:center;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.55);transition:opacity .6s ease}
 #plTxt.gone{opacity:0}
 @media (prefers-reduced-motion:reduce){#portalLoad path{animation:none}}
+/* the portal lab: a scrubber along the bottom, the Look panel open beside it, a normal pointer */
+#portalLab{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:calc(max(16px,env(safe-area-inset-right,0px)) + 380px);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:95;display:flex;align-items:center;gap:12px;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+#portalLab input{flex:1;min-width:0;accent-color:#fff}
+#portalLab .pl-v{min-width:170px;font-variant-numeric:tabular-nums}
+#portalLab button{font:inherit;letter-spacing:inherit;text-transform:inherit;color:#fff;background:rgba(26,20,40,.7);border:1px solid rgba(255,255,255,.25);padding:8px 12px;cursor:pointer}
+#portalLab button:hover{background:#fff;color:#000}
+body.plab #lookPanel{opacity:1!important;pointer-events:auto!important;z-index:96}
+body.plab,body.plab *{cursor:auto!important}body.plab button,body.plab input,body.plab .lhd{cursor:pointer!important}
+body.plab #plTxt{display:none}
+@media (max-width:760px){#portalLab{right:max(16px,env(safe-area-inset-right,0px));flex-wrap:wrap}#portalLab .pl-v{min-width:0}}
