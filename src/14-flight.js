@@ -228,9 +228,14 @@ function updatePlayer(dt) {
   if (L.rings) ringCheck(p);
   if (touch > 0 && !auto && lockI !== nearI) { const sp = p.vel.length(); if (sp > 1) p.base.slerp(lookAtQ(_vn.copy(p.vel).divideScalar(sp), Yv.clone().applyQuaternion(p.base), _nq), Math.min(1, dt * 6 * Math.min(1, touch * 3))) }   // pushed: the nose follows the bounce
   {
-    tmp.copy(p.pos).sub(GC); const d = tmp.length(), mn = BH.sh * 1.3;
+    tmp.copy(p.pos).sub(GC); const d = tmp.length(), mn = BH.sh * 1.3, gR = BH.sh * Math.max(18, L.bhGravReach ?? 30);
     if (d < mn && !(LOOK.singularity ?? 1)) { tmp.setLength(mn); p.pos.copy(GC).add(tmp); const n = tmp.normalize(), vn = p.vel.dot(n); if (vn < 0) p.vel.addScaledVector(n, -vn) }
-    else if (d < BH.sh * 18 && !auto && !sing.busy) { const sp = p.vel.length(), cap = 60 + (d - mn) * 6; if (sp > cap) p.vel.setLength(Math.max(cap, sp * Math.exp(-3 * dt))); p.vel.addScaledVector(tmp.normalize(), -dt * 250 * L.bhPull * (1 - sstep(d, mn, BH.sh * 5))) }   // only a gentle tug, and only close in
+    else if (d < gR && !auto && !sing.busy) {
+      const sp = p.vel.length(), cap = 60 + (d - mn) * 6 * (L.bhCap ?? 2.5); if (d < BH.sh * 18 && sp > cap) p.vel.setLength(Math.max(cap, sp * Math.exp(-3 * dt)));   // close in it holds you to a speed you can still steer at
+      const n = tmp.normalize(); p.vel.addScaledVector(n, -dt * 250 * L.bhPull * (1 - sstep(d, mn, BH.sh * 5)));   // a gentle tug close in
+      const gv = (L.bhGrav ?? 1) * 30 * BH.sh * Math.pow(BH.sh / Math.max(d, mn), 2) * (1 - sstep(d, gR * .5, gR)) * dt; p.vel.addScaledVector(n, -gv);   // and gravity, GM/r² (sized so a fall from ten shadows takes some seconds)
+      if (L.bhDrag) { const l = _vn.copy(n).applyQuaternion(GQI); _rf.set(l.z, 0, -l.x).normalize().applyQuaternion(GQ); p.vel.addScaledVector(_rf, gv * L.bhDrag * (1 - Math.abs(l.y))) }   // frame dragging: swept round the way the disk turns
+    }
   }
   p.roll += (Math.max(-1.2, Math.min(1.2, -turnSide * .45 + turnKey * (L.rollSteerBank ?? .7))) - p.roll) * (1 - Math.exp(-5 * dt));   // a cosmetic bank into turns (and into an A/D turn)
   p.quat.copy(p.base).multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), p.roll));
@@ -260,9 +265,10 @@ function updateCamera(dt) {
     if (tween) { tween.t += dt / (reduceMotion ? .2 : tween.dur || 1.2); const e = tween.mode ? easeMode(Math.min(1, tween.t)) : ease(Math.min(1, tween.t)); if (tween.c) lerpLogPolar(camera.position, tween.fp, tmp, player.pos, e); else camera.position.lerpVectors(tween.fp, tmp, e); camera.quaternion.copy(tween.fq).slerp(rig.quat, e); if (tween.t >= 1) { const d = tween.done; tween = null; d && d() } }
     else { camera.position.copy(tmp); camera.quaternion.copy(rig.quat) }
     if (Math.abs(bankCam) > 1e-5) camera.quaternion.multiply(_q.setFromAxisAngle(_ax.set(0, 0, 1), bankCam));   // the bank leans the view in place
+    fall.cam();   // the black hole's rumble and the disk's jolt
     const fov = Math.min(150, L.fov + L.fovKick * sstep(Math.log10(Math.max(1, player.vel.length())), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) + boostK * L.boostFov + ringPop * (L.ringFov ?? 10) + (L.ringDilateFov ?? 15) * (1 - slowmo.k));   // wider the faster you go
     if (intro.active || Math.abs(fovS - camera.fov) > 40 && !whiteout.fov) fovS = camera.fov;
-    if (tween && tween.mode && tween.f0) fovS = tween.f0 + (fov - tween.f0) * ease(Math.min(1, tween.t)); else fovS += (fov - fovS) * (1 - Math.exp(-4 * dt)); camera.fov = Math.min(170, fovS + whiteout.fov); camera.updateProjectionMatrix(); /* (the ring's lens stretch goes on top at once, not eased) */   // back from the map the lens widens with the move, so the narrow map lens doesn't snap open (that looked like a bounce back)
+    if (tween && tween.mode && tween.f0) fovS = tween.f0 + (fov - tween.f0) * ease(Math.min(1, tween.t)); else fovS += (fov - fovS) * (1 - Math.exp(-4 * dt)); camera.fov = Math.min(170, fovS + whiteout.fov + fall.fov); camera.updateProjectionMatrix(); /* (the ring's lens stretch goes on top at once, not eased) */   // back from the map the lens widens with the move, so the narrow map lens doesn't snap open (that looked like a bounce back)
   } else {
     const mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), mz = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0), zq = (keys.q ? 1 : 0) - (keys.e ? 1 : 0);
     if (scrollMode.on) scrollMode.step(dt);   // scroll mode drives the map camera along the spiral

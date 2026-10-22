@@ -7,6 +7,7 @@ const arcPass = pass(arcScene, camera, { depthBuffer: false, samples: 0 });
 const PU = {   // pipeline uniforms
   inv: uniform(0), apex: uniform(new THREE.Vector2(.5, .5)),   // apex: where on screen you're heading (or, looking back, coming from)   // the inverted monochrome look: black stars on white
   volOn: uniform(0), hazeScreen: uniform(1), volBlur: uniform(0),
+  sw: uniform(0), swC: uniform(new THREE.Vector2(.5, .5)), swR: uniform(.1), swP: uniform(0), asp: uniform(1),   // the black hole twisting the picture round it: swirl (radians at its middle), where, how far it reaches (screen heights), how hard it pulls in, the screen's aspect
   exp: uniform(1), film: uniform(1), vig: uniform(.45), grain: uniform(.03), ab: uniform(0), beta: uniform(0), black: uniform(0), con: uniform(1), sat: uniform(1), cool: uniform(0),
   bgK: uniform(1), lv: uniform(0), lvMid: uniform(2),   // lv: the ring veil's levels over the whole frame (1 = all white, easing back to 0 = untouched)
     // the whole background (gas, haze, arcs) dims to this on the map, leaving the winners and the lines
@@ -78,7 +79,12 @@ const bloomPass = bloom(sceneTex.min(1), .45, .4, .72);
 const bloomTex = bloomPass.getTextureNode();
 const trailPass = pass(trailScene, camera, { samples: 4 }), trailTex = trailPass.getTextureNode();
 const finalNode = Fn(() => {
-  const vUv = screenUV, uv0 = vUv;
+  const vUv = screenUV, uv0 = vec2(vUv).toVar();
+  If(PU.sw.add(PU.swP).greaterThan(.001), () => {   // falling in: space twists round the hole and the picture is drawn in toward it
+    const ar = vec2(PU.asp, 1), q = vUv.sub(PU.swC).mul(ar), R2 = PU.swR.mul(PU.swR), f = R2.div(dot(q, q).add(R2)), a = PU.sw.mul(f), cs = cos(a), sn = sin(a);
+    const w = vec2(q.x.mul(cs).sub(q.y.mul(sn)), q.x.mul(sn).add(q.y.mul(cs))).mul(PU.swP.mul(f).add(1)).div(ar).add(PU.swC);
+    uv0.assign(abs(fract(w.mul(.5)).mul(2).sub(1)).oneMinus());   // (mirrored back in where it reaches past the screen's edge, so nothing smears)
+  });
   const S = p => min(min(sceneTex.sample(p).rgb, 1).add(bloomTex.sample(p).rgb), 1);
   const d0 = vUv.sub(.5), d = vUv.sub(PU.apex), r = length(d0), ra = length(d), o = d.mul(ra).mul(PU.ab.mul(.03));   // the fringes and the light-speed streaks spread from the apex, wherever the camera looks from
   const c = vec3(S(uv0.add(o)).r, S(uv0).g, S(uv0.sub(o)).b).toVar();

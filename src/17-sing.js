@@ -16,6 +16,7 @@ const sing = (() => {
   }
   return {
     get busy() { return S_.t >= 0 },
+    reset() { S_.t = -1; S_.w = 0; S_.far = false; star.visible = false; el.style.opacity = 0; document.body.classList.remove('farside') },   // (the black hole lab, going round again)
     update(rdt) {
       const L = LOOK, on = !!(L.singularity ?? 1) && S.mode === 'fly' && booted, d = player.pos.distanceTo(GC);
       singQ = on && !S_.far && !(S_.t >= 0) ? 1 - sstep(d, BH.sh * 1.5, BH.sh * (L.singHear ?? 14)) : S_.t >= 0 ? Math.max(singQ, Math.min(1, S_.w * 2)) : Math.max(0, singQ - rdt);
