@@ -42,6 +42,7 @@ canvas.addEventListener('pointermove', e => {
   if (S.mode === 'fly') { if (down.touch || lockFailed) rotateRig(-dx * .005, -dy * .005); return }   // touch (and lock-less mouse) drag looks around
   if (tween) return;
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0) zoom((pinch0 - d) * 4); pinch0 = d; return }
+  if (rec.galaxy) { rec.scratch(e.clientX, e.clientY, dx, dy); return }   // the record's playing: drag turns it by hand, back and forth (a scratch)
   const dk = LOOK.mapDrag ?? .35;
   if (down.btn === 2 || down.shift) { orbit.theta -= dx * .005 * dk; orbit.phi = orbit.phi > Math.PI / 2 ? Math.max(Math.PI - 1.5, Math.min(Math.PI - .01, orbit.phi + dy * .005 * dk)) : Math.max(.01, Math.min(1.5, orbit.phi - dy * .005 * dk)) }   // right-drag (or Shift) turns the view
   else {   // drag pans: the spot you grabbed stays under the pointer

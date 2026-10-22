@@ -57,6 +57,13 @@ const rec = (() => {
   return {
     get playing() { return !!st.mode },
     get spin() { return st.mode === 'fwa' ? st.spin : 0 },
+    get galaxy() { return st.mode === 'galaxy' },
+    scratch(x, y, dx, dy) {   // turn the record by hand: the angle swept round the core's spot on screen
+      _v.copy(GC).project(camera); const cx = (_v.x * .5 + .5) * innerWidth, cy = (-_v.y * .5 + .5) * innerHeight, a1 = Math.atan2(y - cy, x - cx), a0 = Math.atan2(y - dy - cy, x - dx - cx); let da = a1 - a0; da -= Math.round(da / (2 * Math.PI)) * 2 * Math.PI;
+      orbit.theta += da * (camera.up.y >= 0 ? 1 : -1) * (LOOK.recScratchDir ?? 1); st.hand = .35; st.budget = Math.max(st.budget, 2);
+      if (ensure() && Math.abs(da) > .002) { const t = AC.currentTime, len = .06, b = AC.createBuffer(1, AC.sampleRate * len | 0, AC.sampleRate), ch = b.getChannelData(0); for (let k = 0; k < ch.length; k++) ch[k] = (Math.random() * 2 - 1) * (1 - k / ch.length);   // the needle's rasp: a short burst of noise, pitched by how fast you pull
+        const src = AC.createBufferSource(), bp = AC.createBiquadFilter(), g = AC.createGain(); src.buffer = b; src.playbackRate.value = Math.min(4, .4 + Math.abs(da) * 40); bp.type = 'bandpass'; bp.frequency.value = 900 + Math.min(3000, Math.abs(da) * 30000); bp.Q.value = 2; g.gain.value = Math.min(.12, Math.abs(da) * 2) * (LOOK.recVol ?? .6); src.connect(bp); bp.connect(g); g.connect(bus); src.start(t) }
+    },
     play, stop,
     update(rdt) {
       const L = LOOK, map = S.mode === 'map', mi = openI();
@@ -78,7 +85,7 @@ const rec = (() => {
         return;
       }
       // the galaxy: turn it, and play what passes the needle
-      orbit.theta += rdt * 2 * Math.PI / Math.max(4, L.recTurn ?? 48);
+      st.hand = Math.max(0, (st.hand || 0) - rdt); if (!st.hand) orbit.theta += rdt * 2 * Math.PI / Math.max(4, L.recTurn ?? 48);   /* (a hand on it holds it still) */
       _r.set(1, 0, 0).applyQuaternion(camera.quaternion).applyQuaternion(GQI); const phi = Math.atan2(_r.z, _r.x);   // the needle: the screen's right, laid in the disk
       { _v.copy(GC).project(camera); _r.copy(GC).addScaledVector(new V3(1, 0, 0).applyQuaternion(camera.quaternion), GAL_R0 + GAL_LEN).project(camera); const x0 = (_v.x * .5 + .5) * innerWidth, y0 = (-_v.y * .5 + .5) * innerHeight, x1 = (_r.x * .5 + .5) * innerWidth, y1 = (-_r.y * .5 + .5) * innerHeight;
         needle.style.left = x0.toFixed(1) + 'px'; needle.style.top = y0.toFixed(1) + 'px'; needle.style.width = Math.hypot(x1 - x0, y1 - y0).toFixed(1) + 'px'; needle.style.transform = `rotate(${Math.atan2(y1 - y0, x1 - x0)}rad)` }

@@ -130,23 +130,37 @@ function holeMesh() {   // inside: a turbine. Fan blades on the floor of the tub
   const mesh = new THREE.Mesh(new THREE.CircleGeometry(HOLE.r, 40), m); mesh.u = u; return mesh;
 }   // flat: the tip points exactly where you're going (the chase camera sits high enough to see the face)
 // one set of materials for every ship, worn: very fine scuffs, hairline scratches and rub marks in the metal (roughness)
-const SCUFF = (() => {   // worn metal, drawn once at 1024²: a roughness map (light = duller) and a matching bump map (dark = cut in)
-  const S = 1024, mk = () => { const c = document.createElement('canvas'); c.width = c.height = S; return c }, cr = mk(), cb = mk(), r = cr.getContext('2d'), b = cb.getContext('2d'), R = mulberry32(5150);
-  r.fillStyle = 'rgb(120,120,120)'; r.fillRect(0, 0, S, S); b.fillStyle = 'rgb(128,128,128)'; b.fillRect(0, 0, S, S);
-  { const n = document.createElement('canvas'); n.width = n.height = 16; const ng = n.getContext('2d'); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const v = 100 + R() * 56 | 0; ng.fillStyle = `rgb(${v},${v},${v})`; ng.fillRect(x, y, 1, 1) }
-    r.globalAlpha = .55; r.imageSmoothingEnabled = true; r.drawImage(n, 0, 0, S, S); r.globalAlpha = 1 }   // uneven wear: some areas duller than others
-  const line = (ctx, x, y, a, l, w, col, bend = 0) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + Math.cos(a) * l * .5 - Math.sin(a) * bend, y + Math.sin(a) * l * .5 + Math.cos(a) * bend, x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke() };
-  const GRAIN = .32;
-  for (let i = 0; i < 14000; i++) { const x = R() * S, y = R() * S, l = 10 + R() * 70, v = R() < .5 ? 150 : 95; line(r, x, y, GRAIN + (R() - .5) * .04, l, .35 + R() * .5, `rgba(${v},${v},${v},${.05 + R() * .07})`) }   // brushed grain
-  for (let i = 0; i < 2200; i++) { const x = R() * S, y = R() * S, a = R() < .6 ? GRAIN + (R() - .5) * .5 : R() * Math.PI, l = 4 + Math.pow(R(), 3) * 220, w = .3 + R() * .7, al = .1 + R() * .35;   // hairlines, every way
-    line(r, x, y, a, l, w, `rgba(225,225,225,${al})`, (R() - .5) * l * .15); line(b, x, y, a, l, w, `rgba(60,60,60,${al})`, 0) }
-  for (let k = 0; k < 70; k++) { const cx = R() * S, cy = R() * S, a = R() * Math.PI, rr = 10 + R() * 45, n = 20 + R() * 60 | 0;   // rub marks: a patch of short parallel scratches
-    for (let i = 0; i < n; i++) { const t = R(), d = (R() - .5) * 2 * rr, x = cx + Math.cos(a + 1.57) * d + (R() - .5) * rr, y = cy + Math.sin(a + 1.57) * d + (R() - .5) * rr, l = 3 + R() * rr * .8; line(r, x, y, a + (R() - .5) * .12, l, .3 + t * .5, `rgba(210,210,210,${.08 + R() * .2})`); line(b, x, y, a, l, .4, 'rgba(80,80,80,.25)') } }
-  for (let i = 0; i < 70; i++) { const x = R() * S, y = R() * S, a = R() * Math.PI, l = 30 + R() * 260, bend = (R() - .5) * 40;   // a few real gouges: a cut with burred edges
-    line(r, x, y, a, l, 2.2, 'rgba(235,235,235,.5)', bend); line(r, x, y, a, l, .8, 'rgba(70,70,70,.7)', bend); line(b, x, y, a, l, 2.4, 'rgba(170,170,170,.6)', bend); line(b, x, y, a, l, 1, 'rgba(20,20,20,.9)', bend) }
-  for (let i = 0; i < 9000; i++) { const x = R() * S, y = R() * S, z = .6 + R() * 1.6, v = R() < .5 ? 200 : 60; r.fillStyle = `rgba(${v},${v},${v},${.06 + R() * .12})`; r.fillRect(x, y, z, z); if (R() < .3) { b.fillStyle = 'rgba(40,40,40,.35)'; b.fillRect(x, y, z, z) } }   // pitting and specks
-  const tex = (c, srgb) => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(.11, .11); t.anisotropy = 8; if (srgb) t.colorSpace = THREE.NoColorSpace; return t };
-  return { rough: tex(cr), bump: tex(cb) };
+// and a matching bump map. Drawn seamless (every mark that crosses an edge comes back in on the other side), so the
+// tiling never shows as a line across the ship. Look → Ship & outpost has its scale, depth, amount, detail and pattern.
+const SCUFF = (() => {
+  const mk = S => { const c = document.createElement('canvas'); c.width = c.height = S; return c }, out = { rough: null, bump: null, sig: '' };
+  function draw(P) {
+    const S = P.res, cr = mk(S), cb = mk(S), r = cr.getContext('2d'), b = cb.getContext('2d'), R = mulberry32(5150 + P.seed * 7919), k = S / 1024, A = P.amt, D = P.dens;
+    r.fillStyle = 'rgb(120,120,120)'; r.fillRect(0, 0, S, S); b.fillStyle = 'rgb(128,128,128)'; b.fillRect(0, 0, S, S);
+    const wrap = (x, y, reach, f) => { for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) if (x + ox > -reach && x + ox < S + reach && y + oy > -reach && y + oy < S + reach) f(x + ox, y + oy) };   // seamless: draw it again wherever it would cross an edge
+    for (let i = 0; i < 40; i++) { const x = R() * S, y = R() * S, rr = (80 + R() * 220) * k, v = R() < .5 ? 150 : 95; wrap(x, y, rr, (X, Y) => { const g = r.createRadialGradient(X, Y, 0, X, Y, rr); g.addColorStop(0, `rgba(${v},${v},${v},${.25 * A})`); g.addColorStop(1, `rgba(${v},${v},${v},0)`); r.fillStyle = g; r.fillRect(X - rr, Y - rr, rr * 2, rr * 2) }) }   // uneven wear: some areas duller than others
+    const line = (ctx, x, y, a, l, w, col, bend = 0) => wrap(x, y, l + w + Math.abs(bend), (X, Y) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(X, Y); ctx.quadraticCurveTo(X + Math.cos(a) * l * .5 - Math.sin(a) * bend, Y + Math.sin(a) * l * .5 + Math.cos(a) * bend, X + Math.cos(a) * l, Y + Math.sin(a) * l); ctx.stroke() });
+    const GRAIN = .32 + (P.seed ? R() * 3 : 0), al = x => Math.min(1, x * A);
+    for (let i = 0; i < 14000 * D * k * k; i++) { const x = R() * S, y = R() * S, l = (10 + R() * 70) * k, v = R() < .5 ? 150 : 95; line(r, x, y, GRAIN + (R() - .5) * .04, l, (.35 + R() * .5) * k, `rgba(${v},${v},${v},${al(.05 + R() * .07)})`) }   // brushed grain
+    for (let i = 0; i < 2200 * D * k * k; i++) { const x = R() * S, y = R() * S, a = R() < .6 ? GRAIN + (R() - .5) * .5 : R() * Math.PI, l = (4 + Math.pow(R(), 3) * 220) * k, w = (.3 + R() * .7) * k, o = .1 + R() * .35;   // hairlines, every way
+      line(r, x, y, a, l, w, `rgba(225,225,225,${al(o)})`, (R() - .5) * l * .15); line(b, x, y, a, l, w, `rgba(60,60,60,${al(o)})`, 0) }
+    for (let q = 0; q < 70 * D * k * k; q++) { const cx = R() * S, cy = R() * S, a = R() * Math.PI, rr = (10 + R() * 45) * k, n = 20 + R() * 60 | 0;   // rub marks: a patch of short parallel scratches
+      for (let i = 0; i < n; i++) { const t = R(), d = (R() - .5) * 2 * rr, x = cx + Math.cos(a + 1.57) * d + (R() - .5) * rr, y = cy + Math.sin(a + 1.57) * d + (R() - .5) * rr, l = 3 * k + R() * rr * .8; line(r, x, y, a + (R() - .5) * .12, l, (.3 + t * .5) * k, `rgba(210,210,210,${al(.08 + R() * .2)})`); line(b, x, y, a, l, .4 * k, `rgba(80,80,80,${al(.25)})`) } }
+    for (let i = 0; i < P.gouges * k; i++) { const x = R() * S, y = R() * S, a = R() * Math.PI, l = (30 + R() * 260) * k, bend = (R() - .5) * 40 * k;   // a few real gouges: a cut with burred edges
+      line(r, x, y, a, l, 2.2 * k, `rgba(235,235,235,${al(.5)})`, bend); line(r, x, y, a, l, .8 * k, `rgba(70,70,70,${al(.7)})`, bend); line(b, x, y, a, l, 2.4 * k, `rgba(170,170,170,${al(.6)})`, bend); line(b, x, y, a, l, 1 * k, `rgba(20,20,20,${al(.9)})`, bend) }
+    for (let i = 0; i < 9000 * D * k * k; i++) { const x = R() * S, y = R() * S, z = (.6 + R() * 1.6) * k, v = R() < .5 ? 200 : 60; r.fillStyle = `rgba(${v},${v},${v},${al(.06 + R() * .12)})`; r.fillRect(x, y, z, z); if (R() < .3) { b.fillStyle = `rgba(40,40,40,${al(.35)})`; b.fillRect(x, y, z, z) } }   // pitting and specks
+    return [cr, cb];
+  }
+  const params = () => { const L = typeof LOOK === 'undefined' ? {} : LOOK; return { res: [512, 1024, 2048][Math.max(0, Math.min(2, Math.round(L.scuffRes ?? 1)))], seed: Math.round(L.scuffSeed ?? 0), dens: L.scuffDensity ?? 1, gouges: Math.round(L.scuffGouges ?? 70), amt: L.scuffAmount ?? 1 } };
+  const tex = c => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(.11, .11); t.offset.set(.5, .5); t.anisotropy = 8; t.colorSpace = THREE.NoColorSpace; return t };
+  { const P = params(), [cr, cb] = draw(P); out.rough = tex(cr); out.bump = tex(cb); out.sig = JSON.stringify(P) }
+  out.update = () => {   // after a slider moves: the scale and depth at once, the pattern redrawn (a moment later, once you stop)
+    const L = LOOK, sc = .11 * (L.scuffScale ?? 1); [out.rough, out.bump].forEach(t => t.repeat.set(sc, sc));
+    Object.values(SHIP_MAT).forEach(m => { m.bumpScale = .35 * (L.scuffBump ?? 1) });
+    const P = params(), sig = JSON.stringify(P); if (sig === out.sig) return; out.sig = sig; clearTimeout(out.t);
+    out.t = setTimeout(() => { const [cr, cb] = draw(P); out.rough.image = cr; out.bump.image = cb; out.rough.needsUpdate = out.bump.needsUpdate = true }, 250);
+  };
+  return out;
 })();
 const SHIP_MAT = {
   white: new THREE.MeshPhysicalMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: .32, roughness: .5, metalness: .05, roughnessMap: SCUFF.rough, bumpMap: SCUFF.bump, bumpScale: .35, clearcoat: 0, clearcoatRoughness: .1, clearcoatRoughnessMap: SCUFF.rough }),   // clear lacquer over the paint: that's what carries the reflections
