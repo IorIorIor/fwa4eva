@@ -22,6 +22,44 @@ function makeLogo3d() {
   const face = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: .9, roughness: .4, side: THREE.DoubleSide }), side = new THREE.MeshStandardMaterial({ color: 0x9a9aa4, emissive: 0xffffff, emissiveIntensity: .06, roughness: .5, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(geo, [face, side]), g = new THREE.Group(); g.add(mesh); g.userData.mesh = mesh; g.visible = false; shipScene.add(g); return g;
 }
+/* the portal opening: the FWA mark as a window onto the galaxy. A black wall with the letters cut out of it hangs in front
+   of the camera (on the ship's layer, so the real galaxy on the main canvas shows through the letters), the letters'
+   walls run back from it, and a glow traces their outline. Scrolling brings it at you, through the notch at the top of
+   the W's middle; round the letters the black dissolves as you get close, and the camera dives from a far view of the
+   galaxy down to your pointer, where the usual opening takes over */
+function makePortal() {
+  const shapes = logoShapes(); if (!shapes) return null; const L = LOOK, g = new THREE.Group(), inner = new THREE.Group(); g.add(inner);   // inner: the mark in its own units (svg, y down); g: placed and scaled in front of the camera
+  const contour = c => c.getPoints(24).map(p => [p.x, p.y]), outers = shapes.map(sh => contour(sh)), holes = shapes.flatMap(sh => sh.holes.map(contour));
+  const toV2 = pts => pts.map(([x, y]) => new THREE.Vector2(x, y));
+  // the wall: a huge black sheet with every letter cut out (and the letters' own holes, their counters, filled back in)
+  const wall = new THREE.Shape(toV2([[-30000, -30000], [30000, -30000], [30000, 30000], [-30000, 30000]])); outers.forEach(o => wall.holes.push(new THREE.Path(toV2(o))));
+  const wallGeo = new THREE.ShapeGeometry([wall, ...holes.map(h => new THREE.Shape(toV2(h)))]);
+  const wallMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+  const wallM = new THREE.Mesh(wallGeo, wallMat); wallM.renderOrder = 1; inner.add(wallM);
+  // the letters themselves, black at first: they fade away as the galaxy comes up behind them
+  const fillMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+  const fill = new THREE.Mesh(new THREE.ShapeGeometry(shapes, 16), fillMat); fill.renderOrder = 2; inner.add(fill);
+  // the letters' walls, running back into the distance: dark metal
+  const ex = new THREE.ExtrudeGeometry(shapes, { depth: 1, bevelEnabled: false, curveSegments: 16 }), gr = ex.groups[1], pa = ex.getAttribute('position'), na = ex.getAttribute('normal'), P_ = new Float32Array(gr.count * 3), N_ = new Float32Array(gr.count * 3);
+  for (let i = 0; i < gr.count; i++) { const k = gr.start + i; P_.set([pa.getX(k), pa.getY(k), -pa.getZ(k)], i * 3); N_.set([na.getX(k), na.getY(k), -na.getZ(k)], i * 3) } ex.dispose();
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(P_, 3)); sg.setAttribute('normal', new THREE.BufferAttribute(N_, 3));
+  const sideMat = new THREE.MeshStandardMaterial({ color: 0x030206, metalness: 1, roughness: L.portalWallRough ?? .59, side: THREE.DoubleSide });
+  const sides = new THREE.Mesh(sg, sideMat); sides.renderOrder = 0; inner.add(sides);
+  // the outline glow: a soft ribbon along every edge, bright on the line and fading out both ways (additive, so it never darkens)
+  const rp = [], rc = [], ri = []; const ribbon = (pts, w, k) => { const n = pts.length, b = rp.length / 3;
+    for (let i = 0; i < n; i++) { const a = pts[(i + n - 1) % n], c = pts[(i + 1) % n], tx = c[0] - a[0], ty = c[1] - a[1], l = Math.hypot(tx, ty) || 1, nx = -ty / l, ny = tx / l, [x, y] = pts[i];
+      rp.push(x + nx * w, y + ny * w, 0, x, y, 0, x - nx * w, y - ny * w, 0); rc.push(0, 0, 0, k, k, k, 0, 0, 0) }
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n, A = b + i * 3, B = b + j * 3; ri.push(A, B, A + 1, B, B + 1, A + 1, A + 1, B + 1, A + 2, B + 1, B + 2, A + 2) } };
+  [...outers, ...holes].forEach(c => { ribbon(c, .7, 1); ribbon(c, .7, 0) });   // (the core; the halo is a second, wider ribbon, rebuilt when its width changes)
+  const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3)); rg.setAttribute('color', new THREE.Float32BufferAttribute(rc, 3)); rg.setIndex(ri);
+  const rimMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+  const rim = new THREE.Mesh(rg, rimMat); rim.renderOrder = 3; inner.add(rim);
+  const halo = { m: null, w: -1 }; const haloAt = w => { if (w === halo.w) return; halo.w = w; if (halo.m) { inner.remove(halo.m); halo.m.geometry.dispose() } rp.length = rc.length = ri.length = 0; [...outers, ...holes].forEach(c => ribbon(c, w, .16));
+    const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3)); hg.setAttribute('color', new THREE.Float32BufferAttribute(rc, 3)); hg.setIndex(ri); halo.m = new THREE.Mesh(hg, rimMat); halo.m.renderOrder = 3; inner.add(halo.m) };
+  haloAt(L.portalRimW ?? 6);
+  g.visible = false; shipScene.add(g);
+  return { g, inner, wallMat, fillMat, sideMat, sides, rimMat, haloAt };
+}
 /* the splash's star field: simple twinkling points around the logo, in 3D (they sit nearer and further than it). On the
    splash it's drawn flat on its own canvas; from Start the same stars, in the same places, are 3D points in front of the
    camera that rush past with the logo, then fade a second after you're through it, as the galaxy comes up */
@@ -66,7 +104,8 @@ const curEl = (() => { const e = document.createElement('img'); e.id = 'introCur
 const intro = {
   logoAt: null,
   active: false, t: 0, glow: 0, dur: 8, D0: 10, up0: new V3(), upW: new V3(), ph: 2, lt: 0,
-  start() {
+  start(portal = false) {
+    this.portal = portal;
     // every time: the ship faces the galaxy's core and the camera's frame is the ship's own, so the opening always looks the same
     aimAt(GC.clone().sub(player.pos), 1); player.base.copy(rig.q); player.quat.copy(rig.q); player.vel.set(0, 0, 0);
     camera.fov = LOOK.fov; camera.updateProjectionMatrix(); this.dur = Math.max(1.5, LOOK.introDur ?? 5);
@@ -74,10 +113,10 @@ const intro = {
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
     INTRO_END.set(0, rig.dist * (LOOK.camHeight ?? .42), rig.dist).multiplyScalar(LOOK.introDist ?? 1);   /* it lands right where the flight camera sits, so nothing moves on afterwards */ this.lit = false;   // where the opening ends up: close behind the pointer
     this.goal = null; this.av.x = this.av.y = 0;
-    document.body.classList.add('opening'); sStars.reset(); this.lshift = 0; this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 0; camNearGo = false; camHold = null; this.active = introActive = true;
-    document.body.classList.add('intro'); veil.visible = true; veil.material.opacity = 1; this.wipe = true;   // one frame through the black veil, so the warm-up's last picture doesn't linger on the canvas
-    setDpr(.5, true); this.lowDpr = true;   // nothing but black, the pointer and the logo to draw at first: the lowest resolution is plenty
-    const wantLogo = LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d())); if (logo3d) logo3d.visible = false;
+    document.body.classList.add('opening'); if (!portal) sStars.reset(); this.lshift = 0; this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 0; camNearGo = false; camHold = null; this.active = introActive = true;
+    document.body.classList.add('intro'); if (portal) veil.visible = false; else { veil.visible = true; veil.material.opacity = 1; this.wipe = true }   // one frame through the black veil, so the warm-up's last picture doesn't linger on the canvas
+    if (!portal) { setDpr(.5, true); this.lowDpr = true }   // nothing but black, the pointer and the logo to draw at first: the lowest resolution is plenty
+    const wantLogo = !portal && LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d())); if (logo3d) logo3d.visible = false;
     this.ph = 2; this.pose(0);
     if (this.at) {   // shift the frame so the pointer's tip, not its middle, sits exactly on the click
       camera.clearViewOffset(); camera.updateMatrixWorld(); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.updateMatrixWorld(true);
@@ -94,6 +133,44 @@ const intro = {
       this.lg = { Z0, s, x0: (this.logoAt.x / W * 2 - 1) * th * W / H * Z0, y0: (1 - this.logoAt.y / H * 2) * th * Z0, dz: s * 149 * (LOOK.logoDepth ?? .12) };
       logo3d.scale.set(s, s, s * .003); logo3d.visible = true; this.logoStep(0);
     }
+  },
+  startPortal() {   // the portal opening (see makePortal): from a far view of the whole galaxy, framed by the mark, down to your pointer
+    if (!logoShapes() || !(this.pt || (this.pt = makePortal()))) return false;
+    $('intro').hidden = true; document.body.classList.remove('splash');
+    this.at = { x: innerWidth / 2, y: innerHeight / 2 }; this.start(true);
+    this.ph = 0; this.pq = this.pqT = 0; this.play = 0; this.pt0 = performance.now(); this.heard = false;
+    this.pose(0); this.P0 = { p: camera.position.clone(), q: camera.quaternion.clone() };   // where the usual opening starts: just above the pointer
+    const L = LOOK, R = GAL_R0 + GAL_LEN, D = R * (L.portalDist ?? 6), tl = (L.portalTilt ?? 35) * Math.PI / 180, d = player.pos.clone().sub(GC).projectOnPlane(GAL_UP).normalize().applyAxisAngle(GAL_UP, (L.portalTurn ?? 0) * Math.PI / 180);
+    const pv = GC.clone().addScaledVector(d, Math.cos(tl) * D).addScaledVector(GAL_UP, Math.sin(tl) * D);   // far out, on the ship's side, a little above the disk: the whole spiral in view
+    this.PV = { p: pv, q: new Q4().setFromRotationMatrix(new THREE.Matrix4().lookAt(pv, GC, GAL_UP)) };
+    this.pt.g.visible = true; this.portalStep(0);
+    const gesture = () => { if (this.heard) return; this.heard = true; setMuted(false); setMusicOff(false); audio() };   // sound needs a click or a key, so the first one starts it
+    const go = () => { this.play = 1; gesture(); if (!coarse && !lockFailed) requestLock() };
+    let down = null;
+    const wheel = e => { e.preventDefault(); this.play = 0; this.pqT = Math.max(0, Math.min(1, this.pqT + (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0006 * (LOOK.portalScroll ?? 1))) };
+    const pdown = e => { down = { x: e.clientX, y: e.clientY, y0: e.clientY }; gesture() };
+    const pmove = e => { if (!down || e.pointerType === 'mouse') return; this.play = 0; this.pqT = Math.max(0, Math.min(1, this.pqT + (down.y - e.clientY) * .0025 * (LOOK.portalScroll ?? 1))); down.y = e.clientY };   // a finger drags it, like scrolling a page
+    const pup = e => { if (down && Math.abs(e.clientY - down.y0) + Math.abs(e.clientX - down.x) < 8) go(); down = null };   // a click or a tap plays it through
+    const key = e => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); go() } else if (e.key === 'ArrowUp') { this.play = 0; this.pqT = Math.max(0, this.pqT - .1) } else if (e.key === 'Escape') { gesture(); this.finish() } };
+    addEventListener('wheel', wheel, { passive: false }); addEventListener('pointerdown', pdown, true); addEventListener('pointermove', pmove, true); addEventListener('pointerup', pup, true); addEventListener('keydown', key, true);
+    this.portalOff = () => { removeEventListener('wheel', wheel, { passive: false }); removeEventListener('pointerdown', pdown, true); removeEventListener('pointermove', pmove, true); removeEventListener('pointerup', pup, true); removeEventListener('keydown', key, true); $('portalLoad').hidden = true; this.portalOff = null };
+    const load = $('portalLoad'); load.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => { load.classList.add('live'); $('plTxt').textContent = coarse ? 'Swipe up to continue' : 'Scroll to continue' }));   // the 3D mark is drawn in the same place: the flat one hands over
+    return true;
+  },
+  portalStep(dt) {
+    const L = LOOK, P = this.pt; if (this.play) this.pqT = Math.min(1, this.pqT + dt / Math.max(.5, L.portalPlay ?? 3.5));
+    this.pq += (this.pqT - this.pq) * (1 - Math.exp(-dt * 6)); if (this.pqT >= 1 && this.pq > .996) this.pq = 1;
+    const q = this.pq, e = Math.pow(q, L.portalAccel ?? 2.2);
+    lerpLogPolar(camera.position, this.PV.p, this.P0.p, player.pos, e); camera.quaternion.copy(this.PV.q).slerp(this.P0.q, sstep(e, .15, .9)); camera.updateMatrixWorld();   // the dive: from far out down to just above the pointer
+    const W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), Z0 = this.D0 * .6, wpx = Math.min(W * (L.portalSize ?? .62), H * 2.2), s = wpx / H * 2 * Z0 * th / 509, dep = (L.portalDepth ?? 200) * s;
+    const z = -Z0 + (Z0 + dep * 1.05 + Z0 * .02) * e;   // the mark comes at you, faster and faster, until you're out of the back of its walls
+    P.g.position.set(0, 0, z).applyQuaternion(camera.quaternion).add(camera.position); P.g.quaternion.copy(camera.quaternion); P.g.scale.set(s, -s, dep);
+    P.inner.position.set(-(L.portalAimX ?? 244), -(L.portalAimY ?? 38), 0);   // the point you fly through sits dead centre
+    P.fillMat.opacity = 1 - sstep((performance.now() - this.pt0) / 1000, 0, Math.max(.01, L.portalFadeIn ?? 1.4));   // the galaxy fades up behind the letters
+    P.wallMat.opacity = 1 - sstep(q, L.portalOpenAt ?? .55, Math.max((L.portalOpenAt ?? .55) + .01, L.portalOpenEnd ?? .92));   // and round them the black goes, as you close in
+    P.rimMat.color.setScalar(L.portalRim ?? 1.08); P.haloAt(L.portalRimW ?? 6); P.sideMat.roughness = L.portalWallRough ?? .59;
+    $('plTxt').classList.toggle('gone', q > .03);
+    if (q >= 1) { P.g.visible = false; this.ph = 2; this.t = 0; this.portalOff && this.portalOff() }   // out the other side: the pointer, and the usual move in to the ship
   },
   ez(t) {   // the zoom: creeping at first, faster and faster (exponentially), then landing softly
     const x = Math.min(1, Math.max(0, (t - .02) / .96)), k = LOOK.introEaseIn ?? 5, f = (Math.exp(k * x) - 1) / (Math.exp(k) - 1); return 1 - Math.pow(1 - f, LOOK.introEaseOut ?? 2.2);
@@ -132,6 +209,7 @@ const intro = {
       for (const a of ['x', 'y']) { this.av[a] += ((this.goal[a] - this.at[a]) * K - this.av[a] * C) * h; this.at[a] += this.av[a] * h }
     }
     if (this.curHide) { this.placeCur(); if (--this.curHide <= 0) { this.curHide = 0; curEl.style.display = 'none' } }   /* (still following the mouse, so it can't be left behind where the ship was) */
+    if (this.ph === 0) { this.portalStep(dt); return }
     if (this.ph === 1) { this.pose(0); camera.clearViewOffset(); camera.updateMatrixWorld(); this.placeCur(); this.logoStep(dt); return }   // through the logo the view is dead on: the vanishing point in the middle of the screen
     if (this.t < 1) this.t = Math.min(1, this.t + dt / (reduceMotion ? 2.5 : this.dur));
     this.pose(this.t);
@@ -145,6 +223,7 @@ const intro = {
     if (this.t >= 1) this.finish();   // landed exactly where the flight camera sits: nothing left to jump
   },
   finish() {
+    if (this.pt) this.pt.g.visible = false; this.portalOff && this.portalOff();
     if (logo3d) logo3d.visible = false; curEl.style.display = 'none'; this.ph = 2; if (this.lowDpr) { this.lowDpr = false; setDpr(Math.min(LOOK.maxDpr, devicePixelRatio || 1), true) }
     document.body.classList.remove('opening'); if (!this.active) return; this.active = introActive = false; veil.visible = false; emitGlow = 1; camera.clearViewOffset(); this.at = null;
     camRel.copy(INTRO_END); camRelV.set(0, 0, 0); fovS = camera.fov; /* (the lens carries on from where the opening left it) */ camHold = { from: player.pos.clone(), dir: INTRO_END.clone().normalize(), d0: INTRO_END.length() }; if (!this.hud) { document.body.classList.remove('intro'); flickIn() } if (!booted) handOver();
@@ -264,9 +343,10 @@ function begin(withSound, e) {
 }
 if (TEST) { $('intro').hidden = true; document.body.classList.remove('intro'); LOOK.adaptive = 0; handOver() }
 else {
+  const portalOn = document.documentElement.classList.contains('portal') && (LOOK.portalIntro ?? 1) && intro.startPortal(); if (!portalOn) { document.documentElement.classList.remove('portal'); $('portalLoad').hidden = true }   // the portal opening, or the old splash with its Start button
   const enter = $('enter'); if (window.__introProgress) window.__introProgress(1); else document.body.classList.add('ready');   // the ring opens Start when it closes
   enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) };
-  addEventListener('keydown', function k(e) { if ($('intro').classList.contains('gone')) return removeEventListener('keydown', k); if (e.target.closest && e.target.closest('#intro button')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeEventListener('keydown', k); begin(true) } });
+  if (!portalOn) addEventListener('keydown', function k(e) { if ($('intro').classList.contains('gone')) return removeEventListener('keydown', k); if (e.target.closest && e.target.closest('#intro button')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeEventListener('keydown', k); begin(true) } });
 }
 /* the ship back to where it starts, at once: still, facing the core, no trail behind it */
 function toSpawn() {
@@ -279,6 +359,7 @@ function toSplash() {
   if (isOpen('lookPanel') || isOpen('panel')) togglePanel(''); rmenu.close(); if (document.pointerLockElement) document.exitPointerLock();
   if (S.mode !== 'fly') { setMode('fly'); tween = null }
   if (intro.active) intro.finish(); toSpawn(); player.vel.set(0, 0, 0); lockI = -1; auto = null; warp = null; sparks.stop(); coach.end && coach.i >= 0 && coach.end();
+  if (document.documentElement.classList.contains('portal')) { const pl = $('portalLoad'); pl.classList.remove('live'); $('plTxt').classList.remove('gone'); intro.startPortal(); return }   // the portal opening again, from the top
   sStars.home(); const el = $('intro'); el.hidden = false; el.classList.remove('gone'); document.body.classList.add('intro', 'ready', 'splash');
   const enter = $('enter'); enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) };
 }

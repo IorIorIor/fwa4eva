@@ -34,6 +34,11 @@ document.body.classList.add('intro');
   window.__introProgress = v => { v0 = Math.max(v0, Math.min(1, v)); draw() };
   window.__introProgress(.04) })();
 </script>
+<div id="portalLoad"><svg viewBox="0 0 509 149" aria-hidden="true"><path id="plPath" fill-rule="evenodd"/></svg><p id="plTxt" aria-live="polite">Loading</p></div>
+<script>/* the portal opening (Look → portalIntro): until the galaxy is ready, only the mark's glowing outline and "Loading" */
+(() => { let on = true; try { const L = JSON.parse(localStorage.getItem('sotd-look-v6') || 'null'); if (L && L.portalIntro === 0) on = false } catch (e) { } if (/[?&]test\b/.test(location.search)) on = false;
+  if (on) document.documentElement.classList.add('portal'); const s = document.querySelector('#intro .mark path:last-of-type'); if (s) document.getElementById('plPath').setAttribute('d', s.getAttribute('d')) })();
+</script>
 <div id="skipHint" aria-hidden="true">Space to skip</div>
 <script type="module">
 %%SCRIPT%%

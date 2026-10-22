@@ -913,3 +913,15 @@ body.scrolling #nav,body.scrolling #mTabs,body.scrolling #recPlay{display:none!i
   body:not(.nosearch):not(.intro) #gotPill{right:calc(max(16px,env(safe-area-inset-right,0px)) + 206px)}
 }
 @media (max-width:760px){#mapSearch{width:150px!important}body:not(.nosearch):not(.intro) #gotPill{right:calc(max(16px,env(safe-area-inset-right,0px)) + 164px)}}
+/* the portal opening: while loading, the mark's outline glows on black with a quiet "Loading"; the 3D portal takes over in the same place */
+#portalLoad{display:none}
+html.portal #intro,html.portal #skipHint{display:none!important}
+html.portal #portalLoad{display:block;position:fixed;inset:0;z-index:70;pointer-events:none;background:#000;--pw:min(62vw,calc(100vh * 2.2));transition:background .6s ease}
+html.portal #portalLoad.live{background:transparent}
+#portalLoad svg{position:absolute;width:var(--pw);height:auto;left:calc(50% - var(--pw) * .4794);top:calc(50% - var(--pw) * .0747);overflow:visible;transition:opacity .5s ease}
+#portalLoad path{fill:none;stroke:#fff;stroke-width:1.3px;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 3px rgba(255,255,255,.9)) drop-shadow(0 0 10px rgba(220,215,255,.45));animation:plPulse 2.4s ease-in-out infinite}
+@keyframes plPulse{50%{opacity:.6}}
+#portalLoad.live svg{opacity:0}
+#plTxt{position:absolute;left:0;right:0;top:calc(50% + var(--pw) * .2181 + 34px);margin:0;text-align:center;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.55);transition:opacity .6s ease}
+#plTxt.gone{opacity:0}
+@media (prefers-reduced-motion:reduce){#portalLoad path{animation:none}}
