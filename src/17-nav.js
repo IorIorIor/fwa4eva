@@ -22,7 +22,7 @@ function stepWarp(dt) {
   const p = Math.min(1, (w.t - w.turn) / w.dur), n = Math.max(1, LOOK.warpEase ?? 4), e = p < .5 ? Math.pow(2 * p, n) / 2 : 1 - Math.pow(2 - 2 * p, n) / 2;
   player.pos.lerpVectors(w.from, w.dest, e);
   player.vel.copy(w.dest).sub(w.from).setLength(LIGHT * .97 * Math.pow(Math.sin(Math.PI * p), 1.5) + 1);   // what the speed effects read: up to light speed and back
-  if (performance.now() - lastInput > 600) aimAt(tmp.copy(w.to).sub(player.pos), 1 - Math.exp(-3 * dt)); player.quat.copy(rig.q); player.base.copy(player.quat);   // you can look and turn the ship on the way; leave the mouse and it eases back to the star
+  player.quat.copy(rig.q); player.base.copy(player.quat);   // you can look and turn the ship on the way (it never swings back to the star by itself)
   if (p >= 1) { player.vel.set(0, 0, 0); warp = null }
 }
 // tours: a list of winners, flown one after another, pausing at each so its record can open. Any thrust or brake ends it

@@ -171,17 +171,17 @@ const ringPxAt = (i, w) => LOOK.rings ? starR(i) * (LOOK.ringSize ?? 1.6) * inne
 function pickNear(x, y, Rr) {
   _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight; let best = -1, bs = 1, bd = 0, bR = Rr;
   for (let i = 0; i < N; i++) {
-    if (TA[i] < 1 || i === lockI) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5 || w > (LOOK.hoverDist ?? 4e5)) continue; const spx = starPx(i, w); if (spx < (LOOK.hoverPx ?? 2.5)) continue;   // aim assist reaches exactly as far as hovering does
+    if (TA[i] < 1 || i === lockI) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; const aD = LOOK.aimDist ?? 103000; if (w < .5 || w > aD || Math.hypot(px - camera.position.x, py - camera.position.y, pz - camera.position.z) > aD) continue; const spx = starPx(i, w);   // aim assist: by distance only (Look: aimDist)
     const X = ((e[0] * px + e[4] * py + e[8] * pz + e[12]) / w * .5 + .5) * W, Y = (-(e[1] * px + e[5] * py + e[9] * pz + e[13]) / w * .5 + .5) * H, d = Math.hypot(X - x, Y - y), rpx = ringPxAt(i, w), R_ = rpx > 18 ? rpx * .95 : Rr + Math.min(Rr * 4, spx * .6), s = d / R_;
     if (s < bs) { bs = s; best = i; bd = d; bR = R_ }
   }
   return best < 0 ? null : { i: best, d: bd, R: bR };
 }
-function pick(x, y) {
+function pick(x, y, maxD = Infinity) {
   const touchR = down && down.touch || coarse ? LOOK.tapR ?? 44 : 14;   // a finger covers more than a pointer: a tap reaches the star near it
   _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight; let best = -1, bd = Infinity;
   for (let i = 0; i < N; i++) {
-    if (TA[i] < 1) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5) continue;
+    if (TA[i] < 1) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5 || w > maxD) continue;
     const X = ((e[0] * px + e[4] * py + e[8] * pz + e[12]) / w * .5 + .5) * W, Y = (-(e[1] * px + e[5] * py + e[9] * pz + e[13]) / w * .5 + .5) * H;
     const rpx = ringPxAt(i, w), d = Math.hypot(X - x, Y - y), rad = rpx > 18 ? Math.max(rpx * .95, touchR) : Math.max(touchR, starPx(i, w) * .5);   // a ring big enough to be a 3D ring: only inside it counts
     if (d < rad) { const score = d / rad + w * .000003; if (score < bd) { bd = score; best = i } }
@@ -191,10 +191,10 @@ function pick(x, y) {
 let magI = -1, magS = 1;
 function aimAssist(dt) {
   let s = 1; magI = -1; if (!booted || introActive || camHold) return;   // (no aim pull while the camera is still settling in after the opening)
-  if (aimSlow > 0 && lockI >= 0 && S.mode === 'fly') { aimSlow -= dt; const k = 1 - Math.exp(-(LOOK.ringNextRate ?? 1.8) * dt), dir = starPos(lockI, tmp).sub(player.pos).normalize(); aimAt(_an.copy(starPos(lockI, _an)).sub(camera.position), k); player.base.slerp(lookAtQ(dir, _an.set(0, 1, 0).applyQuaternion(player.base), _anq), k) }   // through a ring you were locked on: the view and the ship come round slowly to the next one
+  if (aimSlow > 0 && lockI >= 0 && S.mode === 'fly') { aimSlow -= dt; const k = 1 - Math.exp(-(LOOK.ringNextRate ?? 1.8) * dt), dir = starPos(lockI, tmp).sub(player.pos).normalize(); player.base.slerp(lookAtQ(dir, _an.set(0, 1, 0).applyQuaternion(player.base), _anq), k) }   // through a ring you were locked on: the view and the ship come round slowly to the next one
   if (aimFast > 0 && lockI >= 0 && S.mode === 'fly') { aimFast -= dt; aimAt(starPos(lockI, tmp).sub(camera.position), 1 - Math.exp(-12 * dt)) }   // a quick swing onto a star you stepped to
   if (S.mode === 'fly' && LOOK.magnet > 0 && (locked() || coarse) && openA < .3 && !auto && !(HALO.pInfo.on && player.pos.distanceTo(HALO.pInfo.c) < (LOOK.lockLetGo ?? 1000))) {   /* (no pull in the last stretch, once a ring's picture is showing) */ const Rr = LOOK.magnetR, h = pickNear(innerWidth / 2, innerHeight / 2, Rr); if (h) { magI = h.i; aimAt(starPos(h.i, tmp).sub(camera.position), 1 - Math.exp(-LOOK.magnet * 7 * dt)); s = .35 + .65 * Math.min(1, h.d / h.R) } }
   if (lockI >= 0) { s = 1; magI = -1 }   // locked on: the reticle holds still
-  if (lockI >= 0 && S.mode === 'fly' && !auto && !rmenu.open && performance.now() - lastInput > 600 && !(HALO.pInfo.on && player.pos.distanceTo(HALO.pInfo.c) < (LOOK.lockLetGo ?? 1000))) aimAt(starPos(lockI, tmp).sub(camera.position), 1 - Math.exp(-(LOOK.lockCentre ?? 2) * dt));   // locked and hands off: the view settles with the ring dead centre
+  /* (no more easing the view back onto the locked star by itself: the camera only goes where you point it) */
   magS += (s - magS) * Math.min(1, dt * 10); crossEl.classList.toggle('mag', magI >= 0);
 }

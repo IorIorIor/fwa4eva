@@ -267,7 +267,7 @@ function updateHover(dt) {
     hoverT = 0; const map = S.mode === 'map', aim = !map && (locked() || coarse), hx = aim ? innerWidth / 2 : mouse.x, hy = aim ? innerHeight / 2 : mouse.y;
     let h = -1, R = null;
     if (map) { if (mouse.in && !down && booted && !tween) { const r = mapHover(hx, hy); h = r.i }   /* (no tooltips or chimes for the old time rings: the zones do that) */ }   // the map points at rings, and at winners once you're close
-    else { if ((aim || mouse.in) && !down && booted) h = pick(hx, hy); if (h >= 0) { const dd = Math.max(1, camera.position.distanceTo(starPos(h, tmp))); if (dd > (LOOK.hoverDist ?? 4e5) || starPx(h, dd) < (LOOK.hoverPx ?? 2.5)) h = -1 } }   // close enough, and a few px across
+    else { if ((aim || mouse.in) && !down && booted) h = pick(hx, hy, LOOK.hoverDist ?? 103000); if (h >= 0 && camera.position.distanceTo(starPos(h, tmp)) > (LOOK.hoverDist ?? 103000)) h = -1 }   // by distance only (Look: hoverDist)
     if (!down) hovPick = h; if (h === openI) h = -1;   // a click can only take a star you've just hovered
     lastHov = h;
     if (R && (!lastRing || lastRing.y !== R.y)) tingle(galOf(R.yr), 5000 + Math.round(R.y * 12), Math.max(-1, Math.min(1, hx / innerWidth * 2 - 1)));
@@ -394,7 +394,7 @@ function tick(now) {
   if (cardI >= 0 && ++cardTick % 30 === 0) drawCardImg(cardI);   // picks up a screenshot that finished loading
   {   // the tooltip opens up once the nearest winner is a few pixels across (a little less to stay open, so it doesn't flicker)
     let open = -1;
-    if (fly && nearI >= 0 && TA[nearI] === 1) { const rpx = starR(nearI) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(starPos(nearI, tmp)))); if (rpx >= L.tipOpen * (cardI === nearI ? .75 : 1)) open = nearI }
+    if (fly && nearI >= 0 && TA[nearI] === 1) { if (camera.position.distanceTo(starPos(nearI, tmp)) <= (L.tipOpenDist ?? 1500) * (cardI === nearI ? 1.33 : 1)) open = nearI }   /* by distance only (a little further to close again, so it doesn't flicker) */
     else if (!fly) { const c = hovI >= 0 ? hovI : cardI; if (c >= 0 && TA[c] === 1) { const rpx = starR(c) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(starPos(c, tmp)))); if (rpx * 2 >= (L.mapTipPx ?? 6) * (cardI === c ? .75 : 1)) open = c } if (open < 0 && S.sel >= 0 && camera.position.distanceTo(starPos(S.sel, tmp)) < CR[S.sel] * 20) open = S.sel }   // on the map: zoomed in close, the winner you point at opens into its full record
     if (gotCard.t > 0 && S.mode === 'fly') open = gotCard.i;   // a ring you just flew through keeps its record open a while
     showCard(open);
