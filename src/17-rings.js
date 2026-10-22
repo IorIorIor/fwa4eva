@@ -175,8 +175,8 @@ const HALO = (() => {
       const h = pool[n], R = starR(i) * (L.ringSize ?? 1.6), c = starPos(i, h.c), dist = Math.sqrt(Math.max(1, camera.position.distanceToSquared(c))), rpx = R * pxK / dist;
       if (h.i !== i) { h.i = i; h.done = false; h.c0 = 0; h.nSet = false; h.sPrev = 0 }
       const play = L.ringPlay && n === 0; if (play) { c.set(0, 0, -R * (L.ringPlayDist ?? 5)).applyQuaternion(camera.quaternion).add(camera.position); h.done = false }   // playground: the nearest winner's ring, held in front of you
-      let k = 0; h.ts = Infinity; if (vv > 1 && !play) { _d.copy(c).sub(player.pos); const ts = _d.dot(v) / vv, miss = _d.addScaledVector(v, -ts).length(); if (ts > 0 && ts < Math.max(pred, L.ringSlowFrom ?? .5) && miss < R * 1.15) { k = Math.max(0, 1 - ts / pred); if (!h.done && TA[i] === 1) { h.ts = ts; minTs = Math.min(minTs, ts) } } }   // about to pass through: how close (0..1), and in how long
-      if (h.ts < (L.ringSlowFrom ?? .5) && lockI === i) { lockI = -1; auto = null; passedI = i; relockNext = true }   // time's slowing: you can't miss it now, so the lock lets go and you can pick the next ring
+      let k = 0; h.ts = Infinity; if (vv > 1 && !play) { _d.copy(c).sub(player.pos); const ts = _d.dot(v) / vv, miss = _d.addScaledVector(v, -ts).length(); if (ts > 0 && ts < Math.max(pred, slowF) && miss < R * 1.15) { k = Math.max(0, 1 - ts / pred); if (!h.done && TA[i] === 1) { h.ts = ts; minTs = Math.min(minTs, ts) } } }   // about to pass through: how close (0..1), and in how long
+      if (h.ts < slowF && lockI === i) { lockI = -1; auto = null; passedI = i; relockNext = true }   // time's slowing: you can't miss it now, so the lock lets go and you can pick the next ring
       h.c0 = Math.max(h.c0 * Math.exp(-3 * dt), k);
       const away = player.pos.distanceTo(c);
       if (!h.nSet && !h.done && k > 0) { h.n.copy(player.pos).sub(c).normalize(); h.ax.set(0, 1, 0).applyQuaternion(camera.quaternion).cross(h.n).normalize(); h.ay.crossVectors(h.n, h.ax); h.nSet = true; h.sPrev = player.pos.clone().sub(c).dot(h.n) }   // committed: the ring stops turning to face you, so its plane is a real finish line
@@ -264,14 +264,15 @@ const HALO = (() => {
 })();
 /* bullet time: once a ring can't be missed, all of time slows, exponentially, to all but a standstill as you pass through it,
    then winds back up just as it slowed */
+let slowF = .3;   // how long before a ring time starts to slow (game s), after speed has had its say
 const slowmo = { k: 1, after: 1e9,
   step(rdt) {
     const L = LOOK, amt = L.rings ? L.ringSlow ?? 1 : 0; this.after += rdt * this.k; if (amt <= 0 || L.ringPlay) { this.k = 1; return }
-    const lo = Math.max(.001, L.ringSlowMin ?? .06), F = Math.max(.05, L.ringSlowFrom ?? .5), ts = HALO.ts, sm = x => Math.pow(Math.max(0, Math.min(1, x)), 1.6);   // a soft start, then each moment a fixed share slower
-    if (ts < F) { const v0 = Math.max(1, L.ringSlowV0 ?? 500), v1 = Math.max(v0 * 1.01, L.ringSlowV1 ?? 6e4), sp = Math.max(1, player.vel.length()); this.sk = sstep(Math.log(sp), Math.log(v0), Math.log(v1)) }   // how fast you come at it decides how far time slows: crawling through hardly at all, flat out almost to a stop
-    const lo2 = Math.pow(lo, this.sk ?? 1);
-    let k = Math.pow(lo2, sm(1 - ts / F));   // softly in, then exponentially slower: all but still at the moment you cross
-    k = Math.min(k, Math.pow(lo2, sm(1 - this.after / Math.max(.02, L.ringSlowAfter ?? F))));   // and out again the same way, mirror image
+    const lo = Math.max(.001, L.ringSlowMin ?? .06), ts = HALO.ts, sm = x => Math.pow(Math.max(0, Math.min(1, x)), 1.6);   // a soft start, then each moment a fixed share slower
+    if (this.k > .995) { const v0 = Math.max(1, L.ringSlowV0 ?? 500), v1 = Math.max(v0 * 1.01, L.ringSlowV1 ?? 6e4), sp = Math.max(1, player.vel.length()); this.sk = sstep(Math.log(sp), Math.log(v0), Math.log(v1)) }   // your speed coming in (held once time starts to slow)
+    const dk = (L.ringSlowSlowK ?? .3) + ((L.ringSlowFastK ?? 1.6) - (L.ringSlowSlowK ?? .3)) * (this.sk ?? 1); slowF = Math.max(.02, (L.ringSlowFrom ?? .5) * dk);   // slow: a short dip, so you aren't left waiting; fast: a long one, so you don't shoot straight through
+    const F = slowF; let k = Math.pow(lo, sm(1 - ts / F));   // softly in, then exponentially slower: all but still at the moment you cross
+    k = Math.min(k, Math.pow(lo, sm(1 - this.after / Math.max(.02, (L.ringSlowAfter ?? F) * dk))));   // and out again the same way, mirror image
     this.k = 1 - amt * (1 - k);
   },
 };
