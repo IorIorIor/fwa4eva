@@ -174,15 +174,15 @@ const intro = {
     let down = null;
     const pmv = e => { if (document.pointerLockElement) { this.mx += e.movementX * 2 / innerWidth; this.my -= e.movementY * 2 / innerHeight } else { this.mx = e.clientX / innerWidth * 2 - 1; this.my = -(e.clientY / innerHeight * 2 - 1) } this.mx = Math.max(-1, Math.min(1, this.mx)); this.my = Math.max(-1, Math.min(1, this.my)) };   // the 3D pointer follows your mouse
     const off = e => e.target && e.target.closest && e.target.closest('#lookPanel,#portalLab');   // (the lab's own controls)
-    const wheel = e => { if (off(e)) return; e.preventDefault(); if (this.lab) { this.lab.wheel(e); return } this.play = 0; this.pqT = Math.max(0, Math.min(1.1, this.pqT + (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0006 * (LOOK.portalScroll ?? 1))) };
+    const wheel = e => { if (off(e)) return; e.preventDefault(); if (this.lab) { this.lab.wheel(e); return } if (LOOK.portalEnter) return; this.play = 0; this.pqT = Math.max(0, Math.min(1.1, this.pqT + (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0006 * (LOOK.portalScroll ?? 1))) };
     const pdown = e => { if (off(e)) return; down = { x: e.clientX, y: e.clientY, y0: e.clientY }; gesture() };
-    const pmove = e => { if (!down || e.pointerType === 'mouse') return; this.play = 0; this.pqT = Math.max(0, Math.min(1.1, this.pqT + (down.y - e.clientY) * .0025 * (LOOK.portalScroll ?? 1))); down.y = e.clientY };   // a finger drags it, like scrolling a page
-    const pup = e => { if (off(e)) { down = null; return } if (down && Math.abs(e.clientY - down.y0) + Math.abs(e.clientX - down.x) < 8) go(); down = null };   // a click or a tap plays it through
-    const key = e => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); go() } else if (e.key === 'ArrowUp') { this.play = 0; this.pqT = Math.max(0, this.pqT - .1) } else if (e.key === 'Escape' && !this.lab) { gesture(); this.finish() } };
+    const pmove = e => { if (!down || e.pointerType === 'mouse' || LOOK.portalEnter) return; this.play = 0; this.pqT = Math.max(0, Math.min(1.1, this.pqT + (down.y - e.clientY) * .0025 * (LOOK.portalScroll ?? 1))); down.y = e.clientY };   // a finger drags it, like scrolling a page
+    const pup = e => { if (off(e)) { down = null; return } if (down && Math.abs(e.clientY - down.y0) + Math.abs(e.clientX - down.x) < 8 && (!LOOK.portalEnter || e.target.closest && e.target.closest('#plEnter'))) go(); down = null };   // a click or a tap plays it through (the Enter opening: on its button)
+    const key = e => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); go() } else if (e.key === 'ArrowUp' && !LOOK.portalEnter) { this.play = 0; this.pqT = Math.max(0, this.pqT - .1) } else if (e.key === 'Escape' && !this.lab) { gesture(); this.finish() } };
     addEventListener('wheel', wheel, { passive: false }); addEventListener('pointerdown', pdown, true); addEventListener('pointermove', pmove, true); addEventListener('pointermove', pmv, true); addEventListener('pointerup', pup, true); addEventListener('keydown', key, true);
     this.portalOff = () => { removeEventListener('wheel', wheel, { passive: false }); removeEventListener('pointerdown', pdown, true); removeEventListener('pointermove', pmove, true); removeEventListener('pointerup', pup, true); removeEventListener('keydown', key, true); $('portalLoad').hidden = true; this.portalOff = null };
     this.pmvOff = () => { removeEventListener('pointermove', pmv, true); this.pmvOff = null };   // (the mouse still steers the ship a moment past the mark)
-    const load = $('portalLoad'); load.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => { load.classList.add('live'); $('plTxt').textContent = coarse ? 'Swipe up to continue' : 'Scroll to continue' }));   // the 3D mark is drawn in the same place: the flat one hands over
+    const load = $('portalLoad'); load.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => { load.classList.add('live'); $('plTxt').textContent = coarse ? 'Swipe up to continue' : 'Scroll to continue'; $('plEnter').classList.remove('gone'); $('plTag').classList.remove('gone'); }));   // scroll, or (the other opening) an Enter button   // the 3D mark is drawn in the same place: the flat one hands over
     if (PORTAL_LAB) this.lab = makePortalLab(this);
     return true;
   },
@@ -213,7 +213,8 @@ const intro = {
     { const tr = P.wallMat.opacity < .999; if (tr !== P.wallMat.transparent) { P.wallMat.transparent = tr; P.wallMat.needsUpdate = true } }   // solid, it draws before your pointer, so the pointer is never hidden behind it
     P.rimMat.color.setHSL(L.portalRimHue ?? .72, L.portalRimSat ?? 0, .5).multiplyScalar(2 * (L.portalRim ?? 1.08)); P.haloAt(L.portalRimW ?? 6);
     P.sideMat.roughness = L.portalWallRough ?? .59; P.sideMat.metalness = L.portalWallMetal ?? 1; P.sideMat.color.setHSL(L.portalWallHue ?? .7, L.portalWallSat ?? .3, L.portalWallBright ?? .012);
-    $('plTxt').classList.toggle('gone', q > .03);
+    const en = !!LOOK.portalEnter; $('plTxt').hidden = en; $('plEnter').hidden = !en;   // (the opening's Enter switch can be flipped right here)
+    $('plTxt').classList.toggle('gone', q > .03); $('plTag').classList.toggle('gone', q > .03); $('plEnter').classList.toggle('gone', q > .01 || this.play > 0);
     // the pointer: the 3D ship, flat, right under your mouse. In the last stretch it starts to come closer, at exactly the pace the
     // camera will carry on closing in at, so past the mark it just keeps growing the same way (G: the rest of a smoothstep's area)
     { const f = Math.min(1, dt * 14 || 1); this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;
