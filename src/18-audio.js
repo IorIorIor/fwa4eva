@@ -89,9 +89,9 @@ function tingle(dec = 1, seed, pan = 0) {
 let riser = null;
 function ringRiser(k) {   // k: 0 (none) … 1 (right at the ring)
   const vol = (LOOK.ringSound ?? 1) * (LOOK.ringRise ?? .5); if (!AC || AC.state !== 'running' || !out) return;
-  if (!riser) { if (k <= .001 || !vol) return; const o1 = AC.createOscillator(), o2 = AC.createOscillator(), lp = AC.createBiquadFilter(), g = AC.createGain(); o1.type = 'sawtooth'; o2.type = 'sine'; o2.detune.value = 7; lp.type = 'lowpass'; lp.Q.value = 6; g.gain.value = 0; o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(out); o1.start(); o2.start(); riser = { o1, o2, lp, g } }
+  if (!riser) { if (k <= .001 || !vol) return; const o1 = AC.createOscillator(), o2 = AC.createOscillator(), lp = AC.createBiquadFilter(), g = AC.createGain(); o1.type = 'sine'; o2.type = 'triangle'; o2.detune.value = 4; lp.type = 'lowpass'; lp.Q.value = .7;   /* soft: no buzzy sawtooth through a ringing filter */ g.gain.value = 0; o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(out); o1.start(); o2.start(); riser = { o1, o2, lp, g } }
   const t = AC.currentTime, f = 110 * Math.pow(2, 2 * k), muted = S.mode !== 'fly' ? 0 : 1;
-  riser.o1.frequency.setTargetAtTime(f, t, .05); riser.o2.frequency.setTargetAtTime(f * 2, t, .05); riser.lp.frequency.setTargetAtTime(300 + 4200 * k * k, t, .05); riser.g.gain.setTargetAtTime(.05 * vol * k * k * muted, t, .06);
+  riser.o1.frequency.setTargetAtTime(f, t, .12); riser.o2.frequency.setTargetAtTime(f * 1.5, t, .12); riser.lp.frequency.setTargetAtTime(400 + 1600 * k, t, .12); riser.g.gain.setTargetAtTime(.04 * vol * k * k * muted, t, .15);   // a soft fifth rising with you, smoothed so a new nearest ring doesn't make it jump
 }
 function ringBell(i) {   // the pass: a deep chord struck like a bell, keyed to the winner's year
   const vol = LOOK.ringSound ?? 1; if (!vol || !AC || AC.state !== 'running' || !out) return; const t = AC.currentTime + .01, yr = D[i].year - 2000, root = 48 + (yr * 5) % 12;
