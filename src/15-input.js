@@ -118,13 +118,13 @@ canvas.addEventListener('wheel', e => { e.preventDefault(); if (S.mode === 'map'
 addEventListener('keydown', e => {
   if (e.target.matches('input,select,textarea')) return;
   const k = e.key.toLowerCase(); keys[k] = true; if (k === ' ' && !e.target.closest('button,input,select,textarea')) e.preventDefault();
+  if (k === 'l' && !e.repeat) recorder.toggle();   // L: start (or stop) recording, from the splash on
   if (!booted) return;
   if (k === 'm') setMode(S.mode === 'fly' ? 'map' : 'fly');
   if (k === 'enter' && coach.skip()) { e.preventDefault(); return }   // the first-flight steps: Enter skips one
   if (k === 'h') goHome();
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
   // (R did the rings game on/off; off for now)
-  if (k === 'l' && !e.repeat && !e.target.closest('input,textarea')) recorder.toggle();   // L: start (or stop) recording
   if (k === 'escape' && tour.on) stopTour();
   if (k === 'escape' && mapZone.on) mapZone.clear();
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }
