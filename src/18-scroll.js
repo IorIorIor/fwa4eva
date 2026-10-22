@@ -20,7 +20,7 @@ scrollMode = (() => {
     const la = toLocal(a, new V3()), tg = lb.clone().setY(0).normalize(), out = new V3(-tg.z, 0, tg.x); if (out.dot(la) < 0) out.negate();   // along the spiral (the way on) and across it (outward)
     orbit.target.copy(la).addScaledVector(tg, (L.scrollAhead ?? 0) * orbit.dist * vh).addScaledVector(out, (L.scrollSide ?? 0) * band * .5).applyQuaternion(GQ).add(GC);
     const th = Math.atan2(-lb.x, -lb.z); if (st.th == null) st.th = th; else st.th += ((th - st.th + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;   // the way on points up the screen, turning with the spiral
-    orbit.theta = st.th + (L.scrollTurn ?? 0) * Math.PI / 180; orbit.phi = Math.max(.001, (L.scrollTilt ?? 25) * Math.PI / 180); orbit.mir = false; orbit.flip = false;
+    orbit.theta = st.th + (L.scrollTurn ?? 0) * Math.PI / 180; orbit.phi = Math.min(Math.PI / 2, Math.max(.001, (L.scrollTilt ?? 25) * Math.PI / 180)); orbit.mir = false; orbit.flip = false;
   }
   const MONTH = 'January February March April May June July August September October November December'.split(' ');
   function step(dt) {
