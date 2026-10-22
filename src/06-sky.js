@@ -166,7 +166,7 @@ const VOL_S = GAL_R0 + GAL_LEN * 1.12, VOL_H = .2;
 const ign = px => fract(float(52.9829189).mul(fract(dot(px, vec2(.06711056, .00583715)))));
 const vol = (() => {
   const u = { bh: uniform(1), cam: uniform(new V3()), core: uniform(new C3(NEB_PAL[0][0])), edge: uniform(new C3(NEB_PAL[0][1])), glow: uniform(1), dust: uniform(1), steps: uniform(28), noise: uniform(1), spin: uniform(1),
-    wispLo: uniform(0), wispHi: uniform(0), janim: uniform(0), warp: uniform(0), armK: uniform(0), thick: uniform(0), coreV: uniform(0), dustT: uniform(0), emAbs: uniform(0), flow: uniform(0), inner: uniform(0), outer: uniform(0), opMax: uniform(0), coreMix: uniform(0), wispGain: uniform(0), base: uniform(0), detail: uniform(3), satV: uniform(0), contrast: uniform(1), armW: uniform(1) };
+    wispLo: uniform(0), wispHi: uniform(0), janim: uniform(0), warp: uniform(0), armK: uniform(0), thick: uniform(0), coreV: uniform(0), dustT: uniform(0), emAbs: uniform(0), flow: uniform(0), inner: uniform(0), outer: uniform(0), opMax: uniform(0), coreMix: uniform(0), wispGain: uniform(0), base: uniform(0), detail: uniform(3), satV: uniform(0), contrast: uniform(1), armW: uniform(1), fil: uniform(0), filOff: uniform(.35), filW: uniform(.06), filWig: uniform(.3), filBreak: uniform(.45), filH: uniform(3) };
   const fbmL = Fn(([p_, detail]) => {
     const p = vec3(p_).toVar(), s = float(0).toVar(), a = float(.5).toVar(), nm = float(0).toVar();
     Loop(5, ({ i }) => { If(float(i).greaterThanEqual(detail), () => { Break() }); s.addAssign(a.mul(noise3(p))); nm.addAssign(a); p.assign(p.mul(2.11).add(vec3(1.7, 9.2, 3.1))); a.mulAssign(.5) });
@@ -186,7 +186,7 @@ const vol = (() => {
       If(length(vec3(p.x, p.y.mul(VOL_H), p.z)).lessThan(u.bh), () => { Break() });   // the black hole swallows the ray
       const rn = length(p.xz);
       If(rn.lessThanEqual(1), () => {
-        const rw = max(rn.mul(VOL_S), GAL_R0 * .5), da = abs(fract(atan(p.z, p.x).sub(armPhT(rw)).mul(ARMS / 6.28318).add(.5)).sub(.5)).mul(2);
+        const rw = max(rn.mul(VOL_S), GAL_R0 * .5), sda = fract(atan(p.z, p.x).sub(armPhT(rw)).mul(ARMS / 6.28318).add(.5)).sub(.5).mul(2), da = abs(sda);
         const awv = u.armW.mul(armWT(rw)).div(SHAPE.widen + 1), arm = exp(da.mul(da).negate().mul(u.armK).div(awv.mul(awv))).mul(smoothstep(u.inner.mul(.2), u.inner, rn)).mul(smoothstep(u.outer, 1, rn).oneMinus());
         const vert = exp(p.y.mul(p.y).negate().mul(u.thick));
         const ra = U.time.mul(u.spin).mul(.0035).mul(sqrt(float(GAL_R0).div(max(rw, GAL_R0 * .3)))), ca = cos(ra), sa = sin(ra);   // the same differential orbit as the arcs
@@ -196,9 +196,12 @@ const vol = (() => {
         const core = exp(rn.mul(rn).mul(-90)).mul(exp(p.y.mul(p.y).mul(-14))).mul(smoothstep(.07, .17, rn));
         const em = arm.mul(vert).mul(u.base.add(u.wispGain.mul(wisp))).add(core.mul(u.coreV));
         const dust = arm.mul(vert).mul(smoothstep(u.dustT, u.dustT.add(.28), w)).mul(wisp.mul(-.7).add(1)).mul(u.dust);
+        // dark filaments, as volume: thin lanes of dust along the inner edge of each arm, wandering and broken up, thin in height
+        const fd = sda.add(u.filOff).add(w.sub(.5).mul(u.filWig)).div(u.filW), fb = smoothstep(u.filBreak, u.filBreak.add(.2), nn);
+        const fil = exp(fd.mul(fd).negate()).mul(fb).mul(exp(p.y.mul(p.y).negate().mul(u.thick).mul(u.filH))).mul(smoothstep(u.inner.mul(.2), u.inner, rn)).mul(smoothstep(u.outer, 1, rn).oneMinus()).mul(u.fil);
         const ec = mix(u.edge, u.core, smoothstep(.25, .95, wisp).mul(u.coreMix)).add(vec3(1, .93, .85).mul(core).mul(.9)).toVar();
         ec.assign(mix(vec3(luma(ec)), ec, u.satV)); ec.assign(mix(ec, radCol(rn.mul(VOL_S)).mul(wisp.mul(.8).add(.6)), U.rad));
-        const sig = em.mul(.35).mul(u.emAbs).add(dust.mul(3.2)).mul(ds).mul(4);
+        const sig = em.mul(.35).mul(u.emAbs).add(dust.mul(3.2)).add(fil.mul(40)).mul(ds).mul(4);
         col.addAssign(T.mul(ec).mul(em).mul(ds).mul(2.6).mul(u.glow)); T.mulAssign(exp(sig.negate()));
       });
     });

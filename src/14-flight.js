@@ -110,7 +110,7 @@ function updatePlayer(dt) {
   const prevF = _hf.set(0, 0, -1).applyQuaternion(p.base), prevR = _hr.set(1, 0, 0).applyQuaternion(p.base), sp0 = p.vel.length();
   // boost: Shift or Space. A short tank that drains while boosting and refills when you don't.
   const pressB = (keys.shift || keys[' '] || touchBoost) && !auto; if (!pressB) boostSpent = false; const wantB = pressB && !boostSpent;   // run it dry and it stays off, refilling, until you press boost again
-  if (wantB && boostE > 0) { if (!boosting) { camRelV.add(_sd.set(0, .15, 2.2)); boostWhoosh() } boosting = true; boostE *= Math.exp(-3 * dt / Math.max(.5, L.boostTime)); if (boostE < .05) boostE = 0 }   // eased: it drains fast at first, then ever slower
+  if (wantB && boostE > 0) { if (!boosting) { camRelV.add(_sd.set(0, .15, 2.2)); boostWhoosh() } boosting = true; boostE = Math.max(0, boostE - dt / Math.max(.5, L.boostTime)) }   // it drains steadily, all the way to empty, before it stops
   else { if (boosting && boostE <= 0) { buzz([22, 50, 22]); boostSpent = true } boosting = false; boostE += (1 - boostE) * (1 - Math.exp(-3 * dt / Math.max(.5, L.boostRecharge))); if (boostE > .995) boostE = 1 }   // and refills the same way, slowing as it tops up
   gasOn = fw > 0; const pedal = gasOn || boosting;
   // the nose turns toward its target keeping the ship's own roll (so A/D rolls stick)

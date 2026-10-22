@@ -849,3 +849,26 @@ body.paper #mTabs button{background:rgba(255,255,255,.9);color:#333}body.paper #
 #recHint:hover{background:#fff;color:#000}
 /* the reticle and lock mark sit over everything 3D */
 #cross,#lockMark{z-index:14}
+/* the search bar: always up top in the middle, level with the logo, flying and on the map; its panel opens in place */
+#mapSearch{top:calc(14px + env(safe-area-inset-top,0px));height:34px;width:clamp(200px,calc(100vw - 2 * 430px),420px)!important;min-width:0;left:50%!important}
+body:not(.nosearch):not(.rm-open):not(.intro) #mapSearch{display:block}
+@media (max-width:760px){#mapSearch{width:calc(100vw - 2 * 112px)!important;min-width:0}}
+#rmPanel.p-search{top:calc(14px + env(safe-area-inset-top,0px))!important;transform:translate(-50%,0) scale(.98);transform-origin:50% 0;width:min(420px,calc(100vw - 32px))}
+#rmPanel.p-search.in{transform:translate(-50%,0)}
+body:has(#rmPanel.p-search:not([hidden])) #rmVeil{opacity:0}
+#mapSearch{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* distances: under each of the five compass dates, and under the tooltip, joined on with no gap */
+#wcmp .m span{display:flex;flex-direction:column;align-items:flex-start}
+#wcmp .m span em{font-style:normal}
+#wcmp .m span b{font-family:var(--mono);font-weight:400;font-size:9.5px;letter-spacing:.06em;color:rgba(255,255,255,.75)}
+#wcmp .m:not(.star) span b{opacity:.7}
+#wcmp .m.star span{padding:0;background:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+#wcmp .m.star span em,#wcmp .m.star span b{background:rgba(26,20,40,.56);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#wcmp .m.star span em{padding:4.5px 7px 3px}
+#wcmp .m.star span b{padding:3px 7px 4px}
+#tip .tnav{margin-top:0;gap:0}
+#tip .tnav .tdist{padding:3px 8px 4px}
+/* a tooltip at a star hangs from it: a small white dot on its top-left corner, exactly over the star (the compass dates too) */
+#tip.at{transform:none}
+#tip.at::before,#wcmp .m.star span::before{content:'';position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.8);z-index:1}
+#wcmp .m.star span{left:0!important;top:0!important}

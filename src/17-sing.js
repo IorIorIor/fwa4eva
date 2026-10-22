@@ -10,15 +10,15 @@ const sing = (() => {
   const S_ = { t: -1, w: 0, dir: new V3(), far: false, ft: 0 };
   function enter() { buzz([30, 80, 30, 80, 160]); S_.t = 0; S_.dir.copy(player.vel).lengthSq() > 1 ? S_.dir.normalize() : S_.dir.set(0, 0, -1).applyQuaternion(player.base); auto = null; lockI = -1; warp = null }
   function emerge() {   // the far side: well out beyond the galaxy along the way you were going, facing on, the galaxy behind
-    const R = GAL_R0 + GAL_LEN, at = GC.clone().addScaledVector(S_.dir, R * (LOOK.singFar ?? 3));
-    player.pos.copy(at); player.vel.set(0, 0, 0); aimAt(S_.dir.clone(), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
-    star.position.copy(at).addScaledVector(S_.dir, R * .35); star.scale.setScalar(R * .05); star.visible = true; S_.far = true; S_.ft = 0; ringBell(N - 1); buzz(60); document.body.classList.add('farside');
+    const up = new V3(0, 1, 0).applyQuaternion(GQ), at = GC.clone().addScaledVector(up, LOOK.singUp ?? 10000);   // out right above the galaxy's heart, looking straight down at it
+    player.pos.copy(at); player.vel.set(0, 0, 0); aimAt(up.clone().negate(), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
+    star.visible = false; S_.far = true; S_.ft = 0; ringBell(N - 1); buzz(60); document.body.classList.add('farside');
   }
   return {
     get busy() { return S_.t >= 0 },
     update(rdt) {
       const L = LOOK, on = !!(L.singularity ?? 1) && S.mode === 'fly' && booted, d = player.pos.distanceTo(GC);
-      singQ = on && !S_.far ? 1 - sstep(d, BH.sh * 1.5, BH.sh * (L.singHear ?? 14)) : Math.max(0, singQ - rdt);
+      singQ = on && !S_.far && !(S_.t >= 0) ? 1 - sstep(d, BH.sh * 1.5, BH.sh * (L.singHear ?? 14)) : S_.t >= 0 ? Math.max(singQ, Math.min(1, S_.w * 2)) : Math.max(0, singQ - rdt);
       if (on && S_.t < 0 && !S_.far && d < BH.sh * 1.45) enter();
       if (S_.t >= 0) {   // inside: slow white, the switch to the far side at its peak, then the white clears
         const tin = L.singIn ?? 3, tout = L.singOut ?? 4; S_.t += rdt; player.vel.multiplyScalar(Math.exp(-rdt * 4));
@@ -27,7 +27,7 @@ const sing = (() => {
       } else S_.w = 0;
       whiteout.lv = Math.max(whiteout.lv, S_.w);
       if (S_.far) { S_.ft += rdt; const k = sstep(S_.ft, (L.singIn ?? 3) * .2, (L.singIn ?? 3) * .2 + 3); star.material.opacity = k; el.style.opacity = (k * (1 - sstep(player.pos.distanceTo(star.position) < 1 ? 0 : S_.ft, 14, 18))).toFixed(3);
-        if (player.pos.distanceTo(GC) < (GAL_R0 + GAL_LEN) * 1.5 || S.mode !== 'fly') { S_.far = false; star.visible = false; el.style.opacity = 0; document.body.classList.remove('farside') } }   // back in the galaxy: the far side lets go
+        if (S_.ft > 20 || S.mode !== 'fly') { S_.far = false; star.visible = false; el.style.opacity = 0; document.body.classList.remove('farside') } }   // back in the galaxy: the far side lets go
     },
   };
 })();

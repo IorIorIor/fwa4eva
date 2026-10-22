@@ -1,5 +1,5 @@
 /* ───────────────────────── every frame ───────────────────────── */
-let coreGlowV = { k: 0, s: 1 }, mapK = 0;
+let coreGlowV = { k: 0, s: 1 }, mapK = 0, coreInK = 1;
 // map: tiny day labels beside the winners nearest the camera, once you're close enough (with a zone open: its own winners, nearest the middle of the view)
 const dayLab = (() => {
   const box = $('dayLabels'), els = new Map(), cand = [], v = new V3();   // one label per winner, so each fades in and out on its own
@@ -41,7 +41,8 @@ const farDimJS = d => 1 - LOOK.farDim * sstep(d, LOOK.farStart, LOOK.farStart * 
 function updateAndro() {
   const L = LOOK, dGC = camera.position.distanceTo(GC), f = farDimJS(dGC);
   const inK = s => sstep(dGC, s * .12, s * .55);   // big glows fade once you're inside them, instead of whiting out the view
-  const cg = 1 + ((L.coreGlows ?? 1) - 1) * coreIn;   // every big glow (core, bulge, haze, gas) scaled by "Glows in the core" while you're in it
+  { const Rc = (GAL_R0 + GAL_LEN) * (L.coreInR ?? .12); coreInK = 1 - (L.coreInFade ?? .6) * (1 - sstep(dGC, Rc * .2, Rc)) }   /* inside the core: its haze and volume thin out so you can see */
+  const cg = (1 + ((L.coreGlows ?? 1) - 1) * coreIn) * coreInK;   // every big glow (core, bulge, haze, gas) scaled by "Glows in the core" while you're in it
   coreGlow.material.opacity = L.core * .22 * f * inK(coreGlow.scale.x) * cg; haze.u.op.value = L.haze * L.hazeBright * cg * (1 + ((L.mapHaze ?? 1) - 1) * mapK);   // on the map the arm haze (the glowing band along the timeline) has its own strength
   wallSky.mesh.position.copy(camera.position); wallSky.u.op.value = L.wallpaper ? L.wallBlue : 0; wallSky.mesh.visible = !!L.wallpaper;
   sparkle.mesh.position.copy(camera.position); sparkle.u.op.value = L.wallpaper ? L.sparkle : 0; sparkle.mesh.visible = !!L.wallpaper && L.sparkle > 0;
@@ -147,10 +148,10 @@ function updateStreaks(dt) {
   su.len.value = Math.min(SL_H * .8, sp * .04 * L.streakLen); if (sp > 1e-3) su.dir.value.copy(v).divideScalar(sp);
   const lp = toLocal(player.pos, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   const g = L.streakRamp ?? .8, da = armDist(lp.x, lp.z) / (armWAt(rr) / (SHAPE.widen + 1)), sw = Math.max(.02, L.streakSpine ?? .45), arm = Math.exp(-((da / sw) ** 2)), hy = Math.exp(-((lp.y / Math.max(1000, L.streakInH)) ** 2)), disk = hy * (1 - sstep(rr, Rr * 1.02, Rr * 1.3));   // thickest along the spiral's spine, thinning the further you are from it (across, above or below)
-  const core = Math.exp(-Math.pow(rr / (Rr * .22), 2)) * (1 - sstep(Math.abs(lp.y), Rr * .08, Rr * .25));
-  streakDens = Math.max(disk * (arm * (1 - .15 * g) + .15 * (1 - g) + .04), core);
+  const cR = L.streakCoreR ?? 1.4, core = Math.exp(-Math.pow(rr / (Rr * .22 * cR), 2)) * (1 - sstep(Math.abs(lp.y), Rr * .08 * cR, Rr * .25 * cR));   // round the core: a thick swarm (its own sliders)
+  streakDens = Math.max(disk * (arm * (1 - .15 * g) + .15 * (1 - g) + .04), core * (L.streakCore ?? 2.5));
   streaks.geometry.setDrawRange(0, Math.floor(Math.min(SL_N, SL_N / 3 * L.streakAmt * streakDens)) * 2);
-  su.op.value += (sstep(sp, 150, 4000) * .32 * L.streakBright * Math.min(1, streakDens * (3 - 2.4 * g)) - su.op.value) * Math.min(1, dt * 6);
+  su.op.value += (sstep(sp, 150, 4000) * .32 * L.streakBright * Math.min(1, streakDens * (3 - 2.4 * g)) * (1 + (L.streakCoreBright ?? 1.5) * core) - su.op.value) * Math.min(1, dt * 6);
   const mu = motes.u, B = L.moteBox * SHIP_K; mu.box.value = B; mu.size.value = L.moteSize * SHIP_K; mu.follow.value = L.moteFollow; mu.core.value = L.moteCore; mu.sB.value = bulgeR * .42 * (L.bulgePuffSpread ?? 1) * L.moteCoreReach; mu.bhR.value = BH.rs * Math.max(3.5, L.bhDiskOut); mu.bhZ.value = L.moteBhZone; mu.bhH.value = L.moteBhH;
   mu.op.value += ((1 - sstep(sp, 3000, 60000)) * 1.3 * L.moteBright - mu.op.value) * Math.min(1, dt * 6);
   toLocal(camera.position, tmp); tmp.set(-tmp.z, 0, tmp.x); if (tmp.lengthSq() > 1) tmp.normalize().applyQuaternion(GQ);   // orbital direction here
@@ -277,7 +278,7 @@ function updateHover(dt) {
   const map = S.mode === 'map', pin = cardI >= 0 ? cardI : !map && lockI >= 0 ? lockI : -1;
   const put = (key, html, full, side) => {
     if (tipFor !== key) { tip.innerHTML = html; tipFor = key; if (full) { if (!side) drawCardImg(cardI); if (!phone) cardFlicker() }   /* the ring's record too comes in piece by piece */ }
-    tip.classList.toggle('full', !!full); tip.classList.toggle('side', !!side); tip.classList.remove('dock'); tip.hidden = false };
+    tip.classList.toggle('full', !!full); tip.classList.toggle('side', !!side); tip.classList.remove('dock', 'at'); tip.hidden = false };
   const PI = HALO.pInfo;
   const pRpx = PI.on ? PI.r * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(1, camera.position.distanceTo(PI.c))) : 0;
   if (PI.on && (S.mode === 'fly' || (map && !tween)) && pRpx * 2 >= Math.min(map ? innerHeight * .4 : 1e9, LOOK.ringInfoPx ?? 500) && tmp.copy(PI.c).project(camera).z < 1) {   // while it's up, it's all you see: hovering other stars doesn't swap it for their tooltip   // a ring up close: once its portal is big on screen, the full record (text only) floats beside it, never over it
@@ -287,7 +288,7 @@ function updateHover(dt) {
       const x = Math.min(right, innerWidth - w - 12);   // always on the right of the ring; with no room, it holds at the right edge   // beside it; once the ring outgrows the screen, held at the edge with the most room
       tip.style.left = x + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, cy - h / 2)) + 'px';
     }
-  } else if (hovI >= 0 && hovI !== pin) { if (tipFor !== 'h' + hovI) { starPos(hovI, tmp).project(camera); tingle(galOf(D[hovI].year), hovI, Math.max(-1, Math.min(1, tmp.x))) } /* the chime only with its tooltip */ put('h' + hovI, tipHTML(hovI) + tnav(), false); { starPos(hovI, tmp).project(camera); const on = tmp.z < 1 && Math.abs(tmp.x) < 1 && Math.abs(tmp.y) < 1; tip.style.left = (on ? (tmp.x * .5 + .5) * innerWidth : tipAt.x) + 'px'; tip.style.top = (on ? (-tmp.y * .5 + .5) * innerHeight : tipAt.y) + 'px' } }   // at the star itself, so its date lands right where the compass had it
+  } else if (hovI >= 0 && hovI !== pin) { if (tipFor !== 'h' + hovI) { starPos(hovI, tmp).project(camera); tingle(galOf(D[hovI].year), hovI, Math.max(-1, Math.min(1, tmp.x))) } /* the chime only with its tooltip */ put('h' + hovI, tipHTML(hovI) + tnav(), false); { starPos(hovI, tmp).project(camera); const on = tmp.z < 1 && Math.abs(tmp.x) < 1 && Math.abs(tmp.y) < 1; tip.style.left = (on ? (tmp.x * .5 + .5) * innerWidth : tipAt.x) + 'px'; tip.style.top = (on ? (-tmp.y * .5 + .5) * innerHeight : tipAt.y) + 'px'; tip.classList.toggle('at', on) } }   // at the star itself, so its date lands right where the compass had it
   else if (ringHov && pin < 0) { put('r' + ringHov.y, ringTip(ringHov), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (pin >= 0) {
     const d = Math.max(1, camera.position.distanceTo(starPos(pin, tmp))); tmp.project(camera);
@@ -303,7 +304,7 @@ function updateHover(dt) {
       let x = (tmp.x * .5 + .5) * innerWidth + (full ? rpx * .72 : 0), y = (-tmp.y * .5 + .5) * innerHeight - (full ? rpx * .5 : 0);
       if (full) {   // the full record sits beside the star (no more docking it top left)
         const w = tip.offsetWidth + 24, h = tip.offsetHeight + 24; if (x + w > innerWidth) x = Math.max(8, (tmp.x * .5 + .5) * innerWidth - rpx * .72 - w); x = Math.max(8, Math.min(innerWidth - w, x)); y = Math.max(60, Math.min(innerHeight - h - 8, y)) }
-      tip.style.left = x + 'px'; tip.style.top = y + 'px';
+      tip.style.left = x + 'px'; tip.style.top = y + 'px'; tip.classList.toggle('at', !full);
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
   { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = Math.round(camera.position.distanceTo(starPos(+m[1], tmp))).toLocaleString('en') }
@@ -420,7 +421,7 @@ function tick(now) {
     if (on) {
       const R = (GAL_R0 + GAL_LEN) * (L.bhPuffR ?? .06), sB = bulgeR * .42 * (L.bulgePuffSpread ?? 1), E = Math.max(pOn ? Math.max(sB * 3.2, R * 1.4) : 0, gOn ? coreGlowV.s * 3.5 : 0), cg = 1 + ((L.coreGlows ?? 1) - 1) * coreIn;
       puffVol.mesh.scale.setScalar(E); pv.E.value = E; pv.cam.value.copy(camera.position); puffVol.mesh.worldToLocal(pv.cam.value);
-      pv.sB.value = sB; pv.R.value = R; pv.H.value = L.bhPuffH ?? 1; pv.kB.value = pOn ? .9 * L.bulge * L.bulgePuffs * L.puffVolGlow * cg : 0; pv.kC.value = pOn ? .6 * (L.bhPuffs ?? 1) * L.puffVolGlow * cg : 0; pv.kG.value = gOn ? coreGlowV.k * 1.4 : 0; pv.sG.value = coreGlowV.s;
+      pv.sB.value = sB; pv.R.value = R; pv.H.value = L.bhPuffH ?? 1; pv.kB.value = pOn ? .9 * L.bulge * L.bulgePuffs * L.puffVolGlow * cg * coreInK : 0; pv.kC.value = pOn ? .6 * (L.bhPuffs ?? 1) * L.puffVolGlow * cg * coreInK : 0; pv.kG.value = gOn ? coreGlowV.k * 1.4 * coreInK : 0; pv.sG.value = coreGlowV.s;
       const gs = L.puffVolGrainSize ?? 1, cnt = k => Math.cbrt(Math.max(.5, k) / 16), gm = (base, tex) => Math.min(1, base + (tex ?? 0) * (1 - base));   // the particle puffs' sliders steer the volume too
       pv.f.value = 6 * (L.bhPuffD ?? 1) * cnt(L.bhPuffN ?? 16) / R / gs / (L.bhPuffSize ?? 1); pv.fB.value = 6 * (L.bulgePuffD ?? 1) * cnt((L.bulgePuffN ?? 6) * 2.7) / sB / gs / (L.bulgePuffSize ?? 1);
       pv.gC.value = gm(L.puffVolGrain, L.bhPuffTex); pv.gB.value = gm(L.puffVolGrain, L.bulgePuffTex); pv.shC.value = L.bhPuffSoft ?? 1; pv.shB.value = L.bulgePuffSoft ?? 1;
@@ -434,7 +435,7 @@ function tick(now) {
       u.cam.value.copy(camera.position); vol.mesh.worldToLocal(u.cam.value);
       u.glow.value = L.volGlow; u.dust.value = L.volDust; u.steps.value = L.volSteps; u.noise.value = L.volNoise; u.wispLo.value = L.volWispLo; u.wispHi.value = Math.max(L.volWispLo + (L.volEdge ?? .02), L.volWispHi); u.janim.value = L.volJitterMove ? 1 : 0; PU.volBlur.value = (L.volSmooth ?? 0) / LOOK.volRes;   u.warp.value = L.volWarp; u.armK.value = L.volArmK; u.thick.value = L.volThick;   // a hard wisp edge pops on and off as the clouds move: volEdge keeps it soft
       u.coreV.value = L.volCore * (1 + ((L.coreGlows ?? 1) - 1) * coreIn); u.dustT.value = L.volDustT; u.emAbs.value = L.volEmAbs; u.flow.value = L.volFlow; u.inner.value = L.volInner; u.outer.value = L.volOuter; u.opMax.value = L.volOpMax; u.coreMix.value = L.volColMix; u.wispGain.value = L.volWisp; u.base.value = L.volBase; u.detail.value = L.volDetail; u.satV.value = L.volSat; u.contrast.value = L.volContrast;
-      vol.mesh.scale.y = VOL_S * VOL_H * L.volHeight; u.spin.value = L.arcSpin * L.volSpin; u.armW.value = L.armWidth;
+      vol.mesh.scale.y = VOL_S * VOL_H * L.volHeight; u.spin.value = L.arcSpin * L.volSpin; u.armW.value = L.armWidth; u.fil.value = L.volFil ?? 0; u.filOff.value = L.volFilOff ?? .35; u.filW.value = L.volFilW ?? .06; u.filWig.value = L.volFilWig ?? .3; u.filBreak.value = L.volFilBreak ?? .45; u.filH.value = L.volFilH ?? 3;
     }
   }
   PU.beta.value = fly ? Math.min(1, beta * L.relativity) : 0; PU.ab.value += ((fly ? Math.min(1.5, player.cruise * .35 + beta * 1.2 + boostK * .8) * L.aberr : 0) - PU.ab.value) * Math.min(1, dt * 4);
