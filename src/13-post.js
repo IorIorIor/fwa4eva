@@ -41,17 +41,17 @@ const corePuffs = (() => {
 })();
 // the same puffs (and the bulge's), raymarched instead: a glowing, self-shadowing cloud with the same shape, its grain from noise
 const puffVol = (() => {
-  const u = { cam: uniform(new V3()), E: uniform(1), sB: uniform(1), kB: uniform(0), R: uniform(1), H: uniform(1), kC: uniform(0), f: uniform(1), grain: uniform(.7), fB: uniform(1), gB: uniform(.7), gC: uniform(.7), shB: uniform(1), shC: uniform(1), vB: uniform(0), vC: uniform(0), flB: uniform(0), flC: uniform(0), tB: uniform(.5), tC: uniform(.5), kG: uniform(0), sG: uniform(1), dust: uniform(.6), steps: uniform(32), bh: uniform(BH.sh * 2), tint: uniform(.5) };
+  const u = { cam: uniform(new V3()), E: uniform(1), sB: uniform(1), kB: uniform(0), R: uniform(1), H: uniform(1), kC: uniform(0), f: uniform(1), grain: uniform(.7), fB: uniform(1), gB: uniform(.7), gC: uniform(.7), shB: uniform(1), shC: uniform(1), vB: uniform(0), vC: uniform(0), flB: uniform(0), flC: uniform(0), tB: uniform(.5), tC: uniform(.5), kG: uniform(0), sG: uniform(1), dust: uniform(.6), steps: uniform(32), bh: uniform(BH.sh * 2), tint: uniform(.5), occ: uniform(.15) };
   const m = skyMat({ blend: 'premul', side: THREE.BackSide, depthTest: false });
   m.fragmentNode = Fn(() => {
     const ro = u.cam, rd = normalize(positionGeometry.sub(u.cam)).toVar();
     const b = dot(ro, rd), c = dot(ro, ro).sub(1), disc = b.mul(b).sub(c); Discard(disc.lessThan(0));
-    const sq = sqrt(disc), t0 = max(0, b.negate().sub(sq)), t1 = b.negate().add(sq); Discard(t1.lessThanEqual(t0));
+    const sd = sqrt(disc), t0 = max(0, b.negate().sub(sd)), t1 = b.negate().add(sd); Discard(t1.lessThanEqual(t0));   // (not 'sq': that's the square helper used below)
     const ds = t1.sub(t0).div(u.steps).toVar(), t = t0.add(ds.mul(ign(screenUV.mul(U.res)))).toVar(), dw = ds.mul(u.E);
     const col = vec3(0).toVar(), T = float(1).toVar();
     Loop(64, ({ i }) => {
       If(float(i).greaterThanEqual(u.steps).or(T.lessThan(.02)), () => { Break() });
-      const x = ro.add(rd.mul(t)).mul(u.E).toVar(); t.addAssign(ds);   // galaxy frame, world units from the core
+      const pl = ro.add(rd.mul(t)), edgeK = smoothstep(1, .72, length(pl)), x = pl.mul(u.E).toVar(); t.addAssign(ds);   // galaxy frame, world units from the core; edgeK: thins out toward the bounding sphere, so it has no rim
       const r = length(x.xz), qb = vec3(x.x, x.y.div(.55), x.z).div(u.sB), qc = vec3(x.x, x.y.div(u.H.mul(.7).max(.01)), x.z).div(u.R.mul(.2));
       const hD = u.R.mul(exp(r.div(u.R.mul(.35)).pow(2).negate()).mul(.07).add(.02)).mul(u.H).max(1);
       const bul = exp(dot(qb, qb).mul(-.5)).mul(u.kB).div(u.sB);
@@ -63,11 +63,11 @@ const puffVol = (() => {
       const tintOf = k => select(k.lessThan(.5), mix(vec3(.72, .86, 1.2), vec3(1), k.mul(2)), mix(vec3(1), vec3(1.2, .9, .62), k.sub(.5).mul(2)));
       const grB = grainOf(u.fB, u.gB, u.shB, u.vB, u.flB), grC = grainOf(u.f, u.gC, u.shC, u.vC, u.flC), clr = smoothstep(u.bh, u.bh.mul(2), length(x));
       const qg = length(x).div(u.sG), glw = exp(qg.mul(qg).mul(-.5)).mul(u.kG).div(u.sG);   // the core's glow: a soft sphere of light
-      const dB = bul.mul(grB), dC = cor.mul(grC).add(glw), d = dB.add(dC).mul(clr).mul(dw), gr = dB.add(dC).div(bul.add(cor).max(1e-9));
+      const dB = bul.mul(grB), dC = cor.mul(grC).add(glw), d = dB.add(dC).mul(clr).mul(edgeK).mul(dw), gr = dB.add(dC).div(bul.add(cor).max(1e-9));
       const tc = tintOf(u.tB).mul(dB).add(tintOf(u.tC).mul(dC)).div(dB.add(dC).max(1e-9)).mul(tintOf(u.tint).mul(2).sub(1).max(.3));
       col.addAssign(T.mul(mix(vec3(1, .8, .58), vec3(1, .93, .82), gr.min(1))).mul(tc).mul(d)); T.mulAssign(exp(d.mul(u.dust).negate()));
     });
-    return vec4(col, T.oneMinus());
+    return vec4(col, T.oneMinus().mul(u.occ));   // the dust shades the puffs' own light; it only hides the galaxy behind a little (occ)
   })();
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 24), m); mesh.position.copy(GC); mesh.quaternion.copy(GQ); mesh.frustumCulled = false; mesh.renderOrder = 2; mesh.visible = false; softScene.add(mesh);
   return { mesh, u };

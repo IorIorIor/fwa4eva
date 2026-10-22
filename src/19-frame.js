@@ -425,7 +425,7 @@ function tick(now) {
       pv.f.value = 6 * (L.bhPuffD ?? 1) * cnt(L.bhPuffN ?? 16) / R / gs / (L.bhPuffSize ?? 1); pv.fB.value = 6 * (L.bulgePuffD ?? 1) * cnt((L.bulgePuffN ?? 6) * 2.7) / sB / gs / (L.bulgePuffSize ?? 1);
       pv.gC.value = gm(L.puffVolGrain, L.bhPuffTex); pv.gB.value = gm(L.puffVolGrain, L.bulgePuffTex); pv.shC.value = L.bhPuffSoft ?? 1; pv.shB.value = L.bulgePuffSoft ?? 1;
       pv.vC.value = L.bhPuffVar ?? 0; pv.vB.value = L.bulgePuffVar ?? 0; pv.flC.value = L.bhPuffFlick ?? 0; pv.flB.value = L.bulgePuffFlick ?? 0; pv.tC.value = L.bhPuffTint ?? .5; pv.tB.value = L.bulgePuffTint ?? .5;
-      pv.tint.value = L.puffVolTint ?? .5; pv.grain.value = L.puffVolGrain; pv.dust.value = L.puffVolDust; pv.steps.value = L.puffVolSteps;
+      pv.tint.value = L.puffVolTint ?? .5; pv.grain.value = L.puffVolGrain; pv.dust.value = L.puffVolDust; pv.steps.value = L.puffVolSteps; pv.occ.value = L.puffVolHide ?? .15;
     }
   }
   {   // volumetric gas
