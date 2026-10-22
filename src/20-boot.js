@@ -35,7 +35,7 @@ function makePortal() {
   const wall = new THREE.Shape(toV2([[-30000, -30000], [30000, -30000], [30000, 30000], [-30000, 30000]])); outers.forEach(o => wall.holes.push(new THREE.Path(toV2(o))));
   const wallGeo = new THREE.ShapeGeometry([wall, ...holes.map(h => new THREE.Shape(toV2(h)))]);
   const wallMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
-  const wallM = new THREE.Mesh(wallGeo, wallMat); wallM.renderOrder = 1; inner.add(wallM);
+  const wallM = new THREE.Mesh(wallGeo, wallMat); wallM.renderOrder = -11;   /* (drawn before anything else on the layer, so your pointer always shows over it) */ inner.add(wallM);
   // the letters themselves, black at first: they fade away as the galaxy comes up behind them
   const fillMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const fill = new THREE.Mesh(new THREE.ShapeGeometry(shapes, 16), fillMat); fill.renderOrder = 2; inner.add(fill);
@@ -43,8 +43,8 @@ function makePortal() {
   const ex = new THREE.ExtrudeGeometry(shapes, { depth: 1, bevelEnabled: false, curveSegments: 16 }), gr = ex.groups[1], pa = ex.getAttribute('position'), na = ex.getAttribute('normal'), P_ = new Float32Array(gr.count * 3), N_ = new Float32Array(gr.count * 3);
   for (let i = 0; i < gr.count; i++) { const k = gr.start + i; P_.set([pa.getX(k), pa.getY(k), -pa.getZ(k)], i * 3); N_.set([na.getX(k), na.getY(k), -na.getZ(k)], i * 3) } ex.dispose();
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(P_, 3)); sg.setAttribute('normal', new THREE.BufferAttribute(N_, 3));
-  const sideMat = new THREE.MeshStandardMaterial({ color: 0x030206, metalness: 1, roughness: L.portalWallRough ?? .59, side: THREE.DoubleSide });
-  const sides = new THREE.Mesh(sg, sideMat); sides.renderOrder = 0; inner.add(sides);
+  const sideMat = new THREE.MeshStandardMaterial({ color: 0x030206, metalness: 1, roughness: L.portalWallRough ?? .59, side: THREE.DoubleSide, depthWrite: false });   // (writes no depth: your pointer always shows over the mark)
+  const sides = new THREE.Mesh(sg, sideMat); sides.renderOrder = -12; inner.add(sides);
   // the outline glow: a soft ribbon along every edge, bright on the line and fading out both ways (additive, so it never darkens)
   const rp = [], rc = [], ri = []; const ribbon = (pts, w, k) => { const n = pts.length, b = rp.length / 3;
     for (let i = 0; i < n; i++) { const a = pts[(i + n - 1) % n], c = pts[(i + 1) % n], tx = c[0] - a[0], ty = c[1] - a[1], l = Math.hypot(tx, ty) || 1, nx = -ty / l, ny = tx / l, [x, y] = pts[i];
@@ -75,10 +75,13 @@ function makePortalLab(I) {
   S_.toggle = () => pb.click();
   S_.wheel = e => { setPlay(false); S_.v = Math.max(0, Math.min(2, S_.v + (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0006 * (LOOK.portalScroll ?? 1))) };
   S_.step = dt => {
-    const L = LOOK; if (S_.playing) { S_.v += dt / Math.max(.5, S_.v < 1 ? L.portalPlay ?? 3.5 : I.dur); if (S_.v >= 2) { S_.v = 2; setPlay(false) } }
+    const L = LOOK; if (S_.playing) { S_.v += dt / Math.max(.5, S_.v < 1 ? L.portalPlay ?? 3.5 : 3 * Math.max(.3, L.portalSettle ?? 2.2)); if (S_.v >= 2) { S_.v = 2; setPlay(false) } }
     r.value = S_.v; const v = S_.v;
     if (v < 1) { I.ph = 0; I.pq = I.pqT = v; I.portalView(); I.pt.g.visible = true; avatar.visible = false; emitGlow = 0; I.portalStep(0, true); lbl.textContent = `Through the mark ${Math.round(v * 100)}%` }
-    else { I.ph = 2; I.pt.g.visible = false; I.t = Math.min(.999, v - 1); I.pose(I.t); avatar.visible = true; const on = 1 - 1 / I.dur; emitGlow = quint(sstep(I.t, on - .26, on)); lbl.textContent = `In to the ship ${Math.round((v - 1) * 100)}%` }
+    else {   // after the mark: the settle, replayed from the moment you come through (scrolling at the play-through speed)
+      I.pt.g.visible = false; avatar.visible = true; avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); I.settleStart(1 / Math.max(.5, L.portalPlay ?? 3.5));
+      const T = (v - 1) * 3 * Math.max(.3, L.portalSettle ?? 2.2), n = Math.ceil(T * 60); for (let i = 0; i < n; i++) I.settleStep(T / n); if (!n) I.settleStep(0);
+      lbl.textContent = `In to the ship ${Math.round((v - 1) * 100)}%` }
   };
   if (!isOpen('lookPanel')) togglePanel('lookPanel'); $('lookFind').value = 'opening'; findLook();   // the opening's sliders, ready
   return S_;
@@ -160,22 +163,24 @@ const intro = {
   startPortal() {   // the portal opening (see makePortal): from a far view of the whole galaxy, framed by the mark, down to your pointer
     if (!logoShapes() || !(this.pt || (this.pt = makePortal()))) return false;
     $('intro').hidden = true; document.body.classList.remove('splash');
-    this.at = { x: innerWidth / 2, y: innerHeight / 2 }; this.start(true);
-    this.ph = 0; this.pq = this.pqT = 0; this.play = 0; this.pt0 = performance.now(); this.heard = false;
-    this.pose(0); this.P0 = { p: camera.position.clone(), q: camera.quaternion.clone() };   // where the usual opening starts: just above the pointer
+    this.at = null; this.start(true);
+    this.ph = 0; this.pq = this.pqT = 0; this.play = 0; this.pt0 = performance.now(); this.heard = false; this.qv = 0; this.mx = this.my = this.mxs = this.mys = 0;
+    camera.clearViewOffset(); this.pose(0); this.P0 = { p: camera.position.clone(), q: camera.quaternion.clone() };   // where the dive ends: just above the ship, which from there looks exactly like a mouse pointer
+    { const qi = this.P0.q.clone().invert(); this.relQ = qi.clone().multiply(player.quat); this.relP = player.pos.clone().sub(this.P0.p).applyQuaternion(qi) }   // the ship as that camera sees it: from now on it IS your pointer, flat, carried in front of the camera
     this.portalView();
     this.pt.g.visible = true; this.portalStep(0);
     const gesture = () => { if (this.heard) return; this.heard = true; setMuted(false); setMusicOff(false); audio() };   // sound needs a click or a key, so the first one starts it
     const go = () => { if (this.lab) { this.lab.toggle(); return } this.play = 1; gesture(); if (!coarse && !lockFailed) requestLock() };
     let down = null;
+    const pmv = e => { if (document.pointerLockElement) { this.mx += e.movementX * 2 / innerWidth; this.my -= e.movementY * 2 / innerHeight } else { this.mx = e.clientX / innerWidth * 2 - 1; this.my = -(e.clientY / innerHeight * 2 - 1) } this.mx = Math.max(-1, Math.min(1, this.mx)); this.my = Math.max(-1, Math.min(1, this.my)) };   // the 3D pointer follows your mouse
     const off = e => e.target && e.target.closest && e.target.closest('#lookPanel,#portalLab');   // (the lab's own controls)
     const wheel = e => { if (off(e)) return; e.preventDefault(); if (this.lab) { this.lab.wheel(e); return } this.play = 0; this.pqT = Math.max(0, Math.min(1, this.pqT + (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0006 * (LOOK.portalScroll ?? 1))) };
     const pdown = e => { if (off(e)) return; down = { x: e.clientX, y: e.clientY, y0: e.clientY }; gesture() };
     const pmove = e => { if (!down || e.pointerType === 'mouse') return; this.play = 0; this.pqT = Math.max(0, Math.min(1, this.pqT + (down.y - e.clientY) * .0025 * (LOOK.portalScroll ?? 1))); down.y = e.clientY };   // a finger drags it, like scrolling a page
     const pup = e => { if (off(e)) { down = null; return } if (down && Math.abs(e.clientY - down.y0) + Math.abs(e.clientX - down.x) < 8) go(); down = null };   // a click or a tap plays it through
     const key = e => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); go() } else if (e.key === 'ArrowUp') { this.play = 0; this.pqT = Math.max(0, this.pqT - .1) } else if (e.key === 'Escape' && !this.lab) { gesture(); this.finish() } };
-    addEventListener('wheel', wheel, { passive: false }); addEventListener('pointerdown', pdown, true); addEventListener('pointermove', pmove, true); addEventListener('pointerup', pup, true); addEventListener('keydown', key, true);
-    this.portalOff = () => { removeEventListener('wheel', wheel, { passive: false }); removeEventListener('pointerdown', pdown, true); removeEventListener('pointermove', pmove, true); removeEventListener('pointerup', pup, true); removeEventListener('keydown', key, true); $('portalLoad').hidden = true; this.portalOff = null };
+    addEventListener('wheel', wheel, { passive: false }); addEventListener('pointerdown', pdown, true); addEventListener('pointermove', pmove, true); addEventListener('pointermove', pmv, true); addEventListener('pointerup', pup, true); addEventListener('keydown', key, true);
+    this.portalOff = () => { removeEventListener('wheel', wheel, { passive: false }); removeEventListener('pointerdown', pdown, true); removeEventListener('pointermove', pmove, true); removeEventListener('pointermove', pmv, true); removeEventListener('pointerup', pup, true); removeEventListener('keydown', key, true); $('portalLoad').hidden = true; this.portalOff = null };
     const load = $('portalLoad'); load.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => { load.classList.add('live'); $('plTxt').textContent = coarse ? 'Swipe up to continue' : 'Scroll to continue' }));   // the 3D mark is drawn in the same place: the flat one hands over
     if (PORTAL_LAB) this.lab = makePortalLab(this);
     return true;
@@ -187,7 +192,7 @@ const intro = {
   },
   portalStep(dt, lab = false) {
     const L = LOOK, P = this.pt; if (!lab) { if (this.play) this.pqT = Math.min(1, this.pqT + dt / Math.max(.5, L.portalPlay ?? 3.5));
-      this.pq += (this.pqT - this.pq) * (1 - Math.exp(-dt * 6)); if (this.pqT >= 1 && this.pq > .996) this.pq = 1 }
+      const q0 = this.pq; this.pq += (this.pqT - this.pq) * (1 - Math.exp(-dt * 6)); if (this.pqT >= 1 && this.pq > .996) this.pq = 1; if (dt > 0) this.qv += ((this.pq - q0) / dt - this.qv) * Math.min(1, dt * 12) }   // qv: how fast you're scrolling through (its momentum carries on past the mark)
     const q = this.pq, e = Math.pow(q, L.portalAccel ?? 2.2);
     lerpLogPolar(camera.position, this.PV.p, this.P0.p, player.pos, e); camera.quaternion.copy(this.PV.q).slerp(this.P0.q, sstep(e, .15, .9)); camera.updateMatrixWorld();   // the dive: from far out down to just above the pointer
     const W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), Z0 = this.D0 * .6, wpx = Math.min(W * (L.portalSize ?? .62), H * 2.2), s = wpx / H * 2 * Z0 * th / 509, dep = (L.portalDepth ?? 200) * s;
@@ -196,11 +201,36 @@ const intro = {
     P.inner.position.set(-(L.portalAimX ?? 244), -(L.portalAimY ?? 38), 0);   // the point you fly through sits dead centre
     const up = sstep((performance.now() - this.pt0) / 1000, 0, Math.max(.01, L.portalFadeIn ?? 1.4)), tint = L.portalTint ?? 0;   // the galaxy fades up behind the letters (under any tint)
     P.fillMat.opacity = Math.max(1 - up, tint * .85); P.fillMat.color.setHSL(L.portalTintHue ?? .7, .7, .45 * up);
-    const oa = L.portalOpenAt ?? 1; P.wallMat.opacity = (L.portalSurround ?? 1) * (oa >= 1 ? 1 : 1 - sstep(q, oa, Math.max(oa + .01, L.portalOpenEnd ?? 1)));   // round them the black stays (or goes, as you close in, if you set it to)
+    const oa = L.portalOpenAt ?? 1; P.wallMat.opacity = (L.portalSurround ?? 1) * (oa >= 1 ? 1 : 1 - sstep(q, oa, Math.max(oa + .01, L.portalOpenEnd ?? 1)));
+    { const tr = P.wallMat.opacity < .999; if (tr !== P.wallMat.transparent) { P.wallMat.transparent = tr; P.wallMat.needsUpdate = true } }   // solid, it draws before your pointer, so the pointer is never hidden behind it   // round them the black stays (or goes, as you close in, if you set it to)
     P.rimMat.color.setHSL(L.portalRimHue ?? .72, L.portalRimSat ?? 0, .5).multiplyScalar(2 * (L.portalRim ?? 1.08)); P.haloAt(L.portalRimW ?? 6);
     P.sideMat.roughness = L.portalWallRough ?? .59; P.sideMat.metalness = L.portalWallMetal ?? 1; P.sideMat.color.setHSL(L.portalWallHue ?? .7, L.portalWallSat ?? .3, L.portalWallBright ?? .012);
     $('plTxt').classList.toggle('gone', q > .03);
-    if (q >= 1 && !lab) { P.g.visible = false; this.ph = 2; this.t = 0; this.portalOff && this.portalOff() }   // out the other side: the pointer, and the usual move in to the ship
+    // the pointer: the 3D ship, flat, under your mouse; it drifts to the middle as you reach the mark, so you go through together
+    { const k = 1 - sstep(q, .5, .9), f = Math.min(1, dt * 14 || 1); this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f; const d = -this.relP.z, ty = Math.tan(camera.fov * Math.PI / 360);
+      avatar.position.copy(this.relP).add(_ia.set(this.mxs * ty * camera.aspect * d * k, this.mys * ty * d * k, 0)).applyQuaternion(camera.quaternion).add(camera.position); avatar.quaternion.copy(camera.quaternion).multiply(this.relQ); avatar.visible = true; avatar.renderOrder = 5 }
+    if (q >= 1 && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv) }   // out the other side: your scrolling's momentum carries the camera on, in to the ship
+  },
+  // after the mark: the camera, still moving as fast as you were scrolling, carries on toward the ship and settles (a spring, no
+  // fixed timing) into the flying position behind it, swinging round from straight above as it slows. x: log of its distance, a: its angle from overhead
+  settleStart(qv) {
+    const L = LOOK, b = _ib.copy(INTRO_END).normalize(), dPV = this.PV.p.distanceTo(player.pos), d0 = this.P0.p.distanceTo(player.pos);
+    this.ph = 3; this.sx = Math.log(d0); this.sa = 0; this.saEnd = Math.acos(b.y); this.sxEnd = Math.log(INTRO_END.length());
+    const dive = (Math.log(d0) - Math.log(dPV)) * (L.portalAccel ?? 2.2) * Math.max(qv, .05);   // how fast the distance was shrinking (in log terms) as you came through
+    this.svx = Math.max(-8, dive * (L.portalCarry ?? .12)); this.sva = 0; this.lit = false; this.hud = false; avatar.renderOrder = 0;
+  },
+  settleStep(dt) {
+    const L = LOOK, w = 4 / Math.max(.3, L.portalSettle ?? 2.2), wa = w * (L.portalSwing ?? .8), h = Math.min(dt, 1 / 30), n = Math.max(1, Math.ceil(dt / h));
+    for (let i = 0; i < n; i++) { const s = dt / n; this.svx += (w * w * (this.sxEnd - this.sx) - 2 * w * this.svx) * s; this.sx += this.svx * s; this.sva += (wa * wa * (this.saEnd - this.sa) - 2 * wa * this.sva) * s; this.sa += this.sva * s }
+    const u = Math.max(0, Math.min(1, this.sa / this.saEnd));   // how far round behind it the camera has swung
+    camera.position.copy(_ia.set(0, 1, 0).applyAxisAngle(_ix.set(1, 0, 0), this.sa).multiplyScalar(Math.exp(this.sx))).applyQuaternion(rig.q).add(player.pos);
+    const toShip = _ib.copy(player.pos).sub(camera.position).normalize(), fwd = _ix.set(0, 0, -1).applyQuaternion(rig.q), dir = toShip.lerp(fwd, sstep(u, Math.min(.95, L.introLook ?? .45), 1)).normalize();
+    const up = this.upW.copy(this.up0).applyQuaternion(rig.q).lerp(_iu.set(0, 1, 0).applyQuaternion(rig.q), u).normalize();
+    _il.lookAt(_ia.set(0, 0, 0), dir, up); camera.quaternion.setFromRotationMatrix(_il); camera.updateMatrixWorld();
+    emitGlow = quint(sstep(u, .55, .95));
+    if (!this.lit && u > .8) { this.lit = true; if (!this.lab) { igniteK = 1; engineLook.burst = 1.5 } }   // ignition as it comes round behind
+    if (!this.hud && u > .7 && !this.lab) { this.hud = true; document.body.classList.remove('intro'); flickIn(1.2) }
+    return Math.abs(this.sx - this.sxEnd) < .015 && Math.abs(this.sa - this.saEnd) < .008 && Math.abs(this.svx) + Math.abs(this.sva) < .04;   // close enough: finish() lands it exactly
   },
   ez(t) {   // the zoom: creeping at first, faster and faster (exponentially), then landing softly
     const x = Math.min(1, Math.max(0, (t - .02) / .96)), k = LOOK.introEaseIn ?? 5, f = (Math.exp(k * x) - 1) / (Math.exp(k) - 1); return 1 - Math.pow(1 - f, LOOK.introEaseOut ?? 2.2);
@@ -233,7 +263,7 @@ const intro = {
   },
   update(dt) {
     sStars.update(dt);
-    avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = this.ph === 2; avatar.userData.flame.material.opacity = 0;
+    avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.visible = this.ph >= 2; avatar.userData.flame.material.opacity = 0;
     if (this.lab) { this.lab.step(dt); return }   // the portal lab: the scrubber drives it
     if (this.at && this.goal && dt > 0) {   // elastic: a soft spring with a touch of overshoot, so any flick of the mouse reads as one smooth swing
       const K = 90 * (LOOK.introSpring ?? 1), C = 2 * Math.sqrt(K) * .78, h = Math.min(dt, 1 / 30);
@@ -241,6 +271,7 @@ const intro = {
     }
     if (this.curHide) { this.placeCur(); if (--this.curHide <= 0) { this.curHide = 0; curEl.style.display = 'none' } }   /* (still following the mouse, so it can't be left behind where the ship was) */
     if (this.ph === 0) { this.portalStep(dt); return }
+    if (this.ph === 3) { if (this.settleStep(dt)) { this.ph = 2; this.finish() } return }
     if (this.ph === 1) { this.pose(0); camera.clearViewOffset(); camera.updateMatrixWorld(); this.placeCur(); this.logoStep(dt); return }   // through the logo the view is dead on: the vanishing point in the middle of the screen
     if (this.t < 1) this.t = Math.min(1, this.t + dt / (reduceMotion ? 2.5 : this.dur));
     this.pose(this.t);
