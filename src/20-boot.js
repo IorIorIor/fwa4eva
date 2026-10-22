@@ -249,6 +249,9 @@ function beginSpecial(withSound) {
   logoShapes(); if (!coarse && !lockFailed && !TEST) requestLock();
   specialIntro.start(withSound);
 }
+// the splash logo sits with the gap under the W's middle (where the opening flies through) dead in the middle of the screen
+function centreMark() { const m = document.querySelector('#intro .mark'), box = document.querySelector('#intro .in'); if (!m || !box || $('intro').hidden) return; box.style.translate = ''; const r = m.getBoundingClientRect(); if (!r.width) return; box.style.translate = `${(innerWidth / 2 - (r.left + r.width * LOGO_THRU[0] / 509)).toFixed(1)}px ${(innerHeight / 2 - (r.top + r.height * LOGO_THRU[1] / 149)).toFixed(1)}px` }
+centreMark(); addEventListener('resize', centreMark); document.fonts && document.fonts.ready.then(centreMark); setTimeout(centreMark, 300);
 function begin(withSound, e) {
   logoShapes();
   { const m = document.querySelector('#intro .mark'), r0 = m && m.getBoundingClientRect(); intro.logoAt = r0 && r0.width ? { x: r0.left + r0.width * LOGO_THRU[0] / 509, y: r0.top + r0.height * LOGO_THRU[1] / 149, w: r0.width } : null }   // the 3D logo starts exactly over the splash's
@@ -263,7 +266,7 @@ function begin(withSound, e) {
 if (TEST) { $('intro').hidden = true; document.body.classList.remove('intro'); LOOK.adaptive = 0; handOver() }
 else {
   const enter = $('enter'); if (window.__introProgress) window.__introProgress(1); else document.body.classList.add('ready');   // the ring opens Start when it closes
-  enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) }; $('enterSpecial').onclick = () => beginSpecial(true);
+  enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) };
   addEventListener('keydown', function k(e) { if ($('intro').classList.contains('gone')) return removeEventListener('keydown', k); if (e.target.closest && e.target.closest('#intro button')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeEventListener('keydown', k); begin(true) } });
 }
 /* the ship back to where it starts, at once: still, facing the core, no trail behind it */
@@ -277,8 +280,8 @@ function toSplash() {
   if (isOpen('lookPanel') || isOpen('panel')) togglePanel(''); rmenu.close(); if (document.pointerLockElement) document.exitPointerLock();
   if (S.mode !== 'fly') { setMode('fly'); tween = null }
   if (intro.active) intro.finish(); toSpawn(); player.vel.set(0, 0, 0); lockI = -1; auto = null; warp = null; sparks.stop(); coach.end && coach.i >= 0 && coach.end();
-  sStars.home(); const el = $('intro'); el.hidden = false; el.classList.remove('gone'); document.body.classList.add('intro', 'ready', 'splash');
-  const enter = $('enter'); enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) }; $('enterSpecial').onclick = () => beginSpecial(true);
+  sStars.home(); const el = $('intro'); el.hidden = false; el.classList.remove('gone'); document.body.classList.add('intro', 'ready', 'splash'); centreMark();
+  const enter = $('enter'); enter.onclick = e => begin(true, e); $('enterQuiet').onclick = e => { setMuted(true); setMusicOff(true); begin(false, e) };
 }
 let vt = performance.now();
 if (!TEST) requestAnimationFrame(t => { last = t; loop(t) });

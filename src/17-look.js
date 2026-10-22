@@ -39,6 +39,7 @@ const lookData = () => { const d = {}; Object.keys(LOOK).forEach(k => { if (k[0]
 const MAP_KEY = 'sotd-look-map';
 let LOOK_FLY = LOOK, LOOK_MAP = { ...LOOK, ...MY_MAP_LOOK, ...store.json(MAP_KEY, {}) };
 const INV_KEY = 'sotd-look-inv';   // the inverted look: with the inverted switch on, every slider edits this set instead (fly and map alike)
+if (fix15 && HAD_LOOK) { Object.assign(LOOK_MAP, MY_MAP_LOOK); store.set(MAP_KEY, JSON.stringify(LOOK_MAP)) }   /* the map look as Laurens tuned it, for everyone */
 phoneTier(LOOK_MAP); let LOOK_INV = phoneTier({ ...LOOK, ...store.json(INV_KEY, {}), invert: 1 }), invOn = store.get('sotd-inv-on') === '1';
 /* the galaxy's shape is one and the same in every look: these are built into the galaxy itself (on Rebuild), so flying,
    the map and the inverted look always share them, whichever one you change them in */
@@ -80,7 +81,7 @@ function saveLook() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOO
     const snap = await lookDoc.get(), d = snap.exists && snap.data();
     if (d && d.look && typeof d.look === 'object') {
       Object.keys(d.look).forEach(k => { if (k in LOOK_DEFAULTS && typeof d.look[k] === 'number') LOOK[k] = d.look[k] }); migrateLook(LOOK);
-      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3 || fix4 || fix5 || fix6 || fix7 || fix8 || fix9 || fix10 || fix11 || fix12 || fix13 || fix14) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
+      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3 || fix4 || fix5 || fix6 || fix7 || fix8 || fix9 || fix10 || fix11 || fix12 || fix13 || fix14 || fix15) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
     } else saveLook();
   } catch (e) { }
 })();
@@ -156,8 +157,8 @@ function findLook() {
   });
 }
 $('lookFind').oninput = findLook; $('lookFind').onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { e.target.value = ''; findLook() } };   // typing here never flies the ship
-$('presets').innerHTML = Object.keys(PRESETS).map(n => `<button data-p="${n}">${n}</button>`).join('') + '<button data-p="spawn" title="The ship back to where it starts">Spawn</button><button data-p="splash" title="Back to the splash screen, to record the opening">Splash</button>';
-$('presets').onclick = e => { const p = e.target.dataset && e.target.dataset.p; if (!p) return; if (p === 'splash') { toSplash(); return } if (p === 'spawn') { toSpawn(); return } const onMap = LOOK === LOOK_MAP, own = LOOK.mapOwnLook; const pr = PRESETS[p], rows = {}; if (pr === null) LOOK_DEF.forEach(([, rs]) => rs.forEach(r => rows[r[0]] = r[3])); LOOK = pr === null ? { ...rows, mapOwnLook: own } : { ...LOOK_DEFAULTS, ...Object.fromEntries(Object.entries(pr || {}).filter(([k]) => k in LOOK_DEFAULTS)), mapOwnLook: own }; if (onMap) LOOK_MAP = LOOK; else LOOK_FLY = LOOK; saveLook(); renderLook(); applyLook() };
+$('presets').innerHTML = Object.keys(PRESETS).map(n => `<button data-p="${n}">${n}</button>`).join('') + '<button data-p="spawn" title="The ship back to where it starts">Spawn</button><button data-p="splash" title="Back to the splash screen, to record the opening">Splash</button><button data-p="special" title="Play the special opening: the glass logo">Special intro</button>';
+$('presets').onclick = e => { const p = e.target.dataset && e.target.dataset.p; if (!p) return; if (p === 'splash') { toSplash(); return } if (p === 'special') { toSplash(); requestAnimationFrame(() => requestAnimationFrame(() => beginSpecial(true))); return } if (p === 'spawn') { toSpawn(); return } const onMap = LOOK === LOOK_MAP, own = LOOK.mapOwnLook; const pr = PRESETS[p], rows = {}; if (pr === null) LOOK_DEF.forEach(([, rs]) => rs.forEach(r => rows[r[0]] = r[3])); LOOK = pr === null ? { ...rows, mapOwnLook: own } : { ...LOOK_DEFAULTS, ...Object.fromEntries(Object.entries(pr || {}).filter(([k]) => k in LOOK_DEFAULTS)), mapOwnLook: own }; if (onMap) LOOK_MAP = LOOK; else LOOK_FLY = LOOK; saveLook(); renderLook(); applyLook() };
 // import: paste what Copy settings gave (from here, another browser or the chat) and it becomes the look, exactly
 { const ta = $('lookIn'), msg = m => { $('lookMsg').textContent = m; clearTimeout(msg.t); msg.t = setTimeout(() => $('lookMsg').textContent = '', 4000) };
   const apply = () => {

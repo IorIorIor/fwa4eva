@@ -11,7 +11,7 @@ function recolor() {
     else if (S.cats.has(d.category)) _tc.set(catColor(d.category));
     else if (S.awards.has(d.award) && d.award !== 'SOTD') _tc.set(fPicks() === 1 ? '#ffffff' : AWARD_COL[d.award]);
     if (fPicks() > 1 && (S.agencies.has(d.agency) || S.cats.has(d.category) || (S.awards.has(d.award) && d.award !== 'SOTD'))) { _tc.getHSL(_hsl); _tc.setHSL(_hsl.h, 1, .42) }   // a picked filter's colour, deep enough to survive the star's white-hot core
-    else if (S.colorBy === 'type') _tc.set(KINDS[KIND[i]][1]);
+    else if (S.colorBy === 'type') _tc.set(d.award !== 'SOTD' ? AWARD_COL[d.award] : KINDS[KIND[i]][1]);   // the month's best green, the year's gold
     else if (S.colorBy === 'category') _tc.set(CAT_COL[CATS.indexOf(d.category)]);
     else if (S.colorBy === 'award') _tc.set(AWARD_COL[d.award]);
     else if (S.colorBy === 'tech') _tc.set(TECH_COL[d.tech[0]]);
@@ -250,7 +250,7 @@ const tipMore = i => {
     `</dl></div></div>`;
 };
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const tipBox = (top, title, score, aw) => `<span class="thd"><span class="td"><span>${esc(top)}</span>${aw ? `<em class="taw">${aw}</em>` : ''}${score != null ? `<b class="tsc">${esc(score)}</b>` : ''}</span><span class="tt">${esc(title)}</span></span>`;   // the top line runs as wide as the title, the score at its right end
+const tipBox = (top, title, score, aw) => `<span class="thd"><span class="td"><span>${esc(top)}</span>${aw ? `<em class="taw ${aw.toLowerCase()}">${aw}</em>` : ''}${score != null ? `<b class="tsc">${esc(score)}</b>` : ''}</span><span class="tt">${esc(title)}</span></span>`;   // the top line runs as wide as the title, the score at its right end
 const clip = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
 const tipHTML = i => { const d = D[i], t = new Date(d.date + 'T00:00:00Z'); return tipBox(`${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`, clip(d.title, LOOK.tipTitleMax ?? 26), Math.round(d.score * 10), d.award === 'SOTM' ? 'SOTM' : d.award === 'FOTY' ? 'SOTY' : '') };   // the specials say so, between the date and the score   // long titles cut short
 

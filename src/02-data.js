@@ -79,7 +79,7 @@ const TECHS = ['Flash', 'HTML/CSS', 'HTML5 Canvas', 'WebGL', 'Three.js', 'GSAP',
 const TECH_COL = { 'Flash': '#ff5f5f', 'HTML/CSS': '#e8c7a0', 'HTML5 Canvas': '#ffd166', 'WebGL': '#4fd2ff', 'Three.js': '#7aa2ff', 'GSAP': '#b8f36b', 'React': '#6ff0d0', 'Vue': '#5ee0b0', 'Webflow': '#9fa8ff', 'WebGPU': '#ff6fae' };
 const AWARDS = ['SOTD', 'SOTM', 'FOTY'];
 const AWARD_NAME = { SOTD: 'Site of the Day', SOTM: 'Site of the Month', FOTY: 'FWA of the Year' };
-const AWARD_COL = { SOTD: '#a9b8ff', SOTM: '#ffb547', FOTY: '#ff5fa2' };
+const AWARD_COL = { SOTD: '#a9b8ff', SOTM: '#3dff86', FOTY: '#ffc53a' };   // Site of the Month green, FWA of the Year gold
 
 let D = [];
 const USING_IMPORT = Array.isArray(IMPORTED) && IMPORTED.length > 0;
