@@ -168,7 +168,7 @@ const HALO = (() => {
     const L = LOOK, ref = S.mode === 'map' ? camera.position : player.pos; if (paperK > .5 || !(L.rings || S.mode === 'map') || (S.mode !== 'fly' && !(S.mode === 'map' && (L.mapRings ?? 1)))) { mesh.count = 0; live.length = 0; lens.forEach(m => m.visible = false); clouds.forEach(m => m.visible = false); return } /* on the map too, the rings round you (the camera) */ if (tw !== (L.ringWidth ?? .1)) build(L.ringWidth ?? .1);
     u.spark.value = L.ringSparkle ?? 1; u.holo.value = L.ringHolo ?? 1; u.br.value = L.ringBright ?? .55; u.refr.value = L.ringRefract ?? 1; u.disp.value = L.ringDisperse ?? .35; u.glass.value = L.ringGlass ?? 1; u.film.value = L.ringFilm ?? 1; u.filmF.value = L.ringFilmBands ?? 3; u.rim.value = L.ringRim ?? 1;
     best.length = 0; const px = ref.x, py = ref.y, pz = ref.z;   // the nearest few, by straight distance
-    for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - px, dy = P[i * 3 + 1] - py, dz = P[i * 3 + 2] - pz, d2 = dx * dx + dy * dy + dz * dz; if (best.length < HALO_N) { best.push([d2, i]); best.sort((a, b) => a[0] - b[0]) } else if (d2 < best[HALO_N - 1][0]) { best[HALO_N - 1] = [d2, i]; best.sort((a, b) => a[0] - b[0]) } }
+    { const nk = nearK(ref); for (let j = 0; j < Math.min(HALO_N, nk.length); j++) best.push(nk[j]) }   // (the shared nearest search)
     const v = player.vel, vv = v.lengthSq(), pred = L.ringPredict ?? .7, pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360));
     live.length = 0; let n = 0; minTs = Infinity;
     for (const [, i] of best) {

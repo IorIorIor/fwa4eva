@@ -1,8 +1,9 @@
 // stacked label blocks (date, title, distance…) share one background: a single shape round all of them, so one blur and
 // no hairline where two blocks meet. A <u class="ubg"> behind them, clipped to the blocks' outline
 const tipSc = () => (tip.classList.contains('full') || tip.classList.contains('side')) ? (LOOK.tipFullScale ?? .5) : (LOOK.tipScale ?? .5);   // Look: the tooltip's and the full record's size
-function unionBg(box, sel) {
-  let bg = box.firstElementChild; if (!bg || bg.className !== 'ubg') { bg = document.createElement('u'); bg.className = 'ubg'; box.prepend(bg) }
+function unionBg(box, sel, key) {   // key: what the blocks' sizes depend on; measured only when it changes (and while their CSS transitions run), since measuring forces a layout
+  let bg = box.firstElementChild; if (!bg || bg.className !== 'ubg') { bg = document.createElement('u'); bg.className = 'ubg'; box.prepend(bg); box._k = null }
+  const now = performance.now(); if (key !== box._k) { box._k = key; box._t = now } else if (now - box._t > 650) return;
   const r0 = box.getBoundingClientRect(), s = (r0.width / (box.offsetWidth || 1)) || 1, rs = [];
   for (const e of box.querySelectorAll(sel)) { const r = e.getBoundingClientRect(); if (r.width > .5 && r.height > .5) rs.push([(r.left - r0.left) / s, (r.top - r0.top) / s, (r.right - r0.left) / s, (r.bottom - r0.top) / s]) }
   rs.sort((a, b) => a[1] - b[1]); let cp = 'inset(50%)';
@@ -49,7 +50,7 @@ const perYear = new Array(27).fill(0), galCount = new Array(NERA).fill(0), galTo
 let histBtns = [];
 function applyFilter() {
   let c = 0; perYear.fill(0); galCount.fill(0);
-  D.forEach((d, i) => { const m = matches(d); TA[i] = m ? 1 : S.mode === 'map' ? 0 : .035; /* on the map a filter shows only what matches */ if (m) { c++; if (d.year >= 2000 && d.year <= 2026) perYear[d.year - 2000]++; galCount[galOf(d.year)]++ } });
+  taVer++; D.forEach((d, i) => { const m = matches(d); TA[i] = m ? 1 : S.mode === 'map' ? 0 : .035; /* on the map a filter shows only what matches */ if (m) { c++; if (d.year >= 2000 && d.year <= 2026) perYear[d.year - 2000]++; galCount[galOf(d.year)]++ } });
   $('count').innerHTML = c.toLocaleString('en') + '<small>of ' + N.toLocaleString('en') + ' sites</small>';
   const mx = Math.max(1, ...perYear);
   histBtns.forEach((b, k) => { b.style.height = Math.max(2, perYear[k] / mx * 46) + 'px'; b.classList.toggle('on', YEARS[k] >= S.y0 && YEARS[k] <= S.y1 && perYear[k] > 0) });
@@ -299,7 +300,7 @@ const winCompass = (() => {
     sp.copy(player.pos).project(camera); const cx = W / 2, cy = edge ? (100 + H) / 2 : H / 2 + ((-sp.y * .5 + .5) * H - H / 2) * (L.winCompassFollow ?? .3);   // centred on the screen, drawn a little toward the ship (which sits low), so the whole circle stays in view
     circ.style.cssText = `left:${(cx - R).toFixed(1)}px;top:${(cy - R).toFixed(1)}px;width:${(2 * R).toFixed(1)}px;height:${(2 * R).toFixed(1)}px`;
     near.length = 0; const pp = player.pos;   // the n nearest (that the filter shows)
-    for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const dx = P[i * 3] - pp.x, dy = P[i * 3 + 1] - pp.y, dz = P[i * 3 + 2] - pp.z, d2 = dx * dx + dy * dy + dz * dz; if (near.length < n) { near.push([d2, i]); near.sort((a, b) => a[0] - b[0]) } else if (d2 < near[n - 1][0]) { near[n - 1] = [d2, i]; near.sort((a, b) => a[0] - b[0]) } }
+    { const nk = nearK(pp); for (let j = 0; j < Math.min(n, nk.length); j++) near.push(nk[j]) }   // (the shared nearest search)
     const placed = [], gap = 64 / R;   // tags closer than this (radians round the circle) would stack
     MK.forEach((k, j) => {
       const c = near[j]; if (!c || j >= n) { k.m.hidden = true; return }
@@ -308,7 +309,7 @@ const winCompass = (() => {
       if (vis) {   // it's right there on screen: the date sits beside the star itself instead of on the compass
         { const m = !tip.hidden && /^[hpq](\d+)/.exec(tipFor); if (m && +m[1] === i) { k.m.hidden = true; return } }   // (unless its tooltip already says it)
         if (k.i !== i) { k.i = i; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
-        k.dd(Math.round(Math.sqrt(c[0])).toLocaleString('en')); k.m.hidden = false; k.m.classList.add('star'); k.m.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`; k.lab.style.transform = 'none'; unionBg(k.lab, 'em,b');   /* exactly where its tooltip's date will sit */ k.m.classList.toggle('first', j === 0); k.m.classList.remove('back'); return;
+        k.dd(Math.round(Math.sqrt(c[0])).toLocaleString('en')); k.m.hidden = false; k.m.classList.add('star'); k.m.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`; k.lab.style.transform = 'none'; unionBg(k.lab, 'em,b', k.lab.textContent.length + k.lab.firstElementChild?.nextSibling?.textContent);   /* exactly where its tooltip's date will sit */ k.m.classList.toggle('first', j === 0); k.m.classList.remove('back'); return;
       }
       k.m.classList.remove('star');
       if (placed.some(b => Math.abs(((a - b + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < gap)) { k.m.hidden = true; return } placed.push(a);

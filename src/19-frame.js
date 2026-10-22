@@ -308,7 +308,7 @@ function updateHover(dt) {
     } else tip.hidden = true;
   } else if (!tip.hidden) { tip.hidden = true; tipFor = '' }
   { const m = !tip.hidden && /^[hp](\d+)/.exec(tipFor), el = m && tip.querySelector('.tdist'); if (el) el.textContent = Math.round(camera.position.distanceTo(starPos(+m[1], tmp))).toLocaleString('en') }
-  if (!tip.hidden) { unionBg(tip, '.td,.tt,.tdist,.ti'); const sc = String(tipSc()); if (tip._sc !== sc) { tip._sc = sc; tip.style.setProperty('--ts', sc) } }   // one background round the blocks; its size from Look
+  if (!tip.hidden) { unionBg(tip, '.td,.tt,.tdist,.ti', tipFor + '|' + tip.className + '|' + (tip.querySelector('.tdist')?.textContent.length ?? 0) + '|' + tip.childElementCount); const sc = String(tipSc()); if (tip._sc !== sc) { tip._sc = sc; tip.style.setProperty('--ts', sc) } }   // one background round the blocks; its size from Look
   { const sc = String(LOOK.tipScale ?? .5); if (document.body._ts !== sc) { document.body._ts = sc; $('wcmp').style.setProperty('--ts', sc) } }
   if (phone) { const top = !tip.hidden && tip.classList.contains('full'); tip.classList.toggle('mtop', top); if (top) { tip.style.left = ''; tip.style.top = '' } }   // phones: the record is one still card at the top, it just comes and goes   // how far it is, live, to the unit
 }
@@ -325,6 +325,7 @@ addEventListener('keydown', e => { if (e.key === '`' && !e.target.matches('input
 if (QS.has('stats')) stats.show(true);
 function updateStats(dt) { if (!stats.on) return; stats.t += dt; stats.n++; if (stats.t < .5) return; stats.el.textContent = `${GPU ? 'WebGPU' : 'WebGL 2'} · ${Math.round(stats.n / stats.t)} fps · ${perf.avg.toFixed(1)} ms · js ${perf.js.toFixed(1)} ms · dpr ${DPR}`; stats.t = stats.n = 0 }
 let last = performance.now(), netT = 0, cardTick = 0, conT = 0;
+let alphaKey = '', alphaIdle = false;
 function tick(now) {
   const tStart = performance.now(), rawMs = now - last, rdt = Math.max(0, Math.min(.05, rawMs / 1000)), dt = rdt * slowmo.k; slowmo.step(rdt); last = Math.max(last, now); adapt(rawMs); if (bench.on && rawMs > 0 && rawMs < 500) bench.ms.push(rawMs);   // dt: game time (slows through a ring)
   portal.restore(); const L = LOOK, fly = S.mode === 'fly';
@@ -399,7 +400,8 @@ function tick(now) {
     if (gotCard.t > 0 && S.mode === 'fly') open = gotCard.i;   // a ring you just flew through keeps its record open a while
     showCard(open);
   }
-  { let ch = false; const nowMs = performance.now(); for (let i = 0; i < N; i++) { const t = ringHide.size && ringHide.get(i) > nowMs ? 0 : i === openI && L.shot3d ? TA[i] * (1 - Math.min(1, openA * 2)) : TA[i], d = t - ALPHA[i]; if (Math.abs(d) > .002) { ALPHA[i] += d * Math.min(1, i === openI ? dt * 20 : rdt * 3 / Math.max(.05, L.filterFade ?? .6)); ch = true } } if (ch) stars.aAlpha.needsUpdate = true }   /* a filter fades stars in and out */
+  const aKey = taVer + '|' + openI + '|' + openA.toFixed(3) + '|' + (L.shot3d ? 1 : 0); if (aKey !== alphaKey || ringHide.size) { alphaKey = aKey; alphaIdle = false }   // (a settled sky skips the walk below)
+  if (!alphaIdle) { let ch = false; const nowMs = performance.now(); for (let i = 0; i < N; i++) { const t = ringHide.size && ringHide.get(i) > nowMs ? 0 : i === openI && L.shot3d ? TA[i] * (1 - Math.min(1, openA * 2)) : TA[i], d = t - ALPHA[i]; if (Math.abs(d) > .002) { ALPHA[i] += d * Math.min(1, i === openI ? dt * 20 : rdt * 3 / Math.max(.05, L.filterFade ?? .6)); ch = true } } if (ch) stars.aAlpha.needsUpdate = true; else alphaIdle = true }   /* a filter fades stars in and out */
   if (recolor.ease) { const k = Math.min(1, rdt * 3 / Math.max(.05, L.filterFade ?? .6)); let mx = 0; for (let j = 0; j < N * 3; j++) { const d = COLT[j] - COL[j]; COL[j] += d * k; mx = Math.max(mx, Math.abs(d)) } if (mx < .003) { COL.set(COLT); recolor.ease = false } stars.aColor.needsUpdate = true }
   const ringI = auto && auto.i >= 0 && auto.i !== openI ? auto.i : -1;
   updateLockMark();

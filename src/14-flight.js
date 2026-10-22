@@ -75,6 +75,18 @@ function nearest(at = player.pos) {   // the closest visible winner, and the han
   }
   nearCD = Math.sqrt(nd); bodyCand.sort((a, b) => a[0] - b[0]);
 }
+// the K nearest visible winners to a point, nearest first: [d², i] pairs. Shared by the rings and the compass, so the
+// sky is searched once a frame (it's the same answer while neither the point nor the filter has moved)
+const NK = 16, nkD = new Float64Array(NK), nkI = new Int32Array(NK), nkOut = [], nkAt = new V3(NaN); let nkN = 0, nkVer = -1, taVer = 0;
+function nearK(ref) {
+  if (nkVer === taVer && nkAt.equals(ref)) return nkOut;
+  nkAt.copy(ref); nkVer = taVer; nkN = 0; const px = ref.x, py = ref.y, pz = ref.z;
+  for (let i = 0; i < N; i++) {
+    if (TA[i] < 1) continue; const dx = P[i * 3] - px, dy = P[i * 3 + 1] - py, dz = P[i * 3 + 2] - pz, d2 = dx * dx + dy * dy + dz * dz;
+    if (nkN === NK && d2 >= nkD[NK - 1]) continue; let j = nkN < NK ? nkN++ : NK - 1; while (j > 0 && nkD[j - 1] > d2) { nkD[j] = nkD[j - 1]; nkI[j] = nkI[j - 1]; j-- } nkD[j] = d2; nkI[j] = i;   // insert in order
+  }
+  nkOut.length = nkN; for (let j = 0; j < nkN; j++) { const o = nkOut[j] || (nkOut[j] = [0, 0]); o[0] = nkD[j]; o[1] = nkI[j] } return nkOut;
+}
 function pushOut(p, n, depth) { p.pos.addScaledVector(n, depth); const vn = p.vel.dot(n); if (vn < 0) p.vel.addScaledVector(n, -vn) }
 function collideOutpost(p) {   // in the outpost's own (unscaled) units: hub capsule, ring torus, landing pad
   const K = SHIP_K, x = p.pos.x / K, y = p.pos.y / K, z = p.pos.z / K, rr = Math.hypot(x, z), pr = PLAYER_R / K, push = (n, d) => pushOut(p, n, d * K);
