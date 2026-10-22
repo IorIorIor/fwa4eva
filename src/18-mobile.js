@@ -36,7 +36,8 @@ const portal = (() => {
         const dz = L.tiltDead ?? 3, f = v => Math.sign(v) * Math.max(0, Math.abs(v) - dz) / 25, r = (L.tiltRate ?? 1.6) * rdt;
         rotateRig(-f(t.x - st.cx) * r, -f(t.y - st.cy) * r); return;
       }
-      const amt = (L.portal ?? 1) * .45; if (!amt || (st.steer && fly)) return;
+      st.lk = (st.lk || 0) + (((fly && (lockI >= 0 || HALO.pInfo.on)) ? 1 : 0) - (st.lk || 0)) * Math.min(1, rdt * 3);   // locked on or at a ring: the window holds still, so the ring stays centred
+      const amt = (L.portal ?? 1) * .45 * (1 - st.lk); if (!amt || (st.steer && fly)) return;
       const piv = fly ? player.pos : orbit.target;
       savedP.copy(camera.position); savedQ.copy(camera.quaternion); applied = true;
       _q1.setFromAxisAngle(_ax2.set(0, 1, 0).applyQuaternion(savedQ), -st.x * amt); _q2.setFromAxisAngle(_ax2.set(1, 0, 0).applyQuaternion(savedQ), -st.y * amt * .7); _q1.multiply(_q2);

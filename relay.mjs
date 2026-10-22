@@ -31,11 +31,11 @@ export function attachRelay(server) {
       if (m && m.t === 'flag') {   // plant, move or remove your one flag
         const k = keyOf(m.tok), f = m.f; if (!k) return; let out;
         if (f === null) { if (!flags.delete(k)) return; out = { t: 'flag', k, f: null } }
-        else { if (!f || !num(f.p, 3) || !num(f.q, 4) || (!flags.has(k) && flags.size >= MAX_FLAGS)) return; const v = { p: f.p, q: f.q, n: str(f.n, 32), a: str(f.a, 40), h: Number.isFinite(f.h) ? f.h : 0, at: Date.now() }; flags.set(k, v); out = { t: 'flag', k, f: v } }
+        else { if (!f || !num(f.p, 3) || !num(f.q, 4) || (!flags.has(k) && flags.size >= MAX_FLAGS)) return; const v = { p: f.p, q: f.q, n: str(f.n, 32), a: str(f.a, 40), h: Number.isFinite(f.h) ? f.h : 0, s: Number.isInteger(f.s) ? f.s & 63 : 0, at: Date.now() }; flags.set(k, v); out = { t: 'flag', k, f: v } }
         saveFlags(); const o = JSON.stringify(out); for (const c of wss.clients) if (c.readyState === 1) c.send(o); ws.send(JSON.stringify({ t: 'flagme', k })); return;
       }
       const s = m && m.t === 'p' && m.s; if (!s || !num(s.p, 3) || !num(s.q, 4)) return;   // only well-formed positions travel
-      const out = JSON.stringify({ t: 'p', id: ws.id, s: { p: s.p, q: s.q, v: num(s.v, 3) ? s.v : [0, 0, 0], h: Number.isFinite(s.h) ? s.h : 0, m: s.m === 'map' ? 'map' : 'fly', th: (s.th | 0) & 3, n: str(s.n, 32), ...(typeof s.say === 'string' && Number.isFinite(s.sid) ? { say: str(s.say, 140), sid: s.sid } : {}) } });
+      const out = JSON.stringify({ t: 'p', id: ws.id, s: { p: s.p, q: s.q, v: num(s.v, 3) ? s.v : [0, 0, 0], h: Number.isFinite(s.h) ? s.h : 0, m: s.m === 'map' ? 'map' : 'fly', th: (s.th | 0) & 3, n: str(s.n, 32), fk: str(s.fk, 40), ...(typeof s.say === 'string' && Number.isFinite(s.sid) ? { say: str(s.say, 140), sid: s.sid } : {}) } });
       ws.state = out;
       for (const c of wss.clients) if (c !== ws && c.readyState === 1) c.send(out);
     });

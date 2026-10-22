@@ -291,12 +291,12 @@ const winCompass = (() => {
       let sx = 0, sy = 0, vis = false; if (v.z < 0) { sp.copy(starPos(i, sp)).project(camera); sx = (sp.x * .5 + .5) * W; sy = (-sp.y * .5 + .5) * H; vis = sx > 30 && sx < W - 140 && sy > 70 && sy < H - 30; a = Math.atan2(sy - cy, sx - cx) } else a = Math.atan2(-v.y, v.x);   // in front: where it shows from the ship; behind: which way to turn
       if (vis) {   // it's right there on screen: the date sits beside the star itself instead of on the compass
         { const m = !tip.hidden && /^[hpq](\d+)/.exec(tipFor); if (m && +m[1] === i) { k.m.hidden = true; return } }   // (unless its tooltip already says it)
-        if (k.i !== i) { k.i = i; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
-        k.m.hidden = false; k.m.classList.add('star'); k.m.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`; k.lab.style.transform = `translate(12px,-6px)`; k.m.classList.toggle('first', j === 0); k.m.classList.remove('back'); return;
+        if (k.i !== i) { k.i = i; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
+        k.m.hidden = false; k.m.classList.add('star'); k.m.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`; k.lab.style.transform = 'none';   /* exactly where its tooltip's date will sit */ k.m.classList.toggle('first', j === 0); k.m.classList.remove('back'); return;
       }
       k.m.classList.remove('star');
       if (placed.some(b => Math.abs(((a - b + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < gap)) { k.m.hidden = true; return } placed.push(a);
-      if (k.i !== i) { k.i = i; k.sa = a; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
+      if (k.i !== i) { k.i = i; k.sa = a; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
       { let da = ((a - k.sa + 3 * Math.PI) % (2 * Math.PI)) - Math.PI; k.sa += da * Math.min(1, cdt * (L.winCompassEase ?? 6)); a = k.sa }   // eased round the edge, so camera moves don't make it jump
       let x, y; if (edge) { const c = Math.cos(a), s2 = Math.sin(a), tx = c > 0 ? (W - 22 - cx) / c : c < 0 ? (22 - cx) / c : Infinity, ty = s2 > 0 ? (H - 22 - cy) / s2 : s2 < 0 ? (100 - cy) / s2 : Infinity, tt = Math.min(tx, ty); x = cx + c * tt; y = cy + s2 * tt } else { x = cx + Math.cos(a) * R; y = cy + Math.sin(a) * R } /* round the screen edge (clear of the top 100 px with the menu), or on the circle */ k.m.hidden = false; k.m.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`; k.dot.style.transform = `rotate(${(a * 180 / Math.PI + 90).toFixed(1)}deg)`;
       const ins = edge || y + Math.sin(a) * 14 + 12 > H || y + Math.sin(a) * 14 - 12 < 0 || x + Math.cos(a) * 90 > W || x + Math.cos(a) * 90 < 0, o = ins ? -1 : 1, ca = Math.cos(a) * o;   // a tag that would leave the screen goes inside the circle

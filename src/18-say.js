@@ -1,6 +1,7 @@
-/* ───────────────────────── flags and messages (test) ─────────────────────────
-   Flags: everyone may park their vehicle in one spot of the galaxy. It stays there, idle, for everyone; fly right up to
-   it and its pilot's name and agency come up. (A test: you type your name and agency; later an FWA account vouches.)
+/* ───────────────────────── parking and messages (test) ─────────────────────────
+   Parking: everyone may park their vehicle in one spot of the galaxy. It stays there for everyone: as a ghost while its
+   pilot is flying somewhere else, as the real ship once they've gone. A small dot marks it from a little way off; fly
+   right up to it and its pilot's name and agency come up. (A test: you type your name and agency; later an FWA account vouches.)
    On claude.ai flags live in the artifact's database (one per person); elsewhere the relay keeps them.
    Messages: a line you send rides along with your position, and only pilots near you show it, over your marker. */
 const ME = (() => { const m = store.json('sotd-me', {}); return { n: typeof m.n === 'string' ? m.n.slice(0, 32) : '', a: typeof m.a === 'string' ? m.a.slice(0, 40) : '' } })();
@@ -10,14 +11,17 @@ const flags = (() => {
   const list = new Map(); let mine = null, db = null, uid = null, token = store.get('sotd-flagtok');
   if (!token) { token = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join(''); store.set('sotd-flagtok', token) }
   const tags = document.createElement('div'); tags.id = 'flagTags'; tags.className = 'hud'; document.body.appendChild(tags);
-  const clean = f => { const ok = (a, n) => Array.isArray(a) && a.length === n && a.every(Number.isFinite); if (!f || !ok(f.p, 3) || !ok(f.q, 4)) return null; return { p: f.p, q: f.q, n: String(f.n || '').slice(0, 32), a: String(f.a || '').slice(0, 40), h: Number.isFinite(+f.h) ? +f.h : 0, at: Number.isFinite(+f.at) ? +f.at : 0 } };   // untrusted: numbers and short text only
-  function put(k, raw) {
-    const f = clean(raw), old = list.get(k); if (old) { scene.remove(old.g); old.tag.remove(); list.delete(k) } if (!f) return;
-    const g = makeAvatar(); g.scale.setScalar(.68 * SHIP_K * SHIP_SC); g.userData.nav.forEach(b => b.visible = false); g.userData.flame.material = g.userData.flame.material.clone(); g.userData.flame.material.opacity = 0;
+  const clean = f => { const ok = (a, n) => Array.isArray(a) && a.length === n && a.every(Number.isFinite); if (!f || !ok(f.p, 3) || !ok(f.q, 4)) return null; return { p: f.p, q: f.q, s: Number.isInteger(f.s) ? f.s : 0, n: String(f.n || '').slice(0, 32), a: String(f.a || '').slice(0, 40), h: Number.isFinite(+f.h) ? +f.h : 0, at: Number.isFinite(+f.at) ? +f.at : 0 } };   // untrusted: numbers and short text only
+  const ghostOf = g => { g.traverse(o => { if (o.isMesh || o.isSprite) { const m = Array.isArray(o.material) ? o.material.map(x => x.clone()) : o.material.clone(); (Array.isArray(m) ? m : [m]).forEach(x => { x.transparent = true; x.opacity = .28; x.depthWrite = false; x.blending = THREE.AdditiveBlending }); o.material = m } }); return g };   // see-through, light added rather than painted
+  const ship = (f, ghost) => { const g = makeAvatar(CURSORS[f.s] ? cursorGeo(CURSORS[f.s]) : ARROW); g.scale.setScalar(.68 * SHIP_K * SHIP_SC); g.userData.nav.forEach(b => b.visible = false); g.userData.flame.material = g.userData.flame.material.clone(); g.userData.flame.material.opacity = 0;
     const col = new C3().setHSL(f.h / 360, 1, .6); g.userData.hole.col.value.copy(col); g.userData.hole.on.value = .15; g.userData.emit.material.opacity = .15;   // parked: engine all but off
-    g.position.fromArray(f.p); g.quaternion.fromArray(f.q).normalize(); scene.add(g);
+    if (ghost) ghostOf(g); g.position.fromArray(f.p); g.quaternion.fromArray(f.q).normalize(); g.visible = false; scene.add(g); return g };
+  function put(k, raw) {
+    const f = clean(raw), old = list.get(k); if (old) { scene.remove(old.g, old.gh); old.tag.remove(); old.dot.remove(); list.delete(k) } if (!f) return;
+    const g = ship(f, false), gh = ship(f, true);
     const tag = document.createElement('div'); tag.className = 'ftag'; tag.hidden = true; tag.innerHTML = `<span class="td"></span><span class="tt"></span>`; tag.querySelector('.td').textContent = (f.a || 'Independent') + (f.at ? ' · parked ' + fmtDate(new Date(f.at).toISOString().slice(0, 10)) : ''); tag.querySelector('.tt').textContent = f.n || 'A pilot'; tags.appendChild(tag);
-    list.set(k, { ...f, g, tag, pos: new V3().fromArray(f.p) });
+    const dot = document.createElement('i'); dot.className = 'fdot'; dot.hidden = true; dot.style.setProperty('--c', `hsl(${f.h} 100% 70%)`); tags.appendChild(dot);
+    list.set(k, { ...f, g, gh, tag, dot, pos: new V3().fromArray(f.p) });
   }
   async function init() {
     try { if (window.claude && claude.use) { const [d, u] = await Promise.all([claude.use('db'), claude.use('user')]); if (d && u) { uid = await u.id(); if (uid) { db = d; mine = uid; db.collection('flags').onSnapshot(s => s.docChanges().forEach(c => put(c.doc.id, c.type === 'removed' ? null : c.doc.data())), () => { }); return } } } } catch (e) { }
@@ -33,31 +37,35 @@ const flags = (() => {
       else if (m.t === 'flagme' && typeof m.k === 'string') wsKey = 'w:' + m.k;
     },
     plant() {
-      const f = { p: player.pos.toArray().map(x => Math.round(x * 100) / 100), q: player.quat.toArray().map(x => Math.round(x * 1e4) / 1e4), n: ME.n, a: ME.a, h: PILOT_HUE, at: Date.now() };
+      const f = { p: player.pos.toArray().map(x => Math.round(x * 100) / 100), q: player.quat.toArray().map(x => Math.round(x * 1e4) / 1e4), n: ME.n, a: ME.a, h: PILOT_HUE, s: shipK, at: Date.now() };
       if (db) db.doc('flags/' + uid).set(f).catch(() => { }); else { wsSend({ t: 'flag', tok: token, f }); if (!Net.ws) put('local', f) }
       buzz([10, 40, 20]);
     },
     remove() { if (db) db.doc('flags/' + uid).delete().catch(() => { }); else { wsSend({ t: 'flag', tok: token, f: null }); put('local', null) } },
     hello() { wsSend({ t: 'flagme', tok: token }) },   // the relay tells us which flag is ours (by our secret token)
-    update() {   // parked vehicles show in flight; right up close, whose it is
-      const fly = S.mode === 'fly', near = LOOK.flagNear ?? 400, on = !!(LOOK.flags ?? 1);
-      for (const f of list.values()) {
-        f.g.visible = fly && on; const d = f.pos.distanceTo(player.pos), show = fly && on && d < near;
-        if (show) { _vf.copy(f.pos).project(camera); if (_vf.z < 1) { f.tag.style.transform = `translate(${((_vf.x * .5 + .5) * innerWidth).toFixed(1)}px,${((-_vf.y * .5 + .5) * innerHeight).toFixed(1)}px)`; f.tag.style.opacity = (1 - sstep(d, near * .6, near)).toFixed(3) } }
-        f.tag.hidden = !show || _vf.z >= 1;
+    get key() { return db ? uid : wsKey ? wsKey.slice(2) : null },   // the key of my own parking spot (others match it to me while I fly)
+    update() {   // a ghost while its pilot is out flying, the real ship once they've gone; a dot from a way off, the name up close
+      const fly = S.mode === 'fly', near = LOOK.flagNear ?? 500, far = LOOK.flagDot ?? 1500, on = !!(LOOK.flags ?? 1), me = this.key, live = new Set(); for (const v of Net.peers.values()) if (v.fk) live.add(v.fk);
+      for (const [k, f] of list) {
+        const kk = k.startsWith('w:') ? k.slice(2) : k, flying = kk === me || live.has(kk), d = f.pos.distanceTo(player.pos), vis = fly && on;
+        f.g.visible = vis && !flying; f.gh.visible = vis && flying;
+        _vf.copy(f.pos).project(camera); const front = _vf.z < 1, x = ((_vf.x * .5 + .5) * innerWidth).toFixed(1) + 'px', y = ((-_vf.y * .5 + .5) * innerHeight).toFixed(1) + 'px';
+        const tag = vis && front && d < near, dot = vis && front && !tag && d < far;
+        if (tag) { f.tag.style.transform = `translate(${x},${y})`; f.tag.style.opacity = (1 - sstep(d, near * .7, near)).toFixed(3) } f.tag.hidden = !tag;
+        if (dot) { f.dot.style.transform = `translate(${x},${y})`; f.dot.style.opacity = (1 - sstep(d, far * .8, far)).toFixed(3) } f.dot.hidden = !dot;
       }
     },
   };
 })();
-/* the flag panel: your name and agency, plant or move your flag where you are, take it away, or fly back to it */
+/* the Park panel: your name and agency, park (or move your spot) where you are, take it away, or fly back to it */
 const flagDlg = (() => {
-  const el = document.createElement('div'); el.id = 'flagDlg'; el.className = 'hud'; el.hidden = true; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Your flag'); document.body.appendChild(el);
+  const el = document.createElement('div'); el.id = 'flagDlg'; el.className = 'hud'; el.hidden = true; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Park'); document.body.appendChild(el);
   const close = () => { el.hidden = true };
   function open() {
     if (locked()) document.exitPointerLock(); const m = flags.mineAt;
-    el.innerHTML = `<header><b>Your flag</b><button type="button" class="x" aria-label="Close">×</button></header><p>Park your vehicle right here for good. Anyone who flies up close sees who you are. (Test: one flag each; FWA accounts come later.)</p>
+    el.innerHTML = `<header><b>Park</b><button type="button" class="x" aria-label="Close">×</button></header><p>Park your ship right here for good. While you're flying it waits as a ghost; once you leave, your ship stays. Anyone who flies up close sees who you are. (Test: one spot each; FWA accounts come later.)</p>
       <label>Name<input id="fdN" maxlength="32" autocomplete="name" spellcheck="false"></label><label>Agency<input id="fdA" maxlength="40" autocomplete="organization" spellcheck="false"></label>
-      <div class="fr"><button type="button" class="go">${m ? 'Move my flag here' : 'Plant my flag here'}</button>${m ? '<button type="button" class="to">Fly to it</button><button type="button" class="rm">Remove</button>' : ''}</div>`;
+      <div class="fr"><button type="button" class="go">${m ? 'Park here instead' : 'Park here'}</button>${m ? '<button type="button" class="to">Fly to it</button><button type="button" class="rm">Remove</button>' : ''}</div>`;
     el.querySelector('#fdN').value = ME.n; el.querySelector('#fdA').value = ME.a; el.hidden = false; setTimeout(() => el.querySelector('#fdN').focus(), 30);
   }
   el.addEventListener('pointerdown', e => e.stopPropagation()); el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') close() });

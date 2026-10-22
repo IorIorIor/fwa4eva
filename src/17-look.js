@@ -158,6 +158,19 @@ function findLook() {
 $('lookFind').oninput = findLook; $('lookFind').onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { e.target.value = ''; findLook() } };   // typing here never flies the ship
 $('presets').innerHTML = Object.keys(PRESETS).map(n => `<button data-p="${n}">${n}</button>`).join('') + '<button data-p="spawn" title="The ship back to where it starts">Spawn</button><button data-p="splash" title="Back to the splash screen, to record the opening">Splash</button>';
 $('presets').onclick = e => { const p = e.target.dataset && e.target.dataset.p; if (!p) return; if (p === 'splash') { toSplash(); return } if (p === 'spawn') { toSpawn(); return } const onMap = LOOK === LOOK_MAP, own = LOOK.mapOwnLook; const pr = PRESETS[p], rows = {}; if (pr === null) LOOK_DEF.forEach(([, rs]) => rs.forEach(r => rows[r[0]] = r[3])); LOOK = pr === null ? { ...rows, mapOwnLook: own } : { ...LOOK_DEFAULTS, ...Object.fromEntries(Object.entries(pr || {}).filter(([k]) => k in LOOK_DEFAULTS)), mapOwnLook: own }; if (onMap) LOOK_MAP = LOOK; else LOOK_FLY = LOOK; saveLook(); renderLook(); applyLook() };
+// import: paste what Copy settings gave (from here, another browser or the chat) and it becomes the look, exactly
+{ const ta = $('lookIn'), msg = m => { $('lookMsg').textContent = m; clearTimeout(msg.t); msg.t = setTimeout(() => $('lookMsg').textContent = '', 4000) };
+  const apply = () => {
+    const txt = ta.value, i = txt.indexOf('{'), j = txt.lastIndexOf('}'); if (i < 0 || j < i) { msg('No settings found in that text'); return }
+    let o; try { o = JSON.parse(txt.slice(i, j + 1)) } catch (e) { msg('That text could not be read'); return }
+    const keep = Object.entries(o).filter(([k, v]) => k in LOOK_DEFAULTS && (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean')); if (!keep.length) { msg('No settings found in that text'); return }
+    const onMap = LOOK === LOOK_MAP, own = LOOK.mapOwnLook, shapeWas = JSON.stringify(SHAPE); LOOK = { ...LOOK_DEFAULTS, ...Object.fromEntries(keep), mapOwnLook: own }; if (onMap) LOOK_MAP = LOOK; else LOOK_FLY = LOOK;
+    saveLook(); renderLook(); applyLook(); ta.value = ''; ta.hidden = true;
+    const shape = Object.keys(o).some(k => /^(arm|spiral|bulge|starBand|starAlong)/.test(k)); msg(`Imported ${keep.length} settings` + (shape && shapeWas ? '. Galaxy shape: press Rebuild' : ''));
+  };
+  $('lookImp').onclick = () => { ta.hidden = !ta.hidden; if (!ta.hidden) { ta.focus(); if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(t => { if (t && t.includes('{') && !ta.value) { ta.value = t; apply() } }).catch(() => { }) } };   // straight from the clipboard when the browser allows; otherwise paste into the box
+  ta.addEventListener('paste', () => setTimeout(apply, 0)); ta.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) apply() });
+}
 $('lookCopy').onclick = () => {
   const diff = {}; Object.keys(LOOK).forEach(k => { if (k[0] !== '_' && LOOK[k] !== LOOK_DEFAULTS[k]) diff[k] = LOOK[k] });
   const txt = 'FWA FOREVER look settings: ' + JSON.stringify(diff), ta = $('lookOut'); ta.value = txt; ta.hidden = true;   // straight to the clipboard; the text box only shows if the browser refuses

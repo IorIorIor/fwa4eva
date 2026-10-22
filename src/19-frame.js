@@ -287,7 +287,7 @@ function updateHover(dt) {
       const x = Math.min(right, innerWidth - w - 12);   // always on the right of the ring; with no room, it holds at the right edge   // beside it; once the ring outgrows the screen, held at the edge with the most room
       tip.style.left = x + 'px'; tip.style.top = Math.max(64, Math.min(innerHeight - h - 12, cy - h / 2)) + 'px';
     }
-  } else if (hovI >= 0 && hovI !== pin) { if (tipFor !== 'h' + hovI) { starPos(hovI, tmp).project(camera); tingle(galOf(D[hovI].year), hovI, Math.max(-1, Math.min(1, tmp.x))) } /* the chime only with its tooltip */ put('h' + hovI, tipHTML(hovI) + tnav(), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
+  } else if (hovI >= 0 && hovI !== pin) { if (tipFor !== 'h' + hovI) { starPos(hovI, tmp).project(camera); tingle(galOf(D[hovI].year), hovI, Math.max(-1, Math.min(1, tmp.x))) } /* the chime only with its tooltip */ put('h' + hovI, tipHTML(hovI) + tnav(), false); { starPos(hovI, tmp).project(camera); const on = tmp.z < 1 && Math.abs(tmp.x) < 1 && Math.abs(tmp.y) < 1; tip.style.left = (on ? (tmp.x * .5 + .5) * innerWidth : tipAt.x) + 'px'; tip.style.top = (on ? (-tmp.y * .5 + .5) * innerHeight : tipAt.y) + 'px' } }   // at the star itself, so its date lands right where the compass had it
   else if (ringHov && pin < 0) { put('r' + ringHov.y, ringTip(ringHov), false); tip.style.left = tipAt.x + 'px'; tip.style.top = tipAt.y + 'px' }
   else if (pin >= 0) {
     const d = Math.max(1, camera.position.distanceTo(starPos(pin, tmp))); tmp.project(camera);

@@ -176,7 +176,7 @@ const HALO = (() => {
       if (h.i !== i) { h.i = i; h.done = false; h.c0 = 0; h.nSet = false; h.sPrev = 0 }
       const play = L.ringPlay && n === 0; if (play) { c.set(0, 0, -R * (L.ringPlayDist ?? 5)).applyQuaternion(camera.quaternion).add(camera.position); h.done = false }   // playground: the nearest winner's ring, held in front of you
       let k = 0; h.ts = Infinity; if (vv > 1 && !play) { _d.copy(c).sub(player.pos); const ts = _d.dot(v) / vv, miss = _d.addScaledVector(v, -ts).length(); if (ts > 0 && ts < Math.max(pred, slowF) && miss < R * 1.15) { k = Math.max(0, 1 - ts / pred); if (!h.done && TA[i] === 1) { h.ts = ts; minTs = Math.min(minTs, ts) } } }   // about to pass through: how close (0..1), and in how long
-      if (h.ts < slowF && lockI === i) { lockI = -1; auto = null; passedI = i; relockNext = true }   // time's slowing: you can't miss it now, so the lock lets go and you can pick the next ring
+      if (h.ts < slowF && lockI === i && player.pos.distanceTo(c) < (LOOK.lockLetGo ?? 1000)) { lockI = -1; auto = null; passedI = i; relockNext = true }   // time's slowing: you can't miss it now, so the lock lets go and you can pick the next ring
       h.c0 = Math.max(h.c0 * Math.exp(-3 * dt), k);
       const away = player.pos.distanceTo(c);
       if (!h.nSet && !h.done && k > 0) { h.n.copy(player.pos).sub(c).normalize(); h.ax.set(0, 1, 0).applyQuaternion(camera.quaternion).cross(h.n).normalize(); h.ay.crossVectors(h.n, h.ax); h.nSet = true; h.sPrev = player.pos.clone().sub(c).dot(h.n) }   // committed: the ring stops turning to face you, so its plane is a real finish line
@@ -198,7 +198,7 @@ const HALO = (() => {
   // the portal: inside the nearest ring, its winner's screenshot, set back behind the ring like a window into another room.
   // Each pixel follows your line of sight through the disc onto a plane some way behind it, so as you move the picture
   // shifts behind the opening. It starts loading a little before the ring appears
-  const pt = { cur: placeholderShot(D[0]), taps: [], nx: null, ntaps: [], slide: uniform(0), hit: uniform(new THREE.Vector2()), st: uniform(0), white: uniform(0), brk: uniform(0), dis: uniform(0), gl: uniform(0), lv: uniform(0), ex: uniform(0), bg: uniform(new C3(0, 0, 0)), depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85), lens: uniform(.6), ca: uniform(.5) };
+  const pt = { cur: placeholderShot(D[0]), taps: [], nx: null, ntaps: [], slide: uniform(0), gap: uniform(1.4), hit: uniform(new THREE.Vector2()), st: uniform(0), white: uniform(0), brk: uniform(0), dis: uniform(0), gl: uniform(0), lv: uniform(0), ex: uniform(0), bg: uniform(new C3(0, 0, 0)), depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85), lens: uniform(.6), ca: uniform(.5) };
   const pm = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
   pm.positionNode = Fn(() => { const q = positionLocal.xy.sub(pt.hit), w = exp(dot(q, q).mul(-3.2)); return positionLocal.add(vec3(0, 0, pt.st.mul(w))) })();
   pm.colorNode = Fn(() => {
@@ -212,7 +212,7 @@ const HALO = (() => {
     const inside = uvI => step(0, uvI.x).mul(step(uvI.x, 1)).mul(step(0, uvI.y)).mul(step(uvI.y, 1));
     const uR = at(fr), uG = at(0), uB = at(fr.negate()), tap = uv => { const t = texture(pt.cur, uv); pt.taps.push(t); return t }, tapN = uv => { const t = texture(pt.cur, uv); pt.ntaps.push(t); return t };
     // the pictures side by side: sliding (pt.slide 0 → 1) moves this one off to the left as the next comes in from the right, with a small gap
-    const pic = uv => { const g1 = pt.slide.mul(1.08), uc = uv.add(vec2(g1, 0)), un = uv.add(vec2(g1.sub(1.08), 0)); return mix(mix(pt.bg, tapN(un).rgb, inside(un).mul(step(.0005, pt.slide))), tap(uc).rgb, inside(uc)) };
+    const pic = uv => { const g1 = pt.slide.mul(pt.gap), uc = uv.add(vec2(g1, 0)), un = uv.add(vec2(g1.sub(pt.gap), 0));   /* the next one starts a full width plus a gap away, well outside the window */ return mix(mix(pt.bg, tapN(un).rgb, inside(un).mul(step(.0005, pt.slide))), tap(uc).rgb, inside(uc)) };
     const img = vec3(pic(uR).r, pic(uG).g, pic(uB).b);   // keep the sampling nodes, so a new winner's picture can be swapped in   // shadowed toward the rim (depth), lit by the ring's glow right at the edge
     // closing in: old-school levels (the white point comes down, so the picture goes whiter), exposure, and a glow (its own
     // bright parts, blurred and added back), all rising the closer you get
@@ -237,7 +237,7 @@ const HALO = (() => {
       if (pop.t >= 1) { sparks.burst(pop.c, pop.r); pop = null; portal.visible = false } return;
     }
     let near = -1; if (best.length) { const i = best[0][1], R = starR(i) * (L.ringSize ?? 1.6), dist = Math.sqrt(best[0][0]), pxK = innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360)); if (R * pxK / dist > (L.ringPortalPre ?? 4) || L.ringPlay) near = i }   // a little before the ring shows
-    if (near >= 0 && (near !== pI || (gal.k === 0 && texCache.get(near) !== pt.cur))) { pI = near; gal.list = gallery(near); gal.k = 0; gal.t = -1; pt.slide.value = 0; pt.cur = gal.list[0]; pt.taps.forEach(t => t.value = pt.cur); pt.ntaps.forEach(t => t.value = pt.cur); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
+    if (near >= 0 && (near !== pI || (gal.t < 0 && gal.k === 0 && texCache.get(near) !== pt.cur))) { if (near !== pI) gal.idle = 0; pI = near; gal.list = gallery(near); gal.k = 0; gal.t = -1; pt.slide.value = 0; pt.cur = gal.list[0]; pt.taps.forEach(t => t.value = pt.cur); pt.ntaps.forEach(t => t.value = pt.cur); pt.glow.value.setRGB(COL[near * 3], COL[near * 3 + 1], COL[near * 3 + 2]) }
     const h = live.find(x => x.i === pI); if (!h || near < 0 || h.done) { portal.visible = false; return }   // a ring you've just taken has no picture until it's back
     { const ac = pt.cur && pt.cur.avgCol, dk = 1 - (L.ringPortalBg ?? .6); if (ac) pt.bg.value.copy(ac).multiplyScalar(dk); else pt.bg.value.setRGB(0, 0, 0) }   // round the picture: its own average colour, darkened
     pt.ld = pt.cur && pt.cur.avgCol ? Math.min(1, (pt.ld || 0) + dt * 6) : 0;   // the picture fades in once it's loaded (no placeholder)
@@ -252,10 +252,11 @@ const HALO = (() => {
     _up.set(0, 1, 0).applyQuaternion(camera.quaternion); _pm.lookAt(h.nSet ? _ldp.copy(h.c).add(h.n) : ref, h.c, _up);   /* once committed the portal stays put, facing the way you came */ portal.matrix.makeScale(1, 1, 1).copy(_pm).setPosition(h.c); { const k = h.r * (1 - (L.ringWidth ?? .1) * .5) * sh; portal.matrix.multiply(_m.makeScale(k, k, 1)) } portal.matrixWorldNeedsUpdate = true; portal.visible = pt.a.value > .005 && sh > .003; Object.assign(pInfo, { on: portal.visible && !h.done, i: pI, r: h.r }); pInfo.c.copy(h.c);   // just inside the ring's tube, so the ring still frames it
   }
   // paging through a winner's pictures: a click on the picture slides it away left and the next one in from the right
-  const gal = { list: [], k: 0, t: -1 };
-  function nextPic() { if (!pInfo.on || gal.t >= 0 || !gal.list.length) return false; const nk = (gal.k + 1) % gal.list.length; gal.nk = nk; pt.nx = gal.list[nk]; pt.ntaps.forEach(t => t.value = pt.nx); gal.t = 0; return true }
+  const gal = { list: [], k: 0, t: -1, idle: 0 };
+  function nextPic() { if (!pInfo.on || gal.t >= 0 || !gal.list.length) return false; gal.idle = 0; const nk = (gal.k + 1) % gal.list.length; gal.nk = nk; pt.nx = gal.list[nk]; pt.ntaps.forEach(t => t.value = pt.nx); gal.t = 0; return true }
   function slideStep(rdt) {
-    if (gal.t < 0) return; gal.t += rdt / Math.max(.1, LOOK.ringSlideTime ?? .6); const x = Math.min(1, gal.t); pt.slide.value = x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+    pt.gap.value = 1 + (LOOK.ringSlideGap ?? .4);
+    if (gal.t < 0) { const ap = LOOK.ringAutoPlay ?? 3.5; if (ap > 0 && pInfo.on) { gal.idle += rdt; if (gal.idle > ap && nextPic()) gal.idle = 0 } else gal.idle = 0; return }   /* autoplay: the next picture every few seconds while one is up */ gal.t += rdt / Math.max(.1, LOOK.ringSlideTime ?? .6); const x = Math.min(1, gal.t); pt.slide.value = x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
     if (gal.t >= 1) { gal.k = gal.nk; pt.cur = gal.list[gal.k]; pt.taps.forEach(t => t.value = pt.cur); pt.slide.value = 0; gal.t = -1 }
   }
   const update0 = update; function updateAll(dt) { const rdt = Math.min(.05, dt / Math.max(.03, slowmo.k)); update0(dt); portalUpdate(dt); sparks.update(dt); slideStep(rdt); wave.update(rdt); ringRiser(S.mode === 'fly' && LOOK.rings && Number.isFinite(minTs) ? 1 - sstep(minTs, 0, LOOK.ringRiseTime ?? 2.5) : 0) }   // (the slide runs in real time, whatever bullet time does)

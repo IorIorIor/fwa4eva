@@ -12,6 +12,8 @@ const RM_ICON = {   // tabler icons, as used in the rest of the interface
   date: '<path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><path d="M8 15h2v2h-2z"/>',
 };
 const RM_FILL = {   // Tabler's own filled icons (v3), for the ring's choices
+  park: '<path d="M4 5a1 1 0 0 1 .3 -.714a6 6 0 0 1 8.213 -.176l.351 .328a4 4 0 0 0 5.272 0l.249 -.227c.61 -.483 1.527 -.097 1.61 .676l.005 .113v9a1 1 0 0 1 -.3 .714a6 6 0 0 1 -8.213 .176l-.351 -.328a4 4 0 0 0 -5.136 -.114v6.552a1 1 0 0 1 -1.993 .117l-.007 -.117v-16z"/>',
+  say: '<path d="M18 3a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-4.724l-4.762 2.857a1 1 0 0 1 -1.508 -.743l-.006 -.114v-2h-1a4 4 0 0 1 -3.995 -3.8l-.005 -.2v-8a4 4 0 0 1 4 -4z"/>',
   filters: '<path d="M20 3h-16a1 1 0 0 0 -1 1v2.227l.008 .223a3 3 0 0 0 .772 1.795l4.22 4.641v8.114a1 1 0 0 0 1.316 .949l6 -2l.108 -.043a1 1 0 0 0 .576 -.906v-6.586l4.121 -4.12a3 3 0 0 0 .879 -2.123v-2.171a1 1 0 0 0 -1 -1z"/>',
   map: '<path d="M18.364 4.636a9 9 0 0 1 .203 12.519l-.203 .21l-4.243 4.242a3 3 0 0 1 -4.097 .135l-.144 -.135l-4.244 -4.243a9 9 0 0 1 12.728 -12.728zm-6.364 3.364a3 3 0 1 0 0 6a3 3 0 0 0 0 -6z"/>',
   fly: '<path d="M11.092 2.581a1 1 0 0 1 1.754 -.116l.062 .116l8.005 17.365c.198 .566 .05 1.196 -.378 1.615a1.53 1.53 0 0 1 -1.459 .393l-7.077 -2.398l-6.899 2.338a1.535 1.535 0 0 1 -1.52 -.231l-.112 -.1c-.398 -.386 -.556 -.954 -.393 -1.556l.047 -.15l7.97 -17.276z"/>',
@@ -23,7 +25,7 @@ const RM_FILL = {   // Tabler's own filled icons (v3), for the ring's choices
 const ico = (k, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RM_ICON[k]}</svg>`;
 const rmenu = (() => {
   const R0 = 14, R1 = 75, GAP = 3;   // inner and outer radius (px), gap between segments (px)
-  const SEG = [['filters', 'Filters', 194], ['map', 'Map', 90], ['upgrades', 'Upgrades', 142], ['search', 'Search', 38], ['settings', 'Settings', -14]];   /* (dates are typed into Search now) */   // centre angles, counter-clockwise from the right
+  const SEG = [['map', 'Map', 90], ['upgrades', 'Upgrades', 141.4], ['filters', 'Filters', 192.9], ['park', 'Park', 244.3], ['say', 'Say', 295.7], ['settings', 'Settings', 347.1], ['search', 'Search', 38.6]];   /* (dates are typed into Search now) */   // centre angles, counter-clockwise from the right
   const el = $('radial'), svg = el.querySelector('svg'), dot = $('rmDot'), panel = $('rmPanel'), body = panel.querySelector('.rb');
   const P = (r, a) => [r * Math.cos(a * Math.PI / 180), -r * Math.sin(a * Math.PI / 180)];
   const sector = (a, span) => {   // an annular sector with straight gaps of GAP px either side
@@ -42,7 +44,7 @@ const rmenu = (() => {
         return `<g class="rs sun" data-k="${k}" style="--n:${n};transform-origin:0 0"><g transform="translate(${lx} ${ly})"><g class="sc"><circle r="12.5"/><svg x="-5.25" y="-5.25" width="10.5" height="10.5" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg></g><text y="24">${label}</text></g></g>` }).join('');
       svg.querySelectorAll('.rays line').forEach((l, j) => ticks.push({ l, a: j / TK * 2 * Math.PI }));
     } else svg.innerHTML = SEG.map(([k, label, a], n) => { const [lx, ly] = P(R0 + (R1 - R0) * .58, a);
-      return `<g class="rs" data-k="${k}" style="--n:${n};transform-origin:0 0"><path d="${sector(a, 52)}"/><g transform="translate(${lx} ${ly})"><svg x="-5.6" y="-12" width="11.2" height="11.2" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg><text y="7">${label}</text></g></g>` }).join('');
+      return `<g class="rs" data-k="${k}" style="--n:${n};transform-origin:0 0"><path d="${sector(a, 47)}"/><g transform="translate(${lx} ${ly})"><svg x="-5.6" y="-12" width="11.2" height="11.2" viewBox="0 0 24 24" class="ri">${RM_FILL[k]}</svg><text y="7">${label}</text></g></g>` }).join('');
     segs = [...svg.querySelectorAll('.rs')];
   }
   function lean() {   // sun: rays stretch and discs swell toward the way you're pushing
@@ -75,6 +77,7 @@ const rmenu = (() => {
     close();   // whatever was open goes first
     if (k === 'map') { setMode(S.mode === 'map' ? 'fly' : 'map'); return }
     if (k === 'settings') { if (locked()) document.exitPointerLock(); if (!$('lookPanel').classList.contains('open')) togglePanel('lookPanel'); return }
+    if (k === 'park') { flagDlg.open(); return } if (k === 'say') { say.open(); return }
     sub(k);
   }
   svg.addEventListener('pointerup', e => { if (locked()) return; e.stopPropagation(); const s = e.target.closest('.rs'); choose(s ? s.dataset.k : null) });

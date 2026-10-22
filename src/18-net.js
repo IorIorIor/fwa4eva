@@ -12,14 +12,14 @@ function peerViz(hue) {
   for (let k = 0; k < PEER_N - 1; k++) { const a = k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2) } geo.setIndex(idx);
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('color', new THREE.BufferAttribute(cl, 3).setUsage(THREE.DynamicDrawUsage)); geo.setDrawRange(0, 0);
   const tr = layer(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })), trailScene, 0);
-  const dot = youMark.clone(); dot.material = youMark.material.clone(); dot.material.color.copy(col); scene.add(dot);
+  const dot = youMark.clone(); dot.material = youMark.material.clone(); dot.material.map = null; dot.material.color.copy(col); scene.add(dot);
   return { g, tr, pos, cl, dot, col, hue, mk: null, pts: [], cur: null, tgt: new V3(), vel: new V3(), q: new Q4(), at: 0, th: 0, mode: 'fly', fade: 0 };
 }
 function peerUpdate(p) {
   const s = p.presence, ok = a => Array.isArray(a) && a.every(Number.isFinite); if (!s || !ok(s.p) || s.p.length !== 3) return;   // untrusted: take only well-formed numbers
   let v = Net.peers.get(p.peer); if (!v) { const h = Number.isFinite(+s.h) ? ((+s.h % 360) + 360) % 360 : 0; v = peerViz(h); Net.peers.set(p.peer, v) }
   if (Number.isFinite(+s.h)) { const h = ((+s.h % 360) + 360) % 360; if (Math.abs(h - v.hue) > .5) { v.hue = h; v.col.setHSL(h / 360, 1, .6); v.g.userData.flame.material.color.copy(v.col); v.g.userData.hole.col.value.copy(v.col); v.g.userData.emit.material.color.copy(v.col); v.dot.material.color.copy(v.col) } }
-  if (typeof s.n === 'string' && s.n) v.name = s.n.slice(0, 24);
+  if (typeof s.n === 'string' && s.n) v.name = s.n.slice(0, 24); v.fk = typeof s.fk === 'string' ? s.fk.slice(0, 40) : '';   // whose parking spot is theirs
   if (v.sid === undefined) v.sid = typeof s.say === 'string' && Number.isFinite(+s.sid) ? +s.sid : -1;   // a line already up when they came into view isn't news
   if (typeof s.say === 'string' && Number.isFinite(+s.sid) && +s.sid !== v.sid) { v.sid = +s.sid; if (say.heard(v, s.say.slice(0, 140))) { v.sayT = performance.now(); v.sayText = s.say.slice(0, 140) } }   // a new line from them (not one already up when you arrived), shown only if they're near
   v.tgt.fromArray(s.p); if (ok(s.v) && s.v.length === 3) v.vel.fromArray(s.v); if (ok(s.q) && s.q.length === 4) v.q.fromArray(s.q).normalize();
@@ -59,7 +59,7 @@ function wsConnect(tries) {
   ws.onerror = () => { try { ws.close() } catch (_) { } };
 }
 Net.send = s => {
-  const f = x => Math.round(x * 100) / 100, msg = { p: s.pos.map(f), q: s.quat.map(x => Math.round(x * 1e4) / 1e4), v: s.vel.map(Math.round), h: PILOT_HUE, m: s.mode, th: s.th, n: ME.n, ...(say.out || {}) };
+  const f = x => Math.round(x * 100) / 100, msg = { p: s.pos.map(f), q: s.quat.map(x => Math.round(x * 1e4) / 1e4), v: s.vel.map(Math.round), h: PILOT_HUE, m: s.mode, th: s.th, n: ME.n, fk: flags.key || '', ...(say.out || {}) };
   if (Net.room) Net.room.presence(msg).catch(() => { });
   else if (Net.ws && Net.ws.readyState === 1) Net.ws.send(JSON.stringify({ t: 'p', s: msg }));
 };
@@ -110,23 +110,25 @@ function updatePeers(dt) {
     { _ps.copy(v.cur).project(camera); let x = _ps.x, y = _ps.y; const behind = _ps.z > 1; if (behind) { x = -x; y = -y } const on = !behind && Math.abs(x) < .95 && Math.abs(y) < .92;
       if (!on) { const m = Math.max(Math.abs(x) / .93, Math.abs(y) / .88, 1e-6); x /= m; y /= m }
       v.mk.style.transform = `translate(${((x * .5 + .5) * innerWidth).toFixed(1)}px,${((-y * .5 + .5) * innerHeight).toFixed(1)}px)`; v.mk.classList.toggle('edge', !on);
-      const dd = v.cur.distanceTo(player.pos); v.mk.children[1].textContent = fmtD(dd); v.mk.hidden = !fly || dd > (LOOK.peerMarkDist ?? 4e5);   /* only within aiming range */
-      const sb = v.mk.lastChild, up = v.sayT && now - v.sayT < 8000; if (up && sb.textContent !== v.sayText) sb.textContent = v.sayText; sb.hidden = !up; if (up) v.mk.hidden = !fly }   // what they said, over their marker
+      const dd = v.cur.distanceTo(player.pos); v.mk.children[1].textContent = fmtD(dd);
+      const sb = v.mk.lastChild, up = v.sayT && now - v.sayT < 8000; if (up && sb.textContent !== v.sayText) sb.textContent = v.sayText; sb.hidden = !up; v.mk.hidden = !(fly && up && on) }   // no markers for other pilots any more: only what they said, over them, while it's up
     const fl = v.g.userData.flame; fl.material.opacity += ((v.th ? .85 : 0) - fl.material.opacity) * Math.min(1, dt * 10); const ho = v.g.userData.hole; ho.on.value += ((v.th ? 1.1 : .45) - ho.on.value) * Math.min(1, dt * 6); { const fz = .8 + .4 * Math.sin(now * .04); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
     ;
-    v.dot.visible = !fly; if (!fly) { v.dot.position.copy(v.cur); v.dot.scale.setScalar(.022) }
+    v.dot.visible = !fly; if (!fly) { v.dot.position.copy(v.cur); v.dot.scale.setScalar((LOOK.peerMapPx ?? 1.5) / Math.max(1, innerHeight)) }   // on the map: a single pixel
     // trail: a point every little stretch while they thrust; it drains away when they let go
     const sp = v.vel.length(), step = Math.max(.4, sp * .025);
     if (v.th) { if (!v.pts.length || v.pts[0].p.distanceTo(v.cur) > step) { v.pts.unshift({ p: v.cur.clone(), th: v.th }); if (v.pts.length > PEER_N) v.pts.length = PEER_N } else v.pts[0].p.copy(v.cur) }
     else if (v.pts.length) { v.fade += dt * 40; while (v.fade > 1 && v.pts.length) { v.pts.pop(); v.fade-- } }
-    const n = v.pts.length; v.tr.visible = fly && n > 1; if (n < 2) continue;
-    v.tr.position.copy(v.cur); const w = 2 + 5 * Math.min(1, Math.log10(1 + sp) / 6);
+    const n = v.pts.length; v.tr.visible = n > 1; if (n < 2) continue;
+    // as wide as your own trail at that speed (the same sliders); on the map a faint hairline
+    const L = LOOK, lin = Math.max(0, Math.min(1, Math.log10(Math.max(sp, 20) / 20) / Math.max(.1, L.trRef - Math.log10(20)))), sT = Math.pow(lin, L.trColorCurve), mapK = fly ? 1 : L.peerMapTrail ?? .18;
+    v.tr.position.copy(v.cur); const w = fly ? Math.max(L.trMinPx ?? 1.5, L.trWMin + (L.trWMax - L.trWMin) * Math.pow(sT, L.trWCurve)) : .5;
     for (let k = 0; k < n; k++) {
       const P_ = v.pts[k].p; _pe.copy(v.pts[Math.min(k + 1, n - 1)].p).sub(v.pts[Math.max(k - 1, 0)].p); _ps.copy(camera.position).sub(P_); const cd = _ps.length(); _ps.crossVectors(_pe, _ps); const l = _ps.length();
       if (l > 1e-6) _ps.multiplyScalar(w * pxW * cd / l); else _ps.set(0, 0, 0);
       const x = P_.x - v.cur.x, y = P_.y - v.cur.y, z = P_.z - v.cur.z, o = k * 6, th = v.pts[k].th, a = (1 - k / n) * (1 - k / n);
       if (th === 2) _pc.setHSL(.6, 1, .6); else if (th === 3) _pc.setHSL(.84, 1, .74); else _pc.copy(v.col);   // boost blue, both magenta, else their own colour
-      _pc.multiplyScalar(a * 1.4);
+      _pc.multiplyScalar(a * 1.4 * mapK);
       v.pos[o] = x + _ps.x; v.pos[o + 1] = y + _ps.y; v.pos[o + 2] = z + _ps.z; v.pos[o + 3] = x - _ps.x; v.pos[o + 4] = y - _ps.y; v.pos[o + 5] = z - _ps.z;
       v.cl[o] = v.cl[o + 3] = _pc.r; v.cl[o + 1] = v.cl[o + 4] = _pc.g; v.cl[o + 2] = v.cl[o + 5] = _pc.b;
     }

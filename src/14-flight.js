@@ -116,7 +116,7 @@ function updatePlayer(dt) {
   // the nose turns toward its target keeping the ship's own roll (so A/D rolls stick)
   const shipUp = _su.set(0, 1, 0).applyQuaternion(p.base), aimQ = d => lookAtQ(d, Math.abs(shipUp.dot(d)) > .995 ? _su2.set(0, 1, 0).applyQuaternion(rig.q) : shipUp, _hq);
   let steerTo = null;
-  if (lockI >= 0 && pedal && !auto && !(HALO.pInfo.on && HALO.pInfo.i === lockI)) {   /* close enough to see the ring's picture: you steer the last bit yourself */ const dir = starPos(lockI, tmp).sub(p.pos); if (dir.lengthSq() > 1) steerTo = aimQ(dir.normalize()) }   // locked: the ship keeps facing its star
+  if (lockI >= 0 && pedal && !auto && !(HALO.pInfo.on && HALO.pInfo.i === lockI && p.pos.distanceTo(HALO.pInfo.c) < (LOOK.lockLetGo ?? 1000))) {   /* close enough to see the ring's picture: you steer the last bit yourself */ const dir = starPos(lockI, tmp).sub(p.pos); if (dir.lengthSq() > 1) steerTo = aimQ(dir.normalize()) }   // locked: the ship keeps facing its star
   else if (!auto && !keys.x && (gasOn || (L.follow && lockI < 0))) steerTo = aimQ(_rf.set(0, 0, -1).applyQuaternion(rig.q));                // the nose follows the reticle (not while X holds your course)
   else if (auto && p.vel.lengthSq() > 4) steerTo = aimQ(p.vel.clone().normalize());
   let turnAmt = 0;
