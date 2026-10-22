@@ -1,3 +1,18 @@
+// stacked label blocks (date, title, distance…) share one background: a single shape round all of them, so one blur and
+// no hairline where two blocks meet. A <u class="ubg"> behind them, clipped to the blocks' outline
+const tipSc = () => (tip.classList.contains('full') || tip.classList.contains('side')) ? (LOOK.tipFullScale ?? .5) : (LOOK.tipScale ?? .5);   // Look: the tooltip's and the full record's size
+function unionBg(box, sel) {
+  let bg = box.firstElementChild; if (!bg || bg.className !== 'ubg') { bg = document.createElement('u'); bg.className = 'ubg'; box.prepend(bg) }
+  const r0 = box.getBoundingClientRect(), s = (r0.width / (box.offsetWidth || 1)) || 1, rs = [];
+  for (const e of box.querySelectorAll(sel)) { const r = e.getBoundingClientRect(); if (r.width > .5 && r.height > .5) rs.push([(r.left - r0.left) / s, (r.top - r0.top) / s, (r.right - r0.left) / s, (r.bottom - r0.top) / s]) }
+  rs.sort((a, b) => a[1] - b[1]); let cp = 'inset(50%)';
+  if (rs.length) {
+    const R = [], L = [], f = v => v.toFixed(2) + 'px';
+    rs.forEach((r, i) => { const y0 = i ? rs[i][1] : r[1], y1 = i < rs.length - 1 ? rs[i + 1][1] : r[3]; R.push(f(r[2]) + ' ' + f(y0), f(r[2]) + ' ' + f(y1)); L.unshift(f(r[0]) + ' ' + f(y1), f(r[0]) + ' ' + f(y0)) });
+    cp = `polygon(${R.concat(L).join(',')})`;
+  }
+  if (bg._cp !== cp) { bg._cp = cp; bg.style.clipPath = cp }
+}
 /* ───────────────────────── interface ───────────────────────── */
 const tip = $('tip'), crossEl = $('cross');
 let matchCount = N, cardI = -1, tipFor = -1, hovI = -1, lastHov = -1;
@@ -177,6 +192,7 @@ function renderLegend() {
 const isOpen = id => $(id).classList.contains('open');
 function togglePanel(which) {
   [['panel', 'fbtn'], ['lookPanel', 'lbtn']].forEach(([pid, bid]) => { const el = $(pid), open = pid === which && !el.classList.contains('open'); el.classList.toggle('open', open); el.inert = !open; $(bid).setAttribute('aria-expanded', open) });
+  if (S.mode === 'map' && which === 'panel') store.set('sotd-map-filters', isOpen('panel') ? '1' : '0');   // the map remembers whether you want its filters
   const any = isOpen('panel') || isOpen('lookPanel'); document.body.classList.toggle('panel-open', any); if (any && locked()) document.exitPointerLock();
 }
 $('lbtn').onclick = () => togglePanel('lookPanel');
@@ -292,7 +308,7 @@ const winCompass = (() => {
       if (vis) {   // it's right there on screen: the date sits beside the star itself instead of on the compass
         { const m = !tip.hidden && /^[hpq](\d+)/.exec(tipFor); if (m && +m[1] === i) { k.m.hidden = true; return } }   // (unless its tooltip already says it)
         if (k.i !== i) { k.i = i; const t = new Date(D[i].date + 'T00:00:00Z'); k.t(`${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`) }
-        k.dd(Math.round(Math.sqrt(c[0])).toLocaleString('en')); k.m.hidden = false; k.m.classList.add('star'); k.m.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`; k.lab.style.transform = 'none';   /* exactly where its tooltip's date will sit */ k.m.classList.toggle('first', j === 0); k.m.classList.remove('back'); return;
+        k.dd(Math.round(Math.sqrt(c[0])).toLocaleString('en')); k.m.hidden = false; k.m.classList.add('star'); k.m.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`; k.lab.style.transform = 'none'; unionBg(k.lab, 'em,b');   /* exactly where its tooltip's date will sit */ k.m.classList.toggle('first', j === 0); k.m.classList.remove('back'); return;
       }
       k.m.classList.remove('star');
       if (placed.some(b => Math.abs(((a - b + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < gap)) { k.m.hidden = true; return } placed.push(a);

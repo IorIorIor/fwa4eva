@@ -86,7 +86,7 @@ const rec = (() => {
         return;
       }
       // the galaxy: turn it, and play what passes the needle
-      st.hand = Math.max(0, (st.hand || 0) - rdt); if (!st.hand) turn(rdt * 2 * Math.PI / Math.max(4, L.recTurn ?? 48));   /* (a hand on it holds it still) */
+      st.hand = Math.max(0, (st.hand || 0) - rdt); if (!st.hand) turn(-rdt * 2 * Math.PI / Math.max(4, L.recTurn ?? 48));   /* (a hand on it holds it still) */
       _r.set(1, 0, 0).applyQuaternion(camera.quaternion).applyQuaternion(GQI); const phi = Math.atan2(_r.z, _r.x);   // the needle: the screen's right, laid in the disk
       { _v.copy(GC).project(camera); _r.copy(GC).addScaledVector(new V3(1, 0, 0).applyQuaternion(camera.quaternion), GAL_R0 + GAL_LEN).project(camera); const x0 = (_v.x * .5 + .5) * innerWidth, y0 = (-_v.y * .5 + .5) * innerHeight, x1 = (_r.x * .5 + .5) * innerWidth, y1 = (-_r.y * .5 + .5) * innerHeight;
         needle.style.left = x0.toFixed(1) + 'px'; needle.style.top = y0.toFixed(1) + 'px'; needle.style.width = Math.hypot(x1 - x0, y1 - y0).toFixed(1) + 'px'; needle.style.transform = `rotate(${Math.atan2(y1 - y0, x1 - x0)}rad)` }

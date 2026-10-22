@@ -131,7 +131,7 @@ const intro = {
       const K = 90 * (LOOK.introSpring ?? 1), C = 2 * Math.sqrt(K) * .78, h = Math.min(dt, 1 / 30);
       for (const a of ['x', 'y']) { this.av[a] += ((this.goal[a] - this.at[a]) * K - this.av[a] * C) * h; this.at[a] += this.av[a] * h }
     }
-    if (this.curHide && --this.curHide <= 0) { this.curHide = 0; curEl.style.display = 'none' }
+    if (this.curHide) { this.placeCur(); if (--this.curHide <= 0) { this.curHide = 0; curEl.style.display = 'none' } }   /* (still following the mouse, so it can't be left behind where the ship was) */
     if (this.ph === 1) { this.pose(0); camera.clearViewOffset(); camera.updateMatrixWorld(); this.placeCur(); this.logoStep(dt); return }   // through the logo the view is dead on: the vanishing point in the middle of the screen
     if (this.t < 1) this.t = Math.min(1, this.t + dt / (reduceMotion ? 2.5 : this.dur));
     this.pose(this.t);
