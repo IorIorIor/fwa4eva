@@ -85,11 +85,17 @@ async function runBench() {
     ['no trail layer', () => trailPass.setResolutionScale(1 / 32), () => trailPass.setResolutionScale(1)],
     ['no arcs', () => { bench.k = L.arcs; L.arcs = 0; applyLook() }, () => { L.arcs = bench.k; applyLook() }],
     ['no soft layers', () => { softPass.setResolutionScale(1 / 32); hazePass.setResolutionScale(1 / 32) }, sc],
+    ['no volumetric gas', () => { bench.k = L.volumetric; L.volumetric = 0; applyLook() }, () => { L.volumetric = bench.k; applyLook() }],
     ['black hole 60 steps', () => { bench.k = L.bhSteps; L.bhSteps = 60; applyLook() }, () => { L.bhSteps = bench.k; applyLook() }],
   ];
+  { // and inside the soft layers, one thing at a time (moved off the camera's layer, so per-frame code can't switch it back on)
+    const obj = x => x && (x.isObject3D ? x : x.mesh || x.m || x.pts || x.g), names = new Map();
+    [['sky glow', wallSky], ['haze', haze], ['nebulae', nebula], ['dust lanes', lanes], ['far disc', disc], ['core glow', coreGlow], ['core puffs', corePuffs], ['core volume', puffVol], ['andromeda', andro], ['bulge points', bulgePts], ['knots', knotPts], ['outer disk', outerDisk], ['sparkle', sparkle], ['background stars', bgStars]].forEach(([n, x]) => { try { const o = obj(x); if (o) names.set(o, n) } catch (e) { } });
+    [[softScene, 'soft'], [hazeScene, 'haze layer']].forEach(([scn, sn]) => scn.children.forEach((c, k) => { if (!c.visible || c.isCamera) return; const n = names.get(c) || `${sn} #${k} ${c.type}${c.geometry && c.geometry.instanceCount ? ' ×' + c.geometry.instanceCount : ''}`; parts.push([n, () => c.traverse(o => o.layers.set(31)), () => c.traverse(o => o.layers.set(0))]) }));
+  }
   poses[1][1]();
   for (const [name, on, off] of parts) {
-    msg(`Measuring what costs what: ${name}…`); on(); await frames(30); bench.ms = []; await frames(90); off();
+    msg(`Measuring what costs what: ${name}…`); on(); await frames(20); bench.ms = []; await frames(60); off();
     const a = bench.ms, avg = a.reduce((s, x) => s + x, 0) / Math.max(1, a.length); costs.push(`${name.padEnd(20)} ${avg.toFixed(1).padStart(6)} ms`);
   }
   if (S.mode !== keep.mode) setMode(keep.mode); tween = null;
