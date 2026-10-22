@@ -95,7 +95,7 @@ function updatePlayer(dt) {
   const p = player, L = LOOK;
   if (lockFailed && mouse.in && !down) rotateRig(-steerCurve(mouse.x / innerWidth * 2 - 1) * 1.8 * dt, -steerCurve(mouse.y / innerHeight * 2 - 1) * 1.4 * dt);   // lock-less desktop fallback
   rig.quat.copy(rig.q);
-  const fw = (keys.w || touchThrust ? 1 : 0) - (keys.s || touchBrake ? 1 : 0), SM = smK(), rl = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);
+  const fw = (keys.w ? 1 : +touchThrust || 0) - (keys.s || touchBrake ? 1 : 0), SM = smK(), rl = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);
   {   // A/D roll the ship itself. Options: inertia (it winds up and coasts on), a double-tap barrel roll with a sideways hop, and the camera rolling along
     const steerKeys = !!L.rollSteer && player.vel.length() > (L.rollStill ?? 80);   /* standing still, A/D roll instead */   // switch: A/D turn you left and right, banking into the turn (underside to the outside), instead of rolling
     turnKey += ((steerKeys ? rl : 0) - turnKey) * Math.min(1, dt * (L.rollSteerEase ?? 5)); if (Math.abs(turnKey) > 1e-4) rotateRig(turnKey * (L.rollSteerRate ?? 1.1) * dt, 0); { const bk = turnKey * (L.rollSteerBank ?? .7) * (L.rollSteerCam ?? 1), K = L.rollCamSpring ?? 3.5, C = 2 * Math.sqrt(K) * (L.rollCamDamp ?? .9); bankCamV += ((bk - bankCam) * K - bankCamV * C) * Math.min(dt, 1 / 30); bankCam += bankCamV * dt }   // the view leans with the ship's bank, on the same soft spring as the roll: it only turns the view, the camera stays where it is

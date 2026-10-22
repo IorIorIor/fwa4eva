@@ -136,14 +136,15 @@ addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
 [['brake', v => touchBrake = v]].forEach(([id, to]) => { const b = $(id), set = v => { to(v); b.classList.toggle('on', v) }; b.addEventListener('pointerdown', e => { e.preventDefault(); set(true); buzz(8); try { b.setPointerCapture(e.pointerId) } catch { } }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => set(false))); b.addEventListener('contextmenu', e => e.preventDefault()) });   // captured, so a thumb sliding off keeps braking
 $('dash').addEventListener('click', () => { if (S.mode === 'fly') setSpeedMode((speedMode + 1) % 3) });   // tap the console: the next speed mode
-// thrust: hold to fly. While held, Boost waits above it and Brake to its left: slide your thumb into one
+// thrust: hold it and it grows into a tall block under your thumb. Slide up for more thrust; the top fifth boosts, the
+// bottom fifth (light red) brakes. touchThrust carries how much (0 … 1), so the further up, the harder you push
 { const b = $('thrust'); let id = -1, zone = '';
-  b.innerHTML = '<span>Thrust</span><i class="tbo">Boost</i><i class="tbr">Brake</i>'; b.setAttribute('aria-label', 'Thrust (hold; slide up to boost, left to brake)');
-  const setZone = z => { if (z === zone) return; zone = z; touchThrust = z === 't' || z === 'b'; touchBoost = z === 'b'; touchBrake = z === 'k'; b.classList.remove('z-t', 'z-b', 'z-k'); if (z) { b.classList.add('z-' + z); buzz(z === 't' ? 8 : 14) } };
-  const zoneAt = (x, y) => { const r = b.getBoundingClientRect(); return y < r.top - 10 && x > r.left - 24 ? 'b' : x < r.left - 10 ? 'k' : 't' };
-  const end = () => { if (id < 0) return; id = -1; b.classList.remove('on'); setZone('') };
-  b.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; b.classList.add('on'); setZone('t'); try { b.setPointerCapture(id) } catch { } });
-  b.addEventListener('pointermove', e => { if (e.pointerId === id) setZone(zoneAt(e.clientX, e.clientY)) });
+  b.innerHTML = '<span class="tl">Thrust</span><i class="bo">Boost</i><i class="fill"><b>Thrust</b></i><i class="bk">Brake</i>'; b.setAttribute('aria-label', 'Thrust (hold; slide up for more and to boost, down to brake)');
+  const setZone = (z, f) => { b.style.setProperty('--f', f.toFixed(3)); touchThrust = z === 't' ? .3 + .7 * f : z === 'b' ? 1 : 0; touchBoost = z === 'b'; touchBrake = z === 'k'; if (z === zone) return; zone = z; b.classList.remove('z-t', 'z-b', 'z-k'); if (z) { b.classList.add('z-' + z); if (z !== 't') buzz(14) } };
+  const at = y => { const r = b.getBoundingClientRect(), u = (r.bottom - y) / Math.max(1, r.height); return u < .2 ? ['k', 0] : u > .8 ? ['b', 1] : ['t', Math.max(0, Math.min(1, (u - .2) / .6))] };   // where the thumb is on the block
+  const end = () => { if (id < 0) return; id = -1; b.classList.remove('on'); setZone('', 0) };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); id = e.pointerId; b.classList.add('on'); setZone('t', 0); buzz(8); try { b.setPointerCapture(id) } catch { } });
+  b.addEventListener('pointermove', e => { if (e.pointerId === id && b.classList.contains('on')) setZone(...at(e.clientY)) });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, e => { if (e.pointerId === id) end() })); b.addEventListener('contextmenu', e => e.preventDefault());
   addEventListener('pointerup', e => { if (e.pointerId === id) end() }, true); ['touchend', 'touchcancel'].forEach(t => addEventListener(t, e => { if (id >= 0 && ![...e.touches].some(x => b.contains(x.target))) end() }, true)); addEventListener('blur', end); document.addEventListener('visibilitychange', end) }   // let go anywhere, any way: everything stops
 
