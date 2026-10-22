@@ -198,13 +198,13 @@ const HALO = (() => {
   // the portal: inside the nearest ring, its winner's screenshot, set back behind the ring like a window into another room.
   // Each pixel follows your line of sight through the disc onto a plane some way behind it, so as you move the picture
   // shifts behind the opening. It starts loading a little before the ring appears
-  const pt = { cur: placeholderShot(D[0]), taps: [], nx: null, ntaps: [], slide: uniform(0), gap: uniform(1.4), hit: uniform(new THREE.Vector2()), st: uniform(0), white: uniform(0), brk: uniform(0), dis: uniform(0), gl: uniform(0), lv: uniform(0), ex: uniform(0), bg: uniform(new C3(0, 0, 0)), depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85), lens: uniform(.6), ca: uniform(.5) };
+  const pt = { cur: placeholderShot(D[0]), taps: [], nx: null, ntaps: [], slide: uniform(0), gap: uniform(1.4), rot: uniform(0), bgImg: uniform(1), bgScale: uniform(1.3), bgBlur: uniform(5.5), bgDim: uniform(.6), hit: uniform(new THREE.Vector2()), st: uniform(0), white: uniform(0), brk: uniform(0), dis: uniform(0), gl: uniform(0), lv: uniform(0), ex: uniform(0), bg: uniform(new C3(0, 0, 0)), depth: uniform(.8), size: uniform(1.25), a: uniform(0), glow: uniform(new C3(1, 1, 1)), dark: uniform(.85), lens: uniform(.6), ca: uniform(.5) };
   const pm = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
   pm.positionNode = Fn(() => { const q = positionLocal.xy.sub(pt.hit), w = exp(dot(q, q).mul(-3.2)); return positionLocal.add(vec3(0, 0, pt.st.mul(w))) })();
   pm.colorNode = Fn(() => {
     const X = modelViewMatrix.mul(vec4(1, 0, 0, 0)).xyz, Y = modelViewMatrix.mul(vec4(0, 1, 0, 0)).xyz, O = modelViewMatrix.mul(vec4(0, 0, 0, 1)).xyz, r = length(X), Xn = X.div(r), Yn = normalize(Y), Nn = cross(Xn, Yn);   // the disc's own axes, in view space (precise this far out)
     const Pp = O.sub(Nn.mul(pt.depth.mul(r))), dir = normalize(positionView), t = dot(Pp, Nn).div(dot(dir, Nn)), loc = dir.mul(t).sub(Pp);
-    const rr = length(positionGeometry.xy), rim = smoothstep(.55, 1, rr), S = pt.size.mul(r), qa = vec2(dot(loc, Xn).div(S), dot(loc, Yn).div(S.div(1.6)));
+    const rr = length(positionGeometry.xy), rim = smoothstep(.55, 1, rr), S = pt.size.mul(r), qa0 = vec2(dot(loc, Xn).div(S), dot(loc, Yn).div(S.div(1.6))), cr = cos(pt.rot), sr = sin(pt.rot), qa = vec2(qa0.x.mul(cr).sub(qa0.y.mul(sr).div(1.6)), qa0.x.mul(sr).mul(1.6).add(qa0.y.mul(cr)));   /* (spun like a record while it plays) */
     // and it warps: a slow liquid wobble plus rings running out from the middle, as strong as dis
     const q0 = qa.mul(float(1).sub(pt.dis.div(dot(qa, qa).add(.05))));   // and, closing in, it's lensed like the sky round a black hole: the middle swells and folds over into a ring
     // the edge acts like thick glass: the picture bulges outward near the rim and its colours fringe apart
@@ -212,7 +212,9 @@ const HALO = (() => {
     const inside = uvI => step(0, uvI.x).mul(step(uvI.x, 1)).mul(step(0, uvI.y)).mul(step(uvI.y, 1));
     const uR = at(fr), uG = at(0), uB = at(fr.negate()), tap = uv => { const t = texture(pt.cur, uv); pt.taps.push(t); return t }, tapN = uv => { const t = texture(pt.cur, uv); pt.ntaps.push(t); return t };
     // the pictures side by side: sliding (pt.slide 0 → 1) moves this one off to the left as the next comes in from the right, with a small gap
-    const pic = uv => { const g1 = pt.slide.mul(pt.gap), uc = uv.add(vec2(g1, 0)), un = uv.add(vec2(g1.sub(pt.gap), 0));   /* the next one starts a full width plus a gap away, well outside the window */ return mix(mix(pt.bg, tapN(un).rgb, inside(un).mul(step(.0005, pt.slide))), tap(uc).rgb, inside(uc)) };
+    // round and between the pictures: the same picture, a little larger and blurred right out (a tiny mip level), dimmed
+    const bgT = texture(pt.cur, uG.sub(.5).div(pt.bgScale).add(.5)).level(pt.bgBlur); pt.taps.push(bgT); const bgPic = mix(pt.bg, bgT.rgb.mul(pt.bgDim), pt.bgImg);
+    const pic = uv => { const g1 = pt.slide.mul(pt.gap), uc = uv.add(vec2(g1, 0)), un = uv.add(vec2(g1.sub(pt.gap), 0));   /* the next one starts a full width plus a gap away, well outside the window */ return mix(mix(bgPic, tapN(un).rgb, inside(un).mul(step(.0005, pt.slide))), tap(uc).rgb, inside(uc)) };
     const img = vec3(pic(uR).r, pic(uG).g, pic(uB).b);   // keep the sampling nodes, so a new winner's picture can be swapped in   // shadowed toward the rim (depth), lit by the ring's glow right at the edge
     // closing in: old-school levels (the white point comes down, so the picture goes whiter), exposure, and a glow (its own
     // bright parts, blurred and added back), all rising the closer you get
@@ -255,6 +257,7 @@ const HALO = (() => {
   const gal = { list: [], k: 0, t: -1, idle: 0 };
   function nextPic() { if (!pInfo.on || gal.t >= 0 || !gal.list.length) return false; gal.idle = 0; const nk = (gal.k + 1) % gal.list.length; gal.nk = nk; pt.nx = gal.list[nk]; pt.ntaps.forEach(t => t.value = pt.nx); gal.t = 0; return true }
   function slideStep(rdt) {
+    pt.rot.value = rec.spin; pt.bgImg.value = LOOK.ringBgPic ?? 1; pt.bgScale.value = LOOK.ringBgScale ?? 1.3; pt.bgBlur.value = LOOK.ringBgBlur ?? 5.5; pt.bgDim.value = LOOK.ringBgDim ?? .6;
     pt.gap.value = 1 + (LOOK.ringSlideGap ?? .4);
     if (gal.t < 0) { const ap = LOOK.ringAutoPlay ?? 3.5; if (ap > 0 && pInfo.on) { gal.idle += rdt; if (gal.idle > ap && nextPic()) gal.idle = 0 } else gal.idle = 0; return }   /* autoplay: the next picture every few seconds while one is up */ gal.t += rdt / Math.max(.1, LOOK.ringSlideTime ?? .6); const x = Math.min(1, gal.t); pt.slide.value = x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
     if (gal.t >= 1) { gal.k = gal.nk; pt.cur = gal.list[gal.k]; pt.taps.forEach(t => t.value = pt.cur); pt.slide.value = 0; gal.t = -1 }

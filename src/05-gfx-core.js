@@ -145,5 +145,5 @@ const nebAtlas = (() => {
       const i = ((oy + y) * SZ + ox + x) * 4; px[i] = Math.min(255, dn * 330); px[i + 1] = Math.min(255, fil * 255); px[i + 2] = 0; px[i + 3] = 255
     }
   }
-  g.putImageData(img, 0, 0); const tx = new THREE.CanvasTexture(c); tx.generateMipmaps = false; tx.minFilter = THREE.LinearFilter; return tx
+  g.putImageData(img, 0, 0); const tx = new THREE.CanvasTexture(c); tx.generateMipmaps = true; tx.minFilter = THREE.LinearMipmapLinearFilter; return tx   /* (mipmaps: the ring's backdrop reads a tiny, blurry level) */
 })();

@@ -830,3 +830,22 @@ body.paper #mTabs button{background:rgba(255,255,255,.9);color:#333}body.paper #
 .fdot{position:absolute;left:-2px;top:-2px;width:4px;height:4px;background:var(--c,#fff);box-shadow:0 0 6px var(--c,#fff)}   /* someone parked here */
 #lookIn{width:100%;min-height:64px;margin-top:6px;background:rgba(255,255,255,.05);border:0;border-bottom:1px solid rgba(255,255,255,.35);color:#fff;font-family:var(--mono);font-size:10px;padding:6px 8px;box-sizing:border-box;resize:vertical}
 #tip .td .taw.sotm{color:#3dff86}#tip .td .taw.soty{color:#ffc53a}   /* the label in its star's colour */
+/* the splash: the gap under the W's middle (where the opening flies through) sits dead centre from the first frame; the rest sits below */
+#intro .mark{position:fixed;left:calc(50% - min(120px,36vw) * .47937);top:calc(50% - min(120px,36vw) * .20039);margin:0}
+#intro .in{padding-top:170px}
+/* the month label never shows as an empty box */
+#arrive h2:empty{display:none}
+/* the record player: Play on the map, the needle, a flash on each winner it plays, and the hint under an open record */
+#recPlay{right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:12;display:flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 12px;background:rgba(14,14,20,.62);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:0;color:#fff;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+#recPlay i{width:0;height:0;border-left:9px solid #fff;border-top:5.5px solid transparent;border-bottom:5.5px solid transparent}
+#recPlay.on i{width:9px;height:9px;border:0;background:#fff}
+#recPlay:hover{background:#fff;color:#000}#recPlay:hover i{border-left-color:#000}#recPlay.on:hover i{background:#000}
+@media (max-width:760px),(pointer:coarse){#recPlay{bottom:calc(68px + env(safe-area-inset-bottom,0px))}body.mtab-open #recPlay{display:none}}
+#recNeedle{position:fixed;left:0;top:0;height:1px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.7) 12%,rgba(255,255,255,.5));transform-origin:0 50%;pointer-events:none;z-index:6}
+.recPing{position:fixed;left:0;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border:1px solid var(--c,#fff);border-radius:50%;opacity:0;pointer-events:none;z-index:6}
+.recPing.on{animation:recPing .9s ease-out}
+@keyframes recPing{from{opacity:1;transform:scale(.3)}to{opacity:0;transform:scale(2.4)}}
+#recHint{position:fixed;z-index:13;background:rgba(26,20,40,.56);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:0;color:rgba(255,255,255,.85);font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px 4px;cursor:pointer}
+#recHint:hover{background:#fff;color:#000}
+/* the reticle and lock mark sit over everything 3D */
+#cross,#lockMark{z-index:14}

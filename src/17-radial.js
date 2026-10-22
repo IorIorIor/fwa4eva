@@ -70,7 +70,7 @@ const rmenu = (() => {
   function hide() { document.body.classList.remove('rm-ring'); document.body.classList.toggle('rm-open', !panel.hidden && !!which); open = false; el.classList.remove('in'); setTimeout(() => { if (!open) el.hidden = true }, 220); setHot(null) }
   function move(e) {   // captured pointer: a dot you steer inside the ring; free pointer: wherever the pointer is
     const dx = locked() ? e.movementX : e.clientX - px, dy = locked() ? e.movementY : e.clientY - py; px = e.clientX; py = e.clientY;
-    vx += dx; vy += dy; const r = Math.hypot(vx, vy), lim = R1 * 2; if (r > lim) { vx *= lim / r; vy *= lim / r } if (locked()) dot.style.transform = `translate(${vx.toFixed(1)}px, ${vy.toFixed(1)}px)`; setHot(Math.hypot(vx, vy) > 16 ? pickAt(vx, vy) : null); lean();   // the hand points: whatever it's over (past a small dead zone in the middle) is picked
+    vx += dx; vy += dy; const r = Math.hypot(vx, vy), lim = R1 * 3; if (r > lim) { vx *= lim / r; vy *= lim / r } if (locked()) dot.style.transform = `translate(${vx.toFixed(1)}px, ${vy.toFixed(1)}px)`; const rr = Math.hypot(vx, vy); setHot(rr > 16 && rr < R1 * (LOOK.menuFar ?? 2.2) ? pickAt(vx, vy) : null); lean();   /* well outside the ring: nothing picked, so letting go just closes it */   // the hand points: whatever it's over (past a small dead zone in the middle) is picked
   }
   function choose(k = hot) {
     hide(); if (!k) return;
@@ -188,7 +188,7 @@ const recorder = (() => {
   const nav = $('topnav'), mapB = nav.querySelector('[data-k="map"]');
   nav.addEventListener('pointerdown', e => e.stopPropagation());
   nav.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const k = b.dataset.k; if (S.mode === 'map' && k === 'filters') { togglePanel('panel'); return } if (S.mode === 'map' && k === 'search') { document.body.classList.toggle('nosearch'); if (!document.body.classList.contains('nosearch')) return; rmenu.close(); return }   // on the map these two are switches: the filters panel and the search bar
-    if (k === 'flag') { flagDlg.open(); return } if (k === 'say') { say.open(); return } if (k === 'rec') { recorder.toggle(); return } if (k === 'sound') { $('sbtn').click(); return } if (k === 'music') { audio(); setMusicOff(!musicOff); return } if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
+    if (k === 'flag') { flagDlg.open(); return } if (k === 'say') { say.open(); return } if (k === 'rec') { recorder.toggle(); return } if (k === 'sound') { audio(); const off = !(muted && musicOff); setMuted(off); setMusicOff(off); return }   /* one switch: everything off, or everything on */ if (k === 'music') { audio(); setMusicOff(!musicOff); return } if (k === 'tour') { if (S.mode !== 'fly') setMode('fly'); rmenu.close(); coach.start(true); return } rmenu.choose(k) });
   const fB = nav.querySelector('[data-k="filters"]'), sB = nav.querySelector('[data-k="search"]');
   setInterval(() => { const m = S.mode === 'map'; mapB.textContent = m ? 'Fly' : 'Map'; fB.classList.toggle('on', m && $('panel').classList.contains('open')); sB.classList.toggle('on', m && !document.body.classList.contains('nosearch')) }, 200);
   $('mapSearch').onclick = () => rmenu.sub('search');   // the map's search bar: a click opens the full search
