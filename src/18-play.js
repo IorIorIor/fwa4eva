@@ -16,13 +16,13 @@ const gplay = (() => {
   const pill = document.createElement('div'); pill.id = 'playPill'; pill.className = 'hud'; pill.hidden = true; pill.innerHTML = '<b></b><span>Playing</span><button type="button">Stop<kbd>Esc</kbd></button>'; document.body.appendChild(pill);
   pill.addEventListener('pointerdown', e => e.stopPropagation()); pill.querySelector('button').onclick = () => stop();
   function showPrompt(k) {
-    if (!(LOOK.galPrompt ?? 1)) return; if (k !== UNI.k) uni.rebase(k); st.prompt = k; st.promptT = 0; st.docked = false; prY.textContent = String(UNI_Y0 + k); pr.hidden = false; pr.classList.remove('on', 'docked'); pr.style.top = ''; void pr.offsetWidth; pr.classList.add('on');
+    if (!(LOOK.galPrompt ?? 1)) return; if (k !== UNI.k) uni.rebase(k); st.prompt = k; st.promptT = 0; st.docked = false; prY.textContent = galName(k); pr.hidden = false; pr.classList.remove('on', 'docked'); pr.style.top = ''; void pr.offsetWidth; pr.classList.add('on');
     if (document.pointerLockElement) document.exitPointerLock(); buzz(12);
   }
   function hidePrompt() { st.prompt = -1; st.docked = false; pr.hidden = true; pr.classList.remove('on', 'docked') }
   // after a while (or once you fly on) the prompt glides down to sit over the speed console, just Play and its key, for as long as you're in the galaxy
   function dock() { if (st.docked || st.prompt < 0) return; st.docked = true; const d = $('dash'), r = d && !d.hidden ? d.getBoundingClientRect() : null; pr.style.top = pr.getBoundingClientRect().top + 'px'; void pr.offsetWidth; pr.classList.add('docked'); pr.style.top = ((r ? r.top : innerHeight - 60) - 44) + 'px'; setTimeout(relock, 30) }
-  function choose(a) { const k = st.prompt; if (a === 'enter') { dock(); return } hidePrompt(); if (a === 'play') start(); if (TEST) console.log('galaxy', a, UNI_Y0 + (k < 0 ? UNI.k : k)) }
+  function choose(a) { const k = st.prompt; if (a === 'enter') { dock(); return } hidePrompt(); if (a === 'play') start(); if (TEST) console.log('galaxy', a, galName(k < 0 ? UNI.k : k)) }
   addEventListener('keydown', e => {
     if (e.target && e.target.matches && e.target.matches('input,textarea,select')) return;
     if (st.prompt >= 0) { if (e.key === 'Enter' && !st.docked) { e.preventDefault(); e.stopImmediatePropagation(); choose('enter') } else if (e.key === ' ') { e.preventDefault(); e.stopImmediatePropagation(); choose('play') } else if (e.key === 'Escape') { hidePrompt() } return }
@@ -48,7 +48,7 @@ const gplay = (() => {
     Object.assign(st, { on: true, out: false, t: 0, phi: 0, w: 0, landed: false }); st.p0.copy(player.pos); st.q0.copy(player.quat); st.c0.copy(camera.position); st.cq0.copy(camera.quaternion); st.f0 = camera.fov;
     toLocal(player.pos, _a); st.az = Math.atan2(_a.z, _a.x) + (LOOK.playAz ?? 0) * Math.PI / 180;   // the view opens up on the side of the galaxy you're on
     auto = null; lockI = -1; warp = null; stopTour(); player.vel.set(0, 0, 0); player.cruise = 0; camHold = null; sparks.stop();
-    if (document.pointerLockElement) document.exitPointerLock(); document.body.classList.add('playing'); pill.hidden = false; pill.firstChild.textContent = String(GYEAR);
+    if (document.pointerLockElement) document.exitPointerLock(); document.body.classList.add('playing'); pill.hidden = false; pill.firstChild.textContent = galName(UNI.k);
   }
   function stop() {
     if (!st.on || st.out) return; st.out = true; st.outT = 0; rec.stop(); pill.hidden = true;

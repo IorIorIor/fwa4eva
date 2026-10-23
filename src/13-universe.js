@@ -22,7 +22,7 @@ const uni = (() => {
   const glows = Array.from({ length: UNI_N }, () => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: new C3(1, .9, .78), blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true, opacity: 0, toneMapped: false })); s.frustumCulled = false; farScene.add(s); return s });
   const _qk = new Q4(), _p = new V3(), _c = new C3(), _v = new V3(), _w = new V3();
   let relayoutKey = null, galK = 1, igK = 1, cap = Infinity, took = 0, want = 1, wantT = 0, wantOwn = 0, wantOwnT = 0, outT = 0, nearK = UNI_N - 1, nearD = 0;
-  const hasOwn = k => { const o = own[UNI_Y0 + k]; return !!o && Object.keys(o).length > 0 };
+  const hasOwn = k => { const o = own[galKey(k)]; return !!o && Object.keys(o).length > 0 };
 
   // a picture, taken with the main camera turned to look straight down on the galaxy you're in from above (only the
   // background passes run; nothing of it reaches the screen). k < 0: the shared one; else galaxy k's own
@@ -37,7 +37,7 @@ const uni = (() => {
     c.position.copy(keep.p); c.quaternion.copy(keep.q); c.fov = keep.fov; c.aspect = keep.asp; c.near = keep.near; c.far = keep.far; if (keep.vw) c.setViewOffset(keep.vw.fullWidth, keep.vw.fullHeight, keep.vw.offsetX, keep.vw.offsetY, keep.vw.width, keep.vw.height); c.updateProjectionMatrix(); c.updateMatrixWorld();
     PU.galK.value = keep.gk; PU.bgK.value = keep.bg; U.farK.value = keep.fk; PU.edge.value = keep.ed; vol.u.cam.value.copy(keep.vc); puffVol.u.cam.value.copy(keep.pc);
     if (k < 0) { u.has.value = 1; took++; want = 0 } else { if (!disks[k].own) { disks[k].own = true; disks[k].material = mkMat(target, disks[k].f) } wantOwn = 0 }
-    if (TEST) console.log('far picture taken', k < 0 ? 'shared' : UNI_Y0 + k);
+    if (TEST) console.log('far picture taken', k < 0 ? 'shared' : galName(k));
   }
   function withShared(fn) {   // the shared picture is taken with the galaxy you're in on the shared look (its own values lifted off a moment)
     if (!ownOn || !Object.keys(base).length) return fn(); const keep = {}; for (const k in base) { keep[k] = ownOn[k]; ownOn[k] = base[k] } applyLook();
@@ -59,10 +59,10 @@ const uni = (() => {
   function rebase(k) {
     if (k === UNI.k || k < 0 || k >= UNI_N) return;
     if (hasOwn(UNI.k) && (wantOwn || !disks[UNI.k].own) && u.has.value) take(UNI.k);   // (leaving a galaxy with its own look: its picture as you leave it)
-    const oldK = UNI.k, oldRI = UNI.RI.clone(); UNI.k = k; uniFrame(); setGalYear(UNI_Y0 + k);
+    const oldK = UNI.k, oldRI = UNI.RI.clone(); UNI.k = k; uniFrame(); setGal(k); if (monthTicks) monthTicks.rebuild();
     remap(oldK, oldRI); uniPlaceStars(); stars.mesh.geometry.attributes.aP.needsUpdate = true;
     galK = 0; PU.galK.value = 0; outT = 0;   // the new galaxy's detail comes in from nothing
-    refreshLabels(); applyFilter(); galLook(); if (TEST) console.log('rebase', UNI_Y0 + k);
+    refreshLabels(); applyFilter(); galLook(); if (TEST) console.log('rebase', galName(k));
   }
 
   // per-galaxy looks: a galaxy can keep its own values for the galaxy sections; the rest of the look is shared
@@ -86,7 +86,7 @@ const uni = (() => {
   // year tags over the galaxies (when you're out between them) and their marks round the screen's edge
   const tags = document.createElement('div'); tags.id = 'galTags'; tags.className = 'hud'; tags.setAttribute('aria-hidden', 'true'); document.body.appendChild(tags);
   const TAG = Array.from({ length: UNI_N }, (_, k) => { const e = document.createElement('div'); e.className = 'g'; const n = UNI_I0[k] >= 0 ? UNI_I1[k] - UNI_I0[k] + 1 : 0;
-    e.innerHTML = `<i></i><span><em>${UNI_Y0 + k}</em><b></b><u>Z to warp</u></span>`; e.hidden = true; tags.appendChild(e); return { e, d: e.querySelector('b'), on: false, dt: '' } });   // like a winner's tag: the year, and how far
+    e.innerHTML = `<i></i><span><em>${galName(k)}</em><b></b><u>Z to warp</u></span>`; e.hidden = true; tags.appendChild(e); return { e, d: e.querySelector('b'), on: false, dt: '' } });   // like a winner's tag: the year, and how far
   const fmtU = d => Math.round(d).toLocaleString('en');
   function updateTags() {
     const L = LOOK, W = innerWidth, H = innerHeight;

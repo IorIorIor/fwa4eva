@@ -5,7 +5,7 @@
    setting. Everything is kept in this browser; Copy gives the text to paste into the chat. The colours apply in flight
    straight away (inside each galaxy); the shape and spread are built into the galaxies once they're baked in. */
 const galLab = (() => {
-  const KEY = 'sotd-gal-lab', GROUPS = [
+  const KEY = 'sotd-gal-lab', GKEYS = UNI_SPANS.map(sp => sp[0]), GROUPS = [
     ['Winding', [['spiralTurns', 'Turns of the spiral (core to rim)'], ['spiralGap', 'Windings at the core × further apart'], ['spiralHole', 'Open space round the core (×)'], ['spiralSize', 'Size'], ['armStart', 'Spiral starts at (from the core)'], ['armWiden', 'Arm widens toward the rim (×)'], ['armWidenCurve', '…how late the widening sets in'], ['armWidth', 'Arm width (gas)'], ['hazeCore', 'Gas gathers toward the core']]],
     ['Colours', [['radCol', 'Colour by radius'], ['radHue1', 'Core hue'], ['radHue2', 'Middle hue'], ['radHue3', 'Outer hue'], ['radSat', 'Saturation']]],
     ['Winners', [['starHug', 'Keep close to the line'], ['starBandW', 'Band width (across)'], ['starAlong', 'Spread along the spiral'], ['starBandH', 'Band height (off the disk)'], ['starCoreH', '…extra height toward the core'], ['starSep', 'Minimum spacing (u)']]],
@@ -23,7 +23,7 @@ const galLab = (() => {
   const save = () => store.set(KEY, JSON.stringify(st));
   // colours: straight into each galaxy's own look (what flight uses inside it)
   function pushColours(quiet) {
-    for (const y of YEARS) { const own = uni.own[y] = uni.own[y] || {}; COLOUR.forEach(k => { const v = valOf(y, k); if (v !== base(k)) own[k] = v; else delete own[k] }); if (!Object.keys(own).length) delete uni.own[y] }
+    for (const y of GKEYS) { const own = uni.own[y] = uni.own[y] || {}; COLOUR.forEach(k => { const v = valOf(y, k); if (v !== base(k)) own[k] = v; else delete own[k] }); if (!Object.keys(own).length) delete uni.own[y] }
     store.set('sotd-gal-looks', JSON.stringify(uni.own)); if (!quiet) { uni.galLook(); uni.markOwn() }
   }
   pushColours(true);   // (the colours of every galaxy, ready for when you get there)
@@ -52,7 +52,7 @@ const galLab = (() => {
     // the line, faint
     g.globalCompositeOperation = 'source-over'; g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = 1; g.beginPath(); for (let k = 0; k <= 400; k++) { const r = r0 + rho(k / 400) * len, [x, z] = at(r, phase(r)); k ? g.lineTo(x, z) : g.moveTo(x, z) } g.stroke();
     // its winners (the default galaxy borrows 2025's)
-    const k = Math.max(0, Math.min(UNI_N - 1, (y === 'def' ? 2025 : y) - UNI_Y0)), i0 = UNI_I0[k], i1 = UNI_I1[k], hug = V('starHug'), bw = V('starBandW'), ba = V('starAlong'), Y = y === 'def' ? 2025 : y, t0 = Date.UTC(Y, 0, 1), t1 = Date.UTC(Y + 1, 0, 1);
+    const k = y === 'def' ? UNI_N - 1 : galOfYear(y), i0 = UNI_I0[k], i1 = UNI_I1[k], hug = V('starHug'), bw = V('starBandW'), ba = V('starAlong'), t0 = Date.UTC(UNI_SPANS[k][0], 0, 1), t1 = Date.UTC(UNI_SPANS[k][1] + 1, 0, 1);   // (the default galaxy borrows the last one's winners)
     if (i0 >= 0) for (let i = i0; i <= i1; i++) {
       const d = D[i], u = rho(1 - Math.max(0, Math.min(1, (d.t - t0) / (t1 - t0)))), r = r0 + u * len, s = 7700 + r * .045, wk = wAt(r), rr = Math.max(r0 * .3, r + gs() * s * .7 * bw * hug * wk), a = phase(r) + gs() * .1 * ba * s / r * wk;
       const [x, z] = at(rr, a), big = d.award === 'FOTY' ? 2.4 : d.award === 'SOTM' ? 1.7 : 1.1; g.fillStyle = d.award === 'FOTY' ? AWARD_COL.FOTY : d.award === 'SOTM' ? AWARD_COL.SOTM : 'rgba(255,255,255,.9)'; g.fillRect(x - big / 2, z - big / 2, big, big);
@@ -69,8 +69,8 @@ const galLab = (() => {
     inp.oninput = () => onSet(k, +inp.value); w.set = set; set(); return w;
   }
   function column(y) {
-    const c = document.createElement('div'); c.className = 'gl-c' + (y === 'def' ? ' def' : ''); const n = y === 'def' ? 0 : (k => UNI_I0[k] >= 0 ? UNI_I1[k] - UNI_I0[k] + 1 : 0)(y - UNI_Y0);
-    c.innerHTML = `<header><b>${y === 'def' ? 'Default' : y}</b><span>${y === 'def' ? 'all galaxies' : n + ' winners'}</span>${y === 'def' ? '<button type="button" class="gl-lock">🔒 Play at your own peril</button>' : '<button type="button" data-a="prev" title="Take the settings of the year before">← copy</button><button type="button" data-a="reset" title="Back to the default galaxy">reset</button>'}</header><canvas width="260" height="260" title="${y === 'def' ? '' : 'Open it full screen'}"></canvas>`;
+    const c = document.createElement('div'); c.className = 'gl-c' + (y === 'def' ? ' def' : ''); const n = y === 'def' ? 0 : (k => UNI_I0[k] >= 0 ? UNI_I1[k] - UNI_I0[k] + 1 : 0)(galOfYear(y));
+    c.innerHTML = `<header><b>${y === 'def' ? 'Default' : galName(galOfYear(y))}</b><span>${y === 'def' ? 'all galaxies' : n + ' winners'}</span>${y === 'def' ? '<button type="button" class="gl-lock">🔒 Play at your own peril</button>' : '<button type="button" data-a="prev" title="Take the settings of the year before">← copy</button><button type="button" data-a="reset" title="Back to the default galaxy">reset</button>'}</header><canvas width="260" height="260" title="${y === 'def' ? '' : 'Open it full screen'}"></canvas>`;
     const cv = c.querySelector('canvas'), sl = [];
     const onSet = (k, v, many) => {
       if (y === 'def') { st.def[k] = v; for (const yy in st.g) delete st.g[yy][k] }   // the default: every galaxy follows it, for this setting
@@ -89,17 +89,17 @@ const galLab = (() => {
     c.querySelector('header').onclick = e => { const a = e.target.dataset && e.target.dataset.a;
       if (e.target.classList.contains('gl-lock')) { locked = !locked; e.target.textContent = locked ? '🔒 Play at your own peril' : '🔓 Unlocked: changes go to all 27'; e.target.classList.toggle('open', !locked); refresh() }
       if (a === 'reset') { delete st.g[y]; save(); refresh(); pushColours() }
-      if (a === 'prev' && y > UNI_Y0) { st.g[y] = { ...KEYS.reduce((o, k) => (o[k] = valOf(y - 1, k), o), {}) }; save(); refresh(); pushColours() } };
+      if (a === 'prev' && galOfYear(y) > 0) { const py = galKey(galOfYear(y) - 1); st.g[y] = { ...KEYS.reduce((o, k) => (o[k] = valOf(py, k), o), {}) }; save(); refresh(); pushColours() } };
     const me = { c, refresh, y }; return me;
   }
   // one galaxy, full screen: the real thing, built in full, with a camera you turn by dragging and zoom with the wheel, its settings beside it
   let viewing = -1, vcol = null; const orb = { th: .7, ph: 1.05, d: 2.4, f: 50 };
   function view(y) {
     if (!booted || gplay.on) return; if (S.mode !== 'fly') { setMode('fly'); tween = null }
-    viewing = y; uni.rebase(y - UNI_Y0); el.classList.add('viewing'); const side = el.querySelector('.gl-side'); side.innerHTML = ''; vcol = column(y); side.appendChild(vcol.c); vcol.refresh(); el.querySelector('.gl-vy').textContent = y;
+    viewing = y; uni.rebase(galOfYear(y)); el.classList.add('viewing'); const side = el.querySelector('.gl-side'); side.innerHTML = ''; vcol = column(y); side.appendChild(vcol.c); vcol.refresh(); el.querySelector('.gl-vy').textContent = galName(galOfYear(y));
   }
   function unview() {
-    if (viewing < 0) return; const y = viewing; if (uni.own[y] && Object.keys(uni.own[y]).length) uni.take(y - UNI_Y0);   // its own far picture, as you leave it
+    if (viewing < 0) return; const y = viewing; if (uni.own[y] && Object.keys(uni.own[y]).length) uni.take(galOfYear(y));   // its own far picture, as you leave it
     viewing = -1; vcol = null; el.classList.remove('viewing'); cols.forEach(c => c.refresh());
   }
   const _ov = new V3();
@@ -109,16 +109,16 @@ const galLab = (() => {
     if (camera.fov !== orb.f) { camera.fov = orb.f; camera.updateProjectionMatrix() } camera.updateMatrixWorld(); return true;
   }
   function msg(t) { if (!el) return t; const m = el.querySelector('.gl-msg'); m.textContent = t; clearTimeout(msg.t); msg.t = setTimeout(() => m.textContent = '', 3500); return t }
-  function copyText() { const o = {}; if (Object.keys(st.def).length) o.default = st.def; YEARS.forEach(y => { if (st.g[y] && Object.keys(st.g[y]).length) o[y] = st.g[y] }); return 'FWA FOREVER galaxy settings: ' + JSON.stringify(o) }
+  function copyText() { const o = {}; if (Object.keys(st.def).length) o.default = st.def; GKEYS.forEach(y => { if (st.g[y] && Object.keys(st.g[y]).length) o[y] = st.g[y] }); return 'FWA FOREVER galaxy settings: ' + JSON.stringify(o) }
   function importText(txt) {
     const i = txt.indexOf('{'), j = txt.lastIndexOf('}'); if (i < 0 || j < i) return msg('No settings in that text'); let o; try { o = JSON.parse(txt.slice(i, j + 1)) } catch (e) { return msg('That text could not be read') }
     const pick = s => { const r = {}; if (s && typeof s === 'object') for (const k of KEYS) if (Number.isFinite(+s[k])) r[k] = +s[k]; return r };
-    st.def = pick(o.default); st.g = {}; YEARS.forEach(y => { const r = pick(o[y]); if (Object.keys(r).length) st.g[y] = r }); save(); cols.forEach(c => c.refresh()); pushColours(); const n = Object.keys(st.g).length; return msg(`Galaxy settings in (${n} galaxies${Object.keys(st.def).length ? ' and the default' : ''})`);
+    st.def = pick(o.default); st.g = {}; GKEYS.forEach(y => { const r = pick(o[y]); if (Object.keys(r).length) st.g[y] = r }); save(); cols.forEach(c => c.refresh()); pushColours(); const n = Object.keys(st.g).length; return msg(`Galaxy settings in (${n} galaxies${Object.keys(st.def).length ? ' and the default' : ''})`);
   }
   function build() {
     el = document.createElement('div'); el.id = 'galLab'; el.innerHTML = `<div class="gl-view"><div class="gl-stage"><button type="button" class="gl-x" aria-label="Close">✕</button><b class="gl-vy"></b><span class="gl-hint">Drag to turn · scroll to zoom · Shift+scroll: lens</span></div><div class="gl-side"></div></div><div class="gl-top"><b>Galaxy playground</b><span>Each year's galaxy from above, with its own settings. Colours show in flight right away; send me the text for the shapes.</span><span class="gl-msg"></span><button type="button" data-a="copy">Copy settings</button><button type="button" data-a="paste">Paste</button><button type="button" data-a="clear">Reset all</button><button type="button" data-a="close">Close ✕</button></div><textarea class="gl-in" hidden placeholder="Paste FWA FOREVER galaxy settings here"></textarea><div class="gl-row"></div>`;
     document.body.appendChild(el); const row = el.querySelector('.gl-row'), ta = el.querySelector('.gl-in');
-    cols = ['def', ...YEARS].map(column); cols.forEach(c => row.appendChild(c.c));
+    cols = ['def', ...GKEYS].map(column); cols.forEach(c => row.appendChild(c.c));
     el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') { if (viewing >= 0) unview(); else close() } });
     { const stg = el.querySelector('.gl-stage'); let dr = null; el.querySelector('.gl-x').onclick = unview;
       stg.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; dr = { x: e.clientX, y: e.clientY }; stg.setPointerCapture(e.pointerId) });

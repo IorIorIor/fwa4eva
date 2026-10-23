@@ -13,7 +13,7 @@ const gwarp = (() => {
     const L = LOOK; st.on = true; st.t = 0; st.i = k; st.from.copy(player.pos);
     const c = uniAt(k, _a), dir = _b.copy(c).sub(player.pos).normalize(); st.to.copy(c).addScaledVector(dir, -R() * Math.max(1.05, (L.igFrom ?? 1.15) * 1.08));   // just outside its rim, on the way in
     st.q0.copy(player.quat); st.q1.setFromRotationMatrix(_m.lookAt(new V3(), dir, GAL_UP));
-    auto = null; lockI = -1; warp = null; camHold = null; buzz([20, 30, 60]); if (TEST) console.log('galaxy warp to', UNI_Y0 + k);
+    auto = null; lockI = -1; warp = null; camHold = null; buzz([20, 30, 60]); if (TEST) console.log('galaxy warp to', galName(k));
   }
   return {
     get on() { return st.on }, get k() { return st.k }, get aim() { return st.aim }, get fov() { return st.fov }, start,

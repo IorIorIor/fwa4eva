@@ -130,7 +130,7 @@ const prevSoon = () => { if (prevQ) return; prevQ = requestAnimationFrame(() => 
 function renderLook() {
   const body = $('lookBody'); body.innerHTML = '';
   if (LOOK === LOOK_PLAY) { const n = document.createElement('div'); n.className = 'mapnote'; n.innerHTML = '<b>Play look</b><span>You are tuning Play mode\'s own look. Flying keeps its own.</span><button class="btn" type="button">Start from the flying look</button>'; n.querySelector('button').onclick = () => { Object.assign(LOOK_PLAY, LOOK_FLY); saveLook(); renderLook(); applyLook() }; body.appendChild(n) }
-  else if (LOOK === LOOK_FLY && LOOK.galOwn) { const n = document.createElement('div'); n.className = 'mapnote'; n.innerHTML = `<b>${GYEAR} only</b><span>Galaxy settings you change now are this galaxy's own. Turn off "this galaxy only" (Universe) to change every galaxy.</span>`; body.appendChild(n) }
+  else if (LOOK === LOOK_FLY && LOOK.galOwn) { const n = document.createElement('div'); n.className = 'mapnote'; n.innerHTML = `<b>${galName(UNI.k)} only</b><span>Galaxy settings you change now are this galaxy's own. Turn off "this galaxy only" (Universe) to change every galaxy.</span>`; body.appendChild(n) }
   if (LOOK === LOOK_MAP) { const n = document.createElement('div'); n.className = 'mapnote'; n.innerHTML = '<b>Map look</b><span>You are tuning the map\'s own look. Flying keeps its own.</span><button class="btn" type="button">Start from the flying look</button>'; n.querySelector('button').onclick = () => { LOOK_MAP = LOOK = { ...LOOK_FLY, mapFade: 0 }; saveLook(); renderLook(); applyLook() }; body.appendChild(n) }
   let openSecs = store.json('sotd-look-open', []); if (!Array.isArray(openSecs)) openSecs = [];
   LOOK_DEF.forEach(([title, rows]) => {

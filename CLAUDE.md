@@ -25,12 +25,12 @@ and gives quick visual feedback; keep replies short).
   ←/→ or Q/E nearer/farther winner, F free pointer.
 - Data: the real archive (IorIorIor/fwa4eva-data, private) ships with the app in `public/data/` (archive.json + shots/YYYY/*.webp).
   Refresh it with `npm run data` (copies from a clone at `../fwa4eva-data`). Days before the archive starts borrow real winners.
-- THE MERGE (branch `the-merge`): a galaxy per year (2000…2026), each turned its own way, laid out by `uniLayout` (Look → Universe;
+- THE MERGE (branch `the-merge`): five galaxies of five years (`UNI_SPANS`; the last 2021–2026), each turned its own way, laid out by `uniLayout` (Look → Universe;
   default: a semicircle round the start). Only the galaxy you're in is built in full; it always sits at `GC` turned to `GQ`:
   crossing to another moves and turns the world (`uni.rebase` → `remap` in 13-universe; anything holding a world position or
   heading must be mapped there). `uniToWorld`/`worldToUni` convert; network, flags and the saved ship use universe coordinates.
   Others are snapshots (`uni.take`, one shared, one per galaxy with its own look) on disks. Dates (`yearU`, `T_A/T_B`) are the
-  current galaxy's year (`GYEAR`); winners' galaxy-frame positions are `PLL`, their galaxy `GI`. Per-galaxy settings: the galaxy
+  current galaxy's years (`GYEAR`…`GEND`); winners' galaxy-frame positions are `PLL`, their galaxy `GI`. Per-galaxy settings: the galaxy
   playground (18-gallab, Look → Universe). Arriving prompts Enter/Play; Play is `gplay` (18-play) with its own look `LOOK_PLAY`.
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
   field for settings copied from the Ascent toy.

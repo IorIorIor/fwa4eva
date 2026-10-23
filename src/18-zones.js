@@ -8,7 +8,7 @@ const mapZone = (() => {
   // the spiral sampled every few days: where it is (galaxy frame) and when
   let tS = 0, tE = 0, zY = -1; const SN = 2400, sx = new Float32Array(SN), sz = new Float32Array(SN), st = new Float64Array(SN);
   const at = t => { const r = GAL_R0 + yearU(t) * GAL_LEN, th = armPhase(r); return [Math.cos(th) * r, Math.sin(th) * r] };
-  const sample = () => { zY = GYEAR; tS = Date.UTC(GYEAR, 0, 1); tE = Date.UTC(GYEAR + 1, 0, 1) - 864e5; for (let k = 0; k < SN; k++) { const t = tS + (tE - tS) * k / (SN - 1), p = at(t); sx[k] = p[0]; sz[k] = p[1]; st[k] = t } };   // the galaxy's own year (sampled again in each galaxy)
+  const sample = () => { zY = GYEAR; tS = Date.UTC(GYEAR, 0, 1); tE = Date.UTC(GEND + 1, 0, 1) - 864e5; for (let k = 0; k < SN; k++) { const t = tS + (tE - tS) * k / (SN - 1), p = at(t); sx[k] = p[0]; sz[k] = p[1]; st[k] = t } };   // the galaxy's own year (sampled again in each galaxy)
   sample();
   const span = t => { const d = new Date(t), y = d.getUTCFullYear(), m = d.getUTCMonth(); return [Date.UTC(y, m, 1), Date.UTC(y, m + 1, 1), y] };   // a galaxy is a year: its zones are its months
   // a soft glowing ribbon along the spiral between two dates

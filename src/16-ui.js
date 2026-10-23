@@ -80,8 +80,8 @@ function buildConstellation() {
    by zoom level with their rings and are clickable; in flight they're off unless the time rings are on. */
 const galaxyLabels = [];
 function buildGalaxyLabels() {   // the months of the galaxy you're in (January says its year)
-  galaxyLabels.length = 0; const y = GYEAR;
-  for (let m = 0; m < 12; m++) { const um = yearU(Date.UTC(y, m, 1)); if (um > .002) galaxyLabels.push({ text: 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[m] + (m ? '' : ' ' + y), cls: 'yr ax mo', ruler: um, lvl: 2, ry: y + m / 12, near: 60000, pos: ringPoint(um, THR, 0), f: 1e9 }) }
+  galaxyLabels.length = 0;
+  for (let y = GYEAR; y <= GEND; y++) for (let m = 0; m < 12; m++) { const um = yearU(Date.UTC(y, m, 1)); if (um > .002 && um < .999 || (m === 0 && y === GYEAR)) galaxyLabels.push({ text: 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[m] + (m ? '' : ' ' + y), cls: 'yr ax mo', ruler: um, lvl: 2, ry: y + m / 12, near: 60000, pos: ringPoint(um, THR, 0), f: 1e9 }) }
 }
 buildGalaxyLabels();
 let labelEls = [];

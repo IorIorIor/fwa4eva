@@ -12,7 +12,7 @@ const SP_TW = 2 * Math.PI * 5.4 * SHAPE.turns;   // the single spiral's total tu
 const SP_G = SHAPE.sgap, SP_LG = Math.log(SP_G), SP_FLAT = Math.abs(SP_LG) < 1e-3, SP_S0 = SP_FLAT ? 1 : (SP_G - 1) / (SP_G * SP_LG), SP_S1 = SP_FLAT ? 1 : (SP_G - 1) / SP_LG;
 const spRho = tau => SP_FLAT ? tau : SP_G * (1 - Math.pow(SP_G, -tau)) / (SP_G - 1);
 const spTau = u => { if (SP_FLAT) return u; const c = Math.max(0, Math.min(1, u)); return -Math.log(1 - c * (SP_G - 1) / SP_G) / SP_LG + (u - c) * (u < 0 ? SP_S0 : SP_S1) };
-const NGAL = 1, GAL_YRS = 5, NERA = 12;   // (the eras are now the twelve months of a galaxy's year)
+const NGAL = 1, GAL_YRS = 5, NERA = 7;   // (the eras are now the years of a galaxy)
 const MIN_SEP = SHAPE.sep;          // no two winners closer than this, centre to centre
 
 /* background dust (not data): drawn first so the seeded stream stays in step */
@@ -30,7 +30,9 @@ const GAL = { name: 'The Galaxy', y0: 2000, arms: ARMS, center: GC, quat: GQ };
    it a step further along), each turned its own way. UNI.c and UNI.q hold each one's centre and turn in universe coordinates;
    the world you see is the universe moved and turned (UNI.R) so that the galaxy you're in always sits at GC the way GQ
    says, where all its detail is built (far from home the numbers would otherwise lose their precision). */
-const UNI_Y0 = 2000, UNI_N = 27;
+const UNI_Y0 = 2000, UNI_SPANS = [[2000, 2005], [2006, 2010], [2011, 2015], [2016, 2020], [2021, 2026]], UNI_N = UNI_SPANS.length;   // five galaxies of five years (2000 began in May, so the first carries 2005 too; the last has six)
+const galOfYear = y => { for (let k = 0; k < UNI_N; k++) if (y <= UNI_SPANS[k][1]) return k; return UNI_N - 1 };
+const galKey = k => UNI_SPANS[k][0], galName = k => UNI_SPANS[k][0] + '–' + UNI_SPANS[k][1];   // a galaxy's key (its first year, for its saved settings) and its name
 const UNI = { c: Array.from({ length: UNI_N }, () => new V3()), q: Array.from({ length: UNI_N }, () => GQ.clone()), k: UNI_N - 1, home: null, look: null, R: new Q4(), RI: new Q4() };   // home/look: where you start and what you face (universe), when the layout has its own
 function uniLayout(L = LOOK) {
   const Rg = GAL_OUT, gap = Math.max(2.2, L.uniGap ?? 4.5) * Rg, th = (L.uniTurn ?? 40) * Math.PI / 180, h = gap * Math.max(0, Math.min(.95, L.uniRise ?? .35)), c = Math.sqrt(Math.max(0, gap * gap - h * h));
@@ -74,18 +76,19 @@ const worldToUni = (p, out = new V3()) => out.copy(p).sub(GC).applyQuaternion(UN
 uniLayout();
 const uniAt = (k, out = new V3()) => uniToWorld(UNI.c[k], out);   // galaxy k's centre in the world as it is now
 const uniQ = (k, out = new Q4()) => out.copy(UNI.R).multiply(UNI.q[k]);   // and its turn
-/* THE MERGE: a galaxy for every year. Each one is a year, its January on the rim and its December round the black hole, so
-   the dates below are always the year of the galaxy you're in (GYEAR); setGalYear switches them over */
-let GYEAR = 2026, T_A = Date.UTC(2026, 0, 1), T_B = Date.UTC(2027, 0, 1);
-function setGalYear(y) { GYEAR = y; T_A = Date.UTC(y, 0, 1); T_B = Date.UTC(y + 1, 0, 1) }
+/* THE MERGE: a galaxy for every five years. Each one's first January on the rim and its last December round the black hole, so
+   the dates below are always those of the galaxy you're in (GYEAR its first year, GEND its last); setGal switches them over */
+let GYEAR = 2021, GEND = 2026, T_A = Date.UTC(2021, 0, 1), T_B = Date.UTC(2027, 0, 1);
+function setGal(k) { GYEAR = UNI_SPANS[k][0]; GEND = UNI_SPANS[k][1]; T_A = Date.UTC(GYEAR, 0, 1); T_B = Date.UTC(GEND + 1, 0, 1) }
+setGal(UNI_N - 1);
 const tFrac = t => Math.max(0, Math.min(1, (t - T_A) / (T_B - T_A)));
 const tFracAll = t => Math.max(0, Math.min(1, (t - Date.UTC(2000, 0, 1)) / (Date.UTC(2027, 0, 1) - Date.UTC(2000, 0, 1))));   // across all 27 years (a winner's age)
 const yearU = t => SPIRAL ? spRho(1 - tFrac(t)) : Math.pow(1 - tFrac(t), .62);                  // 0 = core (today), 1 = rim (2000)
 const uToT = u => { u = Math.max(0, Math.min(1, u)); return T_A + (1 - (SPIRAL ? spTau(u) : Math.pow(u, 1 / .62))) * (T_B - T_A) };
-const yrsPerU = u => SPIRAL ? (SP_FLAT ? 1 : SP_S0 * Math.pow(SP_G, spTau(u))) : 1 / .62 * Math.pow(Math.max(u, .03), 1 / .62 - 1);   // years per unit of u here (a galaxy holds one year)
+const yrsPerU = u => (T_B - T_A) / 3.15576e10 * (SPIRAL ? (SP_FLAT ? 1 : SP_S0 * Math.pow(SP_G, spTau(u))) : 1 / .62 * Math.pow(Math.max(u, .03), 1 / .62 - 1));   // years per unit of u here
 // u0 = inner edge (the era's end), u1 = outer edge (its start)
 const MON_N = 'January February March April May June July August September October November December'.split(' ');
-const ERAS = Array.from({ length: NERA }, (_, k) => ({ k, get y0() { return GYEAR }, get name() { return MON_N[k] + ' ' + GYEAR }, u0: k < NERA - 1 ? yearU(Date.UTC(2026, k + 1, 1)) : 0, u1: k ? yearU(Date.UTC(2026, k, 1)) : 1 }));   // the months: the same rings in every galaxy
+const ERAS = Array.from({ length: NERA }, (_, k) => ({ k, get y0() { return GYEAR + k }, get name() { return String(GYEAR + k) }, get u0() { return GYEAR + k > GEND ? -1 : GYEAR + k === GEND ? 0 : yearU(Date.UTC(GYEAR + k + 1, 0, 1)) }, get u1() { return GYEAR + k > GEND ? -1 : k ? yearU(Date.UTC(GYEAR + k, 0, 1)) : 1 } }));   // the eras: the galaxy's years
 const galOf = y => Math.max(0, Math.min(5, Math.floor((y - 2000) / GAL_YRS)));   // (five-year bands: the chimes' keys)
 const eraOfU = u => { if (u >= 1) return 0; for (let k = 0; k < NERA; k++) if (u >= ERAS[k].u0 && u <= ERAS[k].u1) return k; return NERA - 1 };
 /* the black hole, sized from its mass on the winners' own scale: a Sun-like winner is ~27 units across one solar radius,
@@ -197,7 +200,7 @@ const P = new Float32Array(N * 3), CR = new Float32Array(N), SIZE = new Float32A
 const GI = new Uint8Array(N), PL = new Float64Array(N * 3), UNI_I0 = new Int32Array(UNI_N).fill(-1), UNI_I1 = new Int32Array(UNI_N).fill(-1), UNI_CX = new Float64Array(N * 3);
 // every winner sits on its year's timeline: its distance from the core is its date, on one of the arms
 D.forEach((d, i) => {
-  const k = Math.max(0, Math.min(UNI_N - 1, d.year - UNI_Y0)); GI[i] = k; if (UNI_I0[k] < 0) UNI_I0[k] = i; UNI_I1[k] = i; if (d.year !== GYEAR) setGalYear(d.year);
+  const k = galOfYear(d.year); GI[i] = k; if (UNI_I0[k] < 0) UNI_I0[k] = i; UNI_I1[k] = i; if (GYEAR !== UNI_SPANS[k][0]) setGal(k);
   const u = yearU(d.t), r = GAL_R0 + u * GAL_LEN, s = 7700 + r * .045, arm = (R() * GAL.arms) | 0, hug = SHAPE.hug;   // hug: a year's few hundred winners can keep close to its line
   const W = SHAPE.bw * hug, H = SHAPE.bh * (2600 + 15000 * SHAPE.ch * Math.exp(-r / 105000)), A = SHAPE.ba;   // the band the winners sit in: width across the arm, height off the disk, spread along it
   const v = SPIRAL ? galPoint(GAL, 0, u, gauss() * s * .7 * W, gauss() * .1 * A * s / r, gauss() * H)   // on the spiral the date is how far along it you are
@@ -252,7 +255,7 @@ for (let i = 0; i < N; i++) {
   const dx = _p1.x - _p0.x, dz = _p1.z - _p0.z, dh = Math.hypot(dx, dz), k = dh > cap ? cap / dh : 1, dy = Math.max(-capY, Math.min(capY, _p1.y - _p0.y));
   _p1.set(_p0.x + dx * k, _p0.y + dy, _p0.z + dz * k).applyQuaternion(GQ); PL[o] = _p1.x; PL[o + 1] = _p1.y; PL[o + 2] = _p1.z; _p1.add(_gcx.fromArray(UNI_CX, o)); P[o] = _p1.x; P[o + 1] = _p1.y; P[o + 2] = _p1.z;
 }
-setGalYear(2026);
+setGal(UNI_N - 1);
 // the winners' world positions, from their galaxies' centres as they are now (after the universe has moved, or its layout changed)
 const PLL = new Float64Array(N * 3); { const v = new V3(); for (let i = 0; i < N; i++) { v.fromArray(PL, i * 3).applyQuaternion(GQI); PLL[i * 3] = v.x; PLL[i * 3 + 1] = v.y; PLL[i * 3 + 2] = v.z } }   // each winner in its galaxy's own frame
 function uniPlaceStars() { const c = new V3(), q = new Q4(), v = new V3(); for (let i = 0; i < N; i++) { if (i === 0 || GI[i] !== GI[i - 1]) { uniAt(GI[i], c); uniQ(GI[i], q) } const o = i * 3; v.set(PLL[o], PLL[o + 1], PLL[o + 2]).applyQuaternion(q); P[o] = c.x + v.x; P[o + 1] = c.y + v.y; P[o + 2] = c.z + v.z; PL[o] = v.x; PL[o + 1] = v.y; PL[o + 2] = v.z } }
