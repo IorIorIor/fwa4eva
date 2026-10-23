@@ -7,7 +7,7 @@ const arcPass = pass(arcScene, camera, { depthBuffer: false, samples: 0 });
 const PU = {   // pipeline uniforms
   inv: uniform(0), apex: uniform(new THREE.Vector2(.5, .5)),   // apex: where on screen you're heading (or, looking back, coming from)   // the inverted monochrome look: black stars on white
   volOn: uniform(0), hazeScreen: uniform(1), volBlur: uniform(0),
-  void: uniform(0), sw: uniform(0), swC: uniform(new THREE.Vector2(.5, .5)), swR: uniform(.1), swP: uniform(0), asp: uniform(1),   // the black hole twisting the picture round it: swirl (radians at its middle), where, how far it reaches (screen heights), how hard it pulls in, the screen's aspect
+  pInk: uniform(.12), void: uniform(0), sw: uniform(0), swC: uniform(new THREE.Vector2(.5, .5)), swR: uniform(.1), swP: uniform(0), asp: uniform(1),   // the black hole twisting the picture round it: swirl (radians at its middle), where, how far it reaches (screen heights), how hard it pulls in, the screen's aspect
   exp: uniform(1), film: uniform(1), vig: uniform(.45), grain: uniform(.03), ab: uniform(0), beta: uniform(0), black: uniform(0), con: uniform(1), sat: uniform(1), cool: uniform(0),
   bgK: uniform(1), lv: uniform(0), lvMid: uniform(2),   // lv: the ring veil's levels over the whole frame (1 = all white, easing back to 0 = untouched)
     // the whole background (gas, haze, arcs) dims to this on the map, leaving the winners and the lines
@@ -112,4 +112,12 @@ const finalNode = Fn(() => {
 })();
 loadProg(.6);
 const pipeline = new THREE.RenderPipeline(renderer); pipeline.outputColorTransform = false; pipeline.outputNode = finalNode;
+// paper: only the scene itself (the stars and the timeline: everything else is off its layer), printed as ink on a white page.
+// None of the other layers, the bloom, the trails or the black hole are drawn or even computed
+const paperNode = Fn(() => {
+  const c = min(sceneTex.sample(screenUV).rgb, 1), mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), sat = mx.sub(mn).div(mx.max(1e-4));
+  const ink = mix(vec3(PU.pInk), c.div(mx.max(1e-4)).mul(.82), smoothstep(.12, .35, sat));   // grey ink; a coloured star prints in its colour
+  return vec4(mix(vec3(1), ink, clamp(mx.mul(1.15), 0, 1)), 1);
+})();
+const paperPipeline = new THREE.RenderPipeline(renderer); paperPipeline.outputColorTransform = false; paperPipeline.outputNode = paperNode;
 function setPassScales() { arcPass.setResolutionScale(LOOK.arcs > 0 ? LOOK.arcRes ?? 1 : 1 / 32); volPass.setResolutionScale(LOOK.volumetric ? LOOK.volRes : 1 / 32);   /* (a layer that's switched off still renders: at a postage stamp it costs nothing) */ softPass.setResolutionScale(LOOK.softRes); hazePass.setResolutionScale(LOOK.softRes); U.minSoft.value = 1 / LOOK.softRes }

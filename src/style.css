@@ -669,14 +669,8 @@ body.map:has(#rmPanel.p-search:not([hidden])) #rmVeil{opacity:0}
 #stamp small{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.75)}
 #stamp b{font-family:"FF Good Pro",var(--body);font-weight:400;font-size:clamp(34px,6vw,76px);line-height:1;color:#fff;text-shadow:0 0 30px rgba(255,220,160,.45)}
 /* paper: the page goes white; tags and labels turn to black ink */
-body.paper{background:#fff}
-body.paper #zoneTip{background:#000;color:#fff}
+body.paper{background:#fff}body.paper #labels,body.paper #dayLabels,body.paper #topnav{filter:invert(1) hue-rotate(180deg)}   /* paper: the interface keeps its colours; only the labels on the page (and the white menu text, to stay readable) turn to ink */
 #farText{position:fixed;left:50%;top:30%;transform:translate(-50%,-50%);z-index:19;pointer-events:none;opacity:0;text-align:center;display:flex;flex-direction:column;gap:8px;color:#fff}#farText small{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.6)}#farText b{font-family:"FF Good Pro",var(--body);font-weight:400;font-size:clamp(28px,4vw,52px)}
-body.paper #panel header,body.paper #panel .fblk,body.paper #rmPanel,body.paper #lookPanel,body.paper #mapSearch{background:rgba(255,255,255,.88) !important;color:#111}
-body.paper .frow,body.paper #agQ,body.paper #mapSearch,body.paper #rmPanel,body.paper #rmPanel header b,body.paper #navQ{color:#111}
-body.paper .frow b,body.paper .flbl{color:rgba(0,0,0,.45)}body.paper #fAg.some .frow:not(.on){color:rgba(0,0,0,.35)}
-body.paper .frow:hover{background:rgba(0,0,0,.06)}body.paper #mapSearch{border-bottom-color:rgba(0,0,0,.3)}
-body.paper #tip .td,body.paper #tip .tt,body.paper #tip .ti{color:#111}body.paper .ubg{background:rgba(255,255,255,.9)}
 body.farside #labels,body.farside #dayLabels{opacity:0;transition:opacity 1s}   /* the far side is quiet: no tags */
 /* phones: Tilt sits over Brake; panels come up from the bottom as sheets you can swipe away */
 #tiltBtn{display:none}
@@ -693,7 +687,6 @@ body.farside #labels,body.farside #dayLabels{opacity:0;transition:opacity 1s}   
   #panel::before,#lookPanel::before,#rmPanel::before{content:'';display:block;flex:none;width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.32);margin:8px auto 2px}
   .sheet.drag,#rmPanel.drag{transition:none!important}
 }
-body.paper #panel,body.paper #lookPanel,body.paper #rmPanel{background:rgba(250,250,248,.97)!important}
 /* touch: no text selection or callout on a long press (fields still select) */
 @media (pointer:coarse){
   body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -712,7 +705,6 @@ body.paper #panel,body.paper #lookPanel,body.paper #rmPanel{background:rgba(250,
 #tip.mtop dd{font-size:13px;white-space:nowrap}
 #tip.mtop .ti a{padding:0 10px 9px;font-size:11px}
 #tip.mtop .tnav{display:none}
-body.paper #tip.mtop{background:rgba(250,250,248,.95)}
 /* the interface always sits over the 3D layers (the ship's canvas, rings and portals included) */
 #logo,#gotPill,#brand,#topnav,#topbar,#nav,#mapSearch,#gauge,#dash,#thrust,#brake,#tiltBtn,#coach,#tourPill,#legend,#arrive{z-index:12}
 #tip{z-index:13}
@@ -733,7 +725,6 @@ body.paper #tip.mtop{background:rgba(250,250,248,.95)}
 #mMenu .mx{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;width:44px;height:44px;background:none;border:0;color:#fff;font-size:30px;line-height:1}
 #mMenu a{margin-top:32px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);text-decoration:none}
 #mMenu .mgrab{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:38px;height:4px;margin-left:-19px;background:rgba(255,255,255,.3)}
-body.paper #mMenu{background:rgba(250,250,248,.97)}body.paper #mMenu nav button{color:rgba(0,0,0,.55)}body.paper #mMenu nav button.on{color:#000}body.paper #mMenu .mx{color:#000}
 body.mm-open #logo{z-index:46}   /* the logo stays on top of its menu: tap it again to close */
 @media (pointer:coarse){#dash{pointer-events:auto;cursor:pointer;-webkit-tap-highlight-color:transparent}}
 /* touch: one thrust square, bottom right. Hold it and two more appear: Boost above, Brake to the left; slide your thumb
@@ -765,7 +756,6 @@ body.mm-open #logo{z-index:46}   /* the logo stays on top of its menu: tap it ag
   body.map #mapSearch,body.map #nav{display:none!important}
   body.map.mtab-open #rmVeil{opacity:0}
 }
-body.paper #mTabs button{background:rgba(255,255,255,.9);color:#333}body.paper #mTabs button.on{background:#111;color:#fff}
 /* flags: a parked pilot's name and agency, right up close */
 #flagTags{position:fixed;inset:0;pointer-events:none;z-index:6}
 .ftag{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:flex-start;margin:-60px 0 0 14px}
@@ -877,7 +867,6 @@ body:has(#rmPanel.p-search:not([hidden])) #rmVeil{opacity:0}
 #tip .tnav .tdist{font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:10.5px;line-height:1;letter-spacing:.05em;color:rgba(255,255,255,.62);padding:3px 7px 4.5px}   /* the distance in the date's own type */
 #tip.full .tnav .tdist{font-size:12.5px;padding:3.5px 9px 5.5px}
 @media (pointer:coarse){#tip .tnav .tdist{font-size:11.5px}}
-body.paper #tip .tnav .tdist{color:#111}
 body.opening,body.opening *{cursor:none!important}   /* after Start: only the drawn pointer, never the system one */
 #tip{transform:translate(12px,15px) scale(var(--ts,1));transform-origin:0 0}#tip.at{transform:scale(var(--ts,1))}   /* Look: tooltip / full record scale */
 #wcmp .m.star span{transform:scale(var(--ts,1))!important;transform-origin:0 0}   /* the compass date beside a star matches the tooltip's */
@@ -893,7 +882,6 @@ body:not(.nosearch):not(.rm-open):not(.intro) #mapSearch{display:flex}
 #mapSearch #navRes button small{font-family:var(--mono);font-size:9.5px;color:rgba(255,255,255,.45)}
 #mapSearch #navRes .rhd{padding:8px 14px 6px}
 body.srch #mapSearch{border-bottom-color:rgba(255,255,255,.7)}
-body.paper #mapSearch #navQ{color:#111}body.paper #mapSearch #navQ::placeholder{color:rgba(0,0,0,.5)}body.paper #mapSearch #navRes{background:rgba(255,255,255,.94)}body.paper #mapSearch #navRes button{color:#111}
 /* scroll mode */
 #scrollUi{position:fixed;inset:0;pointer-events:none;z-index:12}
 #scrollUi .sdate{position:absolute;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);font-family:"FF Good Pro",var(--body);font-size:22px;color:#fff;letter-spacing:.01em;text-shadow:0 0 12px rgba(0,0,0,.6)}

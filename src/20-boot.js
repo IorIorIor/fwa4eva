@@ -199,8 +199,10 @@ const intro = {
     if (PORTAL_LAB) this.lab = makePortalLab(this);
     return true;
   },
-  portalView() {   // where the dive starts: far out straight behind the ship's spot, looking the way you'll fly (the camera never turns: only its path bends)
-    const L = LOOK, R = GAL_R0 + GAL_LEN, D = R * (L.portalDist ?? 6);
+  fovAt(p) { const L = LOOK, f0 = L.fov, f1 = Math.max(f0, L.portalFov ?? 120); return f0 + (f1 - f0) * Math.pow(1 - Math.max(0, Math.min(1, p)), 1.6) },   // wide while the mark is up, your own by the time you land (p: 0 … 1 over the whole opening)
+  setFov(p) { const f = this.fovAt(p); if (Math.abs(camera.fov - f) > 1e-4) { camera.fov = f; camera.updateProjectionMatrix() } },
+  portalView() {   // where the dive starts: just behind the ship's spot, looking the way you'll fly (the camera never turns: only its path bends)
+    const L = LOOK, R = GAL_R0 + GAL_LEN, D = this.D0 * Math.max(1, L.portalDist ?? 1.25);   // the camera starts just back from where your pointer is pointer-sized: it barely moves
     this.fwd = new V3(0, 0, -1).applyQuaternion(rig.q); this.offE = INTRO_END.clone().normalize().applyQuaternion(rig.q); this.rgt = new V3(1, 0, 0).applyQuaternion(rig.q); this.upv = new V3(0, 1, 0).applyQuaternion(rig.q);
     this.lnPV = Math.log(D); this.lnEnd = Math.log(INTRO_END.length()); this.lnD0 = Math.log(this.D0); this.shR = R;   // lnD0: there the ship looks exactly like a mouse pointer
     this.PV = { p: this.camAt(this.C0, this.lnPV, new V3()), q: rig.q.clone() };
@@ -216,7 +218,7 @@ const intro = {
     // the dive, in log distance from the ship's spot: slow, then a rush, then easing out, but never to a stop: it arrives still moving
     // in at a share (lam) of its pace, and that is the speed the camera carries on with past the mark (so nothing jumps there)
     const x = Math.pow(q, L.portalAccel ?? 2.2), eC = (1 - lam) * (1 - (1 - x) * (1 - x)) + lam * q, lnd = this.lnD0 + (this.lnPV - this.lnD0) * (1 - eC);
-    this.camAt(this.C0, lnd, camera.position); camera.quaternion.copy(rig.q); camera.updateMatrixWorld();   // it only closes in: the galaxy never turns
+    this.setFov(.6 * q); this.camAt(this.C0, lnd, camera.position); camera.quaternion.copy(rig.q); camera.updateMatrixWorld();   // it only closes in: the galaxy never turns
     const W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), Z0 = this.D0 * .6, wpx = Math.min(W * (L.portalSize ?? .62), H * 2.2), s = wpx / H * 2 * Z0 * th / 509, dep = (L.portalDepth ?? 200) * s;
     const z = -Z0 + (Z0 + dep * 1.05 + Z0 * .02) * eL;   // the mark comes at you, faster and faster, until you're out of the back of its walls
     P.g.position.set(0, 0, z).applyQuaternion(camera.quaternion).add(camera.position); P.g.quaternion.copy(camera.quaternion); P.g.scale.set(s, -s, dep);
@@ -227,7 +229,7 @@ const intro = {
     { const tr = P.wallMat.opacity < .999; if (tr !== P.wallMat.transparent) { P.wallMat.transparent = tr; P.wallMat.needsUpdate = true } }   // solid, it draws before your pointer, so the pointer is never hidden behind it
     P.rimMat.color.setHSL(L.portalRimHue ?? .72, L.portalRimSat ?? 0, .5).multiplyScalar(2 * (L.portalRim ?? 1.08)); P.rimAt(Math.round((L.portalStroke ?? 1.5) * 509 / wpx * 20) / 20, L.portalRimW ?? 6);   // the stroke in screen px
     { const sp = (L.portalStroke ?? 1.5) + 'px'; if (sp !== this.plsW) { this.plsW = sp; document.documentElement.style.setProperty('--pls', sp) } }   // (the loading outline's stroke, the same width)
-    { const line = !!L.portalLine; P.wallM.visible = P.fill.visible = P.sides.visible = !line }   // the switch: only the white stroke and its glow
+    { const line = !!L.portalLine; P.wallM.visible = P.fill.visible = !line; P.sides.visible = !line && !L.portal2D }   // the switch: only the white stroke and its glow
     P.sideMat.roughness = L.portalWallRough ?? .59; P.sideMat.metalness = L.portalWallMetal ?? 1; P.sideMat.color.setHSL(L.portalWallHue ?? .7, L.portalWallSat ?? .3, L.portalWallBright ?? .012);
     { const fc = L.portalFace ?? 0, rs = .006 * (L.portalScuffScale ?? 1); P.wallMat.roughness = P.sideMat.roughness; P.wallMat.metalness = (L.portalWallMetal ?? 1) * fc; P.wallMat.color.setHSL(L.portalWallHue ?? .7, L.portalWallSat ?? .3, (L.portalFaceBright ?? .06) * fc);   // the face: the same worn metal as the walls
       P.wallMat.bumpScale = P.sideMat.bumpScale = .35 * (L.portalScuff ?? 1); P.maps.forEach(t => t.repeat.set(rs, rs));
@@ -237,7 +239,7 @@ const intro = {
     // the pointer: the 3D ship, flat, right under your mouse. In the last stretch it starts to come closer, at exactly the pace the
     // camera will carry on closing in at, so past the mark it just keeps growing the same way (G: the rest of a smoothstep's area)
     { const f = Math.min(1, dt * 14 || 1); this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;
-      const qa = .9, tt = Math.max(0, Math.min(1, (q - qa) / (1 - qa))), G = (1 - qa) * (.5 - tt * tt * tt + tt * tt * tt * tt / 2), dp = Math.exp(this.lnD0 + lam * (this.lnPV - this.lnD0) * G), ty = Math.tan(camera.fov * Math.PI / 360);
+      const qa = .9, tt = Math.max(0, Math.min(1, (q - qa) / (1 - qa))), G = (1 - qa) * (.5 - tt * tt * tt + tt * tt * tt * tt / 2), ty = Math.tan(camera.fov * Math.PI / 360), dp = Math.exp(this.lnD0 + lam * (this.lnPV - this.lnD0) * G) * Math.tan(LOOK.fov * Math.PI / 360) / ty;   // (with the wide lens it sits nearer, so it stays exactly pointer-sized)
       avatar.position.set(this.mxs * ty * camera.aspect * dp, this.mys * ty * dp, -dp).applyQuaternion(camera.quaternion).add(camera.position); avatar.quaternion.copy(camera.quaternion).multiply(this.relQ); avatar.renderOrder = 5;
       flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on }   // the 3D pointer only from Start (or the first scroll), right where your mouse is
     if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv); this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
@@ -259,7 +261,7 @@ const intro = {
     for (let i = 0; i < n; i++) { const s = dt / n; this.svx += (w * w * (this.sxEnd - this.sx) - 2 * w * this.svx) * s; this.sx += this.svx * s }
     this.st += dt; const u = Math.max(0, Math.min(1, (this.lnD0 - this.sx) / Math.max(1e-6, this.lnD0 - this.sxEnd)));   // how far in it has come
     this.A.copy(this.S).sub(this.C0).multiplyScalar(sstep(u, .05, 1)).add(this.C0);
-    this.camAt(this.A, this.sx, camera.position); camera.quaternion.copy(rig.q); camera.updateMatrixWorld();
+    this.setFov(.6 + .4 * u); this.camAt(this.A, this.sx, camera.position); camera.quaternion.copy(rig.q); camera.updateMatrixWorld();
     // the ship: under your (smoothed) mouse, letting go of it gradually all the way in, only still once the camera has landed; and it turns from the flat pointer to show you its back
     const g = Math.pow(1 - u, Math.max(.2, L.portalLetGo ?? 1.4));
     if (g > 1e-4) { const f = Math.min(1, dt * 14 || 1) * g; this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;

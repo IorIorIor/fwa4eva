@@ -29,9 +29,23 @@ const paperPics = (() => {
     },
   };
 })();
-function paperUpdate(rdt) {   // the look itself: white page, grey dots, black lines; everything soft and glowing steps back
-  const L = LOOK; paperK += ((L.paper ? 1 : 0) - paperK) * Math.min(1, rdt * 3); if (paperK < .001 && !paperUpdate.was) return; paperUpdate.was = paperK > .001; const pk = paperK;
-  PU.inv.value = Math.max(L.invert ? 1 : 0, pk); PU.vig.value = L.vignette * (1 - pk); PU.bgK.value *= 1 - pk; bloomPass.strength.value *= 1 - pk; coreGlow.material.opacity *= 1 - pk; coreFlare.material.opacity *= 1 - pk; bh.mesh.visible = bh.shadow.visible = pk < .5;
-  stars.u.glow.value = L.starGlow * (1 - .9 * pk); stars.u.flare.value = pk > .5 ? 0 : L.flares ? 1 : 0; stars.u.spikes.value = L.starSpikes * (1 - pk); stars.u.dim.value = 1 - (1 - (L.paperDot ?? .62)) * pk; if (pk > .5) stars.u.ring.value = 0;
-  document.body.classList.toggle('paper', pk > .5); document.body.classList.toggle('inverted', !!L.invert || pk > .5);
+// on paper only the stars and the timeline are drawn: everything else in the scene moves off the camera's layer (so nothing else is
+// rendered, and per-frame code switching things on can't bring it back), and back again when paper goes
+const paperKeep = () => new Set([stars.mesh, youMark, timeRings.mesh, ruler, youRing, spiralLine, monthTicks, dayTicks, mapZone.mesh].filter(Boolean));
+let paperHid = new Set(), paperScan = 0;
+function paperLayers(on, rdt) {
+  if (!on) { if (paperHid.size) { paperHid.forEach(o => o.traverse(x => x.layers.set(0))); paperHid = new Set() } return }
+  if ((paperScan -= rdt) > 0) return; paperScan = .5; const keep = paperKeep();   // (twice a second: anything added since goes too)
+  for (const c of scene.children) if (!keep.has(c) && !paperHid.has(c) && !c.isCamera) { c.traverse(x => x.layers.set(31)); paperHid.add(c) }
+}
+function paperUpdate(rdt) {   // the look itself: white page, grey dots, the timeline in black ink; nothing else drawn at all
+  const L = LOOK; paperK += ((L.paper ? 1 : 0) - paperK) * Math.min(1, rdt * 3); paperLayers(paperK > .5, rdt); if (paperK < .001 && !paperUpdate.was) return; paperUpdate.was = paperK > .001; const pk = paperK, on = pk > .5;
+  PU.inv.value = Math.max(L.invert ? 1 : 0, pk); PU.vig.value = L.vignette * (1 - pk); PU.bgK.value *= 1 - pk; bloomPass.strength.value *= 1 - pk; PU.pInk.value = .55 * (1 - (L.paperDot ?? .62));
+  stars.u.paper.value = on ? 1 : 0; stars.u.glow.value = L.starGlow * (1 - .9 * pk); stars.u.flare.value = on ? 0 : L.flares ? 1 : 0; stars.u.spikes.value = L.starSpikes * (1 - pk); if (on) { stars.u.ring.value = 0; stars.u.hi.value = 0 }
+  if (on) {   // the whole timeline, always: every ring and every divider, whatever the zoom
+    const tu = timeRings.u; tu.era.value = .5; tu.yr.value = .3; tu.mo.value = .2; tu.moR.value = 1e12; timeRings.mesh.visible = !SPIRAL;
+    if (spiralLine) { spiralLine.visible = true; spiralLine.u.a.value = .8 }
+    if (monthTicks) { monthTicks.visible = true; monthTicks.u.a.value = .6; monthTicks.u.ya.value = .9 }
+  }
+  document.body.classList.toggle('paper', on); document.body.classList.toggle('inverted', !!L.invert);   // (the interface keeps its own colours)
 }
