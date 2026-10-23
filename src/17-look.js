@@ -30,6 +30,7 @@ function applyLook() {
   rig.dist = L.camDist * SHIP_K * SHIP_SC;
   setPassScales(); if (L.maxDpr + ',' + L.shipDpr !== applyLook.dpr) { applyLook.dpr = L.maxDpr + ',' + L.shipDpr; setDpr(Math.min(L.maxDpr, devicePixelRatio || 1), true) }
   if (AC) { const t = AC.currentTime; if (musicGain) { musicGain.gain.setTargetAtTime(.6 * L.music, t, .1); musicMapOn = null } if (ambBus) ambBus.gain.setTargetAtTime(.33 * L.amb, t, .1); if (master) master.gain.setTargetAtTime(CHIME_K * L.ting, t, .1) }
+  uni.relayout();   // (the universe's layout sliders)
 }
 
 /* settings also live in the viewer's claude.ai account, so they survive reloads, new versions and other devices */
@@ -44,7 +45,7 @@ phoneTier(LOOK_MAP); let LOOK_INV = phoneTier({ ...LOOK, ...store.json(INV_KEY, 
 const PLAY_KEY = 'sotd-look-play'; let LOOK_PLAY = phoneTier({ ...LOOK, ...store.json(PLAY_KEY, {}) });   // Play mode's own look: a copy of the flying one until you tune it
 /* the galaxy's shape is one and the same in every look: these are built into the galaxy itself (on Rebuild), so flying,
    the map and the inverted look always share them, whichever one you change them in */
-const GAL_KEYS = ['galaxyStyle', 'armStart', 'armWindA', 'armWindG', 'armCount', 'armLock', 'armBeat', 'spiral', 'armWiden', 'armWidenCurve', 'spiralTurns', 'spiralGap', 'spiralHole', 'spiralSize', 'starBandW', 'starBandH', 'starCoreH', 'starAlong', 'starSep', 'nebOut', 'hazeCore', 'starHug', 'uniGap', 'uniTurn', 'uniRise', 'uniTilt', 'uniAz', 'galOwn'];
+const GAL_KEYS = ['galaxyStyle', 'armStart', 'armWindA', 'armWindG', 'armCount', 'armLock', 'armBeat', 'spiral', 'armWiden', 'armWidenCurve', 'spiralTurns', 'spiralGap', 'spiralHole', 'spiralSize', 'starBandW', 'starBandH', 'starCoreH', 'starAlong', 'starSep', 'nebOut', 'hazeCore', 'starHug', 'uniGap', 'uniTurn', 'uniRise', 'uniTilt', 'uniAz', 'uniLayout', 'uniWander', 'uniGroups', 'uniJitter', 'uniSeed', 'galOwn'];
 GAL_KEYS.forEach(k => { if (k in LOOK_FLY) LOOK_MAP[k] = LOOK_INV[k] = LOOK_PLAY[k] = LOOK_FLY[k] });
 function syncGal() {
   if (LOOK === LOOK_MIX) return; let ch = false;
@@ -146,7 +147,7 @@ function renderLook() {
         w.onclick = e => { const st = e.target.dataset && e.target.dataset.s; if (!st || st === STYLE) return; store.set('sotd-galaxy', st); saveLookNow(); setTimeout(() => location.reload(), 350) }; bodyEl.appendChild(w); return
       }
       if (type === 'ta') { const w = document.createElement('div'); w.className = 'gta'; w.innerHTML = `<span>${label}</span><textarea rows="3" spellcheck="false" placeholder='{"noteEvery": 3.2, "tone": 2600, …}'></textarea><button class="btn" type="button">Import</button><small></small>`; const ta = w.querySelector('textarea'), msg = w.querySelector('small'); w.querySelector('button').onclick = () => { const n = ascent.import(ta.value); msg.textContent = n ? `${n} settings in` : 'Nothing I could read: paste the toy\'s settings (JSON)'; if (n) { saveLook(); applyLook(); setTimeout(renderLook, 600) } }; bodyEl.appendChild(w); return }
-      if (type === 'x') { const w = document.createElement('div'); w.className = 'gsw'; w.innerHTML = `<span>${label}</span><button class="btn" type="button">${k === 'coachRun' ? 'Start' : 'Run'}</button>`; w.querySelector('button').onclick = () => { if (k === 'coachRun') { if (S.mode !== 'fly') setMode('fly'); togglePanel('lookPanel'); coach.start(true) } else runBench() }; bodyEl.appendChild(w); return }
+      if (type === 'x') { const w = document.createElement('div'); w.className = 'gsw'; w.innerHTML = `<span>${label}</span><button class="btn" type="button">${k === 'coachRun' ? 'Start' : k === 'galLab' ? 'Open' : 'Run'}</button>`; w.querySelector('button').onclick = () => { if (k === 'galLab') { galLab.open(); return } if (k === 'coachRun') { if (S.mode !== 'fly') setMode('fly'); togglePanel('lookPanel'); coach.start(true) } else runBench() }; bodyEl.appendChild(w); return }
       if (type === 'tr') { const l = document.createElement('label'); l.className = 'tg'; l.innerHTML = `<span>${label}</span><input type="checkbox" id="lk-${k}" ${LOOK[k] ? 'checked' : ''}>`; l.querySelector('input').onchange = e => { LOOK[k] = e.target.checked ? 1 : 0; saveLook(); prevSoon() }; bodyEl.appendChild(l); return }   // shape switches: previewed now, applied on rebuild
       if (type === 't') { const l = document.createElement('label'); l.className = 'tg'; l.innerHTML = `<span>${label}</span><input type="checkbox" id="lk-${k}" ${LOOK[k] ? 'checked' : ''}>`; l.querySelector('input').onchange = e => { uni.galSave(k, e.target.checked ? 1 : 0, LOOK[k]); LOOK[k] = e.target.checked ? 1 : 0; saveLook(); applyLook(); if (k === 'galOwn') renderLook() }; bodyEl.appendChild(l); return }
       const w = document.createElement('div'); w.className = 'lk'; const dec = step < .01 ? 3 : step < 1 ? 2 : 0;

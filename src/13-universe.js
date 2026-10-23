@@ -21,7 +21,7 @@ const uni = (() => {
   for (let k = 0; k < UNI_N; k++) disks.setColorAt(k, new C3(0, 0, 0));
   const glows = Array.from({ length: UNI_N }, () => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: new C3(1, .9, .78), blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true, opacity: 0, toneMapped: false })); s.frustumCulled = false; farScene.add(s); return s });
   const _m = new THREE.Matrix4(), _p = new V3(), _s = new V3(1, 1, 1), _c = new C3(), _v = new V3(), _w = new V3();
-  let galK = 1, igK = 1, cap = Infinity, took = 0, want = 1, wantT = 0, outT = 0, nearK = UNI_N - 1, nearD = 0;
+  let relayoutKey = null, galK = 1, igK = 1, cap = Infinity, took = 0, want = 1, wantT = 0, outT = 0, nearK = UNI_N - 1, nearD = 0;
 
   // the picture, taken with the main camera turned to look straight down on the galaxy from far above (only the
   // background passes run; nothing of it reaches the screen)
@@ -76,26 +76,30 @@ const uni = (() => {
   // year tags over the galaxies (when you're out between them) and their marks round the screen's edge
   const tags = document.createElement('div'); tags.id = 'galTags'; tags.className = 'hud'; tags.setAttribute('aria-hidden', 'true'); document.body.appendChild(tags);
   const TAG = Array.from({ length: UNI_N }, (_, k) => { const e = document.createElement('div'); e.className = 'g'; const n = UNI_I0[k] >= 0 ? UNI_I1[k] - UNI_I0[k] + 1 : 0;
-    e.innerHTML = `<i></i><span class="thd"><span class="td"><span>${n} winners</span><b class="gd"></b></span><span class="tt">${UNI_Y0 + k}</span></span>`; e.hidden = true; tags.appendChild(e); return { e, d: e.querySelector('.gd'), on: false, dt: '' } });
-  const fmtU = d => d >= 1e6 ? (d / 1e6).toFixed(1) + 'M' : Math.round(d / 1000) + 'K';
+    e.innerHTML = `<i></i><span><em>${UNI_Y0 + k}</em><b></b></span>`; e.hidden = true; tags.appendChild(e); return { e, d: e.querySelector('b'), on: false, dt: '' } });   // like a winner's tag: the year, and how far
+  const fmtU = d => Math.round(d).toLocaleString('en');
   function updateTags() {
-    const L = LOOK, fly = S.mode === 'fly', out = fly && booted && !intro.active && !gplay.on && outT > .35, W = innerWidth, H = innerHeight;
-    tags.hidden = !out || !(L.galTips ?? 1); if (tags.hidden) return; const cmp = !!(L.galCompass ?? 1), cx = W / 2, cy = H / 2;
+    const L = LOOK, W = innerWidth, H = innerHeight;
+    tags.hidden = !booted || intro.active || gplay.on || !(L.galTips ?? 1); if (tags.hidden) return; const cmp = !!(L.galCompass ?? 1), cx = W / 2, cy = H / 2;   // always there (not over the opening, nor in Play)
     const ord = TAG.map((t, k) => [uniAt(k, _v).distanceToSquared(camera.position), k]).sort((a, b) => a[0] - b[0]), boxes = [];   // nearest first: where tags would land on each other, the nearer one keeps its place
     for (const [, k] of ord) {
       const t = TAG[k], c = uniAt(k, _v), d = c.distanceTo(camera.position); _w.copy(c).applyMatrix4(camera.matrixWorldInverse); let x, y, edge = false, a = 0;
-      if (_w.z < 0) { _p.copy(c).addScaledVector(UP, Rg * .12).project(camera); x = (_p.x * .5 + .5) * W; y = (-_p.y * .5 + .5) * H }
+      if (_w.z < 0) { _p.copy(c).project(camera); x = (_p.x * .5 + .5) * W; y = (-_p.y * .5 + .5) * H }
       if (_w.z >= 0 || x < 20 || x > W - 20 || y < 70 || y > H - 20) { if (!cmp) { t.e.hidden = true; continue } edge = true; a = _w.z < 0 ? Math.atan2(y - cy, x - cx) : Math.atan2(-_w.y, _w.x);
         const cs = Math.cos(a), sn = Math.sin(a), tx = cs > 0 ? (W - 22 - cx) / cs : cs < 0 ? (22 - cx) / cs : Infinity, ty = sn > 0 ? (H - 22 - cy) / sn : sn < 0 ? (100 - cy) / sn : Infinity, tt = Math.min(tx, ty); x = cx + cs * tt; y = cy + sn * tt }
-      { const bw = edge ? 70 : 100, bh = edge ? 30 : 46, bx = x - bw / 2, by = edge ? y - bh / 2 : y - bh; if (boxes.some(b => Math.abs(b[0] - bx) < (b[2] + bw) / 2 && Math.abs(b[1] - by) < (b[3] + bh) / 2)) { t.e.hidden = true; continue } boxes.push([bx, by, bw, bh]) }
+      { const bw = 80, bh = 28, bx = x - bw / 2, by = y - bh / 2; if (boxes.some(b => Math.abs(b[0] - bx) < (b[2] + bw) / 2 && Math.abs(b[1] - by) < (b[3] + bh) / 2)) { t.e.hidden = true; continue } boxes.push([bx, by, bw, bh]) }
       const ds = fmtU(d); if (ds !== t.dt) { t.dt = ds; t.d.textContent = ds }
       t.e.hidden = false; t.e.classList.toggle('edge', edge); t.e.classList.toggle('back', edge && _w.z >= 0); t.e.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
-      if (edge) { t.e.firstChild.style.transform = `rotate(${(a * 180 / Math.PI + 90).toFixed(1)}deg)`; const cs = Math.cos(a); t.e.lastChild.style.transform = `translate(${cs < -.3 ? -100 : cs > .3 ? 0 : -50}%,${Math.sin(a) > 0 ? -130 : 30}%)` } else t.e.lastChild.style.transform = 'translate(-50%,-100%)';
+      if (edge) { t.e.firstChild.style.transform = `rotate(${(a * 180 / Math.PI + 90).toFixed(1)}deg)`; const cs = Math.cos(a); t.e.lastChild.style.transform = `translate(${cs < -.3 ? -100 : cs > .3 ? 0 : -50}%,${Math.sin(a) > 0 ? -130 : 30}%)` } else t.e.lastChild.style.transform = 'translate(10px,-50%)';   // on screen: beside the galaxy's core, as a winner's tag sits beside its star
       t.e.style.zIndex = String(1000 - Math.round(Math.log10(1 + d) * 50));
     }
   }
 
   return {
+    relayout() {   // a layout slider moved: the galaxies move (the one you're in stays where it is, round you)
+      const L = LOOK, key = ['uniGap', 'uniTurn', 'uniRise', 'uniTilt', 'uniAz', 'uniLayout', 'uniJitter', 'uniWander', 'uniGroups', 'uniSeed'].map(k => L[k]).join(); if (key === relayoutKey) return; const first = relayoutKey == null; relayoutKey = key; if (first) return;
+      uniLayout(L); UNI.O.copy(UNI.c[UNI.k]).sub(GC); uniPlaceStars(); stars.mesh.geometry.attributes.aP.needsUpdate = true; nkAt.set(NaN, NaN, NaN);
+    },
     get k() { return UNI.k }, get galK() { return galK }, get ig() { return igK }, get cap() { return cap }, get out() { return outT > .35 }, get near() { return nearK }, get nearD() { return nearD },
     rebase, galLook, galSave, shared, take, R: Rg, own, OWN_KEYS, rt,
     async dump(w = 256) {   // (tests: the far picture as an image)

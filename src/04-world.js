@@ -36,9 +36,19 @@ function uniLayout(L = LOOK) {
   const Rg = GAL_OUT, gap = Math.max(2.2, L.uniGap ?? 4.5) * Rg, th = (L.uniTurn ?? 40) * Math.PI / 180, h = gap * Math.max(0, Math.min(.95, L.uniRise ?? .35)), c = Math.sqrt(Math.max(0, gap * gap - h * h));
   const up = new V3(0, 1, 0).applyQuaternion(GQ), x0 = new V3(1, 0, 0).applyQuaternion(GQ), tl = (L.uniTilt ?? 35) * Math.PI / 180, az = (L.uniAz ?? 0) * Math.PI / 180;
   const A = up.clone().applyAxisAngle(x0, tl).applyAxisAngle(up, az).normalize(), B = new V3().crossVectors(A, Math.abs(A.dot(x0)) > .9 ? up : x0).normalize(), C = new V3().crossVectors(A, B);   // the helix's axis, and two directions across it
-  const Rh = Math.abs(th) > 1e-3 ? c / (2 * Math.sin(Math.abs(th) / 2)) : 0;
-  for (let k = 0; k < UNI_N; k++) { const s = UNI_N - 1 - k, a = s * th, o = UNI.c[k].copy(GC).addScaledVector(A, -h * s);   // s: years back from 2026
+  const Rh = Math.abs(th) > 1e-3 ? c / (2 * Math.sin(Math.abs(th) / 2)) : 0, mode = Math.round(L.uniLayout ?? 0), rnd = mulberry32(9100 + Math.round(L.uniSeed ?? 1)), rv = () => new V3(rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1);
+  if (mode === 1) {   // a filament: each year a step on from the last, its heading wandering (the cosmic web's strands are like this)
+    const d = A.clone().negate(), p = GC.clone(), w = L.uniWander ?? .6; UNI.c[UNI_N - 1].copy(p);
+    for (let s = 1; s < UNI_N; s++) { d.addScaledVector(rv(), w).normalize().lerp(A.clone().negate(), .12).normalize(); p.addScaledVector(d, gap * (.75 + .5 * rnd())); UNI.c[UNI_N - 1 - s].copy(p) }
+  } else if (mode === 2) {   // groups: five years at a time gathered in a small group (as galaxies are, the Milky Way's Local Group), the groups strung out far apart
+    const d = A.clone().negate(), p = GC.clone(), gg = Math.max(1.5, L.uniGroups ?? 3) * gap;
+    for (let s = 0; s < UNI_N; s++) { const y = 2026 - s, era = Math.floor((Math.min(y, 2024) - 2000) / 5), first = s === 0 || era !== Math.floor((Math.min(y + 1, 2024) - 2000) / 5);
+      if (first && s) { d.addScaledVector(rv(), .5).normalize(); p.addScaledVector(d, gg) }
+      const o = UNI.c[UNI_N - 1 - s].copy(p); if (s) o.addScaledVector(rv().normalize(), gap * (.45 + .5 * rnd())) }
+  } else for (let k = 0; k < UNI_N; k++) { const s = UNI_N - 1 - k, a = s * th, o = UNI.c[k].copy(GC).addScaledVector(A, -h * s);   // the helix. s: years back from 2026
     if (Rh) o.addScaledVector(B, (Math.cos(a) - 1) * Rh).addScaledVector(C, Math.sin(a) * Rh); else o.addScaledVector(B, c * s) }
+  const j = (L.uniJitter ?? 0) * gap * .5; if (j > 0) for (let k = 0; k < UNI_N - 1; k++) UNI.c[k].addScaledVector(rv(), j);   // a little randomness on top (2026 stays put)
+  const m = Rg * 2.6; for (let it = 0; it < 40; it++) { let moved = false; for (let a = 0; a < UNI_N; a++) for (let b = a + 1; b < UNI_N; b++) { const v = UNI.c[b].clone().sub(UNI.c[a]), l = v.length(); if (l < m) { moved = true; v.setLength((m - l) * .5 + 1); if (b !== UNI_N - 1) UNI.c[b].add(v); if (a !== UNI_N - 1) UNI.c[a].sub(v); else UNI.c[b].add(v) } } if (!moved) break }   // never closer than 2.6 radii
 }
 uniLayout();
 const uniAt = (k, out = new V3()) => out.copy(UNI.c[k]).sub(UNI.O);   // galaxy k's centre in the world as it is now

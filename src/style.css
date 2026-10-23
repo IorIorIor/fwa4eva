@@ -940,14 +940,11 @@ body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));cli
 #galTags{position:fixed;inset:0;pointer-events:none;z-index:3}
 #galTags .g{position:absolute;left:0;top:0;transition:opacity .4s}
 #galTags .g>i{display:none;position:absolute;left:-.5px;top:-7px;width:1px;height:14px;background:rgba(255,255,255,.75);transform-origin:50% 50%}
-#galTags .g .thd{position:absolute;left:0;top:0;display:inline-grid;justify-items:stretch;white-space:nowrap}
-#galTags .g .td{display:flex;justify-content:space-between;gap:12px;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:10px;line-height:1;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.62);padding:4.5px 7px 3px;background:rgba(26,20,40,.56);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-#galTags .g .td b{font-weight:500;color:rgba(255,255,255,.85)}
-#galTags .g .tt{font-family:"FF Good Pro",var(--body);font-size:22px;line-height:1.05;color:#fff;padding:2px 8px 4.5px 7px;background:rgba(26,20,40,.56);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);justify-self:start}
+#galTags .g span{position:absolute;left:0;top:0;display:flex;flex-direction:column;gap:1px;white-space:nowrap;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums;background:rgba(26,20,40,.56);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:4px 6px 3px}
+#galTags .g span em{font-style:normal;color:#fff}#galTags .g span b{font:inherit;letter-spacing:inherit;color:rgba(255,255,255,.6)}
 #galTags .g.edge>i{display:block}
-#galTags .g.edge .tt{font-size:15px;padding:1px 6px 3px}#galTags .g.edge .td{font-size:9px;padding:3.5px 6px 2px}
 #galTags .g.back{opacity:.45}
-body.map #galTags,body.intro #galTags,body.playing #galTags{opacity:0}
+body.intro #galTags,body.playing #galTags{opacity:0}
 body.inverted #galTags{filter:invert(1) hue-rotate(180deg)}
 #galPrompt{position:fixed;left:50%;top:62%;transform:translate(-50%,0);z-index:14;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:auto}
 #galPrompt .gy{font-family:"FF Good Pro",var(--body);font-size:44px;line-height:1;color:#fff;letter-spacing:.01em;text-shadow:0 0 24px rgba(0,0,0,.6)}
@@ -963,3 +960,25 @@ body.inverted #galTags{filter:invert(1) hue-rotate(180deg)}
 #playPill button{display:flex;align-items:center;gap:8px;background:#fff;color:#000;border:0;font:inherit;padding:6px 8px 6px 12px;cursor:pointer}
 #playPill kbd{font-size:9px;border:1px solid currentColor;border-radius:3px;padding:1px 4px 0;opacity:.6}
 body.playing #cross,body.playing #wcmp,body.playing #gauge,body.playing #console,body.playing #nav,body.playing #youTime,body.playing #recPlay{opacity:0!important;pointer-events:none!important}
+
+/* the galaxy playground */
+#galLab{position:fixed;inset:0;z-index:99;background:#06050b;color:#fff;display:flex;flex-direction:column;font-family:"FF Good Pro",var(--body)}
+#galLab .gl-top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.12);flex:none}
+#galLab .gl-top b{font-size:18px;font-weight:400}#galLab .gl-top span{font-size:12px;color:rgba(255,255,255,.5)}#galLab .gl-top .gl-msg{margin-left:auto;color:#9dffcf}
+#galLab button{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.25);padding:6px 9px;cursor:pointer}
+#galLab button:hover{background:#fff;color:#000}
+#galLab .gl-in{margin:8px 16px;height:70px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.3);font:11px var(--mono)}
+#galLab .gl-row{flex:1;min-height:0;display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:12px 16px}
+#galLab .gl-c{flex:none;width:262px;overflow-y:auto;scrollbar-width:thin;padding-bottom:20px}
+#galLab .gl-c header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;margin-bottom:6px}
+#galLab .gl-c header b{font-size:22px;font-weight:400}#galLab .gl-c header span{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-right:auto}
+#galLab .gl-c header button{padding:3px 6px;font-size:9px}
+#galLab .gl-c.def{border-right:1px solid rgba(255,255,255,.18);padding-right:10px;width:272px}
+#galLab .gl-lock{width:100%;margin-top:4px;background:#2a0b0b;border-color:#ff5f5f;color:#ffb0b0}#galLab .gl-lock.open{background:#ff5f5f;color:#000}
+#galLab canvas{width:260px;height:260px;display:block;background:#040309}
+#galLab h4{margin:10px 0 2px;font-family:var(--mono);font-weight:400;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4)}
+#galLab .gl-s{display:grid;grid-template-columns:1fr auto;gap:0 6px;font-size:11.5px;color:rgba(255,255,255,.75);margin:3px 0}
+#galLab .gl-s output{font-family:var(--mono);font-size:10px;color:#fff}#galLab .gl-s input{grid-column:1/-1;width:100%;margin:1px 0 0}
+#galLab .gl-s.own span{color:#fff}#galLab .gl-s.own span::after{content:" •";color:#9dffcf}
+#galLab .gl-s input:disabled{opacity:.35}
+body.gallab #cross,body.gallab #wcmp,body.gallab #galTags,body.gallab #shipLayer,body.gallab #reticle,body.gallab .hud:not(#galLab){display:none!important}
