@@ -935,6 +935,7 @@ body.plab #lookPanel{opacity:1!important;pointer-events:auto!important;z-index:9
 body.plab,body.plab *{cursor:auto!important}body.plab button,body.plab input,body.plab .lhd{cursor:pointer!important}
 body.plab #plTxt{display:none}
 body.plab #dash{display:none}
+#bhDark{position:fixed;inset:0;z-index:60;background:#000;pointer-events:none;opacity:0}   /* the black hole's dip to black */
 body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));clip-path:inset(var(--gt,0%) 0 var(--gb,0%) 0);text-shadow:var(--gs,0px) 0 rgba(255,40,90,.85),calc(var(--gs,0px) * -1) 0 rgba(40,220,255,.85)}   /* the black hole: the interface glitching away */
 @media (max-width:760px){#portalLab,#bhLab{right:max(16px,env(safe-area-inset-right,0px));flex-wrap:wrap}#portalLab .pl-v,#bhLab .pl-v{min-width:0}}
 /* the line above the mark, and the Enter button (the autoplay opening) */

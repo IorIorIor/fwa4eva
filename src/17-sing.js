@@ -2,11 +2,13 @@
    The newest winners spiral in closest to the core; the black hole is where the FWA as it was ends. With the switch on you
    can fly into it: the music slows, sinks and falls silent as you near the horizon, the whole screen goes slowly white, and
    you come out on the far side in quiet, empty space, the galaxy behind you, one new star ahead and a single line. */
-let singQ = 0;   // 0 … 1: how near the horizon you are (the music listens to this)
+let singQ = 0;
+const singR = () => BH.sh * (LOOK.singAt ?? .8);   // where the singularity takes you: well inside the black sphere (just outside it you can still get away)   // 0 … 1: how near the horizon you are (the music listens to this)
 const SING_LINE = 'What comes next';   // the far side's one line (to be replaced by whatever the FWA becomes)
 const sing = (() => {
   const el = document.createElement('div'); el.id = 'farText'; el.setAttribute('aria-hidden', 'true'); el.innerHTML = `<small>FWA · 2000–2026</small><b>${SING_LINE}</b>`; document.body.appendChild(el);
   const star = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: new C3(1, .94, .82), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); star.visible = false; star.frustumCulled = false; scene.add(star);
+  const dark = document.createElement('div'); dark.id = 'bhDark'; dark.hidden = true; document.body.appendChild(dark);
   const S_ = { t: -1, w: 0, dir: new V3(), far: false, ft: 0 };
   function enter() { buzz([30, 80, 30, 80, 160]); S_.t = 0; S_.dir.copy(player.vel).lengthSq() > 1 ? S_.dir.normalize() : S_.dir.set(0, 0, -1).applyQuaternion(player.base); auto = null; lockI = -1; warp = null }
   function emerge() {   // the far side: well out beyond the galaxy along the way you were going, facing on, the galaxy behind
@@ -16,17 +18,17 @@ const sing = (() => {
   }
   return {
     get busy() { return S_.t >= 0 }, get far() { return S_.far }, get w() { return S_.w },
-    reset() { S_.t = -1; S_.w = 0; S_.far = false; star.visible = false; el.style.opacity = 0; document.body.classList.remove('farside') },   // (the black hole lab, going round again)
+    reset() { S_.t = -1; S_.w = 0; dark.hidden = true; S_.far = false; star.visible = false; el.style.opacity = 0; document.body.classList.remove('farside') },   // (the black hole lab, going round again)
     update(rdt) {
       const L = LOOK, on = !!(L.singularity ?? 1) && S.mode === 'fly' && booted, d = player.pos.distanceTo(GC);
-      singQ = on && !S_.far && !(S_.t >= 0) ? 1 - sstep(d, BH.sh * 1.5, BH.sh * (L.singHear ?? 14)) : S_.t >= 0 ? Math.max(singQ, Math.min(1, S_.w * 2)) : Math.max(0, singQ - rdt);
-      if (on && S_.t < 0 && d < BH.sh * 1.45) { if (S_.far) { S_.far = false; el.style.opacity = 0; document.body.classList.remove('farside') } enter() }   // (even straight back in from the far side)
+      singQ = on && !S_.far && !(S_.t >= 0) ? 1 - sstep(d, singR() * 1.05, BH.sh * (L.singHear ?? 14)) : S_.t >= 0 ? Math.max(singQ, Math.min(1, S_.w * 2)) : Math.max(0, singQ - rdt);
+      if (on && S_.t < 0 && d < singR()) { if (S_.far) { S_.far = false; el.style.opacity = 0; document.body.classList.remove('farside') } enter() }   // (even straight back in from the far side)
       if (S_.t >= 0) {   // inside: slow white, the switch to the far side at its peak, then the white clears
         const tin = L.singIn ?? 3, tout = L.singOut ?? 4; S_.t += rdt; player.vel.multiplyScalar(Math.exp(-rdt * 4));
         if (S_.t < tin) S_.w = Math.pow(S_.t / tin, 1.5); else { if (!S_.far) emerge(); S_.w = 1 - sstep(S_.t, tin + .6, tin + .6 + tout) }
         if (S_.t > tin + .6 + tout) S_.t = -1;
       } else S_.w = 0;
-      whiteout.lv = Math.max(whiteout.lv, S_.w);
+      dark.style.opacity = S_.w.toFixed(3); dark.hidden = S_.w <= 0;   // the dip to black, and back
       if (S_.far) { S_.ft += rdt; const k = sstep(S_.ft, (L.singIn ?? 3) * .2, (L.singIn ?? 3) * .2 + 3); star.material.opacity = k; el.style.opacity = (k * (1 - sstep(player.pos.distanceTo(star.position) < 1 ? 0 : S_.ft, 14, 18))).toFixed(3);
         if (S_.ft > 20 || S.mode !== 'fly') { S_.far = false; star.visible = false; el.style.opacity = 0; document.body.classList.remove('farside') } }   // back in the galaxy: the far side lets go
     },

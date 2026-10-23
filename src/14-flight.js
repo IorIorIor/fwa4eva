@@ -9,6 +9,7 @@ const player = { pos: HOME_P.clone(), vel: new V3(), quat: new Q4(), base: new Q
 const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist: 30, quat: new Q4() };
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
+let shipAcc = 0;   // how hard the engine pushed, this frame
 const camRel = new V3(0, .8, 3.4).multiplyScalar(SHIP_SC), camRelV = new V3(), prevVel = new V3(), _cw = new V3(), _cm = new V3(); let camHold = null;
 let fovS = 61, revT = 0, revK = 0, bankCam = 0, bankCamV = 0, bankPrev = 0, thrT = 0, turnKey = 0, camRollTo = 0, camRollV = 0, turnW = 0, brakeK = 0, rollW = 0, rollHeld = false, rollTap = { d: 0, t: 0 }, barrel = null, holdSp = -1, holdDir = null, idleT = 0, camRest = 0, igniteK = 0, boostSpent = false, worldT = 0, tdil = 1, beta = 0, coreK = 0, coreIn = 0, boostE = 1, boostK = 0, boosting = false, thrusting = false, gasOn = false, contactK = 0;
 let scrollMode = { on: false, zoom: -1 };   // (scroll mode: 18-scroll)
@@ -180,7 +181,7 @@ function updatePlayer(dt) {
     if (turnAmt > 0) { const capC = T1 / T2 * Math.min(1, L.steerCap / V1); if (p.cruise > capC) p.cruise -= (p.cruise - capC) * Math.min(1, turnAmt * L.steerSlow * 2.5 * dt) }   // steering bleeds the build-up back to cruise
     const vC = vAt(p.cruise) * (1 + boostK * L.boostTop), spNow = p.vel.length();
     thrT = pedal ? thrT + dt : 0; const accIn = Math.pow(Math.min(1, thrT / Math.max(.02, L.accelIn ?? .35)), L.accelCurve ?? 3);   // a quick, heavy wind-up: the push builds from nothing to full over a moment
-    const accel = SM.acc * accIn * (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
+    const accel = shipAcc = SM.acc * accIn * (160 + vC * 1.35) * (1 + boostK * L.boostAccel * (1 - sstep(spNow, L.boostFade * .15, L.boostFade))) * (gasOn && boosting ? 1.35 : 1) * Math.min(1, capW / Math.max(1, vC)) * (1 - prox);   // boost is a launch: strong off the line, gone by cruising speed
     p.vel.addScaledVector(wish, (accel + (GM / (oR * oR || 1) * L.orbitThrust - accel) * ob) * (1 - .5 * obT) * dt);   // and accelerate half as hard
     if (gasOn) { const vf = p.vel.dot(course); tmp.copy(p.vel).addScaledVector(course, -vf); p.vel.addScaledVector(tmp, -(1 - Math.exp(-2.8 * dt))) }
     p.vel.multiplyScalar(Math.exp(-((thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - brakeK) + (L.brakeStr ?? 5.5) * brakeK * bt * (1 - revK)) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
@@ -231,9 +232,9 @@ function updatePlayer(dt) {
     tmp.copy(p.pos).sub(GC); const d = tmp.length(), mn = BH.sh * 1.3, gR = BH.sh * Math.max(18, L.bhGravReach ?? 30);
     if (d < mn && !(LOOK.singularity ?? 1)) { tmp.setLength(mn); p.pos.copy(GC).add(tmp); const n = tmp.normalize(), vn = p.vel.dot(n); if (vn < 0) p.vel.addScaledVector(n, -vn) }
     else if (d < gR && !auto && !sing.busy && !sing.far) {   // (out on the far side it lets you be)
-      const sp = p.vel.length(), cap = 60 + Math.max(0, d - mn) * 6 * (L.bhCap ?? 2.5); if (d < BH.sh * 18 && sp > cap) p.vel.setLength(Math.max(cap, sp * Math.exp(-3 * dt)));   // close in it holds you to a speed you can still steer at
+      const sp = p.vel.length(), cap = 60 + Math.max(.35 * BH.sh, d - mn) * 6 * (L.bhCap ?? 2.5); if (d < BH.sh * 18 && sp > cap) p.vel.setLength(Math.max(cap, sp * Math.exp(-3 * dt)));   // close in it holds you to a speed you can still steer at
       const n = tmp.normalize(); p.vel.addScaledVector(n, -dt * 250 * L.bhPull * (1 - sstep(d, mn, BH.sh * 5)));   // a gentle tug close in
-      const gv = (L.bhGrav ?? 1) * 30 * BH.sh * Math.pow(BH.sh / Math.max(d, mn), 2) * (1 - sstep(d, gR * .5, gR)) * dt; p.vel.addScaledVector(n, -gv);   // and gravity, GM/r² (sized so a fall from ten shadows takes some seconds)
+      const gv = (L.bhGrav ?? 1) * 30 * BH.sh * Math.pow(BH.sh / Math.max(d, mn), 2) * (1 - sstep(d, gR * .5, gR)) * dt * ((L.bhGrav ?? 1) > 0 ? 1 : 0); const out = thrusting && d > BH.sh ? Math.max(0, wish.dot(n)) : 0; p.vel.addScaledVector(n, -(out > .2 ? Math.min(gv, shipAcc * .6 * dt) : gv));   // pushing away from it, outside the black sphere, you can always get away   // and gravity, GM/r² (sized so a fall from ten shadows takes some seconds)
       if (L.bhDrag) { const l = _vn.copy(n).applyQuaternion(GQI); _rf.set(l.z, 0, -l.x).normalize().applyQuaternion(GQ); p.vel.addScaledVector(_rf, gv * L.bhDrag * (1 - Math.abs(l.y))) }   // frame dragging: swept round the way the disk turns
     }
   }

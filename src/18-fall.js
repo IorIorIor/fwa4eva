@@ -10,7 +10,7 @@ const fall = (() => {
   const lp = new V3(), nH = new V3(), sm = new THREE.Matrix4(), zero = new V3(), sv = new V3(), sq_ = new Q4(), se = new THREE.Euler(), zAx = new V3(0, 0, 1), qi = new Q4();
   F.update = (dt, rdt) => {   // after the ship has moved: how far in, the disk, the spin, the stretch
     const L = LOOK, d = player.pos.distanceTo(GC), sh = BH.sh, R = sh * Math.max(2, L.bhFx ?? 12);
-    const k = Math.max(0, Math.min(1, Math.log(R / Math.max(d, 1e-6)) / Math.log(R / (sh * 1.45))));
+    const k = Math.max(0, Math.min(1, Math.log(R / Math.max(d, 1e-6)) / Math.log(R / singR())));
     F.k += (k - F.k) * Math.min(1, rdt * 8); F.kc = Math.pow(F.k, L.bhFxCurve ?? 1.6); F.t += rdt;
     // the disk: in its plane (in horizon radii), between its inner and outer edge
     lp.copy(player.pos).sub(GC).applyQuaternion(GQI).divideScalar(BH.rs); const rho = Math.hypot(lp.x, lp.z), rout = Math.max(3.5, L.bhDiskOut);
@@ -23,7 +23,7 @@ const fall = (() => {
     F.fov = (L.bhFov ?? 45) * F.kc; F.blur = (L.bhBlur ?? .6) * F.kc; F.ab = (L.bhAberr ?? .8) * F.kc;
     { const w = (L.bhRoll ?? 25) * Math.PI / 180 * F.kc * rdt; if (w > 1e-6) { F.roll += w; if (!(bhLab && bhLab.driving)) rig.q.multiply(sq_.setFromAxisAngle(zAx, w)).normalize() } }   // the view turns with the hole's spin
     // spaghettification: longer toward the hole, thinner across (the volume kept), about the ship's middle
-    const Rs = sh * Math.max(1.5, L.bhStretchFrom ?? 5), ks = Math.max(0, Math.min(1, Math.log(Rs / Math.max(d, 1e-6)) / Math.log(Rs / (sh * 1.45))));   // from bhStretchFrom down to the horizon (log distance)
+    const Rs = sh * Math.max(1.5, L.bhStretchFrom ?? 5), ks = Math.max(0, Math.min(1, Math.log(Rs / Math.max(d, 1e-6)) / Math.log(Rs / singR())));   // from bhStretchFrom down to the horizon (log distance)
     const s = 1 + (L.bhStretch ?? 1) * 2.5 * Math.pow(ks, L.bhStretchCurve ?? 2);
     if (s > 1.002) {
       nH.copy(GC).sub(player.pos).normalize(); const c = 1 / Math.sqrt(s), e = s - c, x = nH.x, y = nH.y, z = nH.z;
@@ -47,18 +47,19 @@ const fall = (() => {
     PU.swR.value = Math.max(.01, Math.min(.6, (L.bhSwirlR ?? 3) * Math.tan(Math.asin(Math.min(.999, BH.sh / Math.max(dd, 1e-6)))) * .5 / ty));
     PU.sw.value = (L.bhSwirl ?? 1.2) * kc * front; PU.swP.value = (L.bhPinch ?? .4) * kc * front;
     PU.exp.value *= 1 + F.flash * 1.6;
-    { const gt = Math.max(fly ? sstep(F.k, L.bhGlitchAt ?? .7, .97) : 0, sing.busy ? 1 : 0); F.gk += (gt - F.gk) * Math.min(1, rdt * (gt > F.gk ? 6 : 1.2)); glitch(F.gk * (L.bhGlitch ?? 1)) }   // the interface glitches out of existence as you go in (and back after)
+    { const ga = fly && !sing.far ? sstep(F.k, L.bhGlitchAt ?? .5, 1) * .9 : 0; F.gk += (ga - F.gk) * Math.min(1, rdt * 6); const w = sing.busy ? sing.w : 0, back = sing.far || (sing.busy && sing.w < .999 && F.k < .5);   // worse and worse as you close in, gone with the dip to black, and after it a calm fade back
+      glitch(Math.max(F.gk * (L.bhGlitch ?? 1), w), back) }
     embers.update(fly ? dt : 0, fly);
   };
   // the glitch: every piece of the interface (but the lab's own controls) jumps, splits into red and cyan, is cut into slices
   // and flickers, more and more, until it's gone
   let gEls = [], gOn = false; const gr = mulberry32(9), GV = ['--gx', '--gy', '--go', '--gt', '--gb', '--gs'];
-  function glitch(g) {
+  function glitch(g, calm) {
     if (g < .002) { if (gOn) { gOn = false; document.body.classList.remove('bhg'); gEls.forEach(e => { e.classList.remove('bhgl'); GV.forEach(k => e.style.removeProperty(k)) }) } return }
-    if (!gOn) { gOn = true; document.body.classList.add('bhg'); gEls = [...document.body.children].filter(e => !/^(CANVAS|SCRIPT|STYLE)$/.test(e.tagName) && !e.matches('#bhLab,#lookPanel,#portalLab,#whiteout,#farText,#portalLoad,#intro')); gEls.forEach(e => e.classList.add('bhgl')) }
+    if (!gOn) { gOn = true; document.body.classList.add('bhg'); gEls = [...document.body.children].filter(e => !/^(CANVAS|SCRIPT|STYLE)$/.test(e.tagName) && !e.matches('#bhLab,#lookPanel,#portalLab,#whiteout,#farText,#portalLoad,#intro,#cross,#bhDark')); gEls.forEach(e => e.classList.add('bhgl')) }
     for (const e of gEls) {
-      const hit = gr() < g * .7, gone = g > .97 || gr() < g * g * .8, a = hit ? gr() * 70 : 0, b = hit ? gr() * (95 - a) : 0, st = e.style;
-      st.setProperty('--go', gone ? '0' : (1 - g * .5).toFixed(2)); st.setProperty('--gx', hit ? ((gr() - .5) * 90 * g).toFixed(1) + 'px' : '0px'); st.setProperty('--gy', hit ? ((gr() - .5) * 12 * g).toFixed(1) + 'px' : '0px');
+      const hit = !calm && gr() < g * .7, gone = g > .97 || !calm && gr() < g * g * g * .8, a = hit ? gr() * 70 : 0, b = hit ? gr() * (95 - a) : 0, st = e.style;
+      st.setProperty('--go', gone ? '0' : (calm ? 1 - g : 1 - g * .5).toFixed(2)); st.setProperty('--gx', hit ? ((gr() - .5) * 90 * g).toFixed(1) + 'px' : '0px'); st.setProperty('--gy', hit ? ((gr() - .5) * 12 * g).toFixed(1) + 'px' : '0px');
       st.setProperty('--gt', a.toFixed(1) + '%'); st.setProperty('--gb', b.toFixed(1) + '%'); st.setProperty('--gs', hit ? (gr() * 7 * g).toFixed(1) + 'px' : '0px');
     }
   }
@@ -160,9 +161,9 @@ const bhLab = !BH_LAB ? null : (() => {
   const N = 600, ts = new Float32Array(N + 1), pt = new V3(), pt2 = new V3(), tng = new V3(), look = new V3(), upv = new V3(), qq = new Q4(), zAx = new V3(0, 0, 1);
   // the way in, in the galaxy's frame (horizon radii): in toward the hole along a log spiral turning with the disk, coming in
   // over it at a slant, through it, and on down into the horizon just under its plane
-  const d1 = 1.35 * 2.598;   // the end: just inside where the singularity takes you
+  const end = () => (LOOK.singAt ?? .8) * .85 * 2.598;   // the end (horizon radii): just inside where the singularity takes you
   function path(s, out) {
-    const L = LOOK, d0 = L.bhLabFrom ?? 26, dc = Math.min(d0 * .9, Math.max(d1 * 1.1, L.bhLabCross ?? 8)), sc = Math.log(d0 / dc) / Math.log(d0 / d1);
+    const L = LOOK, d0 = L.bhLabFrom ?? 26, dc = Math.min(d0 * .9, Math.max(end() * 1.3, L.bhLabCross ?? 8)), d1 = end(), sc = Math.log(d0 / dc) / Math.log(d0 / d1);
     const d = d0 * Math.pow(d1 / d0, s), phi = (L.bhLabTilt ?? 14) * Math.PI / 180 * (sc - s) / sc, th = .6 - 2 * Math.PI * (L.bhLabTurn ?? .35) * Math.pow(s, 1.5);
     return out.set(d * Math.cos(phi) * Math.cos(th), d * Math.sin(phi), d * Math.cos(phi) * Math.sin(th)).multiplyScalar(BH.rs).applyQuaternion(GQ).add(GC);
   }
@@ -172,7 +173,7 @@ const bhLab = !BH_LAB ? null : (() => {
     for (let i = 1; i <= N; i++) ts[i] /= ts[N];
   }
   const sOf = v => { let i = 1; while (i < N && ts[i] < v) i++; const a = ts[i - 1], b = ts[i]; return (i - 1 + (b > a ? (v - a) / (b - a) : 0)) / N };
-  const vMax = () => { table(); let i = 0; while (i < N && path(i / N, pt).distanceTo(GC) > BH.sh * 1.5) i++; return ts[Math.max(0, i - 1)] };   // scrubbing stops short of the horizon
+  const vMax = () => { table(); let i = 0; while (i < N && path(i / N, pt).distanceTo(GC) > singR() * 1.05) i++; return ts[Math.max(0, i - 1)] };   // scrubbing stops short of the horizon
   function setPlay(on) { S_.playing = on; pb.textContent = on ? 'Pause' : S_.v > 0 && !S_.done ? 'Play' : 'Fly in' }
   function begin() { sing.reset(); S_.done = false; S_.driving = true; if (S.mode !== 'fly') setMode('fly'); auto = null; lockI = -1; warp = null; strands.length = 0; curStrand = null }
   pb.onclick = () => { if (S_.playing) { setPlay(false); return } if (S_.done || S_.v >= .999) { S_.v = 0; camRelV.set(0, 0, 0) } begin(); setPlay(true) };

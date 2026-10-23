@@ -34,16 +34,18 @@ function makePortal() {
   // the wall: a huge black sheet with every letter cut out (and the letters' own holes, their counters, filled back in)
   const wall = new THREE.Shape(toV2([[-30000, -30000], [30000, -30000], [30000, 30000], [-30000, 30000]])); outers.forEach(o => wall.holes.push(new THREE.Path(toV2(o))));
   const wallGeo = new THREE.ShapeGeometry([wall, ...holes.map(h => new THREE.Shape(toV2(h)))]);
-  const wallMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+  const scuff = () => [SCUFF.rough.clone(), SCUFF.bump.clone()], [fR, fB] = scuff(), [sR, sB] = scuff();   // the ship's worn metal (same pattern, its own scale here)
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x000000, metalness: 1, roughness: .59, roughnessMap: fR, bumpMap: fB, bumpScale: .35, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const wallM = new THREE.Mesh(wallGeo, wallMat); wallM.renderOrder = -11;   /* (drawn before anything else on the layer, so your pointer always shows over it) */ inner.add(wallM);
   // the letters themselves, black at first: they fade away as the galaxy comes up behind them
   const fillMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const fill = new THREE.Mesh(new THREE.ShapeGeometry(shapes, 16), fillMat); fill.renderOrder = 2; inner.add(fill);
   // the letters' walls, running back into the distance: dark metal
   const ex = new THREE.ExtrudeGeometry(shapes, { depth: 1, bevelEnabled: false, curveSegments: 16 }), gr = ex.groups[1], pa = ex.getAttribute('position'), na = ex.getAttribute('normal'), P_ = new Float32Array(gr.count * 3), N_ = new Float32Array(gr.count * 3);
-  for (let i = 0; i < gr.count; i++) { const k = gr.start + i; P_.set([pa.getX(k), pa.getY(k), -pa.getZ(k)], i * 3); N_.set([na.getX(k), na.getY(k), -na.getZ(k)], i * 3) } ex.dispose();
-  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(P_, 3)); sg.setAttribute('normal', new THREE.BufferAttribute(N_, 3));
-  const sideMat = new THREE.MeshStandardMaterial({ color: 0x030206, metalness: 1, roughness: L.portalWallRough ?? .59, side: THREE.DoubleSide, depthWrite: false });   // (writes no depth: your pointer always shows over the mark)
+  const U_ = new Float32Array(gr.count * 2), dz = L.portalDepth ?? 200;   // uv in the mark's own units: along the wall, and back into it
+  for (let i = 0; i < gr.count; i++) { const k = gr.start + i; P_.set([pa.getX(k), pa.getY(k), -pa.getZ(k)], i * 3); N_.set([na.getX(k), na.getY(k), -na.getZ(k)], i * 3); U_.set([Math.abs(na.getX(k)) > Math.abs(na.getY(k)) ? pa.getY(k) : pa.getX(k), pa.getZ(k) * dz], i * 2) } ex.dispose();
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(P_, 3)); sg.setAttribute('normal', new THREE.BufferAttribute(N_, 3)); sg.setAttribute('uv', new THREE.BufferAttribute(U_, 2));
+  const sideMat = new THREE.MeshStandardMaterial({ color: 0x030206, metalness: 1, roughness: L.portalWallRough ?? .59, roughnessMap: sR, bumpMap: sB, bumpScale: .35, side: THREE.DoubleSide, depthWrite: false });   // (writes no depth: your pointer always shows over the mark)
   const sides = new THREE.Mesh(sg, sideMat); sides.renderOrder = -12; inner.add(sides);
   // the outline glow: a soft ribbon along every edge, bright on the line and fading out both ways (additive, so it never darkens)
   const rp = [], rc = [], ri = []; const ribbon = (pts, w, k) => { const n = pts.length, b = rp.length / 3;
@@ -58,7 +60,7 @@ function makePortal() {
     const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3)); hg.setAttribute('color', new THREE.Float32BufferAttribute(rc, 3)); hg.setIndex(ri); halo.m = new THREE.Mesh(hg, rimMat); halo.m.renderOrder = 3; inner.add(halo.m) };
   haloAt(L.portalRimW ?? 6);
   g.visible = false; shipScene.add(g);
-  return { g, inner, wallMat, fillMat, sideMat, sides, rimMat, haloAt };
+  return { g, inner, wallMat, fillMat, sideMat, sides, rimMat, haloAt, maps: [fR, fB, sR, sB] };
 }
 /* the portal lab (a page of its own: window.__PORTAL_LAB, or #portal-lab): the opening held still under a scrubber, from
    outside the mark (0) through it to the pointer (1) and on in to the ship (2), with the Look panel open on its sliders */
@@ -140,7 +142,7 @@ const intro = {
     INTRO_END.set(0, rig.dist * (LOOK.camHeight ?? .42), rig.dist).multiplyScalar(LOOK.introDist ?? 1);   /* it lands right where the flight camera sits, so nothing moves on afterwards */ this.lit = false;   // where the opening ends up: close behind the pointer
     this.goal = null; this.av.x = this.av.y = 0;
     document.body.classList.add('opening'); if (!portal) sStars.reset(); this.lshift = 0; this.t = 0; this.glow = 0; this.hud = false; emitGlow = 0; camNear = 0; camNearGo = false; camHold = null; this.active = introActive = true;
-    document.body.classList.add('intro'); if (portal) veil.visible = false; else { veil.visible = true; veil.material.opacity = 1; this.wipe = true }   // one frame through the black veil, so the warm-up's last picture doesn't linger on the canvas
+    document.body.classList.add('intro'); if (portal) { veil.visible = false; veil.material.opacity = 0 } else { veil.visible = true; veil.material.opacity = 1; this.wipe = true }   // one frame through the black veil, so the warm-up's last picture doesn't linger on the canvas
     if (!portal) { setDpr(.5, true); this.lowDpr = true }   // nothing but black, the pointer and the logo to draw at first: the lowest resolution is plenty
     const wantLogo = !portal && LOOK.logoIntro && this.logoAt && !reduceMotion && (logo3d || (logo3d = makeLogo3d())); if (logo3d) logo3d.visible = false;
     this.ph = 2; this.pose(0);
@@ -216,6 +218,8 @@ const intro = {
     { const tr = P.wallMat.opacity < .999; if (tr !== P.wallMat.transparent) { P.wallMat.transparent = tr; P.wallMat.needsUpdate = true } }   // solid, it draws before your pointer, so the pointer is never hidden behind it
     P.rimMat.color.setHSL(L.portalRimHue ?? .72, L.portalRimSat ?? 0, .5).multiplyScalar(2 * (L.portalRim ?? 1.08)); P.haloAt(L.portalRimW ?? 6);
     P.sideMat.roughness = L.portalWallRough ?? .59; P.sideMat.metalness = L.portalWallMetal ?? 1; P.sideMat.color.setHSL(L.portalWallHue ?? .7, L.portalWallSat ?? .3, L.portalWallBright ?? .012);
+    { const fc = L.portalFace ?? 1, rs = .006 * (L.portalScuffScale ?? 1); P.wallMat.roughness = P.sideMat.roughness; P.wallMat.metalness = (L.portalWallMetal ?? 1) * fc; P.wallMat.color.setHSL(L.portalWallHue ?? .7, L.portalWallSat ?? .3, (L.portalFaceBright ?? .06) * fc);   // the face: the same worn metal as the walls
+      P.wallMat.bumpScale = P.sideMat.bumpScale = .35 * (L.portalScuff ?? 1); P.maps.forEach(t => t.repeat.set(rs, rs)) }
     const en = !!LOOK.portalEnter; $('plTxt').hidden = en; $('plEnter').hidden = !en;   // (the opening's Enter switch can be flipped right here)
     $('plTxt').classList.toggle('gone', q > .03); $('plTag').classList.toggle('gone', q > .03); $('plEnter').classList.toggle('gone', q > .01 || this.play > 0);
     // the pointer: the 3D ship, flat, right under your mouse. In the last stretch it starts to come closer, at exactly the pace the
@@ -296,7 +300,7 @@ const intro = {
       for (const a of ['x', 'y']) { this.av[a] += ((this.goal[a] - this.at[a]) * K - this.av[a] * C) * h; this.at[a] += this.av[a] * h }
     }
     if (this.curHide) { this.placeCur(); if (--this.curHide <= 0) { this.curHide = 0; curEl.style.display = 'none' } }   /* (still following the mouse, so it can't be left behind where the ship was) */
-    if (this.ph === 0) { this.pf++; this.portalStep(dt); return }
+    if (this.ph === 0) { this.portalStep(dt); return }
     if (this.ph === 3) { if (this.settleStep(dt)) { this.settled = true; this.ph = 2; this.finish() } return }
     if (this.ph === 1) { this.pose(0); camera.clearViewOffset(); camera.updateMatrixWorld(); this.placeCur(); this.logoStep(dt); return }   // through the logo the view is dead on: the vanishing point in the middle of the screen
     if (this.t < 1) this.t = Math.min(1, this.t + dt / (reduceMotion ? 2.5 : this.dur));
