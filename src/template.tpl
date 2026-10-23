@@ -34,7 +34,7 @@ document.body.classList.add('intro');
   window.__introProgress = v => { v0 = Math.max(v0, Math.min(1, v)); draw() };
   window.__introProgress(.04) })();
 </script>
-<div id="portalLoad"><p id="plTag">26 years of the best of the web</p><svg viewBox="0 0 509 149" aria-hidden="true"><path id="plPath" fill-rule="evenodd"/></svg><p id="plTxt" aria-live="polite">Loading</p><button id="plEnter" type="button" hidden>Enter</button></div>
+<div id="portalLoad"><p id="plTag">26 years of progress</p><svg viewBox="0 0 509 149" aria-hidden="true"><path id="plPath" fill-rule="evenodd"/></svg><p id="plTxt" aria-live="polite">Loading</p><button id="plEnter" type="button" hidden>Enter</button></div>
 <script>/* the portal opening (Look → portalIntro): until the galaxy is ready, only the mark's glowing outline and "Loading" */
 (() => { let on = true; if (/[?&]test\b/.test(location.search)) on = false; if (window.__PORTAL_LAB || /portal-?lab/.test(location.hash)) on = true; if (window.__BH_LAB || /bh-?lab/.test(location.hash)) on = false;
   if (on) document.documentElement.classList.add('portal'); const s = document.querySelector('#intro .mark path:last-of-type'); if (s) document.getElementById('plPath').setAttribute('d', s.getAttribute('d')) })();

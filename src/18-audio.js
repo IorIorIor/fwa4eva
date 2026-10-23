@@ -70,6 +70,12 @@ function setMusicOff(m) { musicOff = m; store.set('sotd-music-off', m ? '1' : '0
 setMusicOff(musicOff);
 // hovering a star strikes a small glass bell: two or three notes of a pentatonic chord rolled like a harp, panned to where
 // the star sits on screen. Same star, same chord. Each note: a sine with a bright FM strike that fades into a pure tone.
+function clickSnd() {   // a button's click: a short, dry knock with a tiny bright tick on top
+  if (!AC || AC.state === 'closed' || !master) return; if (AC.state !== 'running') AC.resume().catch(() => { });
+  const t = AC.currentTime + .005, len = Math.floor(AC.sampleRate * .04), b = AC.createBuffer(1, len, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 6);
+  const n = AC.createBufferSource(), bp = AC.createBiquadFilter(), g = AC.createGain(); n.buffer = b; bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 1.4; g.gain.value = .9; n.connect(bp); bp.connect(g); g.connect(master); n.start(t);
+  const o = AC.createOscillator(), og = AC.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(1800, t); o.frequency.exponentialRampToValueAtTime(700, t + .03); og.gain.setValueAtTime(.25, t); og.gain.exponentialRampToValueAtTime(.0001, t + .05); o.connect(og); og.connect(master); o.start(t); o.stop(t + .06);
+}
 function tingle(dec = 1, seed, pan = 0) {
   if (!AC || AC.state === 'closed' || !master) return; if (AC.state !== 'running') AC.resume().catch(() => { });   // a context the browser parked wakes up for the chime
   const now = AC.currentTime + .01; if (now - lastTing < .1) return; lastTing = now;

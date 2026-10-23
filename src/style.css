@@ -918,8 +918,8 @@ body.scrolling #nav,body.scrolling #mTabs,body.scrolling #recPlay{display:none!i
 html.portal #intro,html.portal #skipHint{display:none!important}
 html.portal #portalLoad{display:block;position:fixed;inset:0;z-index:70;pointer-events:none;background:#000;--pw:min(62vw,calc(100vh * 2.2));transition:background .6s ease}
 html.portal #portalLoad.live{background:transparent}
-#portalLoad svg{position:absolute;width:var(--pw);height:auto;left:calc(50% - var(--pw) * .4794);top:calc(50% - var(--pw) * .0747);overflow:visible;transition:opacity .5s ease}
-#portalLoad path{fill:none;stroke:#fff;stroke-width:1.3px;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 3px rgba(255,255,255,.9)) drop-shadow(0 0 10px rgba(220,215,255,.45));animation:plPulse 2.4s ease-in-out infinite}
+#portalLoad svg{position:absolute;width:var(--pw);height:auto;left:calc(50% - var(--pw) * .5);top:calc(50% - var(--pw) * .1464);overflow:visible;transition:opacity .5s ease}
+#portalLoad path{fill:#000;paint-order:stroke;stroke:#fff;stroke-width:calc(var(--pls,1.5px) * 2);vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 3px rgba(255,255,255,.9)) drop-shadow(0 0 10px rgba(220,215,255,.45));animation:plPulse 2.4s ease-in-out infinite}
 @keyframes plPulse{50%{opacity:.6}}
 #portalLoad.live svg{opacity:0}
 #plTxt{position:absolute;left:0;right:0;top:calc(50% + var(--pw) * .2181 + 34px);margin:0;text-align:center;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.55);transition:opacity .6s ease}
@@ -939,9 +939,9 @@ body.plab #dash{display:none}
 body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));clip-path:inset(var(--gt,0%) 0 var(--gb,0%) 0);text-shadow:var(--gs,0px) 0 rgba(255,40,90,.85),calc(var(--gs,0px) * -1) 0 rgba(40,220,255,.85)}   /* the black hole: the interface glitching away */
 @media (max-width:760px){#portalLab,#bhLab{right:max(16px,env(safe-area-inset-right,0px));flex-wrap:wrap}#portalLab .pl-v,#bhLab .pl-v{min-width:0}}
 /* the line above the mark, and the Enter button (the autoplay opening) */
-#plTag{position:absolute;left:0;right:0;top:calc(50% - var(--pw) * .0747 - 30px);transform:translateY(-100%);margin:0;text-align:center;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.78);transition:opacity .8s ease}
+#plTag{position:absolute;left:0;right:0;top:calc(50% - var(--pw) * .1464 - 30px);transform:translateY(-100%);margin:0;text-align:center;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.78);transition:opacity .8s ease}
 #plTag.gone{opacity:0}
-#plEnter{position:absolute;left:50%;top:calc(50% + var(--pw) * .2181 + 26px);transform:translateX(-50%);pointer-events:auto;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.6);padding:12px 30px 11px 33px;cursor:pointer;transition:background .25s,color .25s,opacity .6s}
+#plEnter{position:absolute;left:50%;top:calc(50% + var(--pw) * .1464 + 26px);transform:translateX(-50%);pointer-events:auto;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.6);padding:12px 30px 11px 33px;cursor:inherit;transition:background .25s,color .25s,opacity .6s}
 #plEnter:hover,#plEnter:focus-visible{background:#fff;color:#000;outline:none}
 #plEnter.gone{opacity:0;pointer-events:none}
 @media (max-width:760px){#plTag{font-size:11px;letter-spacing:.22em}}

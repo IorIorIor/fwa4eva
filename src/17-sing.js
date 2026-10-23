@@ -5,7 +5,7 @@
    coloured sparks, and far ahead, waiting, one button: Learn more. Fly into it. (H, or the lab, takes you home again.) */
 let singQ = 0;   // 0 … 1: how near the horizon you are (the music listens to this)
 const singR = () => BH.sh * (LOOK.singAt ?? 1);   // where the singularity takes you: the black sphere's edge (just outside it you can still get away)
-const VOID_URL = 'https://thefwa.com/';   // where Learn more goes (to be the FWA blog post)
+const VOID_URL = 'https://thefwa.com/news/who-will-win-the-last-ever-fwa-site-of-the-day';   // where Learn more goes
 const sing = (() => {
   // the button: a dark glass slab with a white rim and LEARN MORE, a soft glow round it, on the ship's layer (the galaxy is gone)
   const btn = new THREE.Group(); btn.visible = false; shipScene.add(btn);
@@ -22,10 +22,15 @@ const sing = (() => {
     const dir = new V3(0, 0, -1).applyQuaternion(rig.q);   // dead ahead of where you're looking
     btn.position.copy(player.pos).addScaledVector(dir, LOOK.voidBtnDist ?? 20000); btn.quaternion.copy(rig.q); btn.scale.setScalar((LOOK.voidBtnSize ?? 1) * 700); btn.visible = true; prevZ.v = NaN;   // straight ahead, facing you
   }
-  function pressed() {   // flown through: it goes, and the page opens (holding W is a key press, so the browser allows it; else a link to click)
-    S_.hit = 1; buzz([20, 40, 120]); engineLook.burst = 2; igniteK = 1;
+  function pressed() {   // flown through: a click, the page opens (holding W is a key press, so the browser allows it; else a link to click), and you're back out above the galaxy
+    S_.hit = 1; buzz([20, 40, 120]); clickSnd();
     let w = null; try { w = window.open(VOID_URL, '_blank', 'noopener') } catch (e) { }
     if (!w) { const a = document.createElement('a'); a.id = 'voidLink'; a.href = VOID_URL; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Learn more →'; document.body.appendChild(a); setTimeout(() => a.remove(), 12000) }
+    out();
+  }
+  function out() {   // above the galaxy again, looking down on all of it
+    const up = new V3(0, 1, 0).applyQuaternion(GQ); S_.inside = false; S_.t = -1; S_.w = 0; btn.visible = false;
+    player.pos.copy(GC).addScaledVector(up, (GAL_R0 + GAL_LEN) * (LOOK.voidOutH ?? .9)); player.vel.set(0, 0, 0); aimAt(up.clone().negate(), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
   }
   return {
     get busy() { return S_.inside }, get inside() { return S_.inside }, get far() { return false }, get w() { return S_.w }, get hit() { return S_.hit > 0 },

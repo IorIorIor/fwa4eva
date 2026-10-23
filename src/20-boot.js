@@ -47,20 +47,22 @@ function makePortal() {
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(P_, 3)); sg.setAttribute('normal', new THREE.BufferAttribute(N_, 3)); sg.setAttribute('uv', new THREE.BufferAttribute(U_, 2));
   const sideMat = new THREE.MeshStandardMaterial({ color: 0x030206, metalness: 1, roughness: L.portalWallRough ?? .59, roughnessMap: sR, bumpMap: sB, bumpScale: .35, side: THREE.DoubleSide, depthWrite: false });   // (writes no depth: your pointer always shows over the mark)
   const sides = new THREE.Mesh(sg, sideMat); sides.renderOrder = -12; inner.add(sides);
-  // the outline glow: a soft ribbon along every edge, bright on the line and fading out both ways (additive, so it never darkens)
-  const rp = [], rc = [], ri = []; const ribbon = (pts, w, k) => { const n = pts.length, b = rp.length / 3;
-    for (let i = 0; i < n; i++) { const a = pts[(i + n - 1) % n], c = pts[(i + 1) % n], tx = c[0] - a[0], ty = c[1] - a[1], l = Math.hypot(tx, ty) || 1, nx = -ty / l, ny = tx / l, [x, y] = pts[i];
-      rp.push(x + nx * w, y + ny * w, 0, x, y, 0, x - nx * w, y - ny * w, 0); rc.push(0, 0, 0, k, k, k, 0, 0, 0) }
-    for (let i = 0; i < n; i++) { const j = (i + 1) % n, A = b + i * 3, B = b + j * 3; ri.push(A, B, A + 1, B, B + 1, A + 1, A + 1, B + 1, A + 2, B + 1, B + 2, A + 2) } };
-  [...outers, ...holes].forEach(c => { ribbon(c, .7, 1); ribbon(c, .7, 0) });   // (the core; the halo is a second, wider ribbon, rebuilt when its width changes)
-  const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3)); rg.setAttribute('color', new THREE.Float32BufferAttribute(rc, 3)); rg.setIndex(ri);
+  // the outline: a solid white stroke just outside every edge of the letters (away from the letter, into the black), and a soft
+  // glow fading out beyond it (additive, so it never darkens). Rebuilt when its width changes (rimAt: stroke and glow, in the mark's units)
+  const rp = [], rc = [], ri = [], area = c => c.reduce((s, p, i) => { const q = c[(i + 1) % c.length]; return s + p[0] * q[1] - q[0] * p[1] }, 0);
+  const strip = (pts, sg, across) => { const n = pts.length, b = rp.length / 3, m = across.length;   // across: [offset outward, brightness] from the edge
+    for (let i = 0; i < n; i++) { const a = pts[(i + n - 1) % n], c = pts[(i + 1) % n], tx = c[0] - a[0], ty = c[1] - a[1], l = Math.hypot(tx, ty) || 1, nx = -ty / l * sg, ny = tx / l * sg, [x, y] = pts[i];
+      for (const [o, k] of across) { rp.push(x + nx * o, y + ny * o, 0); rc.push(k, k, k) } }
+    for (let i = 0; i < n; i++) { const A = b + i * m, B = b + ((i + 1) % n) * m; for (let j = 0; j < m - 1; j++) ri.push(A + j, B + j, A + j + 1, B + j, B + j + 1, A + j + 1) } };
   const rimMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
-  const rim = new THREE.Mesh(rg, rimMat); rim.renderOrder = 3; inner.add(rim);
-  const halo = { m: null, w: -1 }; const haloAt = w => { if (w === halo.w) return; halo.w = w; if (halo.m) { inner.remove(halo.m); halo.m.geometry.dispose() } rp.length = rc.length = ri.length = 0; [...outers, ...holes].forEach(c => ribbon(c, w, .16));
-    const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3)); hg.setAttribute('color', new THREE.Float32BufferAttribute(rc, 3)); hg.setIndex(ri); halo.m = new THREE.Mesh(hg, rimMat); halo.m.renderOrder = 3; inner.add(halo.m) };
-  haloAt(L.portalRimW ?? 6);
+  const rimS = { m: null, key: '' }; const rimAt = (sw, w) => { const key = sw.toFixed(2) + '|' + w; if (key === rimS.key) return; rimS.key = key; if (rimS.m) { inner.remove(rimS.m); rimS.m.geometry.dispose() } rp.length = rc.length = ri.length = 0;
+    const across = [[-.35, 0], [0, 1], [sw, 1], [sw, .14], [sw + w * .35, .05], [sw + w, 0]];   // a crisp stroke, then a faint glow (so the stroke reads at its own width)
+    outers.forEach(c => strip(c, area(c) > 0 ? -1 : 1, across)); holes.forEach(c => strip(c, area(c) > 0 ? 1 : -1, across));   // outward from the letter: out of an outline, into a counter
+    const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3)); hg.setAttribute('color', new THREE.Float32BufferAttribute(rc, 3)); hg.setIndex(ri); rimS.m = new THREE.Mesh(hg, rimMat); rimS.m.renderOrder = 3; inner.add(rimS.m) };
+  rimAt(1.5, L.portalRimW ?? 6);
   g.visible = false; shipScene.add(g);
-  return { g, inner, wallMat, fillMat, sideMat, sides, rimMat, haloAt, maps: [fR, fB, sR, sB] };
+  const wallBasic = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });   // the face with no metal: pure black, nothing on it catches light
+  return { g, inner, wallM, wallBasic, fill, wallMat, fillMat, sideMat, sides, rimMat, rimAt, maps: [fR, fB, sR, sB] };
 }
 /* the portal lab (a page of its own: window.__PORTAL_LAB, or #portal-lab): the opening held still under a scrubber, from
    outside the mark (0) through it to the pointer (1) and on in to the ship (2), with the Look panel open on its sliders */
@@ -172,8 +174,8 @@ const intro = {
     document.body.classList.remove('opening'); this.ptrOn = false;   // your own mouse pointer until you start: only then the 3D one takes over
     this.ph = 0; this.pq = this.pqT = 0; this.play = 0; this.pt0 = performance.now(); this.heard = false; this.qv = 0; this.mx = this.my = this.mxs = this.mys = 0;
     this.C0 = player.pos.clone(); camera.clearViewOffset();
-    { const L = LOOK, h = GC.clone().sub(this.C0).projectOnPlane(GAL_UP).normalize().applyAxisAngle(GAL_UP, (L.portalTurn ?? 0) * Math.PI / 180), tl = (L.portalTilt ?? 35) * Math.PI / 180;   // the heading you'll fly off with, which is also the camera's all through the opening: toward the core (turned by portalTurn), looking down by portalTilt, rolled by portalRoll
-      rig.q.copy(lookAtQ(h.multiplyScalar(Math.cos(tl)).addScaledVector(GAL_UP, -Math.sin(tl)).normalize(), GAL_UP)).multiply(_q.setFromAxisAngle(_ix.set(0, 0, 1), (L.portalRoll ?? 0) * Math.PI / 180)); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q) }
+    { const f = GC.clone().sub(this.C0).normalize();   // the heading you'll fly off with, wherever you start (saved spot or not): straight at the galaxy's core. It's the camera's too, all through the opening: the core sits dead centre behind the mark from the first frame, and never moves
+      rig.q.copy(lookAtQ(f, Math.abs(f.dot(GAL_UP)) > .99 ? _ix.set(1, 0, 0) : GAL_UP)); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q) }
     this.pose(0); this.P0 = { p: camera.position.clone(), q: camera.quaternion.clone() };   // where the dive ends: just above the ship, which from there looks exactly like a mouse pointer
     { const qi = this.P0.q.clone().invert(); this.relQ = qi.clone().multiply(player.quat); this.relP = player.pos.clone().sub(this.P0.p).applyQuaternion(qi) }   // the ship as that camera sees it: from now on it IS your pointer, flat, carried in front of the camera
     this.portalView();
@@ -203,10 +205,9 @@ const intro = {
     this.lnPV = Math.log(D); this.lnEnd = Math.log(INTRO_END.length()); this.lnD0 = Math.log(this.D0); this.shR = R;   // lnD0: there the ship looks exactly like a mouse pointer
     this.PV = { p: this.camAt(this.C0, this.lnPV, new V3()), q: rig.q.clone() };
   },
-  camAt(A, ln, out) {   // the camera at log distance ln from the point A it closes in on: straight back along the view far off, coming round to the flying position (above and behind) at the end; far off it can be slid aside (portalShiftX/Y) to place the galaxy behind the mark
-    const bl = 1 - sstep(ln, this.lnEnd, this.lnD0 + 1.4), sk = sstep(ln, this.lnD0 + 2, this.lnPV) * this.shR, L = LOOK;
-    out.copy(this.fwd).multiplyScalar(-(1 - bl)).addScaledVector(this.offE, bl).normalize().multiplyScalar(Math.exp(ln)).add(A);
-    return out.addScaledVector(this.rgt, -(L.portalShiftX ?? 0) * sk).addScaledVector(this.upv, -(L.portalShiftY ?? 0) * sk);
+  camAt(A, ln, out) {   // the camera at log distance ln from the point A it closes in on: straight back along the view far off (the core dead ahead), coming round to the flying position (above and behind) at the end
+    const bl = 1 - sstep(ln, this.lnEnd, this.lnD0 + 1.4);
+    return out.copy(this.fwd).multiplyScalar(-(1 - bl)).addScaledVector(this.offE, bl).normalize().multiplyScalar(Math.exp(ln)).add(A);
   },
   portalStep(dt, lab = false) {
     const L = LOOK, P = this.pt; let crossed = 0; if (!lab) { if (this.play) this.pqT = Math.min(1.1, this.pqT + dt / Math.max(.5, L.portalPlay ?? 3.5));   // (the target runs a little past 1: you come out of the mark still moving, never easing to a stop just short of it)
@@ -219,15 +220,18 @@ const intro = {
     const W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), Z0 = this.D0 * .6, wpx = Math.min(W * (L.portalSize ?? .62), H * 2.2), s = wpx / H * 2 * Z0 * th / 509, dep = (L.portalDepth ?? 200) * s;
     const z = -Z0 + (Z0 + dep * 1.05 + Z0 * .02) * eL;   // the mark comes at you, faster and faster, until you're out of the back of its walls
     P.g.position.set(0, 0, z).applyQuaternion(camera.quaternion).add(camera.position); P.g.quaternion.copy(camera.quaternion); P.g.scale.set(s, -s, dep);
-    P.inner.position.set(-(L.portalAimX ?? 244), -(L.portalAimY ?? 38), 0);   // the point you fly through sits dead centre
+    { const sl = sstep(q, .05, .75); P.inner.position.set(-(254.5 + ((L.portalAimX ?? 244) - 254.5) * sl), -(74.5 + ((L.portalAimY ?? 38) - 74.5) * sl), 0) }   // the mark sits centred, and as it comes at you it slides so you go through the gap (the galaxy never moves)
     const up = sstep((performance.now() - this.pt0) / 1000, 0, Math.max(.01, L.portalFadeIn ?? 1.4)), tint = L.portalTint ?? 0;   // the galaxy fades up behind the letters (under any tint)
     P.fillMat.opacity = Math.max(1 - up, tint * .85); P.fillMat.color.setHSL(L.portalTintHue ?? .7, .7, .45 * up);
     const oa = L.portalOpenAt ?? 1; P.wallMat.opacity = (L.portalSurround ?? 1) * (oa >= 1 ? 1 : 1 - sstep(q, oa, Math.max(oa + .01, L.portalOpenEnd ?? 1)));   // round the letters the black stays (or goes, as you close in, if you set it to)
     { const tr = P.wallMat.opacity < .999; if (tr !== P.wallMat.transparent) { P.wallMat.transparent = tr; P.wallMat.needsUpdate = true } }   // solid, it draws before your pointer, so the pointer is never hidden behind it
-    P.rimMat.color.setHSL(L.portalRimHue ?? .72, L.portalRimSat ?? 0, .5).multiplyScalar(2 * (L.portalRim ?? 1.08)); P.haloAt(L.portalRimW ?? 6);
+    P.rimMat.color.setHSL(L.portalRimHue ?? .72, L.portalRimSat ?? 0, .5).multiplyScalar(2 * (L.portalRim ?? 1.08)); P.rimAt(Math.round((L.portalStroke ?? 1.5) * 509 / wpx * 20) / 20, L.portalRimW ?? 6);   // the stroke in screen px
+    { const sp = (L.portalStroke ?? 1.5) + 'px'; if (sp !== this.plsW) { this.plsW = sp; document.documentElement.style.setProperty('--pls', sp) } }   // (the loading outline's stroke, the same width)
+    { const line = !!L.portalLine; P.wallM.visible = P.fill.visible = P.sides.visible = !line }   // the switch: only the white stroke and its glow
     P.sideMat.roughness = L.portalWallRough ?? .59; P.sideMat.metalness = L.portalWallMetal ?? 1; P.sideMat.color.setHSL(L.portalWallHue ?? .7, L.portalWallSat ?? .3, L.portalWallBright ?? .012);
-    { const fc = L.portalFace ?? 1, rs = .006 * (L.portalScuffScale ?? 1); P.wallMat.roughness = P.sideMat.roughness; P.wallMat.metalness = (L.portalWallMetal ?? 1) * fc; P.wallMat.color.setHSL(L.portalWallHue ?? .7, L.portalWallSat ?? .3, (L.portalFaceBright ?? .06) * fc);   // the face: the same worn metal as the walls
-      P.wallMat.bumpScale = P.sideMat.bumpScale = .35 * (L.portalScuff ?? 1); P.maps.forEach(t => t.repeat.set(rs, rs)) }
+    { const fc = L.portalFace ?? 0, rs = .006 * (L.portalScuffScale ?? 1); P.wallMat.roughness = P.sideMat.roughness; P.wallMat.metalness = (L.portalWallMetal ?? 1) * fc; P.wallMat.color.setHSL(L.portalWallHue ?? .7, L.portalWallSat ?? .3, (L.portalFaceBright ?? .06) * fc);   // the face: the same worn metal as the walls
+      P.wallMat.bumpScale = P.sideMat.bumpScale = .35 * (L.portalScuff ?? 1); P.maps.forEach(t => t.repeat.set(rs, rs));
+      P.wallBasic.opacity = P.wallMat.opacity; if (P.wallBasic.transparent !== P.wallMat.transparent) { P.wallBasic.transparent = P.wallMat.transparent; P.wallBasic.needsUpdate = true } P.wallM.material = fc > .001 ? P.wallMat : P.wallBasic }
     const en = !!LOOK.portalEnter; $('plTxt').hidden = en; $('plEnter').hidden = !en;   // (the opening's Enter switch can be flipped right here)
     $('plTxt').classList.toggle('gone', q > .03); $('plTag').classList.toggle('gone', q > .03); $('plEnter').classList.toggle('gone', q > .01 || this.play > 0);
     // the pointer: the 3D ship, flat, right under your mouse. In the last stretch it starts to come closer, at exactly the pace the
