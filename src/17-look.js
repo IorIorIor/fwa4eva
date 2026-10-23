@@ -21,7 +21,7 @@ function applyLook() {
   // the black hole: its mass sets its size, live
   setBH(L.bhMass); U.bhClear.value = BH.sh * 1.5; vol.u.bh.value = BH.sh * 1.05 / VOL_S;
   bh.mesh.scale.setScalar(RP * BH.rs); bh.shadow.scale.setScalar(BH.sh * .985);
-  { const b = bh.u; b.rin.value = 3; b.rout.value = Math.max(3.5, L.bhDiskOut); b.br.value = L.bhDisk * 8; b.hot.value = L.bhHot; b.warm.value = L.bhWarm ?? 0; b.spin.value = L.bhSpin; b.halo.value = L.bhHalo / .75; b.dop.value = L.bhDoppler; b.lens.value = L.bhLens; b.steps.value = Math.round(L.bhSteps) }
+  { const b = bh.u; b.rin.value = 3; b.rout.value = Math.max(3.5, L.bhDiskOut); b.br.value = L.bhDisk * 8; b.hot.value = L.bhHot; b.warm.value = L.bhWarm ?? 0; b.spin.value = L.bhSpin; b.halo.value = L.bhHalo / .75; b.dop.value = L.bhDoppler; b.lens.value = L.bhLens; b.steps.value = Math.round(L.bhSteps); b.skyDark.value = L.bhSkyDark ?? 0; b.clear.value = L.bhDiskClear ?? 1 }
   SCUFF.update(); const su = stars.u; su.shine.value = L.awardShine ?? 1; su.specB.value = L.awardBright ?? 2.2; su.specS.value = L.awardSize ?? 1.35; su.sharp.value = L.starSharp; su.coreW.value = L.starCore; su.haloW.value = L.starHalo; su.fall.value = L.starFall; su.spikes.value = L.starSpikes; su.white.value = L.starWhite; su.twink.value = L.starTwinkle; su.size.value = L.starSize; su.glow.value = L.starGlow; su.flare.value = L.flares ? 1 : 0;
   constellation.u.shim.value = L.conShimmer ?? .6; constellation.u.shimS.value = L.conShimmerSpeed ?? .8; stars.u.gold.value = L.gotGold ?? 1; constellation.u.glow.value = L.lineGlow; constellation.u.w.value = L.conWidth ?? 2; constellation.u.gw.value = L.conGlowW ?? 10;
   avatar.userData.nav.forEach(b => b.visible = !!L.nav); beamPivot.visible = !!L.search;
@@ -81,7 +81,7 @@ function saveLook() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOO
     const snap = await lookDoc.get(), d = snap.exists && snap.data();
     if (d && d.look && typeof d.look === 'object') {
       Object.keys(d.look).forEach(k => { if (k in LOOK_DEFAULTS && typeof d.look[k] === 'number') LOOK[k] = d.look[k] }); migrateLook(LOOK);
-      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3 || fix4 || fix5 || fix6 || fix7 || fix8 || fix9 || fix10 || fix11 || fix12 || fix13 || fix14 || fix15 || fix16 || fix17 || fix18 || fix19 || fix20) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
+      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3 || fix4 || fix5 || fix6 || fix7 || fix8 || fix9 || fix10 || fix11 || fix12 || fix13 || fix14 || fix15 || fix16 || fix17 || fix18 || fix19 || fix20 || fix21) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
     } else saveLook();
   } catch (e) { }
 })();
@@ -148,11 +148,12 @@ function renderLook() {
   if ($('lookFind').value) findLook();
 }
 // search: show only the rows whose label (or section name) holds every word typed, with their sections open
+let lookAlso = null;   // a lab's search can bring in rows by key too: { find: the search text, keys: /regex/ }
 function findLook() {
   const words = $('lookFind').value.toLowerCase().split(/\s+/).filter(Boolean), body = $('lookBody'); body.classList.toggle('finding', words.length > 0);
   body.querySelectorAll('.lsec').forEach(sec => {
     const title = sec.querySelector('.lhd').textContent.toLowerCase(); let any = false;
-    sec.querySelectorAll('.lbody>*').forEach(r => { const t = title + ' ' + r.textContent.toLowerCase(), hit = words.every(w => t.includes(w)); r.classList.toggle('miss', !hit); any = any || hit });
+    sec.querySelectorAll('.lbody>*').forEach(r => { const t = title + ' ' + r.textContent.toLowerCase(), ki = r.querySelector('[id^="lk-"]'), hit = words.every(w => t.includes(w)) || !!(lookAlso && ki && lookAlso.find === $('lookFind').value && lookAlso.keys.test(ki.id.slice(3))); r.classList.toggle('miss', !hit); any = any || hit });
     sec.classList.toggle('found', any);
   });
 }

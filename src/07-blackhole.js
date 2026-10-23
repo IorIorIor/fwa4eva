@@ -43,7 +43,7 @@ const RP = 26, BH_STEPS = 300;
 function makeBlackHole(bgAt) {
   const u = {
     cam: uniform(new V3()), rot: uniform(new THREE.Matrix3()), vrot: uniform(new THREE.Matrix3()), px: uniform(1), py: uniform(1),
-    veil: uniform(0), rin: uniform(3), rout: uniform(10), br: uniform(1), hot: uniform(1), warm: uniform(0), spin: uniform(1), halo: uniform(1), dop: uniform(1), lens: uniform(1), steps: uniform(150), t: uniform(0),
+    veil: uniform(0), rin: uniform(3), rout: uniform(10), br: uniform(1), hot: uniform(1), warm: uniform(0), spin: uniform(1), halo: uniform(1), dop: uniform(1), lens: uniform(1), steps: uniform(150), t: uniform(0), skyDark: uniform(0), clear: uniform(1),
   };
   const m = new THREE.NodeMaterial(); m.side = THREE.BackSide; m.depthTest = false; m.depthWrite = false; m.transparent = false;
   const accel = (q, h2, rr) => q.mul(h2.mul(-1.5).mul(u.lens).div(pow(rr, 5)).mul(smoothstep(RP, RP * .55, rr)));   // fades to straight lines at the rim, so the edge is seamless
@@ -75,7 +75,8 @@ function makeBlackHole(bgAt) {
           const a = clamp(dens.mul(tex.mul(1.1).add(.25)), 0, 1).mul(.92);
           const I = Tn.mul(Tn).mul(Tn).mul(Tn).mul(pow(gD, 3)).mul(smoothstep(.2, .85, tex).mul(1.5).add(.35)).mul(u.br).mul(select(nX.greaterThan(.5), u.halo, 1));
           const em0 = bbRGB(Tn.mul(gD).mul(u.hot).mul(9000).add(800)).mul(I), em = mix(em0, vec3(1, .66, .3).mul(luma(em0)).mul(1.39), u.warm);   // warmth: toward yellow-orange at the same brightness
-          col.addAssign(em.mul(a).mul(A.oneMinus())); A.addAssign(a.mul(A.oneMinus())); nX.addAssign(1);
+          const ac = a.mul(mix(1, clamp(luma(em).mul(3), 0, 1), u.clear));   // where the disk is dim it lets the sky through, rather than laying a dark band over it
+          col.addAssign(em.mul(a).mul(A.oneMinus())); A.addAssign(ac.mul(A.oneMinus())); nX.addAssign(1);
         });
       });
     });
@@ -85,7 +86,7 @@ function makeBlackHole(bgAt) {
     const mir = x => abs(fract(x.mul(.5)).mul(2).sub(1)).oneMinus();
     // where the bent ray lands off screen there is no sky to read: fade (not step) to the unbent view there, so no hard edges
     const inEdge = min(min(uvb.x, uvb.y.oneMinus()), min(uvb.x.oneMinus(), uvb.y)), onS = smoothstep(-.02, .12, inEdge).mul(step(0, dep0));
-    const bg = mix(bgAt(screenUV), bgAt(vec2(mir(uvb.x), mir(uvb.y))), onS).mul(mix(.22, 1, smoothstep(2.7, 10, sqrt(h2)))).toVar();   // the sky right around the hole is darker, so its own light reads
+    const bg = mix(bgAt(screenUV), bgAt(vec2(mir(uvb.x), mir(uvb.y))), onS).mul(mix(mix(1, .22, u.skyDark), 1, smoothstep(2.7, 10, sqrt(h2)))).toVar();   // (the sky right around the hole can be darkened, so its own light reads: Look → bhSkyDark)
     const bend = acos(clamp(dot(vn, rd), -1, 1)), cell = floor(vn.mul(260)), hs = hash3(cell), fp = fract(vn.mul(260)).sub(.5);
     bg.addAssign(vec3(.9, .93, 1).mul(step(.985, hs)).mul(exp(dot(fp, fp).mul(-40))).mul(smoothstep(.03, .3, bend)).mul(.8));
     // the core's glow between you and the hole veils it: from afar the shadow is a soft darkening in the light, not a hole punched through it

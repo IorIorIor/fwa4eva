@@ -145,13 +145,13 @@ let streakDens = 0;
 function updateStreaks(dt) {
   const L = LOOK, v = player.vel, sp = v.length(), su = streaks.u;
   su.disp.value.addScaledVector(v, dt); ['x', 'y', 'z'].forEach(k => { su.disp.value[k] %= 2 * SL_H }); streaks.position.copy(player.pos);
-  su.len.value = Math.min(SL_H * .8, sp * .04 * L.streakLen); if (sp > 1e-3) su.dir.value.copy(v).divideScalar(sp);
+  su.len.value = Math.min(SL_H * .8, sp * .04 * L.streakLen); su.w.value = L.streakW ?? 1; su.near.value = camera.near * 1.5; if (sp > 1e-3) su.dir.value.copy(v).divideScalar(sp);
   const lp = toLocal(player.pos, tmp), rr = Math.hypot(lp.x, lp.z), Rr = GAL_R0 + GAL_LEN;
   const g = L.streakRamp ?? .8, da = armDist(lp.x, lp.z) / (armWAt(rr) / (SHAPE.widen + 1)), sw = Math.max(.02, L.streakSpine ?? .45), arm = Math.exp(-((da / sw) ** 2)), hy = Math.exp(-((lp.y / Math.max(1000, L.streakInH)) ** 2)), disk = hy * (1 - sstep(rr, Rr * 1.02, Rr * 1.3));   // thickest along the spiral's spine, thinning the further you are from it (across, above or below)
   const cR = L.streakCoreR ?? 1.4, core = Math.exp(-Math.pow(rr / (Rr * .22 * cR), 2)) * (1 - sstep(Math.abs(lp.y), Rr * .08 * cR, Rr * .25 * cR));   // round the core: a thick swarm (its own sliders)
-  streakDens = Math.max(disk * (arm * (1 - .15 * g) + .15 * (1 - g) + .04), core * (L.streakCore ?? 2.5)) * (1 - sstep(Math.abs(lp.y), Math.max(1000, L.streakInH) * .8, Math.max(1000, L.streakInH)));   // a hard ceiling: none at all further above or below the galaxy's plane than this (the core's swarm too)
-  streaks.geometry.setDrawRange(0, Math.floor(Math.min(SL_N, SL_N / 3 * L.streakAmt * streakDens)) * 2);
-  su.op.value += (sstep(sp, 150, 4000) * .32 * L.streakBright * Math.min(1, streakDens * (3 - 2.4 * g)) * (1 + (L.streakCoreBright ?? 1.5) * core) - su.op.value) * Math.min(1, dt * 6);
+  streakDens = Math.max(disk * (arm * (1 - .15 * g) + (.15 * (1 - g) + .04) * (L.streakAnywhere ?? 0)), core * (L.streakCore ?? 2.5)) * (1 - sstep(Math.abs(lp.y), Math.max(1000, L.streakInH) * .8, Math.max(1000, L.streakInH)));   // a hard ceiling: none at all further above or below the galaxy's plane than this (the core's swarm too)
+  { const t = Math.min(1, L.streakAmt * streakDens / 3), fo = Math.max(.05, L.streakFade ?? 1.5); su.dens.value += (t - su.dens.value) * (1 - Math.exp(-dt * (t > su.dens.value ? 3 : 1 / fo))) }   // how much of the field shows: in quickly, out slowly (Look: streakFade)
+  su.op.value += (sstep(sp, 150, 4000) * .32 * L.streakBright * Math.min(1, su.dens.value * 3 / Math.max(.01, L.streakAmt) * (3 - 2.4 * g)) * (1 + (L.streakCoreBright ?? 1.5) * core) - su.op.value) * Math.min(1, dt * 6);
   const mu = motes.u, B = L.moteBox * SHIP_K; mu.box.value = B; mu.size.value = L.moteSize * SHIP_K; mu.follow.value = L.moteFollow; mu.core.value = L.moteCore; mu.sB.value = bulgeR * .42 * (L.bulgePuffSpread ?? 1) * L.moteCoreReach; mu.bhR.value = BH.rs * Math.max(3.5, L.bhDiskOut); mu.bhZ.value = L.moteBhZone; mu.bhH.value = L.moteBhH;
   mu.op.value += ((1 - sstep(sp, 3000, 60000)) * 1.3 * L.moteBright - mu.op.value) * Math.min(1, dt * 6);
   toLocal(camera.position, tmp); tmp.set(-tmp.z, 0, tmp.x); if (tmp.lengthSq() > 1) tmp.normalize().applyQuaternion(GQ);   // orbital direction here

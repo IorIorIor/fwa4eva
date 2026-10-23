@@ -21,7 +21,8 @@ const aiPilots = (() => {
     { id: 'ai-historian', name: 'The Historian', hue: 215, speed: 3e5, dwell: 6, arc: .15, pass: .3, start: () => TODAY[DAY % TODAY.length], next: s => TODAY[(TODAY.indexOf(s.i) + 1) % TODAY.length] },   // this week's date, through the years
     { id: 'ai-tourist', name: 'Tourist', hue: 140, speed: 6e4, dwell: 6, arc: .3, pass: .3, local: true },   // wanders, and drops by to see you
   ];
-  const legDur = (c, a, b) => { const d = a.distanceTo(b); return { travel: Math.max(3, Math.min(70, d / c.speed)), dist: d } };
+  const CRUISE = 55000;   // they all fly in cruise mode, never faster (a constant, not a Look setting: every page must plan the same routes)
+  const legDur = (c, a, b) => { const d = a.distanceTo(b); return { travel: Math.max(3, Math.min(70, d / Math.min(c.speed, CRUISE))), dist: d } };
   // a pilot's plan: legs from star to star, worked out from today's start up to now (and on as time goes)
   const st = CAST.map((c, k) => ({ c, k, i: 0, j: 0, t0: 0, travel: 1, dwell: c.dwell, dist: 1, n: 0, rng: mulberry32(DAY * 31 + k * 977), v1: new V3(), m0: new V3(), m1: new V3(), thru: false }));
   const shape = s => {   // the leg's curve: it leaves with the speed it arrived with (after a linger: from rest), and either sweeps on through the next ring or eases in to linger there

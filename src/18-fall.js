@@ -185,6 +185,7 @@ const bhLab = !BH_LAB ? null : (() => {
     seek(v) { begin(); setPlay(false); S_.v = Math.max(0, Math.min(vMax(), v)) },   // (for tests: a point on the way in)
     start() {
       document.body.appendChild(el); document.body.classList.add('plab');
+      lookAlso = { find: 'black hole', keys: /^(vol|puffVol|coreGlows|bulgePuff)/ };   // and the glows round it: the volumetric gas (its core), the raymarched puffs
       if (!isOpen('lookPanel')) togglePanel('lookPanel'); $('lookFind').value = 'black hole'; findLook();
       begin(); S_.v = 0; setPlay(false); setTimeout(() => { if (!S_.playing && S_.v === 0) pb.click() }, 1500);
     },

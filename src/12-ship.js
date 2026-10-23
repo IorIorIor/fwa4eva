@@ -276,12 +276,25 @@ const motes = (() => {
 /* speed streaks: short lines around the ship, stretched along the direction of travel */
 const SL_N = 2400, SL_H = 1000;
 const streaks = (() => {
-  const off = new Float32Array(SL_N * 2 * 3), end = new Float32Array(SL_N * 2);
-  for (let i = 0; i < SL_N; i++) { const o = [0, 1, 2].map(() => (Math.random() * 2 - 1) * SL_H); off.set(o, i * 6); off.set(o, i * 6 + 3); end[i * 2 + 1] = 1 }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SL_N * 6), 3)); g.setAttribute('aOff', new THREE.BufferAttribute(off, 3)); g.setAttribute('aEnd', new THREE.BufferAttribute(end, 1));
-  const u = { disp: uniform(new V3()), dir: uniform(new V3()), len: uniform(0), op: uniform(0) };
-  const m = new THREE.LineBasicNodeMaterial({ color: 0xd8d2ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-  m.positionNode = mod(attribute('aOff', 'vec3').sub(u.disp).add(SL_H), SL_H * 2).sub(SL_H).add(u.dir.mul(u.len).mul(attribute('aEnd', 'float')));
-  m.opacityNode = u.op;
-  const mesh = layer(new THREE.LineSegments(g, m), scene, 0); mesh.u = u; return mesh;
+  const off = new Float32Array(SL_N * 3), id = new Float32Array(SL_N);
+  for (let i = 0; i < SL_N; i++) { off.set([0, 1, 2].map(() => (Math.random() * 2 - 1) * SL_H), i * 3); id[i] = Math.random() }
+  const g = quads(SL_N, { aOff: [off, 3], aId: [id, 1] });
+  const u = { disp: uniform(new V3()), dir: uniform(new V3()), len: uniform(0), op: uniform(0), dens: uniform(0), w: uniform(1), near: uniform(.01) }, m = skyMat();
+  const vD = varyingProperty('float', 'vKd'), vW = varyingProperty('float', 'vKw'), vA = varyingProperty('float', 'vKa'), vT = varyingProperty('float', 'vKt');
+  m.vertexNode = Fn(() => {   // a ribbon from where the dust is to where it'll be (along your way), sized in pixels; an end behind the camera is cut at its near plane
+    const o = attribute('aOff', 'vec3'), wrap = floor(o.sub(u.disp).add(SL_H).div(SL_H * 2)), p0 = mod(o.sub(u.disp).add(SL_H), SL_H * 2).sub(SL_H), p1 = p0.add(u.dir.mul(u.len));
+    const A0 = modelViewMatrix.mul(vec4(p0, 1)).xyz, B0 = modelViewMatrix.mul(vec4(p1, 1)).xyz, e = u.near.negate();
+    const cut = (P, Q) => select(P.z.greaterThan(e), P.add(Q.sub(P).mul(clamp(P.z.sub(e).div(P.z.sub(Q.z).max(1e-6)), 0, 1))), P);
+    const A = cut(A0, B0), B = cut(B0, A0), cA = cameraProjectionMatrix.mul(vec4(A, 1)), cB = cameraProjectionMatrix.mul(vec4(B, 1)), half = U.res.mul(.5), sA = cA.xy.div(cA.w).mul(half), sB = cB.xy.div(cB.w).mul(half);
+    const dv = sB.sub(sA), Ln = max(length(dv), 1e-3), dir = dv.div(Ln), nrm = vec2(dir.y.negate(), dir.x), hw = u.w.mul(.5).mul(U.dpr).add(.75), t = uv().x, side = positionGeometry.y.mul(2);
+    const c = mix(cA, cB, t), offs = nrm.mul(side.mul(hw)).add(dir.mul(t.mul(2).sub(1).mul(hw)));
+    // each streak shows while the dust here (eased in time) is above its own threshold, drawn anew each time it wraps round the box:
+    // leaving the dust they thin out one by one, and new ones spawn only where it is
+    const th = fract(sin(dot(wrap, vec3(12.9898, 78.233, 37.719)).add(attribute('aId', 'float').mul(91.7))).mul(43758.5453));
+    vD.assign(side.mul(hw)); vW.assign(u.w.mul(.5).mul(U.dpr).max(.5)); vT.assign(t); vA.assign(u.op.mul(smoothstep(th, th.add(.06), u.dens)));
+    const live = A0.z.lessThan(e).or(B0.z.lessThan(e));
+    return select(live, c.add(vec4(offs.div(half).mul(c.w), 0, 0)), vec4(0, 0, 2, 1));
+  })();
+  m.fragmentNode = Fn(() => { const k = exp(sq(vD.div(vW)).mul(-1.4)).mul(vA); return vec4(vec3(.847, .824, 1).mul(k), k) })();   // the old lines' lavender white, soft across
+  const mesh = layer(new THREE.Mesh(g, m), scene, 0); mesh.u = u; return mesh;
 })();
