@@ -11,7 +11,7 @@ const paperPics = (() => {
   }
   return {
     update() {
-      const L = LOOK, on = paperK > .02 && (L.paperPics ?? 1) > 0; let n = 0;
+      const L = LOOK, on = paperK > .02 && (L.paperPics ?? 1) > 0 && !L.rings; let n = 0;   // (with the rings game on, the winners stay rings on paper too)
       if (on) {
         _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), minPx = L.paperPicPx ?? 14; cand.length = 0;
         for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < 1) continue;
@@ -36,12 +36,12 @@ let paperHid = new Set(), paperScan = 0;
 function paperLayers(on, rdt) {
   if (!on) { if (paperHid.size) { paperHid.forEach(o => o.traverse(x => x.layers.set(0))); paperHid = new Set() } return }
   if ((paperScan -= rdt) > 0) return; paperScan = .5; const keep = paperKeep();   // (twice a second: anything added since goes too)
-  for (const c of scene.children) if (!keep.has(c) && !paperHid.has(c) && !c.isCamera) { c.traverse(x => x.layers.set(31)); paperHid.add(c) }
+  for (const c of scene.children) if (!keep.has(c) && !c.userData.paperKeep && !paperHid.has(c) && !c.isCamera) { c.traverse(x => x.layers.set(31)); paperHid.add(c) }   // (the rings game's own pieces stay: on paper the winners are still rings you fly through)
 }
 function paperUpdate(rdt) {   // the look itself: white page, grey dots, the timeline in black ink; nothing else drawn at all
   const L = LOOK; paperK += ((L.paper ? 1 : 0) - paperK) * Math.min(1, rdt * 3); paperLayers(paperK > .5, rdt); if (paperK < .001 && !paperUpdate.was) return; paperUpdate.was = paperK > .001; const pk = paperK, on = pk > .5;
   PU.inv.value = Math.max(L.invert ? 1 : 0, pk); PU.vig.value = L.vignette * (1 - pk); PU.bgK.value *= 1 - pk; bloomPass.strength.value *= 1 - pk; PU.pInk.value = .55 * (1 - (L.paperDot ?? .62));
-  stars.u.paper.value = on ? 1 : 0; stars.u.glow.value = L.starGlow * (1 - .9 * pk); stars.u.flare.value = on ? 0 : L.flares ? 1 : 0; stars.u.spikes.value = L.starSpikes * (1 - pk); if (on) { stars.u.ring.value = 0; stars.u.hi.value = 0 }
+  stars.u.paper.value = on ? 1 : 0; stars.u.glow.value = L.starGlow * (1 - .9 * pk); stars.u.flare.value = on ? 0 : L.flares ? 1 : 0; stars.u.spikes.value = L.starSpikes * (1 - pk); if (on) stars.u.hi.value = 0;
   if (on) {   // the whole timeline, always: every ring and every divider, whatever the zoom
     const tu = timeRings.u; tu.era.value = .5; tu.yr.value = .3; tu.mo.value = .2; tu.moR.value = 1e12; timeRings.mesh.visible = !SPIRAL;
     if (spiralLine) { spiralLine.visible = true; spiralLine.u.a.value = .8 }

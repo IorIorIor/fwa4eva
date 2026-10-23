@@ -327,7 +327,7 @@ function updateStats(dt) { if (!stats.on) return; stats.t += dt; stats.n++; if (
 let last = performance.now(), netT = 0, cardTick = 0, conT = 0;
 let alphaKey = '', alphaIdle = false;
 function tick(now) {
-  const tStart = performance.now(), rawMs = now - last, rdt = Math.max(0, Math.min(.05, rawMs / 1000)), dt = rdt * slowmo.k; slowmo.step(rdt); last = Math.max(last, now); adapt(rawMs); if (bench.on && rawMs > 0 && rawMs < 500) bench.ms.push(rawMs);   // dt: game time (slows through a ring)
+  const tStart = performance.now(), rawMs = now - last, rdt = Math.max(0, Math.min(.05, rawMs / 1000)), dt = rdt * Math.min(slowmo.k, sing.slowK); slowmo.step(rdt); last = Math.max(last, now); adapt(rawMs); if (bench.on && rawMs > 0 && rawMs < 500) bench.ms.push(rawMs);   // dt: game time (slows through a ring)
   portal.restore(); const L = LOOK, fly = S.mode === 'fly';
   ring2.rotation.y += dt * .05; beacons.forEach((b, k) => { b.material.emissiveIntensity = (Math.sin(now * .003 + k * 1.7) > .6) ? 2 : .2 });
   if (fly && booted) {

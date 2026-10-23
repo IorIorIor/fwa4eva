@@ -15,7 +15,8 @@ let fovS = 61, revT = 0, revK = 0, bankCam = 0, bankCamV = 0, bankPrev = 0, thrT
 let scrollMode = { on: false, zoom: -1 };   // (scroll mode: 18-scroll)
 let nearI = -1, nearCD = Infinity, openI = -1, openA = 0, lockI = -1, auto = null, tween = null, shipStill = 0, shipSaved = false;
 
-function rotateRig(dyaw, dpitch) { rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
+function rotateRig(dyaw, dpitch) { if (sing.frozen) return;   // (on the black hole's button you're held still)
+  rig.q.multiply(_q.setFromAxisAngle(_ax.set(0, 1, 0), dyaw)).multiply(_q.setFromAxisAngle(_ax.set(1, 0, 0), dpitch)).normalize() }   // loop, roll over, keep going; nothing clamps
 function lookAtQ(dir, up, out = new Q4()) { return out.setFromRotationMatrix(_m4.lookAt(tmp2.set(0, 0, 0), dir, up)) }
 function aimAt(dir, k) {   // ease the rig toward a world direction, keeping its current "up"
   if (dir.lengthSq() < 1e-6) return; const d = dir.clone().normalize(), up = Yv.clone().applyQuaternion(rig.q);
@@ -108,7 +109,7 @@ const smK = () => { const n = 'sm' + SPEED_MODES[speedMode], L = LOOK; return { 
 function setSpeedMode(m) { m = Math.max(0, Math.min(2, m)); if (m === speedMode) return; speedMode = m; store.set('sotd-smode', String(m)); buzz(10); consolePing = 1 }
 let consolePing = 0;
 function updatePlayer(dt) {
-  const p = player, L = LOOK;
+  const p = player, L = LOOK; if (sing.frozen) { p.vel.set(0, 0, 0); return }
   if (lockFailed && mouse.in && !down) rotateRig(-steerCurve(mouse.x / innerWidth * 2 - 1) * 1.8 * dt, -steerCurve(mouse.y / innerHeight * 2 - 1) * 1.4 * dt);   // lock-less desktop fallback
   rig.quat.copy(rig.q);
   const fw = (keys.w ? 1 : +touchThrust || 0) - (keys.s || touchBrake ? 1 : 0), SM = smK(), rl = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);

@@ -127,7 +127,7 @@ const HALO = (() => {
   let mesh = null;
   const build = w => {   // a fresh mesh whenever the thickness changes
     tw = w; geo = new THREE.TorusGeometry(1, Math.max(.01, w * .45), 24, 160); geo.setAttribute('hCol', new THREE.InstancedBufferAttribute(iCol, 3).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('hA', new THREE.InstancedBufferAttribute(iA, 1).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('hImg', new THREE.InstancedBufferAttribute(iImg, 4).setUsage(THREE.DynamicDrawUsage));
-    if (mesh) { scene.remove(mesh); mesh.geometry.dispose() } mesh = new THREE.InstancedMesh(geo, m, HALO_N); mesh.count = 0; mesh.frustumCulled = false; mesh.renderOrder = 3; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(mesh);
+    if (mesh) { scene.remove(mesh); mesh.geometry.dispose() } mesh = new THREE.InstancedMesh(geo, m, HALO_N); mesh.userData.paperKeep = true; mesh.count = 0; mesh.frustumCulled = false; mesh.renderOrder = 3; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(mesh);
   };
   build(LOOK.ringWidth ?? .1);
   /* lensing round each ring, like a black hole's: a disc in the ring's plane (ext × its radius) shows the sky behind it,
@@ -144,7 +144,7 @@ const HALO = (() => {
       const a = smoothstep(1, .3, r.add(w.sub(.5).mul(.35))).mul(pow(n, 1.6)).mul(mix(.35, 1, smoothstep(.15, .4, r))).mul(cu.k);
       return vec4(mix(cu.col, vec3(1), .25).mul(a), a);
     })();
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), cm); m.frustumCulled = false; m.renderOrder = 2.4; m.visible = false; m.cu = cu; scene.add(m); return m;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), cm); m.frustumCulled = false; m.renderOrder = 2.4; m.visible = false; m.cu = cu; m.userData.paperKeep = true; scene.add(m); return m;
   });
   const LU = { mode: uniform(1), k: uniform(.5), ext: uniform(3) }, lensMats = [], lens = Array.from({ length: HALO_N }, () => {
     const a = uniform(0), kb = uniform(1), lm = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide }), vS = varying(vec2(), 'vLens');
@@ -160,7 +160,7 @@ const HALO = (() => {
       return positionGeometry;
     })();
     lm.colorNode = Fn(() => { const d = vS.mul(vec2(.5, -.5)); return vec4(viewportSharedTexture(screenUV.add(d)).rgb, a.mul(smoothstep(1, .8, length(positionGeometry.xy)))) })();
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 96, 96), lm); m.matrixAutoUpdate = false; m.frustumCulled = false; m.renderOrder = 2.5; m.visible = false; m.a = a; m.kb = kb; scene.add(m); return m;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 96, 96), lm); m.matrixAutoUpdate = false; m.frustumCulled = false; m.renderOrder = 2.5; m.visible = false; m.a = a; m.kb = kb; m.userData.paperKeep = true; scene.add(m); return m;
   });
   const _m = new THREE.Matrix4(), _q = new Q4(), _s = new V3(), _z = new V3(0, 0, 1), _d = new V3(), live = [], pool = Array.from({ length: HALO_N }, () => ({ i: -1, c: new V3(), r: 1, c0: 0, done: false, n: new V3(), ax: new V3(), ay: new V3(), nSet: false, sPrev: 0 }));
   const best = []; let fade = new Map(), minTs = Infinity;   // minTs: seconds until you pass through the nearest ring you can't miss
