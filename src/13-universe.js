@@ -86,7 +86,7 @@ const uni = (() => {
   // year tags over the galaxies (when you're out between them) and their marks round the screen's edge
   const tags = document.createElement('div'); tags.id = 'galTags'; tags.className = 'hud'; tags.setAttribute('aria-hidden', 'true'); document.body.appendChild(tags);
   const TAG = Array.from({ length: UNI_N }, (_, k) => { const e = document.createElement('div'); e.className = 'g'; const n = UNI_I0[k] >= 0 ? UNI_I1[k] - UNI_I0[k] + 1 : 0;
-    e.innerHTML = `<i></i><span><em>${UNI_Y0 + k}</em><b></b></span>`; e.hidden = true; tags.appendChild(e); return { e, d: e.querySelector('b'), on: false, dt: '' } });   // like a winner's tag: the year, and how far
+    e.innerHTML = `<i></i><span><em>${UNI_Y0 + k}</em><b></b><u>Z to warp</u></span>`; e.hidden = true; tags.appendChild(e); return { e, d: e.querySelector('b'), on: false, dt: '' } });   // like a winner's tag: the year, and how far
   const fmtU = d => Math.round(d).toLocaleString('en');
   function updateTags() {
     const L = LOOK, W = innerWidth, H = innerHeight;
@@ -99,7 +99,7 @@ const uni = (() => {
         const cs = Math.cos(a), sn = Math.sin(a), tx = cs > 0 ? (W - 22 - cx) / cs : cs < 0 ? (22 - cx) / cs : Infinity, ty = sn > 0 ? (H - 22 - cy) / sn : sn < 0 ? (100 - cy) / sn : Infinity, tt = Math.min(tx, ty); x = cx + cs * tt; y = cy + sn * tt }
       { const bw = 80, bh = 28, bx = x - bw / 2, by = y - bh / 2; if (boxes.some(b => Math.abs(b[0] - bx) < (b[2] + bw) / 2 && Math.abs(b[1] - by) < (b[3] + bh) / 2)) { t.e.hidden = true; continue } boxes.push([bx, by, bw, bh]) }
       const ds = fmtU(d); if (ds !== t.dt) { t.dt = ds; t.d.textContent = ds }
-      t.e.hidden = false; t.e.classList.toggle('edge', edge); t.e.classList.toggle('back', edge && _w.z >= 0); t.e.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+      t.e.hidden = false; t.e.classList.toggle('aim', gwarp.aim === k); t.e.classList.toggle('edge', edge); t.e.classList.toggle('back', edge && _w.z >= 0); t.e.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
       if (edge) { t.e.firstChild.style.transform = `rotate(${(a * 180 / Math.PI + 90).toFixed(1)}deg)`; const cs = Math.cos(a); t.e.lastChild.style.transform = `translate(${cs < -.3 ? -100 : cs > .3 ? 0 : -50}%,${Math.sin(a) > 0 ? -130 : 30}%)` } else t.e.lastChild.style.transform = 'translate(10px,-50%)';   // on screen: beside the galaxy's core, as a winner's tag sits beside its star
       t.e.style.zIndex = String(1000 - Math.round(Math.log10(1 + d) * 50));
     }
@@ -128,7 +128,7 @@ const uni = (() => {
       if (sp > 1) for (let k = 0; k < UNI_N; k++) { uniAt(k, _v).sub(player.pos); const dc = _v.length(), a = _v.dot(v) / (dc * sp); if (a <= .05 || dc < from) continue; const c = (dc - from) / (tau * a); if (c < cap) cap = c }
       outT = bd > from * 1.02 ? Math.min(1, outT + rdt) : 0;
       // the world moves over once you're nearer another galaxy and well out of the one you were in
-      const ok = S.mode === 'fly' && booted && !intro.active && !warp && !sing.busy && !(tween && tween.mode) && !gplay.on && galLab.viewing < 0;
+      const ok = S.mode === 'fly' && booted && !intro.active && !warp && !sing.busy && !(tween && tween.mode) && !gplay.on && galLab.viewing < 0 && !gwarp.on;
       if (ok && best !== UNI.k && GC.distanceTo(p) > Rg * Math.max(1.1, L.galDetailOut ?? 1.8)) rebase(best);
     },
     // after everything else, before the frame is drawn: the detail fades with distance, the far pictures take over

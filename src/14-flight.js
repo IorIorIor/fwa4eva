@@ -272,7 +272,7 @@ function updateCamera(dt) {
     fall.cam();   // the black hole's rumble and the disk's jolt
     const fov = Math.min(150, L.fov + L.fovKick * sstep(Math.log10(Math.max(1, player.vel.length())), L.fovFrom, Math.max(L.fovFrom + .1, L.fovTo)) + boostK * L.boostFov + ringPop * (L.ringFov ?? 10) + (L.ringDilateFov ?? 15) * (1 - slowmo.k));   // wider the faster you go
     if (intro.active || Math.abs(fovS - camera.fov) > 40 && !whiteout.fov) fovS = camera.fov;
-    if (tween && tween.mode && tween.f0) fovS = tween.f0 + (fov - tween.f0) * ease(Math.min(1, tween.t)); else fovS += (fov - fovS) * (1 - Math.exp(-4 * dt)); camera.fov = Math.min(170, fovS + whiteout.fov + fall.fov); camera.updateProjectionMatrix(); /* (the ring's lens stretch goes on top at once, not eased) */   // back from the map the lens widens with the move, so the narrow map lens doesn't snap open (that looked like a bounce back)
+    if (tween && tween.mode && tween.f0) fovS = tween.f0 + (fov - tween.f0) * ease(Math.min(1, tween.t)); else fovS += (fov - fovS) * (1 - Math.exp(-4 * dt)); camera.fov = Math.min(170, fovS + whiteout.fov + fall.fov + gwarp.fov); camera.updateProjectionMatrix(); /* (the ring's lens stretch goes on top at once, not eased) */   // back from the map the lens widens with the move, so the narrow map lens doesn't snap open (that looked like a bounce back)
   } else {
     const mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), mz = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0), zq = (keys.q ? 1 : 0) - (keys.e ? 1 : 0);
     if (scrollMode.on) scrollMode.step(dt);   // scroll mode drives the map camera along the spiral

@@ -165,10 +165,10 @@ const strands = []; let curStrand = null, trClock = 0;
 const trLife = sp => { const L = LOOK; return L.trLifeCrawl + (L.trLifeCruise - L.trLifeCrawl) * sstep(sp, 2, 900) + (L.trLifeFast - L.trLifeCruise) * sstep(sp, 900, 600000) };
 const _flc = new C3(), _amber = new C3(0xffb547), _slowC = new C3(), _fastC = new C3(), _trc = new C3(), _white = new C3(.8, .9, 1), _te = new V3(), _d = new V3(), _c = new V3(), _sdv = new V3();
 // W alone lays the usual trail, boost alone a blue one, both together a light neon magenta
-const _cBoost = new C3(), _cBoth = new C3(); let trW = 1, trB = 0;
+const _cBoost = new C3(), _cBoth = new C3(), _gwW = new C3(1, 1, 1); let trW = 1, trB = 0;
 function trailColour(sT, b, o, gw = 1, gb = 0) {
   if (trailK > 0) TRAILS[trailK].c(_slowC, _fastC, sT); else if (LOOK.trMyHue) { _slowC.setHSL(PILOT_HUE / 360, 1, .55); _fastC.setHSL(PILOT_HUE / 360, .9, .7) } else { _slowC.setHSL(LOOK.trHueSlow / 360, 1, .55); _fastC.setHSL(LOOK.trHueFast / 360, .95, .6) }   // your own pilot colour, the one others see
-  o.copy(_slowC).lerp(_fastC, sT).lerp(_white, sstep(sT, .85, 1) * .35);
+  o.copy(_slowC).lerp(_fastC, sT).lerp(_white, sstep(sT, .85, 1) * .35); if (gwarp.k > .001) { o.lerp(_gwW, gwarp.k); b *= 1 + (LOOK.gwTrailBright ?? 1.2) * gwarp.k }   // a galaxy warp: white-hot
   if (gb > .001) { _cBoth.setHSL(.86, 1, .7); o.lerp(_cBoth, .32 * gb).multiplyScalar(1 + .55 * gb) }   // boost: your own colour, with a touch of magenta and brighter
   return o.multiplyScalar(b);
 }
@@ -191,7 +191,7 @@ function updateTrail(dt, on) {
   if (on && laying) {
     if (!curStrand) { curStrand = { pts: [], len: 0, alpha: 0, rel: null }; strands.unshift(curStrand); if (strands.length > 8) strands.pop() }
     const st = curStrand; st.rel = null; st.alpha = Math.min(1, st.alpha + dt / Math.max(.01, L.trIn ?? .3)); const want = L.trLenCrawl + (L.trLenCruise - L.trLenCrawl) * sstep(sp, 2, 900) + (L.trLenFast - L.trLenCruise) * sstep(sp, 900, 600000);
-    st.len += (want - st.len) * (1 - Math.exp(-(want > st.len ? L.trGrow : L.trShrink) * dt)); emit(st, 1);
+    st.len += (want - st.len) * (1 - Math.exp(-(want > st.len ? L.trGrow : L.trShrink) * dt)); if (gwarp.on) st.len = Math.min(st.len, L.gwTrailLen ?? 3); emit(st, 1);   // (warping to a galaxy: a short, fierce trail; a long one would lie along the view)
   } else if (curStrand) { const st = curStrand; st.rel = (st.rel || 0) + dt; const f = 1 - st.rel / Math.max(.05, L.trRelease); if (f <= 0 || !on || sp < 6) curStrand = null; else emit(st, f * f * (3 - 2 * f)) }   // let go: keep laying trail while it dims, then detach
   const still = sp < 6;
   for (let i = strands.length - 1; i >= 0; i--) { const st = strands[i]; if (st === curStrand) continue; const r = Math.min(still ? L.trStill : L.trFade, 6.5 / Math.max(.01, L.trOut ?? .45)); st.alpha *= Math.exp(-r * .6 * dt); st.len *= Math.exp(-r * .35 * dt); trimStrand(st); if (st.alpha < .02 || st.len < 1 || st.pts.length < 2) strands.splice(i, 1) }
@@ -210,7 +210,7 @@ function updateTrail(dt, on) {
     const live = st === curStrand;
     for (let k = 0; k < n; k++) {
       if (k > 0) run += Pp[k].p.distanceTo(Pp[k - 1].p); _d.copy(Pp[Math.min(k + 1, n - 1)].p).sub(Pp[Math.max(k - 1, 0)].p);
-      const t = run / total, w = L.trWMin + (L.trWMax - L.trWMin) * Math.pow(Pp[k].s, L.trWCurve), age = Math.max(0, trClock - Pp[k].t) / Math.max(.05, Pp[k].life ?? 3), fa = st.alpha * (1 - sstep(age, .2, 1));
+      const t = run / total, w = (L.trWMin + (L.trWMax - L.trWMin) * Math.pow(Pp[k].s, L.trWCurve)) * (1 + (L.gwTrailW ?? 1.2) * gwarp.k), age = Math.max(0, trClock - Pp[k].t) / Math.max(.05, Pp[k].life ?? 3), fa = st.alpha * (1 - sstep(age, .2, 1));
       trailColour(Pp[k].s, Pp[k].b, _trc, Pp[k].w ?? 1, Pp[k].k ?? 0);
       if (k === 0) put(Pp[k].p, _d, t, _trc, 0, w, live ? 0 : 1e9);
       if (k === 1 && live) for (const f of [.04, .15, .45, 1]) { if (blend * f >= run) break; _sdv.lerpVectors(Pp[0].p, Pp[1].p, blend * f / run); put(_sdv.clone(), _d, t * blend * f / run, _trc, fa, w, blend * f) }   // extra joints where it flares out of the hole
@@ -332,7 +332,7 @@ function tick(now) {
   ring2.rotation.y += dt * .05; beacons.forEach((b, k) => { b.material.emissiveIntensity = (Math.sin(now * .003 + k * 1.7) > .6) ? 2 : .2 });
   uni.step(rdt);   // which galaxy you're in (the world moves over when you reach another), and how fast you can go out there
   if (fly && booted) {
-    if (warp) stepWarp(rdt); else if (!gplay.drive(rdt) && !galLab.drive() && !(bhLab && bhLab.drive(rdt)) && !(tween && tween.mode)) updatePlayer(dt);   /* while the view swings between map and flight the ship holds still (and the black hole lab can drive it) */ tourUpdate(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); fall.update(dt, rdt);
+    if (warp) stepWarp(rdt); else if (!gwarp.drive(rdt) && !gplay.drive(rdt) && !galLab.drive() && !(bhLab && bhLab.drive(rdt)) && !(tween && tween.mode)) updatePlayer(dt);   /* while the view swings between map and flight the ship holds still (and the black hole lab can drive it) */ tourUpdate(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); fall.update(dt, rdt);
     const fl = avatar.userData.flame; fl.material.opacity += ((thrusting ? .85 : holdSp >= 0 ? .5 : 0) - fl.material.opacity) * Math.min(1, dt * 10); { const fz = .6 + .4 * Math.sin(now * .04) + (thrusting ? .6 + player.cruise * 1.5 : 0); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
     ;
     fl.material.color.copy(trailColour(1, 1, _flc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0).lerp(_amber, gasOn && !boosting ? 1 : 0));   // the flame takes the trail's colour
@@ -369,7 +369,7 @@ function tick(now) {
   if (fly && booted) { if (player.vel.length() < 1 && !auto) { shipStill += dt; if (shipStill > 3 && !shipSaved) { shipSaved = true; store.set('sotd-ship', JSON.stringify({ p: player.pos.toArray(), q: player.base.toArray(), r: rig.q.toArray(), g: UNI.k })) } } else { shipStill = 0; shipSaved = false } }
   winCompass(); if (fly) { updateCompass(); const r = regionOf(player.pos); if (r !== region) { region = r; if (L.cards && booted) arrive(r) } } else if (region !== null) { region = null; $('arrive').classList.remove('show') }
   constellation.u.op.value += ((conOn ? 1 : 0) - constellation.u.op.value) * Math.min(1, dt * 3); constellation.visible = constellation.u.op.value > .01;
-  streaks.visible = fly && !!L.streaks && !gplay.on; motes.visible = fly && !!L.motes && !gplay.on; if (fly) updateStreaks(dt);
+  streaks.visible = fly && (!!L.streaks || gwarp.k > .02) && !gplay.on; motes.visible = fly && !!L.motes && !gplay.on; if (fly) updateStreaks(dt);
   stars.u.hi.value += ((!fly && matchCount < N ? 1 : 0) - stars.u.hi.value) * Math.min(1, dt * 4);
   aimAssist(dt);
   // the black hole's ray tracer: the camera in its frame (horizon radii), the rotations it needs, and where its shadow sits for the bloom mask

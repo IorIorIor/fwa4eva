@@ -129,7 +129,7 @@ const embers = (() => {
       toH.copy(GC).sub(player.pos); const dH = toH.length(); toH.divideScalar(Math.max(dH, 1e-6));
       lq.copy(player.pos).sub(GC).applyQuaternion(GQI); tg.set(lq.z, 0, -lq.x).normalize().applyQuaternion(GQ);   // the way the disk turns, here
       if (segs.length && dt > 0) {
-        accS += dt * (L.sparkRate ?? 240) * sK * (1 + ((L.sparkBoost ?? 1.8) - 1) * boostK);
+        accS += dt * (L.sparkRate ?? 240) * sK * (1 + ((L.sparkBoost ?? 1.8) - 1) * boostK) * (1 + (L.gwSparks ?? 5) * gwarp.k);
         accD += dt * (L.sparkDisk ?? 1600) * Math.max(fall.diskK, fall.after * fall.after); if (fall.cross) accD += L.sparkDiskBurst ?? 350;
         accH += dt * (L.sparkHole ?? 500) * Math.pow(fall.k, 3); accV += sing.inside ? dt * (L.sparkVoid ?? 500) * sing.w : 0;   // in the black: a stream of coloured ones
         let budget = 700; const emit = (acc, heat, kind) => { while (acc >= 1 && budget > 0) { acc--; budget--; spawn(heat, kind) } return Math.min(acc, 2) };   // (at most so many new ones a frame)
