@@ -18,7 +18,7 @@ const flags = (() => {
     if (ghost) ghostOf(g); g.position.fromArray(f.p); g.quaternion.fromArray(f.q).normalize(); g.visible = false; scene.add(g); return g };
   function put(k, raw) {
     const f = clean(raw), old = list.get(k); if (old) { scene.remove(old.g, old.gh); old.tag.remove(); old.dot.remove(); list.delete(k) } if (!f) return;
-    f.p = [f.p[0] - UNI.O.x, f.p[1] - UNI.O.y, f.p[2] - UNI.O.z];   // (kept in universe coordinates; here, where it is in the world you see)
+    f.p = uniToWorld(new V3().fromArray(f.p)).toArray(); f.q = new Q4().fromArray(f.q).normalize().premultiply(UNI.R).toArray();   // (kept in universe coordinates; here, where it is in the world you see)
     const g = ship(f, false), gh = ship(f, true);
     const tag = document.createElement('div'); tag.className = 'ftag'; tag.hidden = true; tag.innerHTML = `<span class="td"></span><span class="tt"></span>`; tag.querySelector('.td').textContent = (f.a || 'Independent') + (f.at ? ' · parked ' + fmtDate(new Date(f.at).toISOString().slice(0, 10)) : ''); tag.querySelector('.tt').textContent = f.n || 'A pilot'; tags.appendChild(tag);
     const dot = document.createElement('i'); dot.className = 'fdot'; dot.hidden = true; dot.style.setProperty('--c', `hsl(${f.h} 100% 70%)`); tags.appendChild(dot);
@@ -38,11 +38,11 @@ const flags = (() => {
       else if (m.t === 'flagme' && typeof m.k === 'string') wsKey = 'w:' + m.k;
     },
     plant() {
-      const f = { p: player.pos.clone().add(UNI.O).toArray().map(x => Math.round(x * 100) / 100), q: player.quat.toArray().map(x => Math.round(x * 1e4) / 1e4), n: ME.n, a: ME.a, h: PILOT_HUE, s: shipK, at: Date.now() };
+      const f = { p: worldToUni(player.pos).toArray().map(x => Math.round(x * 100) / 100), q: player.quat.clone().premultiply(UNI.RI).toArray().map(x => Math.round(x * 1e4) / 1e4), n: ME.n, a: ME.a, h: PILOT_HUE, s: shipK, at: Date.now() };
       if (db) db.doc('flags/' + uid).set(f).catch(() => { }); else { wsSend({ t: 'flag', tok: token, f }); if (!Net.ws) put('local', f) }
       buzz([10, 40, 20]);
     },
-    shift(d) { for (const [, f] of list) { f.pos.sub(d); f.g.position.sub(d); f.gh.position.sub(d) } },   // the world moved over (another galaxy)
+    remap(mv, mq) { for (const [, f] of list) { mv(f.pos); f.g.position.copy(f.pos); f.gh.position.copy(f.pos); mq(f.g.quaternion); mq(f.gh.quaternion) } },   // the world moved over (another galaxy)
     remove() { if (db) db.doc('flags/' + uid).delete().catch(() => { }); else { wsSend({ t: 'flag', tok: token, f: null }); put('local', null) } },
     hello() { wsSend({ t: 'flagme', tok: token }) },   // the relay tells us which flag is ours (by our secret token)
     get key() { return db ? uid : wsKey ? wsKey.slice(2) : null },   // the key of my own parking spot (others match it to me while I fly)

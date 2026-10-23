@@ -141,7 +141,7 @@ const intro = {
   start(portal = false) {
     this.portal = portal;
     // every time: the ship faces the galaxy's core and the camera's frame is the ship's own, so the opening always looks the same
-    aimAt(GC.clone().sub(player.pos), 1); player.base.copy(rig.q); player.quat.copy(rig.q); player.vel.set(0, 0, 0);
+    aimAt(uniFace().sub(player.pos), 1); player.base.copy(rig.q); player.quat.copy(rig.q); player.vel.set(0, 0, 0);
     camera.fov = LOOK.fov; camera.updateProjectionMatrix(); this.dur = Math.max(1.5, LOOK.introDur ?? 5);
     this.D0 = .503 * SHIP_SC * innerHeight / (2 * Math.tan(LOOK.fov * Math.PI / 360) * 21);   // the arrow about 21 px tall: a real pointer's size
     this.up0.set(Math.sin(ARROW.ax), 0, -Math.cos(ARROW.ax));   // screen-up for a pointer on a screen (its left edge upright), in the ship's frame
@@ -175,7 +175,7 @@ const intro = {
     document.body.classList.remove('opening'); this.ptrOn = false; this.ready = !!this.lab; $('plEnter').classList.remove('ready'); $('plEnter').querySelector('span').textContent = 'Loading';   // your own mouse pointer until you start: only then the 3D one takes over
     this.ph = 0; this.pq = this.pqT = 0; this.play = 0; this.pt0 = performance.now(); this.heard = false; this.qv = 0; this.mx = this.my = this.mxs = this.mys = 0;
     this.C0 = player.pos.clone(); camera.clearViewOffset();
-    { const f = GC.clone().sub(this.C0).normalize();   // the heading you'll fly off with, wherever you start (saved spot or not): straight at the galaxy's core. It's the camera's too, all through the opening: the core sits dead centre behind the mark from the first frame, and never moves
+    { const f = uniFace().sub(this.C0).normalize();   // the heading you'll fly off with, wherever you start (saved spot or not): straight at the galaxy's core. It's the camera's too, all through the opening: the core sits dead centre behind the mark from the first frame, and never moves
       rig.q.copy(lookAtQ(f, Math.abs(f.dot(GAL_UP)) > .99 ? _ix.set(1, 0, 0) : GAL_UP)); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q) }
     this.pose(0); this.P0 = { p: camera.position.clone(), q: camera.quaternion.clone() };   // where the dive ends: just above the ship, which from there looks exactly like a mouse pointer
     { const qi = this.P0.q.clone().invert(); this.relQ = qi.clone().multiply(player.quat); this.relP = player.pos.clone().sub(this.P0.p).applyQuaternion(qi) }   // the ship as that camera sees it: from now on it IS your pointer, flat, carried in front of the camera
@@ -343,10 +343,11 @@ function flickIn(within = 1.8) {   // fully on within this many seconds
 function handOver() { booted = true; updateLockUI(); region = null; lastInput = performance.now(); coach.start() }
 
 // restore the ship where it was last parked, facing the core otherwise
-aimAt(GC.clone().sub(HOME_P), 1); player.base.copy(rig.q); player.quat.copy(rig.q);
+{ const k = uniHomeK(); if (k !== UNI.k) uni.rebase(k); uniHome(player.pos) }   // start where the layout says (in the middle of them all): the nearest galaxy is the one built in full
+aimAt(uniFace().sub(player.pos), 1); player.base.copy(rig.q); player.quat.copy(rig.q);
 { const sv = store.json('sotd-ship'); if (sv && sv.p && sv.p.every(Number.isFinite)) { if (Number.isInteger(sv.g) && sv.g !== UNI.k) uni.rebase(sv.g); player.pos.fromArray(sv.p); player.base.fromArray(sv.q); player.quat.copy(player.base); rig.q.fromArray(sv.r) } }
 camera.position.copy(player.pos).add(new V3(0, .3, 1));
-recolor(); applyFilter(); refreshLabels(); renderLook(); applyLook(); updateLockUI(); Net.connect(); resize();
+recolor(); applyFilter(); refreshLabels(); renderLook(); applyLook(); uni.galLook(); updateLockUI(); Net.connect(); resize();
 if (coarse) $('skipHint').hidden = true;   // touch: the opening just plays
 
 // warm-up: one exotic of each kind and a sun in view while the first frames compile every pipeline
@@ -458,8 +459,8 @@ else {
 /* the ship back to where it starts, at once: still, facing the core, no trail behind it */
 function toSpawn() {
   if (S.mode !== 'fly') { setMode('fly'); tween = null }
-  warp = null; auto = null; lockI = -1; stopTour(); sparks.stop(); uni.rebase(UNI_N - 1); player.pos.copy(HOME_P); player.vel.set(0, 0, 0); player.cruise = 0;
-  aimAt(GC.clone().sub(player.pos), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0); camHold = null;
+  warp = null; auto = null; lockI = -1; stopTour(); sparks.stop(); uni.rebase(uniHomeK()); uniHome(player.pos); player.vel.set(0, 0, 0); player.cruise = 0;
+  aimAt(uniFace().sub(player.pos), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0); camHold = null;
 }
 /* back to the splash, to record the opening again: everything closes, the title card and Start come back */
 function toSplash() {
@@ -474,4 +475,4 @@ let vt = performance.now();
 if (!TEST) requestAnimationFrame(t => { last = t; loop(t) });
 else last = vt;
 window.__ready = true;
-window.__sky = { openLab: () => galLab.open(), closeLab: () => galLab.close(), labCopy: () => galLab.copyText(), uni, gplay, UNI, uniAt, GAL_UP, get LOOK_PLAY() { return LOOK_PLAY }, get GYEAR() { return GYEAR }, fall, embers, bhLab, rec, specialIntro, flags, flagDlg, say, portal, phone, togglePanel, sing, paperPics, shipScene, collect: i => collect(i), get camHold() { return camHold }, get camRel() { return camRel }, warpOn: () => !!warp, holdCam: () => { INTRO_END.set(0, rig.dist * (LOOK.camHeight ?? .42), rig.dist).multiplyScalar(LOOK.introDist ?? 1); camRel.copy(INTRO_END); camRelV.set(0, 0, 0); updateCamera(0); camHold = { from: player.pos.clone(), dir: INTRO_END.clone().normalize(), d0: INTRO_END.length() } }, ascent, sparks, whiteout, dustK: () => [dustHissK, streakDens, sstep(player.vel.length(), 150, 4000) * Math.min(1, streakDens * 1.5)], slowmo, mapZone, mouse,  HALOS: () => HALO.live, starR, hazeVis: v => haze.mesh.visible = v, softVis: v => softScene.children.forEach(o => { if (o.isMesh || o.isSprite || o.isGroup) o.visible = v }), starsVis: v => stars.mesh.visible = v, tickOnly(dtMs = 16.7) { vt += dtMs; tick(vt) }, lockI: () => lockI, applyFilter, matchCount: () => matchCount, avatar, outpost, ringPoint, stopR, aimAt, GQ, toLocal, async run(n = 1, dtMs = 16.7) { for (let i = 0; i < n; i++) { vt += dtMs; tick(vt) } await new Promise(r => requestAnimationFrame(r)); vt += dtMs; tick(vt); if (GPU) await renderer.backend.device.queue.onSubmittedWorkDone(); await new Promise(r => requestAnimationFrame(r)) }, keys, regionOf, setDpr, THREE, get LOOK() { return LOOK }, player, rig, camera, renderer, perf, S, setMode, focus, applyLook, D, P, GC, starPos, get GPU() { return GPU }, intro, pipeline, U, PU, orbit, zoom, rotateRig, mapHover, ringAt, ringZoom, mapLvl, get mapYrs() { return mapYrs }, ruler, timeRings, bh, BH, setBH, armPhase, nearest, get nearI() { return nearI }, get contact() { return contactK }, avatarTail: () => avatar.userData.tail, tip, get hovI() { return hovI }, updateHover, get ringHov() { return ringHov }, coach, runBench, bench, peerUpdate, Net, showCard, SATS, flyTo, navStep, GOT, setShip, CURSORS, HALO, get gotN() { return gotN }, startTour, TOURS, get tour() { return tour }, get warp() { return warp }, rmenu };
+window.__sky = { openLab: () => galLab.open(), closeLab: () => galLab.close(), labCopy: () => galLab.copyText(), uni, gplay, UNI, uniAt, worldToUni, uniToWorld, GAL_UP, get LOOK_PLAY() { return LOOK_PLAY }, get GYEAR() { return GYEAR }, fall, embers, bhLab, rec, specialIntro, flags, flagDlg, say, portal, phone, togglePanel, sing, paperPics, shipScene, collect: i => collect(i), get camHold() { return camHold }, get camRel() { return camRel }, warpOn: () => !!warp, holdCam: () => { INTRO_END.set(0, rig.dist * (LOOK.camHeight ?? .42), rig.dist).multiplyScalar(LOOK.introDist ?? 1); camRel.copy(INTRO_END); camRelV.set(0, 0, 0); updateCamera(0); camHold = { from: player.pos.clone(), dir: INTRO_END.clone().normalize(), d0: INTRO_END.length() } }, ascent, sparks, whiteout, dustK: () => [dustHissK, streakDens, sstep(player.vel.length(), 150, 4000) * Math.min(1, streakDens * 1.5)], slowmo, mapZone, mouse,  HALOS: () => HALO.live, starR, hazeVis: v => haze.mesh.visible = v, softVis: v => softScene.children.forEach(o => { if (o.isMesh || o.isSprite || o.isGroup) o.visible = v }), starsVis: v => stars.mesh.visible = v, tickOnly(dtMs = 16.7) { vt += dtMs; tick(vt) }, lockI: () => lockI, applyFilter, matchCount: () => matchCount, avatar, outpost, ringPoint, stopR, aimAt, GQ, toLocal, async run(n = 1, dtMs = 16.7) { for (let i = 0; i < n; i++) { vt += dtMs; tick(vt) } await new Promise(r => requestAnimationFrame(r)); vt += dtMs; tick(vt); if (GPU) await renderer.backend.device.queue.onSubmittedWorkDone(); await new Promise(r => requestAnimationFrame(r)) }, keys, regionOf, setDpr, THREE, get LOOK() { return LOOK }, player, rig, camera, renderer, perf, S, setMode, focus, applyLook, D, P, GC, starPos, get GPU() { return GPU }, intro, pipeline, U, PU, orbit, zoom, rotateRig, mapHover, ringAt, ringZoom, mapLvl, get mapYrs() { return mapYrs }, ruler, timeRings, bh, BH, setBH, armPhase, nearest, get nearI() { return nearI }, get contact() { return contactK }, avatarTail: () => avatar.userData.tail, tip, get hovI() { return hovI }, updateHover, get ringHov() { return ringHov }, coach, runBench, bench, peerUpdate, Net, showCard, SATS, flyTo, navStep, GOT, setShip, CURSORS, HALO, get gotN() { return gotN }, startTour, TOURS, get tour() { return tour }, get warp() { return warp }, rmenu };

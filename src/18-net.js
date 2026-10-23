@@ -22,7 +22,7 @@ function peerUpdate(p) {
   if (typeof s.n === 'string' && s.n) v.name = s.n.slice(0, 24); v.fk = typeof s.fk === 'string' ? s.fk.slice(0, 40) : '';   // whose parking spot is theirs
   if (v.sid === undefined) v.sid = typeof s.say === 'string' && Number.isFinite(+s.sid) ? +s.sid : -1;   // a line already up when they came into view isn't news
   if (typeof s.say === 'string' && Number.isFinite(+s.sid) && +s.sid !== v.sid) { v.sid = +s.sid; if (say.heard(v, s.say.slice(0, 140))) { v.sayT = performance.now(); v.sayText = s.say.slice(0, 140) } }   // a new line from them (not one already up when you arrived), shown only if they're near
-  v.tgt.fromArray(s.p).sub(UNI.O); if (ok(s.v) && s.v.length === 3) v.vel.fromArray(s.v); if (ok(s.q) && s.q.length === 4) v.q.fromArray(s.q).normalize();
+  uniToWorld(v.tgt.fromArray(s.p), v.tgt); if (ok(s.v) && s.v.length === 3) v.vel.fromArray(s.v).applyQuaternion(UNI.R); if (ok(s.q) && s.q.length === 4) v.q.fromArray(s.q).normalize().premultiply(UNI.R);   // (they come in universe coordinates)
   v.at = performance.now(); v.th = (s.th | 0) & 3; v.mode = s.m === 'map' ? 'map' : 'fly';
   if (!v.cur || v.cur.distanceTo(v.tgt) > 5e5) { v.cur = v.tgt.clone(); v.pts.length = 0; v.g.quaternion.copy(v.q) }   // new, or jumped home
 }
@@ -94,7 +94,7 @@ if (QS.has('bots')) {
   setInterval(() => {
     if (!booted) return; const t = performance.now() / 1000;
     for (const b of bots) {
-      if (!b.c) b.c = player.pos.clone().add(UNI.O); const a = b.a + t * b.w, p = new V3(Math.cos(a) * b.r, b.y + Math.sin(t * .3 + b.a) * 200, Math.sin(a) * b.r).add(b.c), v = new V3(-Math.sin(a), 0, Math.cos(a)).multiplyScalar(b.r * b.w);
+      if (!b.c) b.c = worldToUni(player.pos); const a = b.a + t * b.w, p = new V3(Math.cos(a) * b.r, b.y + Math.sin(t * .3 + b.a) * 200, Math.sin(a) * b.r).add(b.c), v = new V3(-Math.sin(a), 0, Math.cos(a)).multiplyScalar(b.r * b.w);
       const q = new Q4().setFromRotationMatrix(new THREE.Matrix4().lookAt(new V3(), v.clone().negate(), new V3(0, 1, 0)));
       peerUpdate({ peer: b.id, presence: { p: p.toArray(), q: q.toArray(), v: v.toArray(), h: b.h, m: 'fly', th: Math.sin(t * .7 + b.a) > -.2 ? 1 : 0 } });
     }

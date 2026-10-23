@@ -332,12 +332,12 @@ function tick(now) {
   ring2.rotation.y += dt * .05; beacons.forEach((b, k) => { b.material.emissiveIntensity = (Math.sin(now * .003 + k * 1.7) > .6) ? 2 : .2 });
   uni.step(rdt);   // which galaxy you're in (the world moves over when you reach another), and how fast you can go out there
   if (fly && booted) {
-    if (warp) stepWarp(rdt); else if (!gplay.drive(rdt) && !(bhLab && bhLab.drive(rdt)) && !(tween && tween.mode)) updatePlayer(dt);   /* while the view swings between map and flight the ship holds still (and the black hole lab can drive it) */ tourUpdate(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); fall.update(dt, rdt);
+    if (warp) stepWarp(rdt); else if (!gplay.drive(rdt) && !galLab.drive() && !(bhLab && bhLab.drive(rdt)) && !(tween && tween.mode)) updatePlayer(dt);   /* while the view swings between map and flight the ship holds still (and the black hole lab can drive it) */ tourUpdate(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); fall.update(dt, rdt);
     const fl = avatar.userData.flame; fl.material.opacity += ((thrusting ? .85 : holdSp >= 0 ? .5 : 0) - fl.material.opacity) * Math.min(1, dt * 10); { const fz = .6 + .4 * Math.sin(now * .04) + (thrusting ? .6 + player.cruise * 1.5 : 0); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
     ;
     fl.material.color.copy(trailColour(1, 1, _flc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0).lerp(_amber, gasOn && !boosting ? 1 : 0));   // the flame takes the trail's colour
   } else if (booted) { nearest(camera.position) }   // on the map, the winners right around you become suns as you zoom in
-  if (!intro.active) { if (!gplay.cam(rdt)) updateCamera(dt) } else intro.update(dt);
+  if (!intro.active) { if (!gplay.cam(rdt) && !galLab.cam()) updateCamera(dt) } else intro.update(dt);
   gplay.after();   // (in play: the ship stays a pointer's size on screen, however far off the camera is)
   portal.update(rdt);   /* the phone tilts the view round the ship (or steers) */
   engineLook(dt);
@@ -402,15 +402,15 @@ function tick(now) {
     if (gotCard.t > 0 && S.mode === 'fly') open = gotCard.i;   // a ring you just flew through keeps its record open a while
     showCard(open);
   }
-  const aKey = taVer + '|' + openI + '|' + openA.toFixed(3) + '|' + (L.shot3d ? 1 : 0); if (aKey !== alphaKey || ringHide.size) { alphaKey = aKey; alphaIdle = false }   // (a settled sky skips the walk below)
-  if (!alphaIdle) { let ch = false; const nowMs = performance.now(); for (let i = 0; i < N; i++) { const t = ringHide.size && ringHide.get(i) > nowMs ? 0 : i === openI && L.shot3d ? TA[i] * (1 - Math.min(1, openA * 2)) : TA[i], d = t - ALPHA[i]; if (Math.abs(d) > .002) { ALPHA[i] += d * Math.min(1, i === openI ? dt * 20 : rdt * 3 / Math.max(.05, L.filterFade ?? .6)); ch = true } } if (ch) stars.aAlpha.needsUpdate = true; else alphaIdle = true }   /* a filter fades stars in and out */
+  const aKey = taVer + '|' + openI + '|' + openA.toFixed(3) + '|' + (L.shot3d ? 1 : 0) + '|' + (gplay.on ? UNI.k : -1); if (aKey !== alphaKey || ringHide.size) { alphaKey = aKey; alphaIdle = false }   // (a settled sky skips the walk below)
+  if (!alphaIdle) { let ch = false; const nowMs = performance.now(); for (let i = 0; i < N; i++) { const t = (gplay.on && GI[i] !== UNI.k) || (ringHide.size && ringHide.get(i) > nowMs) ? 0 : i === openI && L.shot3d ? TA[i] * (1 - Math.min(1, openA * 2)) : TA[i], d = t - ALPHA[i]; if (Math.abs(d) > .002) { ALPHA[i] += d * Math.min(1, i === openI ? dt * 20 : rdt * 3 / Math.max(.05, L.filterFade ?? .6)); ch = true } } if (ch) stars.aAlpha.needsUpdate = true; else alphaIdle = true }   /* a filter fades stars in and out */
   if (recolor.ease) { const k = Math.min(1, rdt * 3 / Math.max(.05, L.filterFade ?? .6)); let mx = 0; for (let j = 0; j < N * 3; j++) { const d = COLT[j] - COL[j]; COL[j] += d * k; mx = Math.max(mx, Math.abs(d)) } if (mx < .003) { COL.set(COLT); recolor.ease = false } stars.aColor.needsUpdate = true }
   const ringI = auto && auto.i >= 0 && auto.i !== openI ? auto.i : -1;
   updateLockMark();
   targetRing.visible = ringI >= 0; if (ringI >= 0) { starPos(ringI, targetRing.position); targetRing.quaternion.copy(camera.quaternion); targetRing.scale.setScalar(Math.max(CR[ringI] * 1.6, camera.position.distanceTo(targetRing.position) * .03) * (1 + .05 * Math.sin(now * .005))) }
   updateHover(dt); updateLabels();
   if (fly) gauge.fly(); else gauge.map(); consoleUI(rdt); whiteout.update(rdt); sing.update(rdt); rec.update(rdt); ascent.update(rdt);
-  netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = tmp.copy(player.pos).add(UNI.O).toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
+  netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = worldToUni(player.pos, tmp).toArray(); s.quat = _q.copy(player.quat).premultiply(UNI.RI).toArray(); s.vel = tmp2.copy(player.vel).applyQuaternion(UNI.RI).toArray();   /* (others get universe coordinates) */ s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
   updatePeers(dt); flags.update(); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt); musicMap(S.mode === 'map'); mapZone.update(dt); dayLab(); swapLook();
   if (tween && tween.mode) { const e = ease(Math.min(1, tween.t)); mapK = S.mode === 'map' ? sstep(e, 0, .55) : 1 - sstep(e, .45, 1) } else mapK += ((S.mode === 'map' ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); conK += ((conOn ? 1 : 0) - conK) * Math.min(1, dt * 3); { const dim = Math.max((L.mapFade ?? .85) * mapK, (L.conDim ?? .8) * conK); PU.bgK.value = 1 - dim; bgStars.u.op.value = L.bgStars * (1 - dim) }   // between map and flight the map's dimming follows the camera's move, so the galaxy never flares up while you're still far out; on the map it clears down to the winners
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,

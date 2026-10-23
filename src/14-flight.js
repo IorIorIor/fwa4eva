@@ -5,7 +5,7 @@
    on its own it pushes you on along the way you're already going. Heading into a winner's neighbourhood slows you,
    gently at first and firmly close in; aim away and it lets go. Winners are springy: touch one slowly and you bounce off. */
 const S = { mode: 'fly', mapPick: -1, colorBy: 'type', y0: 2000, y1: 2026, awards: new Set(), cats: new Set(), techs: new Set(), agencies: new Set(), country: '', q: '', minScore: 7, sel: -1 };
-const player = { pos: HOME_P.clone(), vel: new V3(), quat: new Q4(), base: new Q4(), roll: 0, cruise: 0 };   // base: the ship's own heading, separate from the camera
+const player = { pos: uniHome(), vel: new V3(), quat: new Q4(), base: new Q4(), roll: 0, cruise: 0 };   // base: the ship's own heading, separate from the camera
 const rig = { q: new Q4().setFromEuler(new THREE.Euler(.18, 0, 0, 'YXZ')), dist: 30, quat: new Q4() };
 const orbit = { target: new V3(), dist: 12000, theta: .7, phi: .9 }, MAP_MIN = 6;   // the map zooms right down to a star
 const Yv = new V3(0, 1, 0), _q = new Q4(), _qi = new Q4(), _ax = new V3(), tmp = new V3(), tmp2 = new V3(), _sd = new V3(), _iq = new Q4(), _m4 = new THREE.Matrix4();
@@ -68,7 +68,7 @@ function focus(i) {
 function goHome() {
   if (sing.inside) { sing.reset(); toSpawn(); return }   // out of the black hole: H is the one way home
   if (S.mode === 'map') { mapFlip(); Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), phi: orbit.mir ? Math.PI - mapPhi() : mapPhi() }); const o = orbitPose(); tweenCam(o.p, o.q, 1.6); return }
-  auto = { i: -1, dest: HOME_P.clone().sub(UNI.O) }; lockI = -1;   // (home: where you started, by the 2026 galaxy)
+  auto = { i: -1, dest: uniHome() }; lockI = -1;   // (home: where you started)
 }
 
 function nearest(at = player.pos) {   // the closest visible winner, and the handful close enough to show as suns
@@ -104,9 +104,9 @@ const _hf = new V3(), _hr = new V3(), _hq = new Q4(), fwd = new V3(), wish = new
 const _nq = new Q4(), _vn = new V3(), _su = new V3(), _su2 = new V3(), _rf = new V3();
 // speed modes, ↑ ↓: Cruise, Sport (quick and nimble, lower top), Speed (all top end, slow to turn)
 const SPEED_MODES = ['Cruise', 'Sport', 'Speed'];
-let speedMode = Math.max(0, Math.min(2, +(store.get('sotd-smode') ?? 1) || 0));   // Sport by default
+let speedMode = 1;   // one speed mode for now (Sport's values)
 const smK = () => { const n = 'sm' + SPEED_MODES[speedMode], L = LOOK; return { top: L[n + 'Top'] ?? 1, acc: L[n + 'Acc'] ?? 1, turn: L[n + 'Turn'] ?? 1 } };
-function setSpeedMode(m) { m = Math.max(0, Math.min(2, m)); if (m === speedMode) return; speedMode = m; store.set('sotd-smode', String(m)); buzz(10); consolePing = 1 }
+function setSpeedMode() { }   // (one speed mode for now)
 let consolePing = 0;
 function updatePlayer(dt) {
   const p = player, L = LOOK; if (sing.frozen) { p.vel.set(0, 0, 0); return }
@@ -188,7 +188,7 @@ function updatePlayer(dt) {
     if (gasOn) { const vf = p.vel.dot(course); tmp.copy(p.vel).addScaledVector(course, -vf); p.vel.addScaledVector(tmp, -(1 - Math.exp(-2.8 * dt))) }
     p.vel.multiplyScalar(Math.exp(-((thrusting ? .9 : 1 / Math.max(.1, L.glide)) * (1 - brakeK) + (L.brakeStr ?? 5.5) * brakeK * bt * (1 - revK)) * (1 - ob * (braking ? .6 : 1)) * dt));   // let go and it glides (in orbit it coasts)
     if (keys.x && !thrusting && !braking) { if (holdSp < 0) holdSp = p.vel.length(); p.vel.copy(course).multiplyScalar(holdSp); p.cruise = Math.max(p.cruise, cAt(holdSp)) } else { holdSp = -1; if (holdDir) p.vel.copy(holdDir).multiplyScalar(Math.max(0, p.vel.dot(holdDir))) }   // X: hold the speed you have, on the course you had; W and S only change the speed
-    const vmax = Math.min(thrusting ? vC : Infinity, turnAmt > 0 ? Math.min(vC, L.steerCap) + Math.max(0, vC - L.steerCap) * (1 - turnAmt) : Infinity);
+    const vmax = Math.min(thrusting ? vC : Infinity, turnAmt > 0 && uni.ig < 1.05 ? Math.min(vC, L.steerCap) + Math.max(0, vC - L.steerCap) * (1 - turnAmt) : Infinity);
     { const sp = p.vel.length(); if (sp > vmax) p.vel.setLength(Math.max(vmax, sp * Math.exp(-(thrusting ? 4 : 1 / Math.max(.1, L.glide)) * dt))) }   // eases down, never snaps
     { const sp = p.vel.length(), c = Math.max(VT / uni.ig, uni.cap); if (sp > c) p.vel.setLength(c + (sp - c) * Math.exp(-6 * dt)) }   // arriving at a galaxy from out between them: an easy slow-down to its rim
     {   // heading into a winner your speed eases down to what it allows (which shrinks as you close in), and never lets you slam in

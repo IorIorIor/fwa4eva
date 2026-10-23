@@ -16,23 +16,26 @@ const gplay = (() => {
   const pill = document.createElement('div'); pill.id = 'playPill'; pill.className = 'hud'; pill.hidden = true; pill.innerHTML = '<b></b><span>Playing</span><button type="button">Stop<kbd>Esc</kbd></button>'; document.body.appendChild(pill);
   pill.addEventListener('pointerdown', e => e.stopPropagation()); pill.querySelector('button').onclick = () => stop();
   function showPrompt(k) {
-    if (!(LOOK.galPrompt ?? 1)) return; if (k !== UNI.k) uni.rebase(k); st.prompt = k; st.promptT = 0; prY.textContent = String(UNI_Y0 + k); pr.hidden = false; pr.classList.remove('on'); void pr.offsetWidth; pr.classList.add('on');
+    if (!(LOOK.galPrompt ?? 1)) return; if (k !== UNI.k) uni.rebase(k); st.prompt = k; st.promptT = 0; st.docked = false; prY.textContent = String(UNI_Y0 + k); pr.hidden = false; pr.classList.remove('on', 'docked'); pr.style.top = ''; void pr.offsetWidth; pr.classList.add('on');
     if (document.pointerLockElement) document.exitPointerLock(); buzz(12);
   }
-  function hidePrompt() { st.prompt = -1; pr.hidden = true; pr.classList.remove('on') }
-  function choose(a) { const k = st.prompt; hidePrompt(); if (a === 'play') start(); else { setTimeout(relock, 30) } if (TEST) console.log('galaxy', a, UNI_Y0 + (k < 0 ? UNI.k : k)) }
+  function hidePrompt() { st.prompt = -1; st.docked = false; pr.hidden = true; pr.classList.remove('on', 'docked') }
+  // after a while (or once you fly on) the prompt glides down to sit over the speed console, just Play and its key, for as long as you're in the galaxy
+  function dock() { if (st.docked || st.prompt < 0) return; st.docked = true; const d = $('dash'), r = d && !d.hidden ? d.getBoundingClientRect() : null; pr.style.top = pr.getBoundingClientRect().top + 'px'; void pr.offsetWidth; pr.classList.add('docked'); pr.style.top = ((r ? r.top : innerHeight - 60) - 44) + 'px'; setTimeout(relock, 30) }
+  function choose(a) { const k = st.prompt; if (a === 'enter') { dock(); return } hidePrompt(); if (a === 'play') start(); if (TEST) console.log('galaxy', a, UNI_Y0 + (k < 0 ? UNI.k : k)) }
   addEventListener('keydown', e => {
     if (e.target && e.target.matches && e.target.matches('input,textarea,select')) return;
-    if (st.prompt >= 0) { if (e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); choose('enter') } else if (e.key === ' ') { e.preventDefault(); e.stopImmediatePropagation(); choose('play') } else if (e.key === 'Escape') { hidePrompt() } return }
+    if (st.prompt >= 0) { if (e.key === 'Enter' && !st.docked) { e.preventDefault(); e.stopImmediatePropagation(); choose('enter') } else if (e.key === ' ') { e.preventDefault(); e.stopImmediatePropagation(); choose('play') } else if (e.key === 'Escape') { hidePrompt() } return }
     if (st.on && !st.out && (e.key === 'Escape' || e.key.toLowerCase() === 'w')) { e.preventDefault(); e.stopImmediatePropagation(); stop() }
   }, true);
 
   const R = () => GAL_R0 + GAL_LEN;
   // where the camera sits (and what it looks at) with the galaxy turned phi: a long, low view across the disk
   function camPose(phi, p, q) {
-    const L = LOOK, el = Math.max(2, Math.min(89, L.playElev ?? 24)) * Math.PI / 180, a = st.az + phi, d = (L.playDist ?? 2.1) * R();
+    const L = LOOK, el = Math.max(2, Math.min(89, L.playElev ?? 24)) * Math.PI / 180, a = st.az + phi * (L.playCamTurn ?? 1), bT = Math.max(1, L.playBreathT ?? 20), d = (L.playDist ?? 2.1) * R() * (1 - (L.playBreath ?? 0) * (.5 - .5 * Math.cos(2 * Math.PI * st.t / bT))), sd = (L.playLookSide ?? 0) * R();   // (the push in and out starts from the full distance)
     p.set(Math.cos(a) * Math.cos(el) * d, Math.sin(el) * d, Math.sin(a) * Math.cos(el) * d).applyQuaternion(GQ).add(GC);
-    _c.set(0, (L.playAim ?? .08) * R(), 0).applyQuaternion(GQ).add(GC); q.setFromRotationMatrix(_m.lookAt(p, _c, GAL_UP)); return p;
+    _c.set(-Math.sin(a) * sd, (L.playAim ?? .08) * R(), Math.cos(a) * sd).applyQuaternion(GQ).add(GC); q.setFromRotationMatrix(_m.lookAt(p, _c, GAL_UP));
+    const rl = (L.playRoll ?? 0) * Math.PI / 180; if (rl) q.multiply(_q2.setFromAxisAngle(_b.set(0, 0, 1), rl)); return p;
   }
   // where the ship lands: on the disk, between the core and the rim, on the camera's side
   const shipAt = (phi, out) => { const a = st.az + phi, r = GAL_R0 + (LOOK.playShipR ?? .5) * GAL_LEN; return out.set(Math.cos(a) * r, 0, Math.sin(a) * r).applyQuaternion(GQ).add(GC) };
@@ -63,7 +66,7 @@ const gplay = (() => {
       // arriving: from out between the galaxies to inside one's rim
       if (!st.on && S.mode === 'fly' && booted && !intro.active) {
         if (uni.out) st.wasOut = true; else if (st.wasOut && uni.nearD < Math.max(1, L.igFrom ?? 1.15) * R()) { st.wasOut = false; showPrompt(uni.near) }   // (in through the rim)
-        if (st.prompt >= 0) { st.promptT += rdt; if (keys.w && st.promptT > .6) choose('enter'); else if (uni.nearD > R() * 1.6) hidePrompt() }
+        if (st.prompt >= 0) { st.promptT += rdt; if ((keys.w && st.promptT > .6) || st.promptT > 5) dock(); if (uni.nearD > R() * 1.6) hidePrompt() }
       }
       if (!st.on) { st.k = 0; return false }
       if (st.out) {   // on the way back: the look blends back over the camera's move, the ship shrinks to its own size as the camera comes in
@@ -87,7 +90,7 @@ const gplay = (() => {
     // the camera, in play (false: the ordinary one has it)
     cam(rdt) {
       if (!st.on || st.out) return false;
-      const L = LOOK, T = Math.max(.5, L.playFly ?? 4.5), x = Math.min(1, st.t / T), e = easeMode(x); st.k = easeIO(x);
+      const L = LOOK, T = Math.max(.5, L.playFly ?? 4.5), x = Math.min(1, st.t / T), pw = 1 + Math.max(0, (L.playEase ?? 4.5) - 1) * .3, e = x < .5 ? .5 * Math.pow(2 * x, pw) : 1 - .5 * Math.pow(2 - 2 * x, pw); st.k = easeIO(x);
       camPose(st.phi, _a, _q);
       if (x < 1) { lerpLogPolar(camera.position, st.c0, _a, GC, e); camera.quaternion.copy(st.cq0).slerp(_q, sstep(e, 0, .85)) } else { camera.position.copy(_a); camera.quaternion.copy(_q) }
       camera.fov = st.f0 + ((L.playFov ?? 42) - st.f0) * e; camera.updateProjectionMatrix(); camera.updateMatrixWorld();

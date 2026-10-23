@@ -954,6 +954,9 @@ body.inverted #galTags{filter:invert(1) hue-rotate(180deg)}
 #galPrompt button:hover{background:#fff;color:#000}
 #galPrompt kbd{font-family:var(--mono);font-size:9px;letter-spacing:.06em;padding:2px 5px 1px;border:1px solid currentColor;border-radius:4px;opacity:.6}
 #galPrompt.on{animation:galIn .5s cubic-bezier(.2,.9,.25,1)}
+#galPrompt{transition:top .9s cubic-bezier(.65,0,.25,1)}#galPrompt .gy,#galPrompt [data-a=enter]{transition:opacity .4s,max-width .6s,padding .6s,margin .6s;max-width:300px;overflow:hidden;white-space:nowrap}
+#galPrompt.docked .gy{opacity:0;height:0;margin:0}#galPrompt.docked [data-a=enter]{opacity:0;max-width:0;padding:0;margin:0 -8px 0 0;border-width:0;pointer-events:none}
+#galPrompt.docked button{height:32px;font-size:11px}
 @keyframes galIn{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
 #playPill{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:14;display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.7);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.3);padding:5px 5px 5px 14px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:auto}
 #playPill b{font-family:"FF Good Pro",var(--body);font-weight:400;font-size:18px;letter-spacing:0;color:#fff;text-transform:none}
@@ -972,7 +975,7 @@ body.playing #cross,body.playing #wcmp,body.playing #gauge,body.playing #console
 #galLab .gl-c{flex:none;width:262px;overflow-y:auto;scrollbar-width:thin;padding-bottom:20px}
 #galLab .gl-c header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;margin-bottom:6px}
 #galLab .gl-c header b{font-size:22px;font-weight:400}#galLab .gl-c header span{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-right:auto}
-#galLab .gl-c header button{padding:3px 6px;font-size:9px}
+#galLab .gl-c header button{padding:3px 6px;font-size:9px}#galLab .gl-rnd{display:flex;gap:4px;width:100%}#galLab .gl-rnd button{flex:1}
 #galLab .gl-c.def{border-right:1px solid rgba(255,255,255,.18);padding-right:10px;width:272px}
 #galLab .gl-lock{width:100%;margin-top:4px;background:#2a0b0b;border-color:#ff5f5f;color:#ffb0b0}#galLab .gl-lock.open{background:#ff5f5f;color:#000}
 #galLab canvas{width:260px;height:260px;display:block;background:#040309}
@@ -982,3 +985,17 @@ body.playing #cross,body.playing #wcmp,body.playing #gauge,body.playing #console
 #galLab .gl-s.own span{color:#fff}#galLab .gl-s.own span::after{content:" •";color:#9dffcf}
 #galLab .gl-s input:disabled{opacity:.35}
 body.gallab #cross,body.gallab #wcmp,body.gallab #galTags,body.gallab #shipLayer,body.gallab #reticle,body.gallab .hud:not(#galLab){display:none!important}
+
+#dash .md{display:none}   /* one speed mode for now */
+#galLab .gl-view{display:none}
+#galLab.viewing{background:transparent}#galLab.viewing .gl-top,#galLab.viewing .gl-row,#galLab.viewing .gl-in{display:none}
+#galLab.viewing .gl-view{display:flex;flex:1;min-height:0}
+#galLab .gl-stage{flex:1;position:relative;cursor:grab}#galLab .gl-stage:active{cursor:grabbing}
+#galLab .gl-x{position:absolute;left:20px;top:20px;width:64px;height:64px;font-size:30px;line-height:1;padding:0;border-radius:50%;background:rgba(0,0,0,.6)}
+#galLab .gl-vy{position:absolute;left:100px;top:26px;font-size:44px;font-weight:400;text-shadow:0 0 20px #000}
+#galLab .gl-hint{position:absolute;left:20px;bottom:18px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+#galLab .gl-side{width:300px;flex:none;overflow-y:auto;background:rgba(6,5,11,.88);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:16px;border-left:1px solid rgba(255,255,255,.12)}
+#galLab .gl-side .gl-c{width:auto}#galLab .gl-side canvas{display:none}
+#galLab canvas{cursor:zoom-in}#galLab .gl-c.def canvas{cursor:default}
+#galLab h4{display:flex;align-items:center;justify-content:space-between}#galLab h4 button{padding:1px 6px;font-size:12px;background:none;border-color:rgba(255,255,255,.18)}
+#galLab h4 small{font-size:8px;letter-spacing:.06em;color:rgba(255,255,255,.3);text-transform:none}

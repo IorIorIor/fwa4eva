@@ -22,14 +22,16 @@ and gives quick visual feedback; keep replies short).
   overridden by `MY_LOOK` (Laurens's tuned look). When he pastes "FWA FOREVER look settings: {...}" (Look → Copy
   settings), merge those keys into `MY_LOOK` (skip keys with no row). Galaxy-shape settings (`SHAPE`) apply on Rebuild.
 - Keys: W thrust, Shift/Space boost, A/D roll, S brake, M map, H home, C Look panel, P pilots list, G fly to nearest pilot, X hold current speed, R rings game on/off,
-  ↑/↓ speed mode, ←/→ or Q/E nearer/farther winner, F free pointer.
+  ←/→ or Q/E nearer/farther winner, F free pointer.
 - Data: the real archive (IorIorIor/fwa4eva-data, private) ships with the app in `public/data/` (archive.json + shots/YYYY/*.webp).
   Refresh it with `npm run data` (copies from a clone at `../fwa4eva-data`). Days before the archive starts borrow real winners.
-- THE MERGE (branch `the-merge`): a galaxy per year (2000…2026) on a helix (`uniLayout`, Look → Universe). Only the galaxy you're
-  in is built in full and it always sits at `GC`: crossing to another shifts the world (`uni.rebase`, 13-universe; anything holding a
-  world position must be moved in `shift`). Others are a snapshot (`uni.take`) on a disk. Dates (`yearU`, `T_A/T_B`) are the current
-  galaxy's year (`GYEAR`); winners' galaxy-local positions are `PL`, their galaxy `GI`. Network/flags/saved ship use universe
-  coordinates (`+ UNI.O`). Arriving prompts Enter/Play; Play mode is `gplay` (18-play) with its own look `LOOK_PLAY`.
+- THE MERGE (branch `the-merge`): a galaxy per year (2000…2026), each turned its own way, laid out by `uniLayout` (Look → Universe;
+  default: a semicircle round the start). Only the galaxy you're in is built in full; it always sits at `GC` turned to `GQ`:
+  crossing to another moves and turns the world (`uni.rebase` → `remap` in 13-universe; anything holding a world position or
+  heading must be mapped there). `uniToWorld`/`worldToUni` convert; network, flags and the saved ship use universe coordinates.
+  Others are snapshots (`uni.take`, one shared, one per galaxy with its own look) on disks. Dates (`yearU`, `T_A/T_B`) are the
+  current galaxy's year (`GYEAR`); winners' galaxy-frame positions are `PLL`, their galaxy `GI`. Per-galaxy settings: the galaxy
+  playground (18-gallab, Look → Universe). Arriving prompts Enter/Play; Play is `gplay` (18-play) with its own look `LOOK_PLAY`.
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
   field for settings copied from the Ascent toy.
 - Multiplayer: `relay.mjs` (WebSocket at `/ws`, positions only, deals each pilot a distinct hue). On claude.ai the page

@@ -131,14 +131,14 @@ addEventListener('keydown', e => {
   if (k === 'escape' && mapZone.on) mapZone.clear();
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }
   if (k === '/') { e.preventDefault(); keys[k] = false; rmenu.sub('search') }   // / searches
-  if ((k === 'arrowup' || k === 'arrowdown') && S.mode === 'fly' && !rmenu.panel) { keys[k] = false; e.preventDefault(); if (!e.repeat) setSpeedMode(speedMode + (k === 'arrowup' ? 1 : -1)) }   // ↑ ↓: speed mode
+  if (false && (k === 'arrowup' || k === 'arrowdown') && S.mode === 'fly' && !rmenu.panel) { keys[k] = false; e.preventDefault(); if (!e.repeat) setSpeedMode(speedMode + (k === 'arrowup' ? 1 : -1)) }   // ↑ ↓: speed mode
   if ((k === 'arrowleft' || k === 'arrowright' || k === 'q' || k === 'e') && S.mode === 'fly' && !rmenu.panel && !e.target.closest('input,textarea')) { keys[k] = false; e.preventDefault(); if (!e.repeat) stepByDist(k === 'arrowright' || k === 'e' ? 1 : -1) }   /* Q / ← a nearer winner, E / → a farther one */   // ← a nearer winner, → a farther one (of those in hover reach), locked on or not
   if (k === 'f' && S.mode === 'fly' && !e.repeat) { if (locked()) { freeMouse = true; document.exitPointerLock() } else { freeMouse = false; if (!lockFailed && !coarse) requestLock() } }   // F: a plain mouse pointer to click things with (F again, or a click on the sky, to fly)
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.in = false });
 [['brake', v => touchBrake = v]].forEach(([id, to]) => { const b = $(id), set = v => { to(v); b.classList.toggle('on', v) }; b.addEventListener('pointerdown', e => { e.preventDefault(); set(true); buzz(8); try { b.setPointerCapture(e.pointerId) } catch { } }); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => set(false))); b.addEventListener('contextmenu', e => e.preventDefault()) });   // captured, so a thumb sliding off keeps braking
-$('dash').addEventListener('click', () => { if (S.mode === 'fly') setSpeedMode((speedMode + 1) % 3) });   // tap the console: the next speed mode
+   // tap the console: the next speed mode
 // thrust: hold it and it grows into a tall block under your thumb. Slide up for more thrust; the top fifth boosts, the
 // bottom fifth (light red) brakes. touchThrust carries how much (0 … 1), so the further up, the harder you push
 { const b = $('thrust'); let id = -1, zone = '';

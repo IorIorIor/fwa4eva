@@ -27,17 +27,28 @@ const GM4 = new THREE.Matrix4().compose(GC, GQ, new V3(1, 1, 1));
 const GQ3 = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(GQ)), GQI3 = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(GQI));
 const GAL = { name: 'The Galaxy', y0: 2000, arms: ARMS, center: GC, quat: GQ };
 /* the universe: 27 galaxies, one per year, strung along a slow helix through space (2026 where you start, each year before
-   it a step further along). They all lie the same way up. UNI.c holds each one's centre in universe coordinates; the world
-   you see is the universe shifted by UNI.O so that the galaxy you're in always sits at GC, where all its detail is built
-   (far from home the numbers would otherwise lose their precision). */
+   it a step further along), each turned its own way. UNI.c and UNI.q hold each one's centre and turn in universe coordinates;
+   the world you see is the universe moved and turned (UNI.R) so that the galaxy you're in always sits at GC the way GQ
+   says, where all its detail is built (far from home the numbers would otherwise lose their precision). */
 const UNI_Y0 = 2000, UNI_N = 27;
-const UNI = { c: Array.from({ length: UNI_N }, () => new V3()), O: new V3(), k: UNI_N - 1 };
+const UNI = { c: Array.from({ length: UNI_N }, () => new V3()), q: Array.from({ length: UNI_N }, () => GQ.clone()), k: UNI_N - 1, home: null, look: null, R: new Q4(), RI: new Q4() };   // home/look: where you start and what you face (universe), when the layout has its own
 function uniLayout(L = LOOK) {
   const Rg = GAL_OUT, gap = Math.max(2.2, L.uniGap ?? 4.5) * Rg, th = (L.uniTurn ?? 40) * Math.PI / 180, h = gap * Math.max(0, Math.min(.95, L.uniRise ?? .35)), c = Math.sqrt(Math.max(0, gap * gap - h * h));
   const up = new V3(0, 1, 0).applyQuaternion(GQ), x0 = new V3(1, 0, 0).applyQuaternion(GQ), tl = (L.uniTilt ?? 35) * Math.PI / 180, az = (L.uniAz ?? 0) * Math.PI / 180;
   const A = up.clone().applyAxisAngle(x0, tl).applyAxisAngle(up, az).normalize(), B = new V3().crossVectors(A, Math.abs(A.dot(x0)) > .9 ? up : x0).normalize(), C = new V3().crossVectors(A, B);   // the helix's axis, and two directions across it
   const Rh = Math.abs(th) > 1e-3 ? c / (2 * Math.sin(Math.abs(th) / 2)) : 0, mode = Math.round(L.uniLayout ?? 0), rnd = mulberry32(9100 + Math.round(L.uniSeed ?? 1)), rv = () => new V3(rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1);
-  if (mode === 1) {   // a filament: each year a step on from the last, its heading wandering (the cosmic web's strands are like this)
+  UNI.home = null; UNI.look = null;
+  if (mode === 4) {   // a semicircle round you: the years from one end of the arc to the other, the oldest a little nearer, every other one a little
+    // above or below the arc so neighbours keep their distance; you start at its centre, facing its middle
+    const n = UNI_N, rr = Math.max(6, L.uniArcR ?? 16) * Rg, sp = L.uniSpread ?? .25, wv = (L.uniArcWave ?? 1.6) * Rg, M = new V3();
+    for (let k = 0; k < n; k++) { const f = k / (n - 1), a = -Math.PI / 2 + Math.PI * f, r = rr * (1 - sp * (1 - f)); UNI.c[k].copy(C).multiplyScalar(Math.cos(a) * r).addScaledVector(B, Math.sin(a) * r).addScaledVector(A, (k % 2 ? 1 : -1) * wv) }
+    const off = GC.clone().sub(UNI.c[n - 1]); UNI.c.forEach(c => c.add(off)); UNI.home = M.add(off); UNI.look = C.clone().multiplyScalar(rr).add(UNI.home);
+  } else if (mode === 3) {   // all round you: every year's galaxy at about the same distance in its own direction (spread evenly over the sky, one year
+    // to the next as neighbours), the oldest nearest; you start in the middle. Laid out round the middle, then moved so 2026 sits at GC
+    const n = UNI_N, ga = Math.PI * (3 - Math.sqrt(5)), sp = L.uniSpread ?? .6, M = new V3(), q = new Q4().setFromUnitVectors(new V3(0, 1, 0), A);
+    for (let k = 0; k < n; k++) { const y = 1 - 2 * (k + .5) / n, r = Math.sqrt(1 - y * y), t = k * ga, dir = new V3(Math.cos(t) * r, y, Math.sin(t) * r).applyQuaternion(q); UNI.c[k].copy(dir).multiplyScalar(gap * (1 + sp * k / (n - 1))) }
+    const off = GC.clone().sub(UNI.c[n - 1]); UNI.c.forEach(c => c.add(off)); UNI.home = M.add(off);
+  } else if (mode === 1) {   // a filament: each year a step on from the last, its heading wandering (the cosmic web's strands are like this)
     const d = A.clone().negate(), p = GC.clone(), w = L.uniWander ?? .6; UNI.c[UNI_N - 1].copy(p);
     for (let s = 1; s < UNI_N; s++) { d.addScaledVector(rv(), w).normalize().lerp(A.clone().negate(), .12).normalize(); p.addScaledVector(d, gap * (.75 + .5 * rnd())); UNI.c[UNI_N - 1 - s].copy(p) }
   } else if (mode === 2) {   // groups: five years at a time gathered in a small group (as galaxies are, the Milky Way's Local Group), the groups strung out far apart
@@ -48,10 +59,21 @@ function uniLayout(L = LOOK) {
   } else for (let k = 0; k < UNI_N; k++) { const s = UNI_N - 1 - k, a = s * th, o = UNI.c[k].copy(GC).addScaledVector(A, -h * s);   // the helix. s: years back from 2026
     if (Rh) o.addScaledVector(B, (Math.cos(a) - 1) * Rh).addScaledVector(C, Math.sin(a) * Rh); else o.addScaledVector(B, c * s) }
   const j = (L.uniJitter ?? 0) * gap * .5; if (j > 0) for (let k = 0; k < UNI_N - 1; k++) UNI.c[k].addScaledVector(rv(), j);   // a little randomness on top (2026 stays put)
+  if (mode >= 3) for (let k = 0; k < UNI_N; k++) if (UNI.c[k].distanceTo(UNI.home) < gap * .8) UNI.c[k].sub(UNI.home).setLength(gap * .8).add(UNI.home);   // (none right on top of you)
   const m = Rg * 2.6; for (let it = 0; it < 40; it++) { let moved = false; for (let a = 0; a < UNI_N; a++) for (let b = a + 1; b < UNI_N; b++) { const v = UNI.c[b].clone().sub(UNI.c[a]), l = v.length(); if (l < m) { moved = true; v.setLength((m - l) * .5 + 1); if (b !== UNI_N - 1) UNI.c[b].add(v); if (a !== UNI_N - 1) UNI.c[a].sub(v); else UNI.c[b].add(v) } } if (!moved) break }   // never closer than 2.6 radii
+  // and each turned its own way: tipped over by up to uniTiltVar, spun round its own axis (2026, the first, as built)
+  const tv = (L.uniTiltVar ?? 70) * Math.PI / 180, sv = L.uniSpinVar ?? 1, rq = mulberry32(7300 + Math.round(L.uniSeed ?? 1)), _x = new V3(), _q = new Q4();
+  for (let k = 0; k < UNI_N; k++) { const ax = _x.set(rq() * 2 - 1, 0, rq() * 2 - 1).normalize().applyQuaternion(GQ), tilt = tv * Math.sqrt(rq()), spin = sv * rq() * 2 * Math.PI;
+    if (k === UNI_N - 1) { UNI.q[k].copy(GQ); continue } UNI.q[k].setFromAxisAngle(ax, tilt).multiply(GQ).multiply(_q.setFromAxisAngle(new V3(0, 1, 0), spin)) }
+  uniFrame();
 }
+// the world as it is now: the galaxy you're in at GC, turned to GQ
+function uniFrame() { UNI.R.copy(GQ).multiply(UNI.q[UNI.k].clone().invert()); UNI.RI.copy(UNI.R).invert() }
+const uniToWorld = (u, out = new V3()) => out.copy(u).sub(UNI.c[UNI.k]).applyQuaternion(UNI.R).add(GC);
+const worldToUni = (p, out = new V3()) => out.copy(p).sub(GC).applyQuaternion(UNI.RI).add(UNI.c[UNI.k]);
 uniLayout();
-const uniAt = (k, out = new V3()) => out.copy(UNI.c[k]).sub(UNI.O);   // galaxy k's centre in the world as it is now
+const uniAt = (k, out = new V3()) => uniToWorld(UNI.c[k], out);   // galaxy k's centre in the world as it is now
+const uniQ = (k, out = new Q4()) => out.copy(UNI.R).multiply(UNI.q[k]);   // and its turn
 /* THE MERGE: a galaxy for every year. Each one is a year, its January on the rim and its December round the black hole, so
    the dates below are always the year of the galaxy you're in (GYEAR); setGalYear switches them over */
 let GYEAR = 2026, T_A = Date.UTC(2026, 0, 1), T_B = Date.UTC(2027, 0, 1);
@@ -232,7 +254,9 @@ for (let i = 0; i < N; i++) {
 }
 setGalYear(2026);
 // the winners' world positions, from their galaxies' centres as they are now (after the universe has moved, or its layout changed)
-function uniPlaceStars() { const c = new V3(); for (let i = 0; i < N; i++) { if (i === 0 || GI[i] !== GI[i - 1]) uniAt(GI[i], c); const o = i * 3; P[o] = c.x + PL[o]; P[o + 1] = c.y + PL[o + 1]; P[o + 2] = c.z + PL[o + 2] } }
+const PLL = new Float64Array(N * 3); { const v = new V3(); for (let i = 0; i < N; i++) { v.fromArray(PL, i * 3).applyQuaternion(GQI); PLL[i * 3] = v.x; PLL[i * 3 + 1] = v.y; PLL[i * 3 + 2] = v.z } }   // each winner in its galaxy's own frame
+function uniPlaceStars() { const c = new V3(), q = new Q4(), v = new V3(); for (let i = 0; i < N; i++) { if (i === 0 || GI[i] !== GI[i - 1]) { uniAt(GI[i], c); uniQ(GI[i], q) } const o = i * 3; v.set(PLL[o], PLL[o + 1], PLL[o + 2]).applyQuaternion(q); P[o] = c.x + v.x; P[o + 1] = c.y + v.y; P[o + 2] = c.z + v.z; PL[o] = v.x; PL[o + 1] = v.y; PL[o + 2] = v.z } }
+uniPlaceStars();
 const NEB_B = cloudField(7040, armPlace(17500, 2450));   // up to 7680 clouds with NEB_A (Cloud count × 640)
 const LANE_B = cloudField(500, armPlace(8750, 1400));
 const LANE_C = (() => { const s0 = R.state(); R.state(5150); const f = cloudField(1930, armPlace(8750, 1400)); R.state(s0); return f })();   // more dark clouds (count up to 10), drawn from their own seed so nothing else moves
@@ -243,4 +267,7 @@ const starR = i => STAR_R[i] * LOOK.bodySize, stopR = i => starR(i) * LOOK.stopK
 const OUT = { hubR: 40, hubH: 60, ringR: 150, ringT: 20, padY: 64, padHalf: 45 };
 // no station any more: every pilot starts just outside the rim and well above the disk, at a random point round it
 const HOME_P = (() => { const a = Math.random() * Math.PI * 2, R = GAL_R0 + GAL_LEN; const d = R * (LOOK.spawnDist ?? .75), hh = LOOK.spawnH ?? 50000; return new V3(Math.cos(a) * d, hh, Math.sin(a) * d).applyQuaternion(GQ).add(GC) })();   // where you start: well above the disk, near enough that it fills the view (spawnDist × the galaxy's radius, spawnUp degrees above it)
+const uniHome = (out = new V3()) => uniToWorld(UNI.home || HOME_P, out);   // where you start, in the world as it is now
+const uniFace = (out = new V3()) => UNI.look ? uniToWorld(UNI.look, out) : out.copy(GC);   // what you face at the start
+const uniHomeK = () => { let b = UNI_N - 1, bd = Infinity; const h = UNI.home || HOME_P; for (let k = 0; k < UNI_N; k++) { const d = UNI.c[k].distanceTo(h); if (d < bd) { bd = d; b = k } } return b };   // the galaxy nearest the start
 const LIGHT = 1.2e6;   // the speed of light, in world units per second

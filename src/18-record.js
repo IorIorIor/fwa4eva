@@ -9,7 +9,7 @@ const rec = (() => {
   const st = { mode: null, i: -1, duck: 0, phi: null, budget: 0, spin: 0, next: 0, step: 0, seq: null };
   const AZ = new Float32Array(N), UU = new Float32Array(N), _v = new V3(), _r = new V3(), _ax = new V3(0, 1, 0).applyQuaternion(GQ);
   const turn = d => { orbit.theta += d; orbit.target.sub(GC).applyAxisAngle(_ax, d).add(GC) };   // the record turns round the galaxy's own centre, wherever the map has been dragged to
-  for (let i = 0; i < N; i++) { _v.set(PL[i * 3], PL[i * 3 + 1], PL[i * 3 + 2]).applyQuaternion(GQI); AZ[i] = Math.atan2(_v.z, _v.x); UU[i] = Math.max(0, Math.min(1, (Math.hypot(_v.x, _v.z) - GAL_R0) / GAL_LEN)) }   // each winner's angle round the core and how far out (0 core … 1 rim)   // (each in its own galaxy's frame)
+  for (let i = 0; i < N; i++) { _v.set(PLL[i * 3], PLL[i * 3 + 1], PLL[i * 3 + 2]); AZ[i] = Math.atan2(_v.z, _v.x); UU[i] = Math.max(0, Math.min(1, (Math.hypot(_v.x, _v.z) - GAL_R0) / GAL_LEN)) }   // each winner's angle round the core and how far out (0 core … 1 rim)   // (each in its own galaxy's frame)
   // sound: its own bus into the music's switch (past the sounds' mute), a soft lowpass and a slow echo
   let bus = null;
   const ensure = () => {
