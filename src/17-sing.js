@@ -10,17 +10,17 @@ const sing = (() => {
   const S_ = { t: -1, w: 0, dir: new V3(), far: false, ft: 0 };
   function enter() { buzz([30, 80, 30, 80, 160]); S_.t = 0; S_.dir.copy(player.vel).lengthSq() > 1 ? S_.dir.normalize() : S_.dir.set(0, 0, -1).applyQuaternion(player.base); auto = null; lockI = -1; warp = null }
   function emerge() {   // the far side: well out beyond the galaxy along the way you were going, facing on, the galaxy behind
-    const up = new V3(0, 1, 0).applyQuaternion(GQ), at = GC.clone().addScaledVector(up, LOOK.singUp ?? 10000);   // out right above the galaxy's heart, looking straight down at it
+    const up = new V3(0, 1, 0).applyQuaternion(GQ), at = GC.clone().addScaledVector(up, Math.max(LOOK.singUp ?? 10000, BH.sh * (LOOK.bhGravReach ?? 30) * 1.1));   // (and beyond the reach of its gravity)   // out right above the galaxy's heart, looking straight down at it
     player.pos.copy(at); player.vel.set(0, 0, 0); aimAt(up.clone().negate(), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
     star.visible = false; S_.far = true; S_.ft = 0; ringBell(N - 1); buzz(60); document.body.classList.add('farside');
   }
   return {
-    get busy() { return S_.t >= 0 },
+    get busy() { return S_.t >= 0 }, get far() { return S_.far }, get w() { return S_.w },
     reset() { S_.t = -1; S_.w = 0; S_.far = false; star.visible = false; el.style.opacity = 0; document.body.classList.remove('farside') },   // (the black hole lab, going round again)
     update(rdt) {
       const L = LOOK, on = !!(L.singularity ?? 1) && S.mode === 'fly' && booted, d = player.pos.distanceTo(GC);
       singQ = on && !S_.far && !(S_.t >= 0) ? 1 - sstep(d, BH.sh * 1.5, BH.sh * (L.singHear ?? 14)) : S_.t >= 0 ? Math.max(singQ, Math.min(1, S_.w * 2)) : Math.max(0, singQ - rdt);
-      if (on && S_.t < 0 && !S_.far && d < BH.sh * 1.45) enter();
+      if (on && S_.t < 0 && d < BH.sh * 1.45) { if (S_.far) { S_.far = false; el.style.opacity = 0; document.body.classList.remove('farside') } enter() }   // (even straight back in from the far side)
       if (S_.t >= 0) {   // inside: slow white, the switch to the far side at its peak, then the white clears
         const tin = L.singIn ?? 3, tout = L.singOut ?? 4; S_.t += rdt; player.vel.multiplyScalar(Math.exp(-rdt * 4));
         if (S_.t < tin) S_.w = Math.pow(S_.t / tin, 1.5); else { if (!S_.far) emerge(); S_.w = 1 - sstep(S_.t, tin + .6, tin + .6 + tout) }

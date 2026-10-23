@@ -6,7 +6,7 @@
    rumbles; crossing the disk flashes and jolts. All of it builds with how far in you are (in log distance, so it keeps
    building all the way down). */
 const fall = (() => {
-  const F = { k: 0, kc: 0, fov: 0, blur: 0, ab: 0, flash: 0, jolt: 0, rumble: 0, diskK: 0, cross: false, after: 0, prevY: NaN, t: 0, roll: 0 };
+  const F = { gk: 0, k: 0, kc: 0, fov: 0, blur: 0, ab: 0, flash: 0, jolt: 0, rumble: 0, diskK: 0, cross: false, after: 0, prevY: NaN, t: 0, roll: 0 };
   const lp = new V3(), nH = new V3(), sm = new THREE.Matrix4(), zero = new V3(), sv = new V3(), sq_ = new Q4(), se = new THREE.Euler(), zAx = new V3(0, 0, 1), qi = new Q4();
   F.update = (dt, rdt) => {   // after the ship has moved: how far in, the disk, the spin, the stretch
     const L = LOOK, d = player.pos.distanceTo(GC), sh = BH.sh, R = sh * Math.max(2, L.bhFx ?? 12);
@@ -46,8 +46,21 @@ const fall = (() => {
     PU.swR.value = Math.max(.01, Math.min(.6, (L.bhSwirlR ?? 3) * Math.tan(Math.asin(Math.min(.999, BH.sh / Math.max(dd, 1e-6)))) * .5 / ty));
     PU.sw.value = (L.bhSwirl ?? 1.2) * kc * front; PU.swP.value = (L.bhPinch ?? .4) * kc * front;
     PU.exp.value *= 1 + F.flash * 1.6;
+    { const gt = Math.max(fly ? sstep(F.k, L.bhGlitchAt ?? .7, .97) : 0, sing.busy ? 1 : 0); F.gk += (gt - F.gk) * Math.min(1, rdt * (gt > F.gk ? 6 : 1.2)); glitch(F.gk * (L.bhGlitch ?? 1)) }   // the interface glitches out of existence as you go in (and back after)
     embers.update(fly ? dt : 0, fly);
   };
+  // the glitch: every piece of the interface (but the lab's own controls) jumps, splits into red and cyan, is cut into slices
+  // and flickers, more and more, until it's gone
+  let gEls = [], gOn = false; const gr = mulberry32(9), GV = ['--gx', '--gy', '--go', '--gt', '--gb', '--gs'];
+  function glitch(g) {
+    if (g < .002) { if (gOn) { gOn = false; document.body.classList.remove('bhg'); gEls.forEach(e => { e.classList.remove('bhgl'); GV.forEach(k => e.style.removeProperty(k)) }) } return }
+    if (!gOn) { gOn = true; document.body.classList.add('bhg'); gEls = [...document.body.children].filter(e => !/^(CANVAS|SCRIPT|STYLE)$/.test(e.tagName) && !e.matches('#bhLab,#lookPanel,#portalLab,#whiteout,#farText,#portalLoad,#intro')); gEls.forEach(e => e.classList.add('bhgl')) }
+    for (const e of gEls) {
+      const hit = gr() < g * .7, gone = g > .97 || gr() < g * g * .8, a = hit ? gr() * 70 : 0, b = hit ? gr() * (95 - a) : 0, st = e.style;
+      st.setProperty('--go', gone ? '0' : (1 - g * .5).toFixed(2)); st.setProperty('--gx', hit ? ((gr() - .5) * 90 * g).toFixed(1) + 'px' : '0px'); st.setProperty('--gy', hit ? ((gr() - .5) * 12 * g).toFixed(1) + 'px' : '0px');
+      st.setProperty('--gt', a.toFixed(1) + '%'); st.setProperty('--gb', b.toFixed(1) + '%'); st.setProperty('--gs', hit ? (gr() * 7 * g).toFixed(1) + 'px' : '0px');
+    }
+  }
   return F;
 })();
 

@@ -182,14 +182,17 @@ const intro = {
     addEventListener('wheel', wheel, { passive: false }); addEventListener('pointerdown', pdown, true); addEventListener('pointermove', pmove, true); addEventListener('pointermove', pmv, true); addEventListener('pointerup', pup, true); addEventListener('keydown', key, true);
     this.portalOff = () => { removeEventListener('wheel', wheel, { passive: false }); removeEventListener('pointerdown', pdown, true); removeEventListener('pointermove', pmove, true); removeEventListener('pointerup', pup, true); removeEventListener('keydown', key, true); $('portalLoad').hidden = true; this.portalOff = null };
     this.pmvOff = () => { removeEventListener('pointermove', pmv, true); this.pmvOff = null };   // (the mouse still steers the ship a moment past the mark)
-    const load = $('portalLoad'); load.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => { load.classList.add('live'); $('plTxt').textContent = coarse ? 'Swipe up to continue' : 'Scroll to continue'; $('plEnter').classList.remove('gone'); $('plTag').classList.remove('gone'); }));   // scroll, or (the other opening) an Enter button   // the 3D mark is drawn in the same place: the flat one hands over
+    const load = $('portalLoad'); load.hidden = false; this.pf = 0;
+    const reveal = () => { if (this.pf < 4 && !this.lab) return requestAnimationFrame(reveal); const dev = GPU && renderer.backend && renderer.backend.device; Promise.race([dev ? dev.queue.onSubmittedWorkDone() : Promise.resolve(), new Promise(r => setTimeout(r, 700))]).then(() => requestAnimationFrame(show), show) };   // (never waiting long on the GPU)   // the black lifts only once the portal view has really been drawn, so no earlier frame ever shows
+    const show = () => { this.pt0 = performance.now();   /* (the galaxy's fade in behind the letters starts as it shows) */ load.classList.add('live'); $('plTxt').textContent = coarse ? 'Swipe up to continue' : 'Scroll to continue'; $('plEnter').classList.remove('gone'); $('plTag').classList.remove('gone') }; requestAnimationFrame(reveal);   // scroll, or (the other opening) an Enter button   // the 3D mark is drawn in the same place: the flat one hands over
     if (PORTAL_LAB) this.lab = makePortalLab(this);
     return true;
   },
   portalView() {   // where the dive starts: far out, on the ship's side, a little above the disk, the whole spiral in view
     const L = LOOK, R = GAL_R0 + GAL_LEN, D = R * (L.portalDist ?? 6), tl = (L.portalTilt ?? 35) * Math.PI / 180, d = this.C0.clone().sub(GC).projectOnPlane(GAL_UP).normalize().applyAxisAngle(GAL_UP, (L.portalTurn ?? 0) * Math.PI / 180);
     const pv = GC.clone().addScaledVector(d, Math.cos(tl) * D).addScaledVector(GAL_UP, Math.sin(tl) * D);
-    this.PV = { p: pv, q: new Q4().setFromRotationMatrix(new THREE.Matrix4().lookAt(pv, GC, GAL_UP)) };
+    const q0 = new Q4().setFromRotationMatrix(new THREE.Matrix4().lookAt(pv, GC, GAL_UP)), tg = GC.clone().addScaledVector(new V3(1, 0, 0).applyQuaternion(q0), -(L.portalShiftX ?? 0) * R).addScaledVector(new V3(0, 1, 0).applyQuaternion(q0), -(L.portalShiftY ?? 0) * R);   // the galaxy slid across and up in the view
+    this.PV = { p: pv, q: new Q4().setFromRotationMatrix(new THREE.Matrix4().lookAt(pv, tg, GAL_UP)).multiply(new Q4().setFromAxisAngle(new V3(0, 0, 1), (L.portalRoll ?? 0) * Math.PI / 180)) };   // and turned in the frame
     // the dive's path, round the ship's spot: from that far direction to straight overhead (P0), the distance in log terms
     this.dPV = pv.clone().sub(this.C0); this.lnPV = Math.log(this.dPV.length()); this.dPV.normalize(); const d0 = this.P0.p.clone().sub(this.C0); this.lnD0 = Math.log(d0.length()); d0.normalize();
     this.dAng = Math.acos(Math.max(-1, Math.min(1, this.dPV.dot(d0)))); this.dAx = new V3().crossVectors(this.dPV, d0); if (this.dAx.lengthSq() < 1e-12) this.dAx.set(1, 0, 0); this.dAx.normalize();
@@ -293,7 +296,7 @@ const intro = {
       for (const a of ['x', 'y']) { this.av[a] += ((this.goal[a] - this.at[a]) * K - this.av[a] * C) * h; this.at[a] += this.av[a] * h }
     }
     if (this.curHide) { this.placeCur(); if (--this.curHide <= 0) { this.curHide = 0; curEl.style.display = 'none' } }   /* (still following the mouse, so it can't be left behind where the ship was) */
-    if (this.ph === 0) { this.portalStep(dt); return }
+    if (this.ph === 0) { this.pf++; this.portalStep(dt); return }
     if (this.ph === 3) { if (this.settleStep(dt)) { this.settled = true; this.ph = 2; this.finish() } return }
     if (this.ph === 1) { this.pose(0); camera.clearViewOffset(); camera.updateMatrixWorld(); this.placeCur(); this.logoStep(dt); return }   // through the logo the view is dead on: the vanishing point in the middle of the screen
     if (this.t < 1) this.t = Math.min(1, this.t + dt / (reduceMotion ? 2.5 : this.dur));

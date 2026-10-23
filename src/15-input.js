@@ -169,10 +169,16 @@ const starPx = (i, w) => SIZE[i] * LOOK.starSize * pxJS() / w / DPR;   // a winn
 // aim assist: the visible winner (3 px or larger) nearest the screen centre, measured against its own capture radius:
 // the base radius plus the star's size on screen, so close-by winners are much easier to catch
 const ringPxAt = (i, w) => LOOK.rings ? starR(i) * (LOOK.ringSize ?? 1.6) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(w, 1)) : 0;   // a winner's ring radius on screen (px), in the rings game
+const _hd = new V3();
+function holeMask() {   // what the black hole hides from the camera: the sky behind its shadow (from outside, behind all the sky it bends)
+  if (!bh.mesh.visible) return null; const c = camera.position, dC = c.distanceTo(GC), Rl = RP * BH.rs, R = dC > Rl ? Rl * .9 : BH.sh * 1.3; if (dC <= R) return null;
+  _hd.copy(GC).sub(c).divideScalar(dC); return { d: dC - R, cos: Math.cos(Math.asin(R / dC)) };
+}
+function behindHole(m, px, py, pz) { if (!m) return false; const c = camera.position, x = px - c.x, y = py - c.y, z = pz - c.z, l = Math.hypot(x, y, z); return l > m.d && (x * _hd.x + y * _hd.y + z * _hd.z) / l > m.cos }
 function pickNear(x, y, Rr) {
-  _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight; let best = -1, bs = 1, bd = 0, bR = Rr;
+  _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight, hm = holeMask(); let best = -1, bs = 1, bd = 0, bR = Rr;
   for (let i = 0; i < N; i++) {
-    if (TA[i] < 1 || i === lockI) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; const aD = LOOK.aimDist ?? 103000; if (w < .5 || w > aD || Math.hypot(px - camera.position.x, py - camera.position.y, pz - camera.position.z) > aD) continue; const spx = starPx(i, w);   // aim assist: by distance only (Look: aimDist)
+    if (TA[i] < 1 || i === lockI) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; const aD = LOOK.aimDist ?? 103000; if (w < .5 || w > aD || Math.hypot(px - camera.position.x, py - camera.position.y, pz - camera.position.z) > aD || behindHole(hm, px, py, pz)) continue; const spx = starPx(i, w);   // aim assist: by distance only (Look: aimDist)
     const X = ((e[0] * px + e[4] * py + e[8] * pz + e[12]) / w * .5 + .5) * W, Y = (-(e[1] * px + e[5] * py + e[9] * pz + e[13]) / w * .5 + .5) * H, d = Math.hypot(X - x, Y - y), rpx = ringPxAt(i, w), R_ = rpx > 18 ? rpx * .95 : Rr + Math.min(Rr * 4, spx * .6), s = d / R_;
     if (s < bs) { bs = s; best = i; bd = d; bR = R_ }
   }
@@ -180,9 +186,9 @@ function pickNear(x, y, Rr) {
 }
 function pick(x, y, maxD = Infinity) {
   const touchR = down && down.touch || coarse ? LOOK.tapR ?? 44 : 14;   // a finger covers more than a pointer: a tap reaches the star near it
-  _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight; let best = -1, bd = Infinity;
+  _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight, hm = holeMask(); let best = -1, bd = Infinity;
   for (let i = 0; i < N; i++) {
-    if (TA[i] < 1) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5 || w > maxD) continue;
+    if (TA[i] < 1) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; if (w < .5 || w > maxD || behindHole(hm, px, py, pz)) continue;   // (none behind the black hole)
     const X = ((e[0] * px + e[4] * py + e[8] * pz + e[12]) / w * .5 + .5) * W, Y = (-(e[1] * px + e[5] * py + e[9] * pz + e[13]) / w * .5 + .5) * H;
     const rpx = ringPxAt(i, w), d = Math.hypot(X - x, Y - y), rad = rpx > 18 ? Math.max(rpx * .95, touchR) : Math.max(touchR, starPx(i, w) * .5);   // a ring big enough to be a 3D ring: only inside it counts
     if (d < rad) { const score = d / rad + w * .000003; if (score < bd) { bd = score; best = i } }

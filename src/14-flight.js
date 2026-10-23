@@ -230,8 +230,8 @@ function updatePlayer(dt) {
   {
     tmp.copy(p.pos).sub(GC); const d = tmp.length(), mn = BH.sh * 1.3, gR = BH.sh * Math.max(18, L.bhGravReach ?? 30);
     if (d < mn && !(LOOK.singularity ?? 1)) { tmp.setLength(mn); p.pos.copy(GC).add(tmp); const n = tmp.normalize(), vn = p.vel.dot(n); if (vn < 0) p.vel.addScaledVector(n, -vn) }
-    else if (d < gR && !auto && !sing.busy) {
-      const sp = p.vel.length(), cap = 60 + (d - mn) * 6 * (L.bhCap ?? 2.5); if (d < BH.sh * 18 && sp > cap) p.vel.setLength(Math.max(cap, sp * Math.exp(-3 * dt)));   // close in it holds you to a speed you can still steer at
+    else if (d < gR && !auto && !sing.busy && !sing.far) {   // (out on the far side it lets you be)
+      const sp = p.vel.length(), cap = 60 + Math.max(0, d - mn) * 6 * (L.bhCap ?? 2.5); if (d < BH.sh * 18 && sp > cap) p.vel.setLength(Math.max(cap, sp * Math.exp(-3 * dt)));   // close in it holds you to a speed you can still steer at
       const n = tmp.normalize(); p.vel.addScaledVector(n, -dt * 250 * L.bhPull * (1 - sstep(d, mn, BH.sh * 5)));   // a gentle tug close in
       const gv = (L.bhGrav ?? 1) * 30 * BH.sh * Math.pow(BH.sh / Math.max(d, mn), 2) * (1 - sstep(d, gR * .5, gR)) * dt; p.vel.addScaledVector(n, -gv);   // and gravity, GM/r² (sized so a fall from ten shadows takes some seconds)
       if (L.bhDrag) { const l = _vn.copy(n).applyQuaternion(GQI); _rf.set(l.z, 0, -l.x).normalize().applyQuaternion(GQ); p.vel.addScaledVector(_rf, gv * L.bhDrag * (1 - Math.abs(l.y))) }   // frame dragging: swept round the way the disk turns

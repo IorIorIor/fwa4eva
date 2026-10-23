@@ -935,6 +935,7 @@ body.plab #lookPanel{opacity:1!important;pointer-events:auto!important;z-index:9
 body.plab,body.plab *{cursor:auto!important}body.plab button,body.plab input,body.plab .lhd{cursor:pointer!important}
 body.plab #plTxt{display:none}
 body.plab #dash{display:none}
+body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));clip-path:inset(var(--gt,0%) 0 var(--gb,0%) 0);text-shadow:var(--gs,0px) 0 rgba(255,40,90,.85),calc(var(--gs,0px) * -1) 0 rgba(40,220,255,.85)}   /* the black hole: the interface glitching away */
 @media (max-width:760px){#portalLab,#bhLab{right:max(16px,env(safe-area-inset-right,0px));flex-wrap:wrap}#portalLab .pl-v,#bhLab .pl-v{min-width:0}}
 /* the line above the mark, and the Enter button (the autoplay opening) */
 #plTag{position:absolute;left:0;right:0;top:calc(50% - var(--pw) * .0747 - 30px);transform:translateY(-100%);margin:0;text-align:center;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.78);transition:opacity .8s ease}
