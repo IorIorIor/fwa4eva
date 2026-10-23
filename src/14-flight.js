@@ -68,7 +68,7 @@ function focus(i) {
 function goHome() {
   if (sing.inside) { sing.reset(); toSpawn(); return }   // out of the black hole: H is the one way home
   if (S.mode === 'map') { mapFlip(); Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), phi: orbit.mir ? Math.PI - mapPhi() : mapPhi() }); const o = orbitPose(); tweenCam(o.p, o.q, 1.6); return }
-  auto = { i: -1, dest: HOME_P.clone() }; lockI = -1;
+  auto = { i: -1, dest: HOME_P.clone().sub(UNI.O) }; lockI = -1;   // (home: where you started, by the 2026 galaxy)
 }
 
 function nearest(at = player.pos) {   // the closest visible winner, and the handful close enough to show as suns
@@ -174,7 +174,7 @@ function updatePlayer(dt) {
        under 1.3 × escape velocity √(2GM/r), so you can be captured and can always climb out. ob blends it in at the zone's edge. */
     let ob = 0, GM = 0, oR = 0;
     if (L.orbit && !L.rings && nearI >= 0 && lockI !== nearI) { const Rs = starR(nearI), r0 = Rs * L.orbitR, Ro = Rs * Math.max(L.orbitZone, L.orbitR * 1.5); GM = 4 * Math.PI * Math.PI * r0 * r0 * r0 / (L.orbitT * L.orbitT); oR = r0; ob = 1 - sstep(nearCD, Ro * .6, Ro); if (thrusting) { starPos(nearI, tmp2).sub(p.pos).normalize(); ob *= 1 - sstep(-wish.dot(tmp2), .2, .7) } }   // pushing away from the star breaks orbit: full engine, out you go
-    const T1 = Math.max(1, L.cruiseTime), T2 = Math.max(T1 + 1, L.lightTime), VT = Math.min(LIGHT * .97, L.topSpeed ?? Infinity) * SM.top, V1 = Math.min(L.cruiseSpeed, VT / 1.01), VL = Math.max(V1 * 1.01, VT);   // the top: light speed, or lower if you set it
+    const T1 = Math.max(1, L.cruiseTime), T2 = Math.max(T1 + 1, L.lightTime), VT = Math.min(LIGHT * .97, L.topSpeed ?? Infinity) * SM.top * uni.ig, V1 = Math.min(L.cruiseSpeed, VT / 1.01), VL = Math.max(V1 * 1.01, VT);   // the top: light speed, or lower if you set it
     const vAt = c => { const t = c * T2; return t <= T1 ? 150 * Math.pow(V1 / 150, t / T1) : V1 * Math.pow(VL / V1, Math.min(1, (t - T1) / (T2 - T1))) };   // cruise = seconds of straight thrust / T2
     const cAt = v => { v = Math.max(150, v); const t = v <= V1 ? T1 * Math.log(v / 150) / Math.log(V1 / 150) : T1 + (T2 - T1) * Math.log(v / V1) / Math.log(VL / V1); return Math.min(1, t / T2) };
     const hold = vAt(p.cruise) > capIn;   // held back near a star: cruise doesn't keep building, and drifts down to what's allowed
@@ -190,6 +190,7 @@ function updatePlayer(dt) {
     if (keys.x && !thrusting && !braking) { if (holdSp < 0) holdSp = p.vel.length(); p.vel.copy(course).multiplyScalar(holdSp); p.cruise = Math.max(p.cruise, cAt(holdSp)) } else { holdSp = -1; if (holdDir) p.vel.copy(holdDir).multiplyScalar(Math.max(0, p.vel.dot(holdDir))) }   // X: hold the speed you have, on the course you had; W and S only change the speed
     const vmax = Math.min(thrusting ? vC : Infinity, turnAmt > 0 ? Math.min(vC, L.steerCap) + Math.max(0, vC - L.steerCap) * (1 - turnAmt) : Infinity);
     { const sp = p.vel.length(); if (sp > vmax) p.vel.setLength(Math.max(vmax, sp * Math.exp(-(thrusting ? 4 : 1 / Math.max(.1, L.glide)) * dt))) }   // eases down, never snaps
+    { const sp = p.vel.length(), c = Math.max(VT / uni.ig, uni.cap); if (sp > c) p.vel.setLength(c + (sp - c) * Math.exp(-6 * dt)) }   // arriving at a galaxy from out between them: an easy slow-down to its rim
     {   // heading into a winner your speed eases down to what it allows (which shrinks as you close in), and never lets you slam in
       const sp = p.vel.length();
       const capO = ob > 0 ? Math.sqrt(2 * GM / Math.max(nearCD, 1)) * 1.3 : Infinity, capX = ob > 0 ? capIn + (capO - capIn) * ob : capIn;   // in orbit the cap is escape speed, not the approach limit

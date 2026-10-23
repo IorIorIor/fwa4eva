@@ -5,7 +5,7 @@
 const _rq = new Q4(), _ry = new V3(0, 1, 0);
 const timeRings = (() => {
   const SEGS = 360, rings = [];
-  for (let y = 2000; y <= 2026; y++) { rings.push([y, y % 5 === 0 ? 0 : 1]); for (let m = 1; m < 12; m++) rings.push([y + m / 12, 2]) }
+  for (let m = 0; m < 12; m++) rings.push([GYEAR + m / 12, 2]);   // a galaxy is one year: twelve month rings (the same in every galaxy)
   const pos = [], aY = [], aC = [], push = (x, z, y, c) => { pos.push(x, 0, z); aY.push(y); aC.push(c) };
   rings.forEach(([y, c]) => {
     const u = yearU(Date.UTC(Math.floor(y), Math.round((y % 1) * 12), 1)); if (u <= .001) return; const r = GAL_R0 + u * GAL_LEN;
@@ -31,8 +31,8 @@ const timeRings = (() => {
 const ruler = (() => {
   const pos = [], aC = [], push = (x, z, c) => { pos.push(x, 0, z); aC.push(c) };
   push(GAL_R0, 0, 3); push(GAL_R0 + GAL_LEN, 0, 3);
-  for (let y = 2000; y <= 2026; y++) for (let m = 0; m < 12; m++) {
-    const uu = yearU(Date.UTC(y, m, 1)); if (uu <= .001) continue; const r = GAL_R0 + uu * GAL_LEN, c = m ? 5 : y % 5 ? 4 : 3, L = m ? 1400 : y % 5 ? 4500 : 9000;
+  for (let y = GYEAR; y <= GYEAR; y++) for (let m = 0; m < 12; m++) {
+    const uu = yearU(Date.UTC(y, m, 1)); if (uu <= .001) continue; const r = GAL_R0 + uu * GAL_LEN, c = 5, L = 1400;   // months only
     push(r, -L, c); push(r, L, c);
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aC', new THREE.Float32BufferAttribute(aC, 1));
@@ -57,7 +57,7 @@ const BHM = { c: uniform(new V3()), r: uniform(0) };   // the hole's centre in v
 const bhMask = () => { const d = normalize(positionView), t = dot(BHM.c, d), m = length(BHM.c.sub(d.mul(t))); return select(t.greaterThan(0), smoothstep(BHM.r.mul(.45), BHM.r.mul(.9), m), float(1)) };
 // the single spiral's own line, core (today) to rim (2000): on the map, and in flight once you're far enough out to see it whole
 const spiralLine = SPIRAL ? (() => {
-  const pos = [], n = 2400, tNow = Math.min(T_B, Date.now()), tau0 = 1 - tFrac(tNow);
+  const pos = [], n = 2400, tau0 = 0;   // the whole year, December at the core to January on the rim
   for (let k = 0; k <= n; k++) { const tau = tau0 + (1 - tau0) * k / n, r = GAL_R0 + spRho(tau) * GAL_LEN, th = armPhase(r); pos.push(Math.cos(th) * r, 0, Math.sin(th) * r) }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   const u = { a: uniform(0) }, m = new THREE.LineBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -67,9 +67,10 @@ const spiralLine = SPIRAL ? (() => {
 // month dividers along the spiral timeline: a short tick across the line at the start of every month (a longer one each January)
 const monthTicks = SPIRAL ? (() => {
   const pos = [[], [], []], at = u => { const r = GAL_R0 + u * GAL_LEN, th = armPhase(r); return [Math.cos(th) * r, Math.sin(th) * r] };
-  YEARS.forEach(y => { for (let m = 0; m < 12; m++) { const t = Date.UTC(y, m, 1); if (t > Date.now()) return; const u = yearU(t); if (u <= .001) continue;
+  for (let m = 0; m < 12; m++) { const u = yearU(Date.UTC(GYEAR, m, 1)); if (u <= .001) continue;
     const [x0, z0] = at(u), [x1, z1] = at(u + .0004), tx = x1 - x0, tz = z1 - z0, l = Math.hypot(tx, tz) || 1, nx = -tz / l, nz = tx / l;
-    pos[m ? 0 : y % 5 ? 1 : 2].push(x0 - nx, 0, z0 - nz, x0 + nx, 0, z0 + nz) } });   // unit-length ticks across the line, scaled by their length below: months, years, and every fifth year
+    pos[0].push(x0 - nx, 0, z0 - nz, x0 + nx, 0, z0 + nz) }   // unit-length ticks across the line, scaled by their length below: only months now (a galaxy is one year)
+  pos[1].push(0, 0, 0, 0, 0, 0); pos[2].push(0, 0, 0, 0, 0, 0);   // (no year or five-year lines: a single empty tick each)
   const u = { a: uniform(0), ya: uniform(0), fade: uniform(.6) }, vE = varying(attribute('aE', 'float'));
   const mk = (p, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setAttribute('aE', new THREE.Float32BufferAttribute(p.map((_, k) => k % 6 < 3 ? -1 : 1).filter((_, k) => k % 3 === 0), 1));
     const m = new THREE.LineBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }); m.positionNode = positionGeometry; m.colorNode = vec3(.92, .95, 1);

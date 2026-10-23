@@ -12,7 +12,7 @@ const SP_TW = 2 * Math.PI * 5.4 * SHAPE.turns;   // the single spiral's total tu
 const SP_G = SHAPE.sgap, SP_LG = Math.log(SP_G), SP_FLAT = Math.abs(SP_LG) < 1e-3, SP_S0 = SP_FLAT ? 1 : (SP_G - 1) / (SP_G * SP_LG), SP_S1 = SP_FLAT ? 1 : (SP_G - 1) / SP_LG;
 const spRho = tau => SP_FLAT ? tau : SP_G * (1 - Math.pow(SP_G, -tau)) / (SP_G - 1);
 const spTau = u => { if (SP_FLAT) return u; const c = Math.max(0, Math.min(1, u)); return -Math.log(1 - c * (SP_G - 1) / SP_G) / SP_LG + (u - c) * (u < 0 ? SP_S0 : SP_S1) };
-const NGAL = 1, GAL_YRS = 5, NERA = 6;
+const NGAL = 1, GAL_YRS = 5, NERA = 12;   // (the eras are now the twelve months of a galaxy's year)
 const MIN_SEP = SHAPE.sep;          // no two winners closer than this, centre to centre
 
 /* background dust (not data): drawn first so the seeded stream stays in step */
@@ -26,14 +26,35 @@ const GC = new V3(0, -260000, -980000), GQ = new Q4().setFromEuler(new THREE.Eul
 const GM4 = new THREE.Matrix4().compose(GC, GQ, new V3(1, 1, 1));
 const GQ3 = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(GQ)), GQI3 = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(GQI));
 const GAL = { name: 'The Galaxy', y0: 2000, arms: ARMS, center: GC, quat: GQ };
-const T_A = Date.UTC(2000, 0, 1), T_B = Date.UTC(2027, 0, 1);
+/* the universe: 27 galaxies, one per year, strung along a slow helix through space (2026 where you start, each year before
+   it a step further along). They all lie the same way up. UNI.c holds each one's centre in universe coordinates; the world
+   you see is the universe shifted by UNI.O so that the galaxy you're in always sits at GC, where all its detail is built
+   (far from home the numbers would otherwise lose their precision). */
+const UNI_Y0 = 2000, UNI_N = 27;
+const UNI = { c: Array.from({ length: UNI_N }, () => new V3()), O: new V3(), k: UNI_N - 1 };
+function uniLayout(L = LOOK) {
+  const Rg = GAL_OUT, gap = Math.max(2.2, L.uniGap ?? 4.5) * Rg, th = (L.uniTurn ?? 40) * Math.PI / 180, h = gap * Math.max(0, Math.min(.95, L.uniRise ?? .35)), c = Math.sqrt(Math.max(0, gap * gap - h * h));
+  const up = new V3(0, 1, 0).applyQuaternion(GQ), x0 = new V3(1, 0, 0).applyQuaternion(GQ), tl = (L.uniTilt ?? 35) * Math.PI / 180, az = (L.uniAz ?? 0) * Math.PI / 180;
+  const A = up.clone().applyAxisAngle(x0, tl).applyAxisAngle(up, az).normalize(), B = new V3().crossVectors(A, Math.abs(A.dot(x0)) > .9 ? up : x0).normalize(), C = new V3().crossVectors(A, B);   // the helix's axis, and two directions across it
+  const Rh = Math.abs(th) > 1e-3 ? c / (2 * Math.sin(Math.abs(th) / 2)) : 0;
+  for (let k = 0; k < UNI_N; k++) { const s = UNI_N - 1 - k, a = s * th, o = UNI.c[k].copy(GC).addScaledVector(A, -h * s);   // s: years back from 2026
+    if (Rh) o.addScaledVector(B, (Math.cos(a) - 1) * Rh).addScaledVector(C, Math.sin(a) * Rh); else o.addScaledVector(B, c * s) }
+}
+uniLayout();
+const uniAt = (k, out = new V3()) => out.copy(UNI.c[k]).sub(UNI.O);   // galaxy k's centre in the world as it is now
+/* THE MERGE: a galaxy for every year. Each one is a year, its January on the rim and its December round the black hole, so
+   the dates below are always the year of the galaxy you're in (GYEAR); setGalYear switches them over */
+let GYEAR = 2026, T_A = Date.UTC(2026, 0, 1), T_B = Date.UTC(2027, 0, 1);
+function setGalYear(y) { GYEAR = y; T_A = Date.UTC(y, 0, 1); T_B = Date.UTC(y + 1, 0, 1) }
 const tFrac = t => Math.max(0, Math.min(1, (t - T_A) / (T_B - T_A)));
+const tFracAll = t => Math.max(0, Math.min(1, (t - Date.UTC(2000, 0, 1)) / (Date.UTC(2027, 0, 1) - Date.UTC(2000, 0, 1))));   // across all 27 years (a winner's age)
 const yearU = t => SPIRAL ? spRho(1 - tFrac(t)) : Math.pow(1 - tFrac(t), .62);                  // 0 = core (today), 1 = rim (2000)
 const uToT = u => { u = Math.max(0, Math.min(1, u)); return T_A + (1 - (SPIRAL ? spTau(u) : Math.pow(u, 1 / .62))) * (T_B - T_A) };
-const yrsPerU = u => SPIRAL ? 27 * (SP_FLAT ? 1 : SP_S0 * Math.pow(SP_G, spTau(u))) : 27 / .62 * Math.pow(Math.max(u, .03), 1 / .62 - 1);   // years per unit of u here
+const yrsPerU = u => SPIRAL ? (SP_FLAT ? 1 : SP_S0 * Math.pow(SP_G, spTau(u))) : 1 / .62 * Math.pow(Math.max(u, .03), 1 / .62 - 1);   // years per unit of u here (a galaxy holds one year)
 // u0 = inner edge (the era's end), u1 = outer edge (its start)
-const ERAS = Array.from({ length: NERA }, (_, k) => { const y0 = 2000 + k * GAL_YRS; return { k, y0, name: k < NERA - 1 ? `${y0}–${y0 + GAL_YRS - 1}` : `${y0}–now`, u0: k < NERA - 1 ? yearU(Date.UTC(y0 + GAL_YRS, 0, 1)) : 0, u1: k ? yearU(Date.UTC(y0, 0, 1)) : 1 } });
-const galOf = y => Math.max(0, Math.min(NERA - 1, Math.floor((y - 2000) / GAL_YRS)));
+const MON_N = 'January February March April May June July August September October November December'.split(' ');
+const ERAS = Array.from({ length: NERA }, (_, k) => ({ k, get y0() { return GYEAR }, get name() { return MON_N[k] + ' ' + GYEAR }, u0: k < NERA - 1 ? yearU(Date.UTC(2026, k + 1, 1)) : 0, u1: k ? yearU(Date.UTC(2026, k, 1)) : 1 }));   // the months: the same rings in every galaxy
+const galOf = y => Math.max(0, Math.min(5, Math.floor((y - 2000) / GAL_YRS)));   // (five-year bands: the chimes' keys)
 const eraOfU = u => { if (u >= 1) return 0; for (let k = 0; k < NERA; k++) if (u >= ERAS[k].u0 && u <= ERAS[k].u1) return k; return NERA - 1 };
 /* the black hole, sized from its mass on the winners' own scale: a Sun-like winner is ~27 units across one solar radius,
    so a horizon (2.95 km per solar mass) comes out at ~1.1e-4 units per solar mass. Andromeda's 1.4e8 suns: ~16 000 units. */
@@ -133,19 +154,23 @@ const EXO0 = 15, KIND = new Uint8Array(N);
 {
   const hr = mulberry32(777), pickK = (w, h) => { let s = 0; for (const x of w) s += x[1]; let r = h * s; for (const x of w) { r -= x[1]; if (r <= 0) return x[0] } return w[w.length - 1][0] };
   D.forEach((d, i) => {
-    const h = hr(), age = 1 - tFrac(d.t), sc = (d.score - 7) / 2.8;
+    const h = hr(), age = 1 - tFracAll(d.t), sc = (d.score - 7) / 2.8;
     if (d.award === 'FOTY') { KIND[i] = EXO0 + Math.floor(h * 9); return }
     if (d.award === 'SOTM') { if (h < .45) { KIND[i] = EXO0 + Math.floor(h / .45 * 9); return } KIND[i] = pickK([[0, 2], [1, 3], [7, 2], [11, 2], [9, .6], [10, .6], [2, 2]], (h - .45) / .55); return }
     KIND[i] = pickK([[0, 1 + sc * 2], [1, 4 + sc * 4], [2, 8], [3, 10], [4, 12], [5, 13], [6, 12], [7, 3 + age * 7], [8, 1 + age * 6], [11, 2 + age * 2], [12, 2], [13, 3 + age * 3], [14, .5 + (1 - age) * 4], [9, .4], [10, .4]], h)
   })
 }
 const P = new Float32Array(N * 3), CR = new Float32Array(N), SIZE = new Float32Array(N), TYPE = new Float32Array(N), STAR_R = new Float32Array(N);
-// every winner sits on the timeline: its distance from the core is its date, on one of the arms
+// each winner's galaxy (its year), where it sits in it (PL: from that galaxy's centre, in full precision), and the first and last winner of every galaxy
+const GI = new Uint8Array(N), PL = new Float64Array(N * 3), UNI_I0 = new Int32Array(UNI_N).fill(-1), UNI_I1 = new Int32Array(UNI_N).fill(-1), UNI_CX = new Float64Array(N * 3);
+// every winner sits on its year's timeline: its distance from the core is its date, on one of the arms
 D.forEach((d, i) => {
-  const u = yearU(d.t), r = GAL_R0 + u * GAL_LEN, s = 7700 + r * .045, arm = (R() * GAL.arms) | 0;
-  const W = SHAPE.bw, H = SHAPE.bh * (2600 + 15000 * SHAPE.ch * Math.exp(-r / 105000)), A = SHAPE.ba;   // the band the winners sit in: width across the arm, height off the disk, spread along it
+  const k = Math.max(0, Math.min(UNI_N - 1, d.year - UNI_Y0)); GI[i] = k; if (UNI_I0[k] < 0) UNI_I0[k] = i; UNI_I1[k] = i; if (d.year !== GYEAR) setGalYear(d.year);
+  const u = yearU(d.t), r = GAL_R0 + u * GAL_LEN, s = 7700 + r * .045, arm = (R() * GAL.arms) | 0, hug = SHAPE.hug;   // hug: a year's few hundred winners can keep close to its line
+  const W = SHAPE.bw * hug, H = SHAPE.bh * (2600 + 15000 * SHAPE.ch * Math.exp(-r / 105000)), A = SHAPE.ba;   // the band the winners sit in: width across the arm, height off the disk, spread along it
   const v = SPIRAL ? galPoint(GAL, 0, u, gauss() * s * .7 * W, gauss() * .1 * A * s / r, gauss() * H)   // on the spiral the date is how far along it you are
     : galPoint(GAL, arm, u, gauss() * s * .2 * W, gauss() * 1.1 * A * s / r, gauss() * H);
+  const c = UNI.c[k]; v.sub(GC).add(c); UNI_CX.set([c.x, c.y, c.z], i * 3);
   P[i * 3] = v.x; P[i * 3 + 1] = v.y; P[i * 3 + 2] = v.z;
   const aw = d.award === 'FOTY' ? 2 : d.award === 'SOTM' ? 1 : 0;
   CR[i] = [100, 140, 200][aw]; TYPE[i] = aw;
@@ -157,7 +182,7 @@ D.forEach((d, i) => {
 const P0 = P.slice(), _pw = new V3(), _p0 = new V3(), _p1 = new V3();   // where each date put its winner, before spacing
 (function relax(A, n, min) {
   const m2 = min * min, inv = 1 / min, rad = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) { const lx = A[i * 3] - GC.x, ly = A[i * 3 + 1] - GC.y, lz = A[i * 3 + 2] - GC.z, nx = new V3(lx, ly, lz).applyQuaternion(GQI); nx.y = 0; if (SPIRAL) nx.set(-nx.z, 0, nx.x); nx.normalize().applyQuaternion(GQ); rad.set([nx.x, nx.y, nx.z], i * 3) }
+  for (let i = 0; i < n; i++) { const lx = A[i * 3] - UNI_CX[i * 3], ly = A[i * 3 + 1] - UNI_CX[i * 3 + 1], lz = A[i * 3 + 2] - UNI_CX[i * 3 + 2], nx = new V3(lx, ly, lz).applyQuaternion(GQI); nx.y = 0; if (SPIRAL) nx.set(-nx.z, 0, nx.x); nx.normalize().applyQuaternion(GQ); rad.set([nx.x, nx.y, nx.z], i * 3) }   // (round each winner's own galaxy's core)
   // cells live in a flat hash (typed arrays, no strings or per-pair arrays); same visiting order as before, so the sky is unchanged
   let HS = 1; while (HS < n * 2) HS <<= 1; const mask = HS - 1, cx = new Int32Array(n), cy = new Int32Array(n), cz = new Int32Array(n), hb = new Int32Array(n), cnt = new Int32Array(HS + 1), ord = new Int32Array(n);
   const hash = (x, y, z) => (Math.imul(x, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(z, 83492791)) & mask;
@@ -189,11 +214,15 @@ const P0 = P.slice(), _pw = new V3(), _p0 = new V3(), _p1 = new V3();   // where
 })(P, N, MIN_SEP);
 // spacing may nudge a winner, never carry it off: in the disk at most about one band-width from where its date put it (else
 // on the tight inner windings it can land on another year's turn), and a little up or down
+const _gcx = new V3(), uLocal = (p, i, out) => out.copy(p).sub(_gcx.fromArray(UNI_CX, i * 3)).applyQuaternion(GQI);   // in winner i's own galaxy's frame
 for (let i = 0; i < N; i++) {
-  const o = i * 3; toLocal(_pw.set(P0[o], P0[o + 1], P0[o + 2]), _p0); toLocal(_pw.set(P[o], P[o + 1], P[o + 2]), _p1); const r = Math.hypot(_p0.x, _p0.z), cap = (7700 + r * .045) * .7 * SHAPE.bw * (SPIRAL ? .9 : 3), capY = SHAPE.bh * (2600 + 15000 * SHAPE.ch * Math.exp(-r / 105000)) * 1.5;
+  const o = i * 3; uLocal(_pw.set(P0[o], P0[o + 1], P0[o + 2]), i, _p0); uLocal(_pw.set(P[o], P[o + 1], P[o + 2]), i, _p1); const r = Math.hypot(_p0.x, _p0.z), cap = (7700 + r * .045) * .7 * SHAPE.bw * (SPIRAL ? .9 : 3), capY = SHAPE.bh * (2600 + 15000 * SHAPE.ch * Math.exp(-r / 105000)) * 1.5;
   const dx = _p1.x - _p0.x, dz = _p1.z - _p0.z, dh = Math.hypot(dx, dz), k = dh > cap ? cap / dh : 1, dy = Math.max(-capY, Math.min(capY, _p1.y - _p0.y));
-  _p1.set(_p0.x + dx * k, _p0.y + dy, _p0.z + dz * k).applyQuaternion(GQ).add(GC); P[o] = _p1.x; P[o + 1] = _p1.y; P[o + 2] = _p1.z;
+  _p1.set(_p0.x + dx * k, _p0.y + dy, _p0.z + dz * k).applyQuaternion(GQ); PL[o] = _p1.x; PL[o + 1] = _p1.y; PL[o + 2] = _p1.z; _p1.add(_gcx.fromArray(UNI_CX, o)); P[o] = _p1.x; P[o + 1] = _p1.y; P[o + 2] = _p1.z;
 }
+setGalYear(2026);
+// the winners' world positions, from their galaxies' centres as they are now (after the universe has moved, or its layout changed)
+function uniPlaceStars() { const c = new V3(); for (let i = 0; i < N; i++) { if (i === 0 || GI[i] !== GI[i - 1]) uniAt(GI[i], c); const o = i * 3; P[o] = c.x + PL[o]; P[o + 1] = c.y + PL[o + 1]; P[o + 2] = c.z + PL[o + 2] } }
 const NEB_B = cloudField(7040, armPlace(17500, 2450));   // up to 7680 clouds with NEB_A (Cloud count × 640)
 const LANE_B = cloudField(500, armPlace(8750, 1400));
 const LANE_C = (() => { const s0 = R.state(); R.state(5150); const f = cloudField(1930, armPlace(8750, 1400)); R.state(s0); return f })();   // more dark clouds (count up to 10), drawn from their own seed so nothing else moves

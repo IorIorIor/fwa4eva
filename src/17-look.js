@@ -34,21 +34,22 @@ function applyLook() {
 
 /* settings also live in the viewer's claude.ai account, so they survive reloads, new versions and other devices */
 let lookDoc = null, lookT = 0;
-const lookData = () => { const d = {}; Object.keys(LOOK).forEach(k => { if (k[0] !== '_') d[k] = LOOK[k] }); return d };
+const lookData = () => { const d = {}, L = uni.shared(LOOK); Object.keys(L).forEach(k => { if (k[0] !== '_') d[k] = L[k] }); return d };
 // the map can have a look of its own: with the switch on, the Look panel edits a separate set of settings while you're on the map
 const MAP_KEY = 'sotd-look-map';
 let LOOK_FLY = LOOK, LOOK_MAP = { ...LOOK, ...MY_MAP_LOOK, ...store.json(MAP_KEY, {}) };
 const INV_KEY = 'sotd-look-inv';   // the inverted look: with the inverted switch on, every slider edits this set instead (fly and map alike)
 if (fix15 && HAD_LOOK) { Object.assign(LOOK_MAP, MY_MAP_LOOK); store.set(MAP_KEY, JSON.stringify(LOOK_MAP)) }   /* the map look as Laurens tuned it, for everyone */
 phoneTier(LOOK_MAP); let LOOK_INV = phoneTier({ ...LOOK, ...store.json(INV_KEY, {}), invert: 1 }), invOn = store.get('sotd-inv-on') === '1';
+const PLAY_KEY = 'sotd-look-play'; let LOOK_PLAY = phoneTier({ ...LOOK, ...store.json(PLAY_KEY, {}) });   // Play mode's own look: a copy of the flying one until you tune it
 /* the galaxy's shape is one and the same in every look: these are built into the galaxy itself (on Rebuild), so flying,
    the map and the inverted look always share them, whichever one you change them in */
-const GAL_KEYS = ['galaxyStyle', 'armStart', 'armWindA', 'armWindG', 'armCount', 'armLock', 'armBeat', 'spiral', 'armWiden', 'armWidenCurve', 'spiralTurns', 'spiralGap', 'spiralHole', 'spiralSize', 'starBandW', 'starBandH', 'starCoreH', 'starAlong', 'starSep', 'nebOut', 'hazeCore'];
-GAL_KEYS.forEach(k => { if (k in LOOK_FLY) LOOK_MAP[k] = LOOK_INV[k] = LOOK_FLY[k] });
+const GAL_KEYS = ['galaxyStyle', 'armStart', 'armWindA', 'armWindG', 'armCount', 'armLock', 'armBeat', 'spiral', 'armWiden', 'armWidenCurve', 'spiralTurns', 'spiralGap', 'spiralHole', 'spiralSize', 'starBandW', 'starBandH', 'starCoreH', 'starAlong', 'starSep', 'nebOut', 'hazeCore', 'starHug', 'uniGap', 'uniTurn', 'uniRise', 'uniTilt', 'uniAz', 'galOwn'];
+GAL_KEYS.forEach(k => { if (k in LOOK_FLY) LOOK_MAP[k] = LOOK_INV[k] = LOOK_PLAY[k] = LOOK_FLY[k] });
 function syncGal() {
   if (LOOK === LOOK_MIX) return; let ch = false;
-  for (const L of [LOOK_FLY, LOOK_MAP, LOOK_INV]) if (L !== LOOK) GAL_KEYS.forEach(k => { if (k in LOOK && L[k] !== LOOK[k]) { L[k] = LOOK[k]; ch = true } });
-  if (!ch) return; if (LOOK !== LOOK_FLY) store.set(LOOK_KEY, JSON.stringify(LOOK_FLY)); if (LOOK !== LOOK_MAP) store.set(MAP_KEY, JSON.stringify(LOOK_MAP)); if (LOOK !== LOOK_INV && store.get(INV_KEY)) store.set(INV_KEY, JSON.stringify(LOOK_INV));
+  for (const L of [LOOK_FLY, LOOK_MAP, LOOK_INV, LOOK_PLAY]) if (L !== LOOK) GAL_KEYS.forEach(k => { if (k in LOOK && L[k] !== LOOK[k]) { L[k] = LOOK[k]; ch = true } });
+  if (!ch) return; if (LOOK !== LOOK_PLAY && store.get(PLAY_KEY)) store.set(PLAY_KEY, JSON.stringify(LOOK_PLAY)); if (LOOK !== LOOK_FLY) store.set(LOOK_KEY, JSON.stringify(uni.shared(LOOK_FLY))); if (LOOK !== LOOK_MAP) store.set(MAP_KEY, JSON.stringify(LOOK_MAP)); if (LOOK !== LOOK_INV && store.get(INV_KEY)) store.set(INV_KEY, JSON.stringify(LOOK_INV));
 }
 const LOOK_MIX = {};   // in between: every slider part way from the flying look to the map's, following the camera's move
 function swapLook() {
@@ -57,6 +58,13 @@ function swapLook() {
     if (LOOK.invert && !store.get(INV_KEY)) Object.assign(LOOK_INV, LOOK);   // the first time, it starts as a copy of the look you have
     if (LOOK === LOOK_MAP) LOOK_MAP.invert = 0; else LOOK_FLY = LOOK; LOOK_FLY.invert = 0; LOOK_INV.invert = 1; invOn = true; store.set('sotd-inv-on', '1'); store.set(LOOK_KEY, JSON.stringify(LOOK_FLY)); store.set(MAP_KEY, JSON.stringify(LOOK_MAP));   // the normal looks are kept as they were, inverted off
     LOOK = LOOK_INV; saveLookNow(); renderLook(); applyLook(); return;
+  }
+  if (gplay.k > 0 || LOOK === LOOK_PLAY || swapLook.play) {   // play mode: its own look, blended in over the camera's flight out (and back)
+    const k = gplay.on ? gplay.k : 0; swapLook.play = k > 0;
+    if (k >= 1) { if (LOOK !== LOOK_PLAY) { LOOK = LOOK_PLAY; renderLook(); applyLook() } return }
+    if (k <= 0) { if (LOOK !== LOOK_FLY) { LOOK = LOOK_FLY; renderLook(); applyLook() } return }
+    for (const key in LOOK_FLY) { const a = LOOK_FLY[key], b = LOOK_PLAY[key]; LOOK_MIX[key] = typeof a === 'number' && typeof b === 'number' ? a + (b - a) * k : k < .5 ? a : b ?? a }
+    LOOK = LOOK_MIX; applyLook(); return;
   }
   if (LOOK === LOOK_MAP) LOOK_FLY.mapOwnLook = LOOK_MAP.mapOwnLook; else if (LOOK !== LOOK_MIX) { LOOK_FLY = LOOK; LOOK_MAP.mapOwnLook = LOOK.mapOwnLook }
   if (S.mode !== swapLook.mode) { swapLook.mode = S.mode; swapLook.tw = tween }   // a mode switch: blend over the move that goes with it (and only that one)
@@ -72,8 +80,8 @@ function randomGalaxy() {
     if (skip.has(k)) return; if (t === 's' && Number.isFinite(lo) && Number.isFinite(hi)) { const v = lo + (hi - lo) * (.08 + .84 * Math.random()), q = st ? Math.round(v / st) * st : v; LOOK[k] = +q.toFixed(6) } }) });
   saveLookNow(); setTimeout(() => location.reload(), 300);
 }
-function saveLookNow() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
-function saveLook() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(LOOK)); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
+function saveLookNow() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_PLAY) { store.set(PLAY_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(uni.shared(LOOK))); if (lookDoc) lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }) }
+function saveLook() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOOK_INV) { store.set(INV_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_MAP) { store.set(MAP_KEY, JSON.stringify(LOOK)); return } if (LOOK === LOOK_PLAY) { store.set(PLAY_KEY, JSON.stringify(LOOK)); return } store.set(LOOK_KEY, JSON.stringify(uni.shared(LOOK))); if (lookDoc) { clearTimeout(lookT); lookT = setTimeout(() => lookDoc.set({ look: lookData(), at: Date.now() }).catch(() => { }), 900) } }
 (async () => {
   try {
     if (!window.claude || !claude.use) return; const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]); if (!db || !user) return;
@@ -81,7 +89,7 @@ function saveLook() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOO
     const snap = await lookDoc.get(), d = snap.exists && snap.data();
     if (d && d.look && typeof d.look === 'object') {
       Object.keys(d.look).forEach(k => { if (k in LOOK_DEFAULTS && typeof d.look[k] === 'number') LOOK[k] = d.look[k] }); migrateLook(LOOK);
-      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3 || fix4 || fix5 || fix6 || fix7 || fix8 || fix9 || fix10 || fix11 || fix12 || fix13 || fix14 || fix15 || fix16 || fix17 || fix18 || fix19 || fix20 || fix21 || fix22) saveLook(); store.set(LOOK_KEY, JSON.stringify(LOOK)); renderLook(); applyLook()
+      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3 || fix4 || fix5 || fix6 || fix7 || fix8 || fix9 || fix10 || fix11 || fix12 || fix13 || fix14 || fix15 || fix16 || fix17 || fix18 || fix19 || fix20 || fix21 || fix22) saveLook(); store.set(LOOK_KEY, JSON.stringify(uni.shared(LOOK))); renderLook(); applyLook()
     } else saveLook();
   } catch (e) { }
 })();
@@ -109,17 +117,19 @@ function galPreview() {
   g.fillStyle = '#05050a'; g.fillRect(0, 0, W, H);
   g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; [r0, out].forEach(r => { g.beginPath(); g.arc(cx, cy, r * K, 0, 7); g.stroke() });
   if (sp) { g.strokeStyle = 'rgba(255,255,255,.28)'; g.beginPath(); for (let k = 0; k <= 600; k++) { const r = r0 + rho(k / 600) * len, a = phase(r); k ? g.lineTo(cx + Math.cos(a) * r * K, cy + Math.sin(a) * r * K) : g.moveTo(cx + Math.cos(a) * r * K, cy + Math.sin(a) * r * K) } g.stroke() }
-  const n = Math.min(5000, N), step = N / n;
+  const i0 = Math.max(0, UNI_I0[UNI.k]), i1 = Math.max(i0, UNI_I1[UNI.k]), n = i1 - i0 + 1;   // the galaxy you're in
   for (let j = 0; j < n; j++) {
-    const i = Math.floor(j * step), dd = D[i], u = yU(dd.t), r = r0 + u * len, s = 7700 + r * .045, arm = (rnd() * arms) | 0;
-    const dr = sp ? gs() * s * .7 * bw : gs() * s * .2 * bw, dth = sp ? gs() * .1 * ba * s / r : gs() * 1.1 * ba * s / r, rr = Math.max(r0 * .3, r + dr), a = arm * 2 * Math.PI / arms + phase(rr) + dth;
-    g.fillStyle = cols[Math.max(0, Math.min(5, Math.floor((dd.year - 2000) / 5)))]; g.fillRect(cx + Math.cos(a) * rr * K - .6, cy + Math.sin(a) * rr * K - .6, 1.3, 1.3);
+    const i = i0 + j, dd = D[i], u = yU(dd.t), r = r0 + u * len, s = 7700 + r * .045, arm = (rnd() * arms) | 0;
+    const dr = sp ? gs() * s * .7 * bw * num('starHug', .45, .1, 1.5) : gs() * s * .2 * bw, dth = sp ? gs() * .1 * ba * s / r : gs() * 1.1 * ba * s / r, rr = Math.max(r0 * .3, r + dr), a = arm * 2 * Math.PI / arms + phase(rr) + dth;
+    g.fillStyle = cols[Math.floor(new Date(dd.t).getUTCMonth() / 2)]; g.fillRect(cx + Math.cos(a) * rr * K - .6, cy + Math.sin(a) * rr * K - .6, 1.3, 1.3);
   }
   g.fillStyle = '#000'; g.beginPath(); g.arc(cx, cy, 2.5, 0, 7); g.fill();
 }
 const prevSoon = () => { if (prevQ) return; prevQ = requestAnimationFrame(() => { prevQ = 0; galPreview() }) };
 function renderLook() {
   const body = $('lookBody'); body.innerHTML = '';
+  if (LOOK === LOOK_PLAY) { const n = document.createElement('div'); n.className = 'mapnote'; n.innerHTML = '<b>Play look</b><span>You are tuning Play mode\'s own look. Flying keeps its own.</span><button class="btn" type="button">Start from the flying look</button>'; n.querySelector('button').onclick = () => { Object.assign(LOOK_PLAY, LOOK_FLY); saveLook(); renderLook(); applyLook() }; body.appendChild(n) }
+  else if (LOOK === LOOK_FLY && LOOK.galOwn) { const n = document.createElement('div'); n.className = 'mapnote'; n.innerHTML = `<b>${GYEAR} only</b><span>Galaxy settings you change now are this galaxy's own. Turn off "this galaxy only" (Universe) to change every galaxy.</span>`; body.appendChild(n) }
   if (LOOK === LOOK_MAP) { const n = document.createElement('div'); n.className = 'mapnote'; n.innerHTML = '<b>Map look</b><span>You are tuning the map\'s own look. Flying keeps its own.</span><button class="btn" type="button">Start from the flying look</button>'; n.querySelector('button').onclick = () => { LOOK_MAP = LOOK = { ...LOOK_FLY, mapFade: 0 }; saveLook(); renderLook(); applyLook() }; body.appendChild(n) }
   let openSecs = store.json('sotd-look-open', []); if (!Array.isArray(openSecs)) openSecs = [];
   LOOK_DEF.forEach(([title, rows]) => {
@@ -138,10 +148,10 @@ function renderLook() {
       if (type === 'ta') { const w = document.createElement('div'); w.className = 'gta'; w.innerHTML = `<span>${label}</span><textarea rows="3" spellcheck="false" placeholder='{"noteEvery": 3.2, "tone": 2600, …}'></textarea><button class="btn" type="button">Import</button><small></small>`; const ta = w.querySelector('textarea'), msg = w.querySelector('small'); w.querySelector('button').onclick = () => { const n = ascent.import(ta.value); msg.textContent = n ? `${n} settings in` : 'Nothing I could read: paste the toy\'s settings (JSON)'; if (n) { saveLook(); applyLook(); setTimeout(renderLook, 600) } }; bodyEl.appendChild(w); return }
       if (type === 'x') { const w = document.createElement('div'); w.className = 'gsw'; w.innerHTML = `<span>${label}</span><button class="btn" type="button">${k === 'coachRun' ? 'Start' : 'Run'}</button>`; w.querySelector('button').onclick = () => { if (k === 'coachRun') { if (S.mode !== 'fly') setMode('fly'); togglePanel('lookPanel'); coach.start(true) } else runBench() }; bodyEl.appendChild(w); return }
       if (type === 'tr') { const l = document.createElement('label'); l.className = 'tg'; l.innerHTML = `<span>${label}</span><input type="checkbox" id="lk-${k}" ${LOOK[k] ? 'checked' : ''}>`; l.querySelector('input').onchange = e => { LOOK[k] = e.target.checked ? 1 : 0; saveLook(); prevSoon() }; bodyEl.appendChild(l); return }   // shape switches: previewed now, applied on rebuild
-      if (type === 't') { const l = document.createElement('label'); l.className = 'tg'; l.innerHTML = `<span>${label}</span><input type="checkbox" id="lk-${k}" ${LOOK[k] ? 'checked' : ''}>`; l.querySelector('input').onchange = e => { LOOK[k] = e.target.checked ? 1 : 0; saveLook(); applyLook() }; bodyEl.appendChild(l); return }
+      if (type === 't') { const l = document.createElement('label'); l.className = 'tg'; l.innerHTML = `<span>${label}</span><input type="checkbox" id="lk-${k}" ${LOOK[k] ? 'checked' : ''}>`; l.querySelector('input').onchange = e => { uni.galSave(k, e.target.checked ? 1 : 0, LOOK[k]); LOOK[k] = e.target.checked ? 1 : 0; saveLook(); applyLook(); if (k === 'galOwn') renderLook() }; bodyEl.appendChild(l); return }
       const w = document.createElement('div'); w.className = 'lk'; const dec = step < .01 ? 3 : step < 1 ? 2 : 0;
       w.innerHTML = `<label for="lk-${k}">${label}</label><output id="lko-${k}">${(+LOOK[k]).toFixed(dec)}</output><input type="range" id="lk-${k}" min="${min}" max="${max}" step="${step}" value="${LOOK[k]}">`;
-      w.querySelector('input').oninput = e => { LOOK[k] = +e.target.value; w.querySelector('output').textContent = LOOK[k].toFixed(dec); saveLook(); applyLook(); if (title === 'Galaxy') prevSoon() }; bodyEl.appendChild(w)
+      w.querySelector('input').oninput = e => { uni.galSave(k, +e.target.value, LOOK[k]); LOOK[k] = +e.target.value; w.querySelector('output').textContent = LOOK[k].toFixed(dec); saveLook(); applyLook(); if (title === 'Galaxy') prevSoon() }; bodyEl.appendChild(w)
     });
     body.appendChild(sec)
   });

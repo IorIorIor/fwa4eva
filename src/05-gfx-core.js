@@ -26,6 +26,8 @@ shipRenderer.highPrecision = true; shipRenderer.setPixelRatio(Math.min(3, Math.m
 const trailScene = new THREE.Scene(); trailScene.background = new THREE.Color(0, 0, 0);
 // the long-exposure arcs (the galaxy's rim streaks among them) render on their own and join the background, so the black hole lenses them
 const arcScene = new THREE.Scene(); arcScene.background = new THREE.Color(0, 0, 0);
+const farScene = new THREE.Scene(); farScene.background = new THREE.Color(0, 0, 0);   // the other years' galaxies, far off: drawn on their own and laid over the graded frame
+const farCam = new THREE.PerspectiveCamera(62, 1, 1000, 2e9);   // their camera: the main one's view, with a far plane out past every galaxy
 loadProg(.3);
 const shipScene = new THREE.Scene(); shipScene.add(new THREE.HemisphereLight(0xb8b0ff, 0x1a1430, 1.1 * Math.PI), sunLight.clone(), rimLight.clone());
 

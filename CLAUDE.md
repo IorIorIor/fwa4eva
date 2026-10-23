@@ -25,6 +25,11 @@ and gives quick visual feedback; keep replies short).
   ↑/↓ speed mode, ←/→ or Q/E nearer/farther winner, F free pointer.
 - Data: the real archive (IorIorIor/fwa4eva-data, private) ships with the app in `public/data/` (archive.json + shots/YYYY/*.webp).
   Refresh it with `npm run data` (copies from a clone at `../fwa4eva-data`). Days before the archive starts borrow real winners.
+- THE MERGE (branch `the-merge`): a galaxy per year (2000…2026) on a helix (`uniLayout`, Look → Universe). Only the galaxy you're
+  in is built in full and it always sits at `GC`: crossing to another shifts the world (`uni.rebase`, 13-universe; anything holding a
+  world position must be moved in `shift`). Others are a snapshot (`uni.take`) on a disk. Dates (`yearU`, `T_A/T_B`) are the current
+  galaxy's year (`GYEAR`); winners' galaxy-local positions are `PL`, their galaxy `GI`. Network/flags/saved ship use universe
+  coordinates (`+ UNI.O`). Arriving prompts Enter/Play; Play mode is `gplay` (18-play) with its own look `LOOK_PLAY`.
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
   field for settings copied from the Ascent toy.
 - Multiplayer: `relay.mjs` (WebSocket at `/ws`, positions only, deals each pilot a distinct hue). On claude.ai the page

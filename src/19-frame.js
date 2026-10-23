@@ -330,13 +330,15 @@ function tick(now) {
   const tStart = performance.now(), rawMs = now - last, rdt = Math.max(0, Math.min(.05, rawMs / 1000)), dt = rdt * Math.min(slowmo.k, sing.slowK); slowmo.step(rdt); last = Math.max(last, now); adapt(rawMs); if (bench.on && rawMs > 0 && rawMs < 500) bench.ms.push(rawMs);   // dt: game time (slows through a ring)
   portal.restore(); const L = LOOK, fly = S.mode === 'fly';
   ring2.rotation.y += dt * .05; beacons.forEach((b, k) => { b.material.emissiveIntensity = (Math.sin(now * .003 + k * 1.7) > .6) ? 2 : .2 });
+  uni.step(rdt);   // which galaxy you're in (the world moves over when you reach another), and how fast you can go out there
   if (fly && booted) {
-    if (warp) stepWarp(rdt); else if (!(bhLab && bhLab.drive(rdt)) && !(tween && tween.mode)) updatePlayer(dt);   /* while the view swings between map and flight the ship holds still (and the black hole lab can drive it) */ tourUpdate(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); fall.update(dt, rdt);
+    if (warp) stepWarp(rdt); else if (!gplay.drive(rdt) && !(bhLab && bhLab.drive(rdt)) && !(tween && tween.mode)) updatePlayer(dt);   /* while the view swings between map and flight the ship holds still (and the black hole lab can drive it) */ tourUpdate(dt); avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); fall.update(dt, rdt);
     const fl = avatar.userData.flame; fl.material.opacity += ((thrusting ? .85 : holdSp >= 0 ? .5 : 0) - fl.material.opacity) * Math.min(1, dt * 10); { const fz = .6 + .4 * Math.sin(now * .04) + (thrusting ? .6 + player.cruise * 1.5 : 0); fl.scale.set(1.1 + fz * .45, 1.1 + fz * .45, 1) }   // a breathing ball, bigger while thrusting
     ;
     fl.material.color.copy(trailColour(1, 1, _flc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0).lerp(_amber, gasOn && !boosting ? 1 : 0));   // the flame takes the trail's colour
   } else if (booted) { nearest(camera.position) }   // on the map, the winners right around you become suns as you zoom in
-  if (!intro.active) updateCamera(dt); else intro.update(dt);
+  if (!intro.active) { if (!gplay.cam(rdt)) updateCamera(dt) } else intro.update(dt);
+  gplay.after();   // (in play: the ship stays a pointer's size on screen, however far off the camera is)
   portal.update(rdt);   /* the phone tilts the view round the ship (or steers) */
   engineLook(dt);
   { if (!shipR0) { const sc = avatar.scale.x || 1; shipR0 = new THREE.Box3().setFromObject(avatar).getSize(tmp).length() / 2 / sc }   // the ship's own radius at scale 1, measured once
@@ -345,13 +347,13 @@ function tick(now) {
   avatar.visible = (fly || shipOnMap) && !(intro.active && (intro.ph === 1 || intro.ph === 0 && !intro.ptrOn));   /* (through the logo only the flat pointer shows) */ youMark.visible = !fly && !shipOnMap; if (!fly) { youMark.position.copy(player.pos); youMark.scale.setScalar(.028 * (1 + .18 * Math.sin(now * .005))) }
   updateBodies();
   // relativity: real aberration of where things appear, and a Doppler shift (exaggerated to taste) in the final pass
-  beta = fly ? Math.min(.995, player.vel.length() / LIGHT) : 0;
+  beta = fly && !gplay.on ? Math.min(.995, player.vel.length() / (LIGHT * uni.ig)) : 0;   // (out between the galaxies light speed goes up with your top speed)
   if (player.vel.lengthSq() > 1) U.vdir.value.copy(player.vel).normalize(); else U.vdir.value.set(0, 0, -1).applyQuaternion(rig.q);
   U.beta.value = Math.min(.995, beta * L.relativity); PU.betaC.value = Math.min(.8, beta * L.shift); PU.beam.value = L.beaming;
   PU.vV.value.copy(U.vdir.value).transformDirection(camera.matrixWorldInverse); PU.ty.value = Math.tan(camera.fov * Math.PI / 360); PU.tx.value = PU.ty.value * camera.aspect;
   { const v = PU.vV.value, z = Math.abs(v.z) > 1e-3 ? v.z : -1e-3, sg = z < 0 ? 1 : -1, x = sg * v.x / Math.abs(z) / PU.tx.value, y = sg * v.y / Math.abs(z) / PU.ty.value; PU.apex.value.set(Math.max(-2, Math.min(3, x * .5 + .5)), Math.max(-2, Math.min(3, (1 - y) * .5))) }   // the apex of your motion on screen (or the point you're leaving, if it's behind you)
   PU.nV.value.set(0, 1, 0).applyQuaternion(GQ).transformDirection(camera.matrixWorldInverse); PU.edge.value = L.edgeDim; { const a = Math.sin(L.edgeAngle * Math.PI / 180); PU.edgeA.value = a; PU.edgeB.value = Math.min(1, Math.max(a * 1.05 + .002, a * L.edgeSoft)) }
-  stars.u.far.value = fly ? 1 : 0; stars.u.thin.value = fly ? 0 : L.mapDots ?? 1; stars.u.faint.value = fly ? 0 : (L.mapFaint ?? 0) * mapK; stars.u.white.value = L.starWhite * (fPicks() > 1 ? 1 - .9 * mapK : 1);   /* several filters on the map: the stars show their filter's colour, not white-hot */
+  stars.u.far.value = fly && !gplay.on ? 1 : 0; stars.u.thin.value = fly ? 0 : L.mapDots ?? 1; stars.u.faint.value = fly ? 0 : (L.mapFaint ?? 0) * mapK; stars.u.white.value = L.starWhite * (fPicks() > 1 ? 1 - .9 * mapK : 1);   /* several filters on the map: the stars show their filter's colour, not white-hot */
   { const d = (fly ? player.pos : camera.position).distanceTo(GC); const tm = L.bhTimeMin ?? .12; tdil = L.bhTime ? Math.max(tm, 1 - (1 - tm) * Math.exp(-Math.max(0, d - BH.sh) / (BH.sh * (L.bhTimeReach ?? 2.5)))) : 1; worldT += dt * tdil }
   U.time.value = worldT; U.now.value = now * .001;
   updateLandmarks(dt); updateAndro(); updateTimeRings(dt);
@@ -364,10 +366,10 @@ function tick(now) {
   beamPivot.rotation.y += dt * .22; avatar.userData.nav.forEach((b, k) => { b.material.emissiveIntensity = Math.sin(now * .005 + k * 2.1) > .55 ? 3.2 : .25 });
   boostK += ((fly && boosting ? 1 : 0) - boostK) * Math.min(1, dt * (boosting ? 6 : 2)); if (boosting) boostK = Math.min(boostK, (boostK0 += dt / .12)); else boostK0 = boostK;   // the boost glow swells in over 120 ms
   updateTrail(dt, fly && !!L.trail); trail.visible = fly && !!L.trail && trail.userData.used > 1; updateEngine(); updateBoostUI(dt);
-  if (fly && booted) { if (player.vel.length() < 1 && !auto) { shipStill += dt; if (shipStill > 3 && !shipSaved) { shipSaved = true; store.set('sotd-ship', JSON.stringify({ p: player.pos.toArray(), q: player.base.toArray(), r: rig.q.toArray() })) } } else { shipStill = 0; shipSaved = false } }
+  if (fly && booted) { if (player.vel.length() < 1 && !auto) { shipStill += dt; if (shipStill > 3 && !shipSaved) { shipSaved = true; store.set('sotd-ship', JSON.stringify({ p: player.pos.toArray(), q: player.base.toArray(), r: rig.q.toArray(), g: UNI.k })) } } else { shipStill = 0; shipSaved = false } }
   winCompass(); if (fly) { updateCompass(); const r = regionOf(player.pos); if (r !== region) { region = r; if (L.cards && booted) arrive(r) } } else if (region !== null) { region = null; $('arrive').classList.remove('show') }
   constellation.u.op.value += ((conOn ? 1 : 0) - constellation.u.op.value) * Math.min(1, dt * 3); constellation.visible = constellation.u.op.value > .01;
-  streaks.visible = fly && !!L.streaks; motes.visible = fly && !!L.motes; if (fly) updateStreaks(dt);
+  streaks.visible = fly && !!L.streaks && !gplay.on; motes.visible = fly && !!L.motes && !gplay.on; if (fly) updateStreaks(dt);
   stars.u.hi.value += ((!fly && matchCount < N ? 1 : 0) - stars.u.hi.value) * Math.min(1, dt * 4);
   aimAssist(dt);
   // the black hole's ray tracer: the camera in its frame (horizon radii), the rotations it needs, and where its shadow sits for the bloom mask
@@ -408,7 +410,7 @@ function tick(now) {
   targetRing.visible = ringI >= 0; if (ringI >= 0) { starPos(ringI, targetRing.position); targetRing.quaternion.copy(camera.quaternion); targetRing.scale.setScalar(Math.max(CR[ringI] * 1.6, camera.position.distanceTo(targetRing.position) * .03) * (1 + .05 * Math.sin(now * .005))) }
   updateHover(dt); updateLabels();
   if (fly) gauge.fly(); else gauge.map(); consoleUI(rdt); whiteout.update(rdt); sing.update(rdt); rec.update(rdt); ascent.update(rdt);
-  netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = player.pos.toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
+  netT += dt; if (netT > .1) { netT = 0; mixAmbient(player.pos); const s = Net.self; s.pos = tmp.copy(player.pos).add(UNI.O).toArray(); s.quat = player.quat.toArray(); s.vel = player.vel.toArray(); s.mode = S.mode; s.th = thrusting ? (gasOn ? 1 : 0) | (boosting ? 2 : 0) : 0; Net.send(s) }
   updatePeers(dt); flags.update(); coach.update(dt); nav.update(dt); shipEnv.update(dt); rings.update(dt); musicMap(S.mode === 'map'); mapZone.update(dt); dayLab(); swapLook();
   if (tween && tween.mode) { const e = ease(Math.min(1, tween.t)); mapK = S.mode === 'map' ? sstep(e, 0, .55) : 1 - sstep(e, .45, 1) } else mapK += ((S.mode === 'map' ? 1 : 0) - mapK) * Math.min(1, dt * 1.6); conK += ((conOn ? 1 : 0) - conK) * Math.min(1, dt * 3); { const dim = Math.max((L.mapFade ?? .85) * mapK, (L.conDim ?? .8) * conK); PU.bgK.value = 1 - dim; bgStars.u.op.value = L.bgStars * (1 - dim) }   // between map and flight the map's dimming follows the camera's move, so the galaxy never flares up while you're still far out; on the map it clears down to the winners
   { const toC = tmp.copy(GC).sub(camera.position), d = toC.length(), fw = tmp2.set(0, 0, -1).applyQuaternion(camera.quaternion), Rr = (GAL_R0 + GAL_LEN) * .3,
@@ -444,6 +446,7 @@ function tick(now) {
   }
   PU.beta.value = fly ? Math.min(1, beta * L.relativity) + fall.blur : 0; PU.ab.value += ((fly ? Math.min(1.5, player.cruise * .35 + beta * 1.2 + boostK * .8) * L.aberr + fall.ab : 0) - PU.ab.value) * Math.min(1, dt * 4);
   fall.post(dt, rdt);   // the black hole's twist on the picture, the disk's flash, and the sparks
+  uni.frame(rdt);   // the galaxy's detail fading into its far picture, the other galaxies, their year tags
   updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { if (!(intro.active && veil.visible && veil.material.opacity > .999) || intro.wipe) { intro.wipe = false; (paperK > .5 ? paperPipeline : pipeline).render(); if (intro.active && intro.ph === 0) intro.pf++ }   /* (pf: portal frames really drawn; the black only lifts after a few, so the warm-up's picture never shows) */ shipCam.copy(camera); const lg = intro.active && (logo3d && logo3d.visible || intro.ph === 0), sd = camera.position.distanceTo(avatar.position); shipCam.near = camera.near * SHIP_SC * (lg ? .01 : .1); shipCam.far = intro.active ? Math.max(sd * 4, shipCam.near * 1e4, lg && logo3d && logo3d.visible ? logo3d.position.distanceTo(camera.position) + logo3d.scale.x * 600 : 0, sStars.far()) : Math.max(2e5, camera.position.distanceTo(player.pos) * 2); shipCam.updateProjectionMatrix(); if (!bench.noShip) shipRenderer.render(shipScene, shipCam) } perf.ms = performance.now() - t0;   // under the opening's black veil the galaxy isn't drawn at all
 }
 let loopErrs = 0;

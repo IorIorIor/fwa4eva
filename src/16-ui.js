@@ -79,12 +79,14 @@ function buildConstellation() {
 /* labels: the dates ride the ruler (it turns to keep them in view), plus a few named places. On the map the dates come in
    by zoom level with their rings and are clickable; in flight they're off unless the time rings are on. */
 const galaxyLabels = [];
-YEARS.forEach(y => {
-  const u = yearU(Date.UTC(y, 0, 1)); if (u > .001) galaxyLabels.push({ text: y, cls: 'yr ax' + (y % 5 ? '' : ' maj'), ruler: u, lvl: y % 5 ? 1 : 0, ry: y, near: y % 5 ? 450000 : 900000, pos: ringPoint(u, THR, 0), f: 1e9 });
-  for (let m = 1; m < 12; m++) { const um = yearU(Date.UTC(y, m, 1)); if (um > .002) galaxyLabels.push({ text: 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[m], cls: 'yr ax mo', ruler: um, lvl: 2, ry: y + m / 12, near: 60000, pos: ringPoint(um, THR, 0), f: 1e9 }) }
-});
+function buildGalaxyLabels() {   // the months of the galaxy you're in (January says its year)
+  galaxyLabels.length = 0; const y = GYEAR;
+  for (let m = 0; m < 12; m++) { const um = yearU(Date.UTC(y, m, 1)); if (um > .002) galaxyLabels.push({ text: 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[m] + (m ? '' : ' ' + y), cls: 'yr ax mo', ruler: um, lvl: 2, ry: y + m / 12, near: 60000, pos: ringPoint(um, THR, 0), f: 1e9 }) }
+}
+buildGalaxyLabels();
 let labelEls = [];
 function refreshLabels() {
+  if (!galaxyLabels.length || galaxyLabels[0].ry !== GYEAR) buildGalaxyLabels();
   const Lw = $('labels'); Lw.innerHTML = '';
   const src = S.mode === 'map' ? [...galaxyLabels, { text: 'You', cls: 'you', pos: player.pos, f: 1e9 }] : galaxyLabels;
   labelEls = src.map(g => {
@@ -295,7 +297,7 @@ const winCompass = (() => {
   const near = [], v = new V3(), sp = new V3(), MO = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
   let on = null, lastT = 0;
   return () => {
-    const L = LOOK, show = !!(L.winCompass ?? 1) && S.mode === 'fly' && booted && !intro.active; if (show !== on) { on = show; el.hidden = !show } if (!show) return;
+    const L = LOOK, show = !!(L.winCompass ?? 1) && S.mode === 'fly' && booted && !intro.active && !gplay.on && !uni.out; if (show !== on) { on = show; el.hidden = !show } if (!show) return;
     const now = performance.now(), cdt = Math.min(.1, (now - (lastT || now)) / 1000); lastT = now; const edge = !!(L.winCompassEdge ?? 1), W = innerWidth, H = innerHeight, R = edge ? Math.min(W, H) / 2 : Math.min(W, H) * (L.winCompassSize ?? .8) / 2, n = Math.max(1, Math.min(8, Math.round(L.winCompassN ?? 5)));
     sp.copy(player.pos).project(camera); const cx = W / 2, cy = edge ? (100 + H) / 2 : H / 2 + ((-sp.y * .5 + .5) * H - H / 2) * (L.winCompassFollow ?? .3);   // centred on the screen, drawn a little toward the ship (which sits low), so the whole circle stays in view
     circ.style.cssText = `left:${(cx - R).toFixed(1)}px;top:${(cy - R).toFixed(1)}px;width:${(2 * R).toFixed(1)}px;height:${(2 * R).toFixed(1)}px`;

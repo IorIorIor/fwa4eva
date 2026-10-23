@@ -9,7 +9,7 @@ const PU = {   // pipeline uniforms
   volOn: uniform(0), hazeScreen: uniform(1), volBlur: uniform(0),
   pInk: uniform(.12), void: uniform(0), sw: uniform(0), swC: uniform(new THREE.Vector2(.5, .5)), swR: uniform(.1), swP: uniform(0), asp: uniform(1),   // the black hole twisting the picture round it: swirl (radians at its middle), where, how far it reaches (screen heights), how hard it pulls in, the screen's aspect
   exp: uniform(1), film: uniform(1), vig: uniform(.45), grain: uniform(.03), ab: uniform(0), beta: uniform(0), black: uniform(0), con: uniform(1), sat: uniform(1), cool: uniform(0),
-  bgK: uniform(1), lv: uniform(0), lvMid: uniform(2),   // lv: the ring veil's levels over the whole frame (1 = all white, easing back to 0 = untouched)
+  bgK: uniform(1), lv: uniform(0), lvMid: uniform(2), galK: uniform(1), farOn: uniform(1),   // galK: the galaxy you're in, in full detail (fading to its far picture once you're out in intergalactic space)   // lv: the ring veil's levels over the whole frame (1 = all white, easing back to 0 = untouched)
     // the whole background (gas, haze, arcs) dims to this on the map, leaving the winners and the lines
   edge: uniform(0), edgeA: uniform(.1), edgeB: uniform(.25), nV: uniform(new V3(0, 1, 0)),   // edge-on: how much, the angle band (as sin), the disk normal in view space
   betaC: uniform(0), beam: uniform(1), vV: uniform(new V3(0, 0, -1)), tx: uniform(1), ty: uniform(1),   // the Doppler shift: β, beaming, travel direction (view space), tan of the half FOV
@@ -23,7 +23,7 @@ const bgAt = uv0 => {
   // looking along the disk every soft layer piles up into one white band: rays that graze the plane get dimmed
   const ray = normalize(vec3(uv0.x.mul(2).sub(1).mul(PU.tx), uv0.y.mul(-2).add(1).mul(PU.ty), -1)), ek = PU.edge.mul(smoothstep(PU.edgeA, PU.edgeB, abs(dot(ray, PU.nV))).oneMinus()).oneMinus();
   const s = min(softPass.getTextureNode().sample(uv0).rgb.mul(ek), 1), h = hazePass.getTextureNode().sample(uv0).rgb.mul(ek);
-  return select(PU.hazeScreen.greaterThan(.5), exp(h.negate()).mul(s.oneMinus()).oneMinus(), min(s.add(h), 1)).add(arcPass.getTextureNode().sample(uv0).rgb).mul(PU.bgK);   // the arcs add their light on top, as they did in the scene
+  return mix(vec3(VOID.r, VOID.g, VOID.b), select(PU.hazeScreen.greaterThan(.5), exp(h.negate()).mul(s.oneMinus()).oneMinus(), min(s.add(h), 1)).add(arcPass.getTextureNode().sample(uv0).rgb), PU.galK).mul(PU.bgK);   // the arcs add their light on top, as they did in the scene
 };
 scene.backgroundNode = bgAt(screenUV);
 const bh = makeBlackHole(bgAt);
@@ -78,6 +78,7 @@ const sceneTex = scenePass.getTextureNode();
 const bloomPass = bloom(sceneTex.min(1), .45, .4, .72);
 const bloomTex = bloomPass.getTextureNode();
 const trailPass = pass(trailScene, camera, { samples: 4 }), trailTex = trailPass.getTextureNode();
+const farPass = pass(farScene, farCam, { depthBuffer: false, samples: 0 }), farTex = farPass.getTextureNode();
 const finalNode = Fn(() => {
   const vUv = screenUV, uv0 = vec2(vUv).toVar();
   If(PU.sw.add(PU.swP).greaterThan(.001), () => {   // falling in: space twists round the hole and the picture is drawn in toward it
@@ -102,6 +103,7 @@ const finalNode = Fn(() => {
   const fc = c.mul(c.mul(2.51).add(.03)).div(c.mul(c.mul(2.43).add(.59)).add(.14)); c.assign(mix(min(c, 1), fc, PU.film));
   c.assign(pow(max(vec3(0), c.sub(PU.black).div(PU.black.oneMinus())), vec3(PU.con)));            // true blacks, then contrast
   const lu = dot(c, vec3(.2126, .7152, .0722)); c.assign(mix(vec3(lu), c, PU.sat)); c.assign(mix(c, lu.mul(vec3(.78, .9, 1.12)), PU.cool));   // grade toward cold
+  If(PU.farOn.greaterThan(.5), () => { c.assign(min(c.add(farTex.sample(uv0).rgb), 1)) });   /* the other galaxies: their pictures were graded when they were taken */
   If(PU.inv.greaterThan(.001), () => { c.assign(mix(c, vec3(dot(c, vec3(.2126, .7152, .0722)).oneMinus()), PU.inv)) });   // inverted: the sky turns white, the stars black
   { const tc = trailTex.sample(vUv).rgb, tm = max(max(tc.r, tc.g), tc.b); c.assign(mix(c.add(tc.div(max(1, tm))), mix(c, tc.div(max(tm, 1e-4)), min(1, tm)), PU.inv)) }   // the trails over the graded sky (on white they're laid on like paint, keeping their colour)   // the trails over the graded sky; where they pile up they brighten to full colour, never to white
   c.mulAssign(min(1, PU.vig.add(PU.beta.mul(.45))).mul(smoothstep(PU.beta.mul(-.18).add(.32), .9, r)).oneMinus());
@@ -120,4 +122,13 @@ const paperNode = Fn(() => {
   return vec4(mix(vec3(1), ink, clamp(mx.mul(1.15), 0, 1)), 1);
 })();
 const paperPipeline = new THREE.RenderPipeline(renderer); paperPipeline.outputColorTransform = false; paperPipeline.outputNode = paperNode;
+// a galaxy's far picture: only its background layers (gas, haze, clouds, arcs), graded like the frame, from straight above
+const snapNode = Fn(() => {
+  const c = bgAt(screenUV).toVar(); c.mulAssign(PU.exp);
+  const fc = c.mul(c.mul(2.51).add(.03)).div(c.mul(c.mul(2.43).add(.59)).add(.14)); c.assign(mix(min(c, 1), fc, PU.film));
+  c.assign(pow(max(vec3(0), c.sub(PU.black).div(PU.black.oneMinus())), vec3(PU.con)));
+  const lu = dot(c, vec3(.2126, .7152, .0722)); c.assign(mix(vec3(lu), c, PU.sat)); c.assign(mix(c, lu.mul(vec3(.78, .9, 1.12)), PU.cool));
+  return vec4(clamp(c.sub(VOID.r * 1.2).max(0), 0, 1), 1);   /* (less the void's own faint colour, so the picture's edge is black) */
+})();
+const snapPipeline = new THREE.RenderPipeline(renderer); snapPipeline.outputColorTransform = false; snapPipeline.outputNode = snapNode;
 function setPassScales() { arcPass.setResolutionScale(LOOK.arcs > 0 ? LOOK.arcRes ?? 1 : 1 / 32); volPass.setResolutionScale(LOOK.volumetric ? LOOK.volRes : 1 / 32);   /* (a layer that's switched off still renders: at a postage stamp it costs nothing) */ softPass.setResolutionScale(LOOK.softRes); hazePass.setResolutionScale(LOOK.softRes); U.minSoft.value = 1 / LOOK.softRes }

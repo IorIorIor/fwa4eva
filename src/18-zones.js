@@ -6,10 +6,11 @@ const mapZone = (() => {
   const Z = { on: false, t0: 0, t1: 0, lvl: 1, hov: null };
   if (!SPIRAL) { Z.update = () => { }; Z.click = () => false; Z.clear = () => { }; return Z }
   // the spiral sampled every few days: where it is (galaxy frame) and when
-  const tS = Date.parse(D[0].date + 'T00:00:00Z'), tE = Date.parse(D[N - 1].date + 'T00:00:00Z'), SN = 2400, sx = new Float32Array(SN), sz = new Float32Array(SN), st = new Float64Array(SN);
+  let tS = 0, tE = 0, zY = -1; const SN = 2400, sx = new Float32Array(SN), sz = new Float32Array(SN), st = new Float64Array(SN);
   const at = t => { const r = GAL_R0 + yearU(t) * GAL_LEN, th = armPhase(r); return [Math.cos(th) * r, Math.sin(th) * r] };
-  for (let k = 0; k < SN; k++) { const t = tS + (tE - tS) * k / (SN - 1), p = at(t); sx[k] = p[0]; sz[k] = p[1]; st[k] = t }
-  const span = (t, lvl) => { const d = new Date(t), y = d.getUTCFullYear(), m = d.getUTCMonth(); return lvl === 12 ? [Date.UTC(y, m, 1), Date.UTC(y, m + 1, 1), y] : [Date.UTC(y, 0, 1), Date.UTC(y + 1, 0, 1), y] };   // a year, or (lvl 12) a month
+  const sample = () => { zY = GYEAR; tS = Date.UTC(GYEAR, 0, 1); tE = Date.UTC(GYEAR + 1, 0, 1) - 864e5; for (let k = 0; k < SN; k++) { const t = tS + (tE - tS) * k / (SN - 1), p = at(t); sx[k] = p[0]; sz[k] = p[1]; st[k] = t } };   // the galaxy's own year (sampled again in each galaxy)
+  sample();
+  const span = t => { const d = new Date(t), y = d.getUTCFullYear(), m = d.getUTCMonth(); return [Date.UTC(y, m, 1), Date.UTC(y, m + 1, 1), y] };   // a galaxy is a year: its zones are its months
   // a soft glowing ribbon along the spiral between two dates
   const ribbon = () => {
     const n = 220, g = new THREE.BufferGeometry(), pos = new Float32Array((n + 1) * 2 * 3), aS = new Float32Array((n + 1) * 2), aV = new Float32Array((n + 1) * 2), idx = [];
@@ -29,12 +30,12 @@ const mapZone = (() => {
   };
   const hovR = ribbon(), actR = ribbon(), _l = new V3(), _sp = new V3(), tipEl = document.createElement('div'); tipEl.id = 'zoneTip'; tipEl.setAttribute('aria-hidden', 'true'); document.body.appendChild(tipEl); let tipKey = ''; Z.rib = [hovR, actR];
   Z.update = dt => {
-    const L = LOOK, map = S.mode === 'map' && booted, W = L.mapZoneW ?? 70000; Z.hov = null;
+    const L = LOOK, map = S.mode === 'map' && booted, W = L.mapZoneW ?? 70000; Z.hov = null; if (zY !== GYEAR) { sample(); Z.on = false; hovR.key = actR.key = '' }
     if (map && !tween && mouse.in && hovPick < 0 && !rmenu.open && (L.mapZones ?? 1)) {
       const g = groundAt(mouse.x, mouse.y);
       if (g) { toLocal(g, _l); let best = -1, bd = Infinity; for (let k = 0; k < SN; k++) { const dx = sx[k] - _l.x, dz = sz[k] - _l.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = k } }
         const onScr = best >= 0 && (_sp.set(sx[best], 0, sz[best]).applyQuaternion(GQ).add(GC).project(camera), _sp.z < 1 && Math.hypot((_sp.x * .5 + .5) * innerWidth - mouse.x, (-_sp.y * .5 + .5) * innerHeight - mouse.y) < (L.mapZonePx ?? 40));   // only the stretch of timeline right under the pointer, on screen
-        if (onScr && Math.sqrt(bd) < (L.mapZoneHit ?? 22000)) { const t = st[best], lvl = orbit.dist < (L.mapZoneMonths ?? 900000) ? 12 : 1, [t0, t1, y0] = span(t, lvl);
+        if (onScr && Math.sqrt(bd) < (L.mapZoneHit ?? 22000)) { const t = st[best], lvl = 12, [t0, t1, y0] = span(t);
           if (!(Z.on && t0 === Z.t0 && t1 === Z.t1)) Z.hov = { t0: Math.max(t0, tS), t1: Math.min(t1, tE + 864e5), lvl, y0 } } }
     }
     if (Z.hov) hovR.set(Z.hov.t0, Z.hov.t1, W);

@@ -9,7 +9,7 @@ const rec = (() => {
   const st = { mode: null, i: -1, duck: 0, phi: null, budget: 0, spin: 0, next: 0, step: 0, seq: null };
   const AZ = new Float32Array(N), UU = new Float32Array(N), _v = new V3(), _r = new V3(), _ax = new V3(0, 1, 0).applyQuaternion(GQ);
   const turn = d => { orbit.theta += d; orbit.target.sub(GC).applyAxisAngle(_ax, d).add(GC) };   // the record turns round the galaxy's own centre, wherever the map has been dragged to
-  for (let i = 0; i < N; i++) { _v.set(P[i * 3] - GC.x, P[i * 3 + 1] - GC.y, P[i * 3 + 2] - GC.z).applyQuaternion(GQI); AZ[i] = Math.atan2(_v.z, _v.x); UU[i] = Math.max(0, Math.min(1, (Math.hypot(_v.x, _v.z) - GAL_R0) / GAL_LEN)) }   // each winner's angle round the core and how far out (0 core … 1 rim)
+  for (let i = 0; i < N; i++) { _v.set(PL[i * 3], PL[i * 3 + 1], PL[i * 3 + 2]).applyQuaternion(GQI); AZ[i] = Math.atan2(_v.z, _v.x); UU[i] = Math.max(0, Math.min(1, (Math.hypot(_v.x, _v.z) - GAL_R0) / GAL_LEN)) }   // each winner's angle round the core and how far out (0 core … 1 rim)   // (each in its own galaxy's frame)
   // sound: its own bus into the music's switch (past the sounds' mute), a soft lowpass and a slow echo
   let bus = null;
   const ensure = () => {
@@ -38,14 +38,14 @@ const rec = (() => {
   const openI = () => { if (tip.hidden || !tip.classList.contains('full')) return -1; const m = /^[pqh](\d+)/.exec(tipFor || ''); return m ? +m[1] : -1 };
   function play(mode, i = -1) {
     if (!ensure()) return; stop(true); st.mode = mode; st.i = i; st.phi = null; st.budget = 0; st.spin = 0; st.next = AC.currentTime + .15; st.step = 0;
-    bus.gain.cancelScheduledValues(AC.currentTime); bus.gain.setTargetAtTime(LOOK.recVol ?? .6, AC.currentTime, .4);
+    bus.gain.cancelScheduledValues(AC.currentTime); bus.gain.setTargetAtTime(mode === 'orbit' ? LOOK.playVol ?? .6 : LOOK.recVol ?? .6, AC.currentTime, .4);
     if (mode === 'fwa') {   // write the loop from what this FWA is
       const d = D[i], h = hash(d.title), t = new Date(d.date + 'T00:00:00Z'), sc = SCALES[hash(d.category) % 5], root = 57 + ((t.getUTCMonth() * 7) % 12) - 12 * (t.getUTCMonth() > 6 ? 1 : 0);
       const bpm = 64 + Math.max(0, Math.min(1, (d.score - 6.5) / 3)) * 56, mel = [...String(d.title || 'FWA').toUpperCase()].filter(c => /[A-Z0-9]/.test(c)).slice(0, 16), ah = hash(d.agency);
       const steps = Array.from({ length: 16 }, (_, k) => { const c = mel[k % Math.max(1, mel.length)]; return ((h >>> (k % 24)) & 3) === 0 && k % 4 ? null : c ? (c.charCodeAt(0) * 7 + k) % 9 : null });   // the title, letter by letter, as scale steps (some left as rests)
       st.seq = { sc, root, step: 60 / bpm / 2, steps, bass: [0, (ah % 4) + 2, (ah >> 3) % 5, 3].map(k => deg(sc, root - 24, k)), award: d.award, kind: (h >> 5) % 3 };
     }
-    btn.classList.toggle('on', mode === 'galaxy'); btn.lastChild.textContent = mode === 'galaxy' ? 'Stop' : 'Play'; needle.hidden = mode !== 'galaxy';
+    btn.classList.toggle('on', mode === 'galaxy'); btn.lastChild.textContent = mode === 'galaxy' ? 'Stop' : 'Play'; needle.hidden = !(mode === 'galaxy' || mode === 'orbit' && (LOOK.playNeedle ?? 1));
   }
   function stop(quiet) {
     if (!st.mode) return; st.mode = null; st.i = -1; st.seq = null; if (bus && AC) { bus.gain.cancelScheduledValues(AC.currentTime); bus.gain.setTargetAtTime(0, AC.currentTime, quiet ? .05 : .5) }
@@ -85,15 +85,17 @@ const rec = (() => {
         }
         return;
       }
-      // the galaxy: turn it, and play what passes the needle
-      st.hand = Math.max(0, (st.hand || 0) - rdt); if (!st.hand) turn(-rdt * 2 * Math.PI / Math.max(4, L.recTurn ?? 48));   /* (a hand on it holds it still) */
-      _r.set(1, 0, 0).applyQuaternion(camera.quaternion).applyQuaternion(GQI); const phi = Math.atan2(_r.z, _r.x);   // the needle: the screen's right, laid in the disk
-      { _v.copy(GC).project(camera); _r.copy(GC).addScaledVector(new V3(1, 0, 0).applyQuaternion(camera.quaternion), GAL_R0 + GAL_LEN).project(camera); const x0 = (_v.x * .5 + .5) * innerWidth, y0 = (-_v.y * .5 + .5) * innerHeight, x1 = (_r.x * .5 + .5) * innerWidth, y1 = (-_r.y * .5 + .5) * innerHeight;
+      // the galaxy: turn it, and play what passes the needle (in play mode the galaxy turns itself, and the needle runs out through the ship)
+      const orb = st.mode === 'orbit'; if (orb && !gplay.on) { stop(); return }
+      st.hand = Math.max(0, (st.hand || 0) - rdt); if (!st.hand && !orb) turn(-rdt * 2 * Math.PI / Math.max(4, L.recTurn ?? 48));   /* (a hand on it holds it still) */
+      let phi; if (orb) { phi = gplay.needle(); _r.set(Math.cos(phi), 0, Math.sin(phi)).applyQuaternion(GQ) } else { _r.set(1, 0, 0).applyQuaternion(camera.quaternion).applyQuaternion(GQI); phi = Math.atan2(_r.z, _r.x); _r.set(1, 0, 0).applyQuaternion(camera.quaternion) }   // the needle: the screen's right, laid in the disk
+      needle.hidden = orb && !(L.playNeedle ?? 1);
+      { _v.copy(GC).project(camera); _r.multiplyScalar(GAL_R0 + GAL_LEN).add(GC).project(camera); const x0 = (_v.x * .5 + .5) * innerWidth, y0 = (-_v.y * .5 + .5) * innerHeight, x1 = (_r.x * .5 + .5) * innerWidth, y1 = (-_r.y * .5 + .5) * innerHeight;
         needle.style.left = x0.toFixed(1) + 'px'; needle.style.top = y0.toFixed(1) + 'px'; needle.style.width = Math.hypot(x1 - x0, y1 - y0).toFixed(1) + 'px'; needle.style.transform = `rotate(${Math.atan2(y1 - y0, x1 - x0)}rad)` }
       if (st.phi === null) { st.phi = phi; return }
       let dphi = phi - st.phi; dphi -= Math.round(dphi / (2 * Math.PI)) * 2 * Math.PI; const a0 = st.phi; st.phi = phi; if (!dphi) return;
-      st.budget = Math.min(4, st.budget + rdt * (L.recRate ?? 9)); const hits = [];
-      for (let i = 0; i < N; i++) { if (TA[i] < 1) continue; let x = AZ[i] - a0; x -= Math.round(x / (2 * Math.PI)) * 2 * Math.PI; if (dphi > 0 ? x > 0 && x <= dphi : x < 0 && x >= dphi) hits.push(i) }
+      st.budget = Math.min(4, st.budget + rdt * (orb ? L.playRate ?? 9 : L.recRate ?? 9)); const hits = [], i0 = Math.max(0, UNI_I0[UNI.k]), i1 = UNI_I1[UNI.k];   // (the galaxy you're in)
+      for (let i = i0; i <= i1; i++) { if (TA[i] < 1) continue; let x = AZ[i] - a0; x -= Math.round(x / (2 * Math.PI)) * 2 * Math.PI; if (dphi > 0 ? x > 0 && x <= dphi : x < 0 && x >= dphi) hits.push(i) }
       if (!hits.length) return; hits.sort((a, b) => (D[b].award !== 'SOTD') - (D[a].award !== 'SOTD') || D[b].score - D[a].score);
       const t = AC.currentTime + .03, sc = SCALES[(S.agencies.size ? hash([...S.agencies][0]) : 0) % 5];   // an agency picked: its own mode
       for (const i of hits) {

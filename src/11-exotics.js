@@ -65,7 +65,7 @@ function updateLandmarks(dt) {
       const K = EXO_KINDS[L.kind], S = EXO_SHARED[L.kind] ??= {}, b = K.build(K.P, S), g = new THREE.Group(); g.add(b.obj);
       starPos(L.i, g.position); g.scale.setScalar(EXO_K * CR[L.i] / 140); g.rotation.y = (L.i * 2.39996) % 6.283; scene.add(g); L.g = g; L.b = b;
     }
-    if (L.g) { L.g.visible = near; if (near && L.b.tick) L.b.tick(worldT, dt * tdil) }
+    if (L.g) { L.g.visible = near; if (near) starPos(L.i, L.g.position); if (near && L.b.tick) L.b.tick(worldT, dt * tdil) }   // (kept on its star: the world moves over between galaxies)
   }
   for (const k in EXO_SHARED) { const S = EXO_SHARED[k]; if (S.ju) S.ju.br.value = S.ju.base * LOOK.bhJets }
 }
