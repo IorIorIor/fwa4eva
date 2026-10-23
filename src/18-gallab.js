@@ -108,12 +108,12 @@ const galLab = (() => {
     camera.position.copy(_ov.set(sp * Math.cos(orb.th), Math.cos(orb.ph), sp * Math.sin(orb.th)).applyQuaternion(GQ).multiplyScalar(orb.d * R).add(GC)); camera.up.copy(GAL_UP); camera.lookAt(GC); camera.up.set(0, 1, 0);
     if (camera.fov !== orb.f) { camera.fov = orb.f; camera.updateProjectionMatrix() } camera.updateMatrixWorld(); return true;
   }
-  function msg(t) { const m = el.querySelector('.gl-msg'); m.textContent = t; clearTimeout(msg.t); msg.t = setTimeout(() => m.textContent = '', 3500) }
+  function msg(t) { if (!el) return t; const m = el.querySelector('.gl-msg'); m.textContent = t; clearTimeout(msg.t); msg.t = setTimeout(() => m.textContent = '', 3500); return t }
   function copyText() { const o = {}; if (Object.keys(st.def).length) o.default = st.def; YEARS.forEach(y => { if (st.g[y] && Object.keys(st.g[y]).length) o[y] = st.g[y] }); return 'FWA FOREVER galaxy settings: ' + JSON.stringify(o) }
   function importText(txt) {
     const i = txt.indexOf('{'), j = txt.lastIndexOf('}'); if (i < 0 || j < i) return msg('No settings in that text'); let o; try { o = JSON.parse(txt.slice(i, j + 1)) } catch (e) { return msg('That text could not be read') }
     const pick = s => { const r = {}; if (s && typeof s === 'object') for (const k of KEYS) if (Number.isFinite(+s[k])) r[k] = +s[k]; return r };
-    st.def = pick(o.default); st.g = {}; YEARS.forEach(y => { const r = pick(o[y]); if (Object.keys(r).length) st.g[y] = r }); save(); cols.forEach(c => c.refresh()); pushColours(); msg('Settings in');
+    st.def = pick(o.default); st.g = {}; YEARS.forEach(y => { const r = pick(o[y]); if (Object.keys(r).length) st.g[y] = r }); save(); cols.forEach(c => c.refresh()); pushColours(); const n = Object.keys(st.g).length; return msg(`Galaxy settings in (${n} galaxies${Object.keys(st.def).length ? ' and the default' : ''})`);
   }
   function build() {
     el = document.createElement('div'); el.id = 'galLab'; el.innerHTML = `<div class="gl-view"><div class="gl-stage"><button type="button" class="gl-x" aria-label="Close">✕</button><b class="gl-vy"></b><span class="gl-hint">Drag to turn · scroll to zoom · Shift+scroll: lens</span></div><div class="gl-side"></div></div><div class="gl-top"><b>Galaxy playground</b><span>Each year's galaxy from above, with its own settings. Colours show in flight right away; send me the text for the shapes.</span><span class="gl-msg"></span><button type="button" data-a="copy">Copy settings</button><button type="button" data-a="paste">Paste</button><button type="button" data-a="clear">Reset all</button><button type="button" data-a="close">Close ✕</button></div><textarea class="gl-in" hidden placeholder="Paste FWA FOREVER galaxy settings here"></textarea><div class="gl-row"></div>`;
