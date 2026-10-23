@@ -31,9 +31,10 @@ const fall = (() => {
       avatar.matrixAutoUpdate = false; avatar.matrix.compose(zero, avatar.quaternion, avatar.scale).premultiply(sm).setPosition(avatar.position); avatar.matrixWorldNeedsUpdate = true;
     } else avatar.matrixAutoUpdate = true;
   };
+  const L_rumF = () => Math.max(.1, LOOK.bhShakeHz ?? 1);
   F.cam = () => {   // the rumble near the horizon and the jolt through the disk, on top of wherever the camera is
     const a = F.jolt + F.rumble; if (a < 1e-4 || S.mode !== 'fly') return; const t = F.t, cd = camera.position.distanceTo(player.pos);
-    const nx = Math.sin(t * 37.1) * .6 + Math.sin(t * 61.7 + 1.3) * .4, ny = Math.sin(t * 43.3 + 2.1) * .6 + Math.sin(t * 71.9 + .4) * .4, nz = Math.sin(t * 29.3 + 4.2) * .6 + Math.sin(t * 53.1 + 2.7) * .4;
+    const f = L_rumF(), nx = Math.sin(t * 4.1 * f) * .6 + Math.sin(t * 6.7 * f + 1.3) * .4, ny = Math.sin(t * 4.9 * f + 2.1) * .6 + Math.sin(t * 7.9 * f + .4) * .4, nz = Math.sin(t * 3.3 * f + 4.2) * .6 + Math.sin(t * 5.9 * f + 2.7) * .4;   // a slow, heavy sway (a few times a second), never a buzz the frame rate can't show
     camera.position.add(sv.set(nx, ny, nz * .5).applyQuaternion(camera.quaternion).multiplyScalar(a * cd * .035));
     camera.quaternion.multiply(sq_.setFromEuler(se.set(ny * a * .012, nx * a * .012, nz * a * .02)));
   };
@@ -45,7 +46,9 @@ const fall = (() => {
     const front = sstep(-sv.z / Math.max(dd, 1e-6), .05, .35), zz = Math.min(-1e-6, sv.z);
     PU.swC.value.set(sv.x / -zz / (ty * camera.aspect) * .5 + .5, (1 - sv.y / -zz / ty) * .5); PU.asp.value = camera.aspect;
     PU.swR.value = Math.max(.01, Math.min(.6, (L.bhSwirlR ?? 3) * Math.tan(Math.asin(Math.min(.999, BH.sh / Math.max(dd, 1e-6)))) * .5 / ty));
-    PU.sw.value = (L.bhSwirl ?? 1.2) * kc * front; PU.swP.value = (L.bhPinch ?? .4) * kc * front;
+    const inK = 1 - sstep(dd, BH.sh * .9, BH.sh * 1.15);   // inside the black sphere: the stars in there show plainly, nothing twists them
+    bh.shadow.visible = inK < .5 && bh.mesh.visible;
+    PU.sw.value = (L.bhSwirl ?? 1.2) * kc * front * (1 - inK); PU.swP.value = (L.bhPinch ?? .4) * kc * front * (1 - inK); PU.beta.value = Math.max(0, PU.beta.value - F.blur * inK);
     PU.exp.value *= 1 + F.flash * 1.6;
     { const ga = fly && !sing.far ? sstep(F.k, L.bhGlitchAt ?? .5, 1) * .9 : 0; F.gk += (ga - F.gk) * Math.min(1, rdt * 6); const w = sing.busy ? sing.w : 0, back = sing.far || (sing.busy && sing.w < .999 && F.k < .5);   // worse and worse as you close in, gone with the dip to black, and after it a calm fade back
       glitch(Math.max(F.gk * (L.bhGlitch ?? 1), w), back) }

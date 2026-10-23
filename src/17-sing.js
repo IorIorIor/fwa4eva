@@ -14,7 +14,7 @@ const sing = (() => {
   function emerge() {   // the far side: well out beyond the galaxy along the way you were going, facing on, the galaxy behind
     const up = new V3(0, 1, 0).applyQuaternion(GQ), at = GC.clone().addScaledVector(up, Math.max(LOOK.singUp ?? 10000, BH.sh * (LOOK.bhGravReach ?? 30) * 1.1));   // (and beyond the reach of its gravity)   // out right above the galaxy's heart, looking straight down at it
     player.pos.copy(at); player.vel.set(0, 0, 0); aimAt(up.clone().negate(), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
-    star.visible = false; S_.far = true; S_.ft = 0; ringBell(N - 1); buzz(60); document.body.classList.add('farside');
+    star.visible = false; S_.far = true; S_.ft = 0; buzz(60);   /* (no bell: just the hiss and the echo) */ document.body.classList.add('farside');
   }
   return {
     get busy() { return S_.t >= 0 }, get far() { return S_.far }, get w() { return S_.w },

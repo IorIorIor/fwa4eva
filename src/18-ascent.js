@@ -417,8 +417,10 @@ const ascent = (() => {
       e.M.pace = (1 - .4 * sb) * (1 + 2.5 * dk);   // faster: the notes come quicker; in bullet time they stretch out
       n.bend.offset.setTargetAtTime(-650 * dk, t, .12);   // the tape slows: everything sinks in pitch
       n.revSend.gain.setTargetAtTime(1.6 * P.revMix * (1 + 1.2 * dk), t, .2); n.delFb.gain.setTargetAtTime(Math.min(.85, P.delFb + .4 * dk), t, .2);
-      { const rn = fly && LOOK.rings ? 1 - sstep(HALO.ts, .1, 2) : 0, ek = (L.mEcho ?? 1) * Math.max(rn, Math.min(1, dl * 1.3)), et = Math.min(2.9, P.delTime * (1 + 2.2 * ek)); n.delL.delayTime.setTargetAtTime(et, t, .35); n.delR.delayTime.setTargetAtTime(et, t, .35); n.delSend.gain.setTargetAtTime(Math.min(1, P.delMix * .9 * (1 + 1.5 * ek)), t, .3) }   // near and through a ring the echoes stretch out (the repeats slide in pitch as they do) and come forward
+      { const rn = fly && LOOK.rings ? 1 - sstep(HALO.ts, .1, 2) : 0, ek = (L.mEcho ?? 1) * Math.max(rn, Math.min(1, dl * 1.3)), hk = Math.max(singQ, sing.busy ? sing.w : 0), et = Math.min(2.9, P.delTime * (1 + 2.2 * ek) * (1 + (L.mHoleEcho ?? .35) * hk * Math.sin(t * 3.8))); n.delL.delayTime.setTargetAtTime(et, t, .35); n.delR.delayTime.setTargetAtTime(et, t, .35); n.delSend.gain.setTargetAtTime(Math.min(1, P.delMix * .9 * (1 + 1.5 * ek)), t, .3) }   // near and through a ring the echoes stretch out (the repeats slide in pitch as they do) and come forward
       { const dk = fly ? sstep(player.vel.length(), 150, 4000) * Math.min(1, streakDens * 1.5) : 0; dustHissK = dk; n.hissGain.gain.setTargetAtTime(.035 * P.hiss + .05 * (L.mDustHiss ?? .6) * dk, t, .25) }   // the tape hiss rises with the speed dust you're flying through, like a faint Geiger counter
+      { if (!n.holeHiss) { n.holeHiss = ctx.createGain(); n.holeHiss.gain.value = 0; n.hissLP.connect(n.holeHiss); n.holeHiss.connect(n.limIn) }   // the black hole's hiss goes round the music's fade, so it swells as everything else falls silent
+        n.holeHiss.gain.setTargetAtTime(.05 * (L.mHoleHiss ?? 10) * Math.max(singQ, sing.busy ? sing.w : 0) * P.volume, t, .4) }
       n.out.gain.setTargetAtTime(P.volume * (1 - (L.mVoid ?? .45) * (1 - gal)) * (1 + .25 * sb) * Math.pow(1 - singQ, 1.5), t, .8);   /* … and falls silent at the horizon */   // fullest in the galaxy, thinner out in the void
     },
   };
