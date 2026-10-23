@@ -120,6 +120,7 @@ addEventListener('keydown', e => {
   if (e.target.matches('input,select,textarea')) return;
   const k = e.key.toLowerCase(); keys[k] = true; if (k === ' ' && !e.target.closest('button,input,select,textarea')) e.preventDefault();
   if (k === 'l' && !e.repeat) recorder.toggle();   // L: start (or stop) recording, from the splash on
+  if (k === 'c' && !booted && intro.active && intro.ph === 0) { togglePanel('lookPanel'); return }   // the Look panel works on the opening screen too
   if (!booted) return;
   if (k === 'm') setMode(S.mode === 'fly' ? 'map' : 'fly');
   if (k === 'enter' && coach.skip()) { e.preventDefault(); return }   // the first-flight steps: Enter skips one
@@ -176,6 +177,7 @@ function holeMask() {   // what the black hole hides from the camera: the sky be
 }
 function behindHole(m, px, py, pz) { if (!m) return false; const c = camera.position, x = px - c.x, y = py - c.y, z = pz - c.z, l = Math.hypot(x, y, z); return l > m.d && (x * _hd.x + y * _hd.y + z * _hd.z) / l > m.cos }
 function pickNear(x, y, Rr) {
+  if (sing.inside) return null;   // (in the black hole there's nothing to point at)
   _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight, hm = holeMask(); let best = -1, bs = 1, bd = 0, bR = Rr;
   for (let i = 0; i < N; i++) {
     if (TA[i] < 1 || i === lockI) continue; const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], w = e[3] * px + e[7] * py + e[11] * pz + e[15]; const aD = LOOK.aimDist ?? 103000; if (w < .5 || w > aD || Math.hypot(px - camera.position.x, py - camera.position.y, pz - camera.position.z) > aD || behindHole(hm, px, py, pz)) continue; const spx = starPx(i, w);   // aim assist: by distance only (Look: aimDist)
@@ -185,6 +187,7 @@ function pickNear(x, y, Rr) {
   return best < 0 ? null : { i: best, d: bd, R: bR };
 }
 function pick(x, y, maxD = Infinity) {
+  if (sing.inside) return -1;
   const touchR = down && down.touch || coarse ? LOOK.tapR ?? 44 : 14;   // a finger covers more than a pointer: a tap reaches the star near it
   _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); const e = _vp.elements, W = innerWidth, H = innerHeight, hm = holeMask(); let best = -1, bd = Infinity;
   for (let i = 0; i < N; i++) {

@@ -7,7 +7,7 @@ const arcPass = pass(arcScene, camera, { depthBuffer: false, samples: 0 });
 const PU = {   // pipeline uniforms
   inv: uniform(0), apex: uniform(new THREE.Vector2(.5, .5)),   // apex: where on screen you're heading (or, looking back, coming from)   // the inverted monochrome look: black stars on white
   volOn: uniform(0), hazeScreen: uniform(1), volBlur: uniform(0),
-  sw: uniform(0), swC: uniform(new THREE.Vector2(.5, .5)), swR: uniform(.1), swP: uniform(0), asp: uniform(1),   // the black hole twisting the picture round it: swirl (radians at its middle), where, how far it reaches (screen heights), how hard it pulls in, the screen's aspect
+  void: uniform(0), sw: uniform(0), swC: uniform(new THREE.Vector2(.5, .5)), swR: uniform(.1), swP: uniform(0), asp: uniform(1),   // the black hole twisting the picture round it: swirl (radians at its middle), where, how far it reaches (screen heights), how hard it pulls in, the screen's aspect
   exp: uniform(1), film: uniform(1), vig: uniform(.45), grain: uniform(.03), ab: uniform(0), beta: uniform(0), black: uniform(0), con: uniform(1), sat: uniform(1), cool: uniform(0),
   bgK: uniform(1), lv: uniform(0), lvMid: uniform(2),   // lv: the ring veil's levels over the whole frame (1 = all white, easing back to 0 = untouched)
     // the whole background (gas, haze, arcs) dims to this on the map, leaving the winners and the lines
@@ -107,6 +107,7 @@ const finalNode = Fn(() => {
   c.mulAssign(min(1, PU.vig.add(PU.beta.mul(.45))).mul(smoothstep(PU.beta.mul(-.18).add(.32), .9, r)).oneMinus());
   If(PU.lv.greaterThan(.001), () => { const o = PU.lv.mul(PU.lv); c.assign(pow(clamp(c.div(max(.02, PU.lv.oneMinus())), 0, 1), vec3(float(1).div(PU.lv.mul(PU.lvMid).add(1)))).mul(o.oneMinus()).add(o)) });   /* levels: the white point drops, the mids lift and the black point rises, all to white at 1 */
   c.addAssign(fract(sin(dot(vUv.mul(vec2(1733, 977)), vec2(12.9898, 78.233)).add(fract(U.now).mul(91.7))).mul(43758.5453)).sub(.5).mul(PU.grain));
+  c.mulAssign(PU.void.oneMinus());   // inside the black hole: nothing
   return vec4(clamp(c, 0, 1), 1);
 })();
 loadProg(.6);

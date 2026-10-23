@@ -342,7 +342,7 @@ function tick(now) {
   { if (!shipR0) { const sc = avatar.scale.x || 1; shipR0 = new THREE.Box3().setFromObject(avatar).getSize(tmp).length() / 2 / sc }   // the ship's own radius at scale 1, measured once
     const d = Math.max(1e-3, camera.position.distanceTo(player.pos)), px = 2 * shipR0 * avatar.scale.x / d * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360)); tmp.copy(player.pos).project(camera);
     shipOnMap = !fly && px > 5 && tmp.z < 1 && Math.abs(tmp.x) < 1.1 && Math.abs(tmp.y) < 1.1 }   // on the map (and on the way there) the ship stays, full quality, while it's in view and over 5 px across
-  avatar.visible = (fly || shipOnMap) && !(intro.active && intro.ph === 1);   /* (through the logo only the flat pointer shows) */ youMark.visible = !fly && !shipOnMap; if (!fly) { youMark.position.copy(player.pos); youMark.scale.setScalar(.028 * (1 + .18 * Math.sin(now * .005))) }
+  avatar.visible = (fly || shipOnMap) && !(intro.active && (intro.ph === 1 || intro.ph === 0 && !intro.ptrOn));   /* (through the logo only the flat pointer shows) */ youMark.visible = !fly && !shipOnMap; if (!fly) { youMark.position.copy(player.pos); youMark.scale.setScalar(.028 * (1 + .18 * Math.sin(now * .005))) }
   updateBodies();
   // relativity: real aberration of where things appear, and a Doppler shift (exaggerated to taste) in the final pass
   beta = fly ? Math.min(.995, player.vel.length() / LIGHT) : 0;

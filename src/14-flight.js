@@ -65,6 +65,7 @@ function focus(i) {
     { const q = orbitPose().q, cd = orbit.dist * mapDistK(), hw = Math.tan(mapFovNow() * Math.PI / 360) * camera.aspect * cd; orbit.target.addScaledVector(new V3(1, 0, 0).applyQuaternion(q), hw * (LOOK.mapRingLeft ?? .28)) }   /* the ring sits left of centre, so its full record fits on its right */   /* rings: close enough that the ring fills the screen */ const o = orbitPose(); tweenCam(o.p, o.q, 1.8) }
 }
 function goHome() {
+  if (sing.inside) { sing.reset(); toSpawn(); return }   // out of the black hole: H is the one way home
   if (S.mode === 'map') { mapFlip(); Object.assign(orbit, { target: GC.clone(), dist: mapHomeD(), phi: orbit.mir ? Math.PI - mapPhi() : mapPhi() }); const o = orbitPose(); tweenCam(o.p, o.q, 1.6); return }
   auto = { i: -1, dest: HOME_P.clone() }; lockI = -1;
 }
@@ -226,7 +227,7 @@ function updatePlayer(dt) {
     if (Ld < hard) { tmp2.multiplyScalar(hard / Ld); p.pos.copy(tmp).add(tmp2); const nn = tmp2.normalize(), vn = p.vel.dot(nn); if (vn < 0) p.vel.addScaledVector(nn, -vn * (1 + L.bounce * .6)) }
   } else p.pos.addScaledVector(p.vel, dt);
   contactK += (touch - contactK) * Math.min(1, dt * 10);
-  if (L.rings) ringCheck(p);
+  if (L.rings && !sing.inside) ringCheck(p);
   if (touch > 0 && !auto && lockI !== nearI) { const sp = p.vel.length(); if (sp > 1) p.base.slerp(lookAtQ(_vn.copy(p.vel).divideScalar(sp), Yv.clone().applyQuaternion(p.base), _nq), Math.min(1, dt * 6 * Math.min(1, touch * 3))) }   // pushed: the nose follows the bounce
   {
     tmp.copy(p.pos).sub(GC); const d = tmp.length(), mn = BH.sh * 1.3, gR = BH.sh * Math.max(18, L.bhGravReach ?? 30);

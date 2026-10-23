@@ -6,11 +6,11 @@
    rumbles; crossing the disk flashes and jolts. All of it builds with how far in you are (in log distance, so it keeps
    building all the way down). */
 const fall = (() => {
-  const F = { gk: 0, k: 0, kc: 0, fov: 0, blur: 0, ab: 0, flash: 0, jolt: 0, rumble: 0, diskK: 0, cross: false, after: 0, prevY: NaN, t: 0, roll: 0 };
+  const F = { gv: 0, gk: 0, k: 0, kc: 0, fov: 0, blur: 0, ab: 0, flash: 0, jolt: 0, rumble: 0, diskK: 0, cross: false, after: 0, prevY: NaN, t: 0, roll: 0 };
   const lp = new V3(), nH = new V3(), sm = new THREE.Matrix4(), zero = new V3(), sv = new V3(), sq_ = new Q4(), se = new THREE.Euler(), zAx = new V3(0, 0, 1), qi = new Q4();
   F.update = (dt, rdt) => {   // after the ship has moved: how far in, the disk, the spin, the stretch
     const L = LOOK, d = player.pos.distanceTo(GC), sh = BH.sh, R = sh * Math.max(2, L.bhFx ?? 12);
-    const k = Math.max(0, Math.min(1, Math.log(R / Math.max(d, 1e-6)) / Math.log(R / singR())));
+    const k = sing.inside ? 0 : Math.max(0, Math.min(1, Math.log(R / Math.max(d, 1e-6)) / Math.log(R / singR())));   // (inside, it's over: no more pull, stretch or twist)
     F.k += (k - F.k) * Math.min(1, rdt * 8); F.kc = Math.pow(F.k, L.bhFxCurve ?? 1.6); F.t += rdt;
     // the disk: in its plane (in horizon radii), between its inner and outer edge
     lp.copy(player.pos).sub(GC).applyQuaternion(GQI).divideScalar(BH.rs); const rho = Math.hypot(lp.x, lp.z), rout = Math.max(3.5, L.bhDiskOut);
@@ -23,7 +23,7 @@ const fall = (() => {
     F.fov = (L.bhFov ?? 45) * F.kc; F.blur = (L.bhBlur ?? .6) * F.kc; F.ab = (L.bhAberr ?? .8) * F.kc;
     { const w = (L.bhRoll ?? 25) * Math.PI / 180 * F.kc * rdt; if (w > 1e-6) { F.roll += w; if (!(bhLab && bhLab.driving)) rig.q.multiply(sq_.setFromAxisAngle(zAx, w)).normalize() } }   // the view turns with the hole's spin
     // spaghettification: longer toward the hole, thinner across (the volume kept), about the ship's middle
-    const Rs = sh * Math.max(1.5, L.bhStretchFrom ?? 5), ks = Math.max(0, Math.min(1, Math.log(Rs / Math.max(d, 1e-6)) / Math.log(Rs / singR())));   // from bhStretchFrom down to the horizon (log distance)
+    const Rs = sh * Math.max(1.5, L.bhStretchFrom ?? 5), ks = sing.inside ? 0 : Math.max(0, Math.min(1, Math.log(Rs / Math.max(d, 1e-6)) / Math.log(Rs / singR())));   // from bhStretchFrom down to the horizon (log distance)
     const s = 1 + (L.bhStretch ?? 1) * 2.5 * Math.pow(ks, L.bhStretchCurve ?? 2);
     if (s > 1.002) {
       nH.copy(GC).sub(player.pos).normalize(); const c = 1 / Math.sqrt(s), e = s - c, x = nH.x, y = nH.y, z = nH.z;
@@ -49,8 +49,8 @@ const fall = (() => {
     const inK = 1 - sstep(dd, BH.sh * .9, BH.sh * 1.15);   // inside the black sphere: the stars in there show plainly, nothing twists them
     bh.shadow.visible = inK < .5 && bh.mesh.visible;
     PU.sw.value = (L.bhSwirl ?? 1.2) * kc * front * (1 - inK); PU.swP.value = (L.bhPinch ?? .4) * kc * front * (1 - inK); PU.beta.value = Math.max(0, PU.beta.value - F.blur * inK);
-    PU.exp.value *= 1 + F.flash * 1.6;
-    { const ga = fly && !sing.far ? sstep(F.k, L.bhGlitchAt ?? .5, 1) * .9 : 0; F.gk += (ga - F.gk) * Math.min(1, rdt * 6); const w = sing.busy ? sing.w : 0, back = sing.far || (sing.busy && sing.w < .999 && F.k < .5);   // worse and worse as you close in, gone with the dip to black, and after it a calm fade back
+    PU.exp.value *= 1 + F.flash * 1.6; PU.void.value = sing.inside ? sing.w : 0;   // in the black hole: the galaxy gone
+    { const ga = fly && !sing.far ? sstep(F.k, L.bhGlitchAt ?? .5, 1) * .9 : 0; F.gk += (ga - F.gk) * Math.min(1, rdt * 6); F.gv += ((sing.inside ? sing.w : 0) - F.gv) * Math.min(1, rdt * (sing.inside ? 20 : 1.2)); const w = F.gv, back = !sing.inside;   // worse and worse as you close in, gone with the dip to black, and after it a calm fade back
       glitch(Math.max(F.gk * (L.bhGlitch ?? 1), w), back) }
     embers.update(fly ? dt : 0, fly);
   };
@@ -69,21 +69,22 @@ const fall = (() => {
   return F;
 })();
 
+const VOID_COL = [[1, 1, 1], [.66, .38, 1], [1, .78, .3], [.32, .62, 1], [.36, 1, .58]];   // inside the black hole: white, purple, gold, blue, green
 const embers = (() => {
   const n = 1400, r = mulberry32(2026), P = new Float32Array(n * 3), V = new Float32Array(n * 3), age = new Float32Array(n).fill(1e9), life = new Float32Array(n).fill(1), ph = new Float32Array(n * 3);
   for (let i = 0; i < n * 3; i++) ph[i] = r() * 6.2832;
   const g = new THREE.InstancedBufferGeometry(); g.index = QUAD.index; g.setAttribute('position', QUAD.attributes.position); g.setAttribute('uv', QUAD.attributes.uv);
-  const pa = new Float32Array(n * 3), pb = new Float32Array(n * 3), fa = new Float32Array(n).fill(-1), ha = new Float32Array(n);
-  [['aA', pa, 3], ['aB', pb, 3], ['aF', fa, 1], ['aH', ha, 1]].forEach(([k, arr, c]) => g.setAttribute(k, new THREE.InstancedBufferAttribute(arr, c).setUsage(THREE.DynamicDrawUsage))); g.instanceCount = n;
+  const pa = new Float32Array(n * 3), pb = new Float32Array(n * 3), fa = new Float32Array(n).fill(-1), ha = new Float32Array(n), ca = new Float32Array(n * 3);   // ca: a spark's own colour (black: its temperature's)
+  [['aA', pa, 3], ['aB', pb, 3], ['aF', fa, 1], ['aH', ha, 1], ['aC', ca, 3]].forEach(([k, arr, c]) => g.setAttribute(k, new THREE.InstancedBufferAttribute(arr, c).setUsage(THREE.DynamicDrawUsage))); g.instanceCount = n;
   const u = { sz: uniform(1.6), k: uniform(1), glow: uniform(.6), cool: uniform(1.4), heat: uniform(1), eps: uniform(.004) }, m = skyMat();
-  const vD = varyingProperty('float', 'vEd'), vAl = varyingProperty('float', 'vEal'), vLn = varyingProperty('float', 'vEln'), vW = varyingProperty('float', 'vEw'), vF = varyingProperty('float', 'vEf'), vH = varyingProperty('float', 'vEh'), vN = varyingProperty('float', 'vEn');
+  const vD = varyingProperty('float', 'vEd'), vAl = varyingProperty('float', 'vEal'), vLn = varyingProperty('float', 'vEln'), vW = varyingProperty('float', 'vEw'), vF = varyingProperty('float', 'vEf'), vH = varyingProperty('float', 'vEh'), vC = varyingProperty('vec3', 'vEc'), vN = varyingProperty('float', 'vEn');
   m.vertexNode = Fn(() => {   // aA = head, aB = tail (camera-relative); aF = 0..1 life (outside: hidden); aH = heat at birth
     const f = ia('aF', 'float'), A = cameraViewMatrix.mul(vec4(ia('aA', 'vec3'), 0)).xyz, B0 = cameraViewMatrix.mul(vec4(ia('aB', 'vec3'), 0)).xyz;
     const tc = A.z.add(u.eps).div(A.z.sub(B0.z).min(-1e-6)), B = select(B0.z.greaterThan(u.eps.negate()), A.add(B0.sub(A).mul(clamp(tc, 0, 1))), B0);   // a tail reaching behind the camera is cut at its near plane
     const cA = cameraProjectionMatrix.mul(vec4(A, 1)), cB = cameraProjectionMatrix.mul(vec4(B, 1)), half = U.res.mul(.5), sA = cA.xy.div(cA.w).mul(half), sB = cB.xy.div(cB.w).mul(half);
     const dv = sB.sub(sA), Ln = max(length(dv), 1e-3), dir = dv.div(Ln), nrm = vec2(dir.y.negate(), dir.x), hw = u.sz.mul(.5).mul(U.dpr).mul(u.glow.mul(2).add(1)), t = uv().x, side = positionGeometry.y.mul(2);
     const c = mix(cA, cB, t), off = nrm.mul(side.mul(hw)).add(dir.mul(t.mul(2).sub(1).mul(hw)));
-    vD.assign(side.mul(hw)); vAl.assign(t.mul(2).sub(1).mul(hw).add(t.mul(Ln))); vLn.assign(Ln); vW.assign(u.sz.mul(.5).mul(U.dpr)); vF.assign(f); vH.assign(ia('aH', 'float'));
+    vD.assign(side.mul(hw)); vAl.assign(t.mul(2).sub(1).mul(hw).add(t.mul(Ln))); vLn.assign(Ln); vW.assign(u.sz.mul(.5).mul(U.dpr)); vF.assign(f); vH.assign(ia('aH', 'float')); vC.assign(ia('aC', 'vec3'));
     vN.assign(smoothstep(u.eps, u.eps.mul(8), A.z.negate()));   // fades out as it passes the camera
     const live = f.greaterThanEqual(0).and(f.lessThanEqual(1)).and(A.z.lessThan(u.eps.negate()));
     return select(live, c.add(vec4(off.div(half).mul(c.w), 0, 0)), vec4(0, 0, 2, 1));
@@ -93,7 +94,7 @@ const embers = (() => {
     const core = exp(sq(d).mul(-2.5)), halo = exp(sq(d).mul(-.25)).mul(.35).mul(u.glow), f = clamp(vF, 0, 1);
     const T = pow(f.oneMinus(), u.cool).mul(vH.mul(u.heat).mul(7200)).add(900), br = pow(clamp(T.div(6600), 0, 2.2), 1.5);
     const fade = smoothstep(0, .03, f).mul(pow(f.oneMinus(), .5)).mul(vN);
-    const col = bbRGB(T).mul(br).mul(fade).mul(u.k).mul(core.add(halo)).mul(mix(1, along, .7));
+    const own = step(.001, vC.r.add(vC.g).add(vC.b)), col = mix(bbRGB(T).mul(br), vC.mul(1.4), own).mul(fade).mul(u.k).mul(core.add(halo)).mul(mix(1, along, .7));
     return vec4(col, min(1, max(col.r, max(col.g, col.b))));
   })();
   const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; mesh.renderOrder = 3; mesh.visible = false; shipScene.add(mesh);
@@ -104,7 +105,7 @@ const embers = (() => {
     ARROW.polys.forEach(p => { const o = p.o, nn = o.length; let ar = 0; for (let i = 0; i < nn; i++) { const a = o[i], b = o[(i + 1) % nn]; ar += a[0] * b[1] - b[0] * a[1] } const sg = Math.sign(ar) || 1;
       for (let i = 0; i < nn; i++) { const a = o[i], b = o[(i + 1) % nn], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy); if (l > 1e-6) segs.push({ a, b, l, nx: sg * dy / l, nz: -sg * dx / l }) } });
   }
-  let head = 0, live = 0, accS = 0, accD = 0, accH = 0, cdU = 1;
+  let head = 0, live = 0, accS = 0, accD = 0, accH = 0, accV = 0, cdU = 1;
   const hp = new V3(), lq = new V3(), nv = new V3(), back = new V3(), toH = new V3(), tg = new V3(), off = new V3(), w = new V3();
   function spawn(heat, kind) {   // kind 0: speed, 1: the disk's plasma, 2: the hole's heat
     const L = LOOK, i = head; head = (head + 1) % n; let x = r() * cum[cum.length - 1], j = 0; while (j < cum.length - 1 && cum[j] < x) j++;
@@ -114,7 +115,7 @@ const embers = (() => {
     const k3 = i * 3; P[k3] = hp.x; P[k3 + 1] = hp.y; P[k3 + 2] = hp.z;
     V[k3] = nv.x * sp + back.x * SL * .3 * r(); V[k3 + 1] = nv.y * sp + back.y * SL * .3 * r(); V[k3 + 2] = nv.z * sp + back.z * SL * .3 * r();
     if (kind === 1) { V[k3] += tg.x * SL * .8 * r(); V[k3 + 1] += tg.y * SL * .8 * r(); V[k3 + 2] += tg.z * SL * .8 * r() }   // the disk's gas is orbiting: it sweeps its sparks round with it
-    age[i] = 0; life[i] = Math.max(.05, L.sparkLife ?? .9) * (.45 + .9 * r()) * (kind ? 1.35 : 1); ha[i] = heat * (.85 + .3 * r());
+    age[i] = 0; life[i] = Math.max(.05, L.sparkLife ?? .9) * (.45 + .9 * r()) * (kind ? 1.35 : 1); ha[i] = heat * (.85 + .3 * r()); const pc = kind === 3 ? VOID_COL[Math.floor(r() * VOID_COL.length)] : null; ca[i * 3] = pc ? pc[0] : 0; ca[i * 3 + 1] = pc ? pc[1] : 0; ca[i * 3 + 2] = pc ? pc[2] : 0;
   }
   return {
     mesh,
@@ -130,9 +131,9 @@ const embers = (() => {
       if (segs.length && dt > 0) {
         accS += dt * (L.sparkRate ?? 240) * sK * (1 + ((L.sparkBoost ?? 1.8) - 1) * boostK);
         accD += dt * (L.sparkDisk ?? 1600) * Math.max(fall.diskK, fall.after * fall.after); if (fall.cross) accD += L.sparkDiskBurst ?? 350;
-        accH += dt * (L.sparkHole ?? 500) * Math.pow(fall.k, 3);
+        accH += dt * (L.sparkHole ?? 500) * Math.pow(fall.k, 3); accV += sing.inside ? dt * (L.sparkVoid ?? 500) * sing.w : 0;   // in the black: a stream of coloured ones
         let budget = 700; const emit = (acc, heat, kind) => { while (acc >= 1 && budget > 0) { acc--; budget--; spawn(heat, kind) } return Math.min(acc, 2) };   // (at most so many new ones a frame)
-        const h = L.sparkHeat ?? .85; accD = emit(accD, 1.45 * h, 1); accS = emit(accS, h, 0); accH = emit(accH, 1.15 * h, 2);
+        const h = L.sparkHeat ?? .85; accD = emit(accD, 1.45 * h, 1); accS = emit(accS, h, 0); accH = emit(accH, 1.15 * h, 2); accV = emit(accV, 1, 3);
       }
       u.sz.value = L.sparkSize ?? 2.2; u.k.value = L.sparkBright ?? 2.2; u.glow.value = L.sparkGlow ?? .8; u.cool.value = L.sparkCool ?? 1.4; u.eps.value = Math.max(1e-4, camera.near * 1.5);
       const W = (L.sparkWind ?? 1.5) * SL * (1 + .5 * sK), dr = 1 - Math.exp(-dt * (L.sparkDrag ?? 3)), tu = (L.sparkTurb ?? 1) * SL * .6 * dt, pl = (L.sparkPull ?? 1) * W * 3 * fall.k * fall.k * dt, stk = L.sparkStreak ?? .05;
@@ -149,7 +150,7 @@ const embers = (() => {
         pb[k3] = pa[k3] - V[k3] * sl; pb[k3 + 1] = pa[k3 + 1] - V[k3 + 1] * sl; pb[k3 + 2] = pa[k3 + 2] - V[k3 + 2] * sl;
         fa[i] = a / life[i];
       }
-      const at = g.attributes; at.aA.needsUpdate = at.aB.needsUpdate = at.aF.needsUpdate = at.aH.needsUpdate = true; mesh.visible = live > 0;
+      const at = g.attributes; at.aA.needsUpdate = at.aB.needsUpdate = at.aF.needsUpdate = at.aH.needsUpdate = at.aC.needsUpdate = true; mesh.visible = live > 0;
     },
   };
 })();

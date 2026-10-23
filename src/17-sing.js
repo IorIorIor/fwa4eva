@@ -1,36 +1,47 @@
 /* ───────────────────────── the singularity ─────────────────────────
    The newest winners spiral in closest to the core; the black hole is where the FWA as it was ends. With the switch on you
-   can fly into it: the music slows, sinks and falls silent as you near the horizon, the whole screen goes slowly white, and
-   you come out on the far side in quiet, empty space, the galaxy behind you, one new star ahead and a single line. */
-let singQ = 0;
-const singR = () => BH.sh * (LOOK.singAt ?? .8);   // where the singularity takes you: well inside the black sphere (just outside it you can still get away)   // 0 … 1: how near the horizon you are (the music listens to this)
-const SING_LINE = 'What comes next';   // the far side's one line (to be replaced by whatever the FWA becomes)
+   can fly into it: the music slows, sinks and falls silent as you near the horizon, and once you're in the black sphere there
+   is no way back out. The galaxy fades to black and stays gone: you fly on through an endless black, your ship shedding
+   coloured sparks, and far ahead, waiting, one button: Learn more. Fly into it. (H, or the lab, takes you home again.) */
+let singQ = 0;   // 0 … 1: how near the horizon you are (the music listens to this)
+const singR = () => BH.sh * (LOOK.singAt ?? 1);   // where the singularity takes you: the black sphere's edge (just outside it you can still get away)
+const VOID_URL = 'https://thefwa.com/';   // where Learn more goes (to be the FWA blog post)
 const sing = (() => {
-  const el = document.createElement('div'); el.id = 'farText'; el.setAttribute('aria-hidden', 'true'); el.innerHTML = `<small>FWA · 2000–2026</small><b>${SING_LINE}</b>`; document.body.appendChild(el);
-  const star = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: new C3(1, .94, .82), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); star.visible = false; star.frustumCulled = false; scene.add(star);
-  const dark = document.createElement('div'); dark.id = 'bhDark'; dark.hidden = true; document.body.appendChild(dark);
-  const S_ = { t: -1, w: 0, dir: new V3(), far: false, ft: 0 };
-  function enter() { buzz([30, 80, 30, 80, 160]); S_.t = 0; S_.dir.copy(player.vel).lengthSq() > 1 ? S_.dir.normalize() : S_.dir.set(0, 0, -1).applyQuaternion(player.base); auto = null; lockI = -1; warp = null }
-  function emerge() {   // the far side: well out beyond the galaxy along the way you were going, facing on, the galaxy behind
-    const up = new V3(0, 1, 0).applyQuaternion(GQ), at = GC.clone().addScaledVector(up, Math.max(LOOK.singUp ?? 10000, BH.sh * (LOOK.bhGravReach ?? 30) * 1.1));   // (and beyond the reach of its gravity)   // out right above the galaxy's heart, looking straight down at it
-    player.pos.copy(at); player.vel.set(0, 0, 0); aimAt(up.clone().negate(), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
-    star.visible = false; S_.far = true; S_.ft = 0; buzz(60);   /* (no bell: just the hiss and the echo) */ document.body.classList.add('farside');
+  // the button: a dark glass slab with a white rim and LEARN MORE, a soft glow round it, on the ship's layer (the galaxy is gone)
+  const btn = new THREE.Group(); btn.visible = false; shipScene.add(btn);
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const draw = () => { const g = cv.getContext('2d'); g.clearRect(0, 0, 1024, 256); g.fillStyle = 'rgba(14,10,26,.72)'; g.strokeStyle = '#fff'; g.lineWidth = 8; g.beginPath(); g.roundRect(8, 8, 1008, 240, 18); g.fill(); g.stroke();
+    g.fillStyle = '#fff'; g.font = '500 92px "FF Good Pro Cond", "Arial Narrow", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.letterSpacing = '18px'; g.fillText('LEARN MORE', 521, 134); tex.needsUpdate = true };
+  draw(); document.fonts && document.fonts.ready.then(draw);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(4, 1), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false, toneMapped: false })); btn.add(face);
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 3.4), new THREE.MeshBasicMaterial({ map: softDot, color: new C3(.7, .55, 1), transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })); glow.position.z = -.01; btn.add(glow);
+  face.renderOrder = glow.renderOrder = 2;
+  const S_ = { t: -1, w: 0, inside: false, hit: 0 }, lp = new V3(), prevZ = { v: NaN };
+  function enter() {   // in: from here on, only the black
+    buzz([30, 80, 30, 80, 160]); S_.inside = true; S_.t = 0; S_.hit = 0; auto = null; lockI = -1; warp = null;
+    const dir = new V3(0, 0, -1).applyQuaternion(rig.q);   // dead ahead of where you're looking
+    btn.position.copy(player.pos).addScaledVector(dir, LOOK.voidBtnDist ?? 20000); btn.quaternion.copy(rig.q); btn.scale.setScalar((LOOK.voidBtnSize ?? 1) * 700); btn.visible = true; prevZ.v = NaN;   // straight ahead, facing you
+  }
+  function pressed() {   // flown through: it goes, and the page opens (holding W is a key press, so the browser allows it; else a link to click)
+    S_.hit = 1; buzz([20, 40, 120]); engineLook.burst = 2; igniteK = 1;
+    let w = null; try { w = window.open(VOID_URL, '_blank', 'noopener') } catch (e) { }
+    if (!w) { const a = document.createElement('a'); a.id = 'voidLink'; a.href = VOID_URL; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Learn more →'; document.body.appendChild(a); setTimeout(() => a.remove(), 12000) }
   }
   return {
-    get busy() { return S_.t >= 0 }, get far() { return S_.far }, get w() { return S_.w },
-    reset() { S_.t = -1; S_.w = 0; dark.hidden = true; S_.far = false; star.visible = false; el.style.opacity = 0; document.body.classList.remove('farside') },   // (the black hole lab, going round again)
+    get busy() { return S_.inside }, get inside() { return S_.inside }, get far() { return false }, get w() { return S_.w }, get hit() { return S_.hit > 0 },
+    reset() { S_.inside = false; S_.t = -1; S_.w = 0; btn.visible = false },   // home again (H, or the lab going round again)
     update(rdt) {
       const L = LOOK, on = !!(L.singularity ?? 1) && S.mode === 'fly' && booted, d = player.pos.distanceTo(GC);
-      singQ = on && !S_.far && !(S_.t >= 0) ? 1 - sstep(d, singR() * 1.05, BH.sh * (L.singHear ?? 14)) : S_.t >= 0 ? Math.max(singQ, Math.min(1, S_.w * 2)) : Math.max(0, singQ - rdt);
-      if (on && S_.t < 0 && d < singR()) { if (S_.far) { S_.far = false; el.style.opacity = 0; document.body.classList.remove('farside') } enter() }   // (even straight back in from the far side)
-      if (S_.t >= 0) {   // inside: slow white, the switch to the far side at its peak, then the white clears
-        const tin = L.singIn ?? 3, tout = L.singOut ?? 4; S_.t += rdt; player.vel.multiplyScalar(Math.exp(-rdt * 4));
-        if (S_.t < tin) S_.w = Math.pow(S_.t / tin, 1.5); else { if (!S_.far) emerge(); S_.w = 1 - sstep(S_.t, tin + .6, tin + .6 + tout) }
-        if (S_.t > tin + .6 + tout) S_.t = -1;
-      } else S_.w = 0;
-      dark.style.opacity = S_.w.toFixed(3); dark.hidden = S_.w <= 0;   // the dip to black, and back
-      if (S_.far) { S_.ft += rdt; const k = sstep(S_.ft, (L.singIn ?? 3) * .2, (L.singIn ?? 3) * .2 + 3); star.material.opacity = k; el.style.opacity = (k * (1 - sstep(player.pos.distanceTo(star.position) < 1 ? 0 : S_.ft, 14, 18))).toFixed(3);
-        if (S_.ft > 20 || S.mode !== 'fly') { S_.far = false; star.visible = false; el.style.opacity = 0; document.body.classList.remove('farside') } }   // back in the galaxy: the far side lets go
+      singQ = S_.inside ? 1 : on ? 1 - sstep(d, singR() * 1.05, BH.sh * (L.singHear ?? 14)) : Math.max(0, singQ - rdt);
+      if (on && !S_.inside && d < singR()) enter();
+      if (!S_.inside) { S_.w = 0; return }
+      S_.t += rdt; S_.w = Math.min(1, Math.pow(S_.t / Math.max(.1, L.singIn ?? 3), 1.5));   // the galaxy fades to black, for good
+      btn.scale.setScalar((L.voidBtnSize ?? 1) * 700); const a = sstep(S_.t, (L.singIn ?? 3) * .6, (L.singIn ?? 3) + 1.5) * (1 - S_.hit);   // the button comes up out of the black once it's all gone
+      face.material.opacity = a; glow.material.opacity = .55 * a * (.8 + .2 * Math.sin(S_.t * 2.2)); btn.visible = a > .002 || !S_.hit;
+      if (S_.hit) { S_.hit = Math.min(1, S_.hit + rdt * .5) }
+      lp.copy(player.pos).sub(btn.position).applyQuaternion(_q.copy(btn.quaternion).invert()).divideScalar(btn.scale.x);   // you, in the button's own frame
+      if (!S_.hit && a > .5 && Number.isFinite(prevZ.v) && prevZ.v * lp.z <= 0 && Math.abs(lp.x) < 2.3 && Math.abs(lp.y) < .65) pressed();
+      prevZ.v = lp.z;
     },
   };
 })();
