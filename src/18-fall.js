@@ -23,7 +23,8 @@ const fall = (() => {
     F.fov = (L.bhFov ?? 45) * F.kc; F.blur = (L.bhBlur ?? .6) * F.kc; F.ab = (L.bhAberr ?? .8) * F.kc;
     { const w = (L.bhRoll ?? 25) * Math.PI / 180 * F.kc * rdt; if (w > 1e-6) { F.roll += w; if (!(bhLab && bhLab.driving)) rig.q.multiply(sq_.setFromAxisAngle(zAx, w)).normalize() } }   // the view turns with the hole's spin
     // spaghettification: longer toward the hole, thinner across (the volume kept), about the ship's middle
-    const s = 1 + (L.bhStretch ?? 1) * 2.5 * Math.pow(F.kc, 3);
+    const Rs = sh * Math.max(1.5, L.bhStretchFrom ?? 5), ks = Math.max(0, Math.min(1, Math.log(Rs / Math.max(d, 1e-6)) / Math.log(Rs / (sh * 1.45))));   // from bhStretchFrom down to the horizon (log distance)
+    const s = 1 + (L.bhStretch ?? 1) * 2.5 * Math.pow(ks, L.bhStretchCurve ?? 2);
     if (s > 1.002) {
       nH.copy(GC).sub(player.pos).normalize(); const c = 1 / Math.sqrt(s), e = s - c, x = nH.x, y = nH.y, z = nH.z;
       sm.set(c + e * x * x, e * x * y, e * x * z, 0, e * y * x, c + e * y * y, e * y * z, 0, e * z * x, e * z * y, c + e * z * z, 0, 0, 0, 0, 1);
