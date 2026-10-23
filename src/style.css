@@ -904,7 +904,7 @@ body.scrolling #nav,body.scrolling #mTabs,body.scrolling #recPlay{display:none!i
 /* the portal opening: while loading, the mark's outline glows on black with a quiet "Loading"; the 3D portal takes over in the same place */
 #portalLoad{display:none}
 html.portal #intro,html.portal #skipHint{display:none!important}
-html.portal #portalLoad{display:block;position:fixed;inset:0;z-index:70;pointer-events:none;background:#000;--pw:min(62vw,calc(100vh * 2.2));transition:background .6s ease}
+html.portal #portalLoad{display:block;position:fixed;inset:0;z-index:70;pointer-events:none;background:#000;--pw:min(65vw,calc(100vh * 2.2));transition:background .6s ease}
 html.portal #portalLoad.live{background:transparent}
 #portalLoad svg{position:absolute;width:var(--pw);height:auto;left:calc(50% - var(--pw) * .5);top:calc(50% - var(--pw) * .1464);overflow:visible;transition:opacity .5s ease}
 #portalLoad path{fill:#000;paint-order:stroke;stroke:#fff;stroke-width:calc(var(--pls,1.5px) * 2);vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 3px rgba(255,255,255,.9)) drop-shadow(0 0 10px rgba(220,215,255,.45));animation:plPulse 2.4s ease-in-out infinite}
@@ -929,7 +929,9 @@ body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));cli
 /* the line above the mark, and the Enter button (the autoplay opening) */
 #plTag{position:absolute;left:0;right:0;top:calc(50% - var(--pw) * .1464 - 30px);transform:translateY(-100%);margin:0;text-align:center;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.78);transition:opacity .8s ease}
 #plTag.gone{opacity:0}
-#plEnter{position:absolute;left:50%;top:calc(50% + var(--pw) * .1464 + 26px);transform:translateX(-50%);pointer-events:auto;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.6);padding:12px 30px 11px 33px;cursor:inherit;transition:background .25s,color .25s,opacity .6s}
-#plEnter:hover,#plEnter:focus-visible{background:#fff;color:#000;outline:none}
+#plEnter{position:absolute;left:50%;top:calc(50% + var(--pw) * .1464 + 26px);transform:translateX(-50%);pointer-events:auto;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#fff;background:transparent;border:0;padding:12px 30px 11px 33px;cursor:inherit;transition:background .45s ease,color .45s ease,opacity .6s}
+#plEnter svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}#plEnter rect{fill:none;stroke:#fff;stroke-width:1.5px;vector-effect:non-scaling-stroke;stroke-dasharray:1 1;stroke-dashoffset:1;transition:stroke-dashoffset .4s ease}#plEnter span{position:relative}
+#plEnter.ready{background:#fff;color:#000}   /* loaded: the outline closes, it fills, and it's the way in */
+#plEnter.ready:hover,#plEnter.ready:focus-visible{background:rgba(255,255,255,.82);outline:none}
 #plEnter.gone{opacity:0;pointer-events:none}
 @media (max-width:760px){#plTag{font-size:11px;letter-spacing:.22em}}

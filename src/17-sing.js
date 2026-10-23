@@ -29,16 +29,15 @@ const sing = (() => {
   }
   function hit() {   // touched: you stop dead (the mouse lets go of you too), a click, and the button shrinks to a small white point
     S_.st = 'hit'; S_.t = 0; S_.fp.copy(player.pos); S_.fq.copy(rig.q); player.vel.set(0, 0, 0); buzz([20, 40, 120]); clickSnd();
+    try { S_.win = window.open('about:blank', '_blank') } catch (e) { S_.win = null }   // the tab opens now, while your key press still counts (a second later the browser would block it); the post loads into it below
     face.material.map = texHit; face.material.opacity = 1; face.material.needsUpdate = true; glow.visible = false;
   }
-  function open() {   // the page (holding W is a key press, so the browser allows it; else a link to click)
-    let w = null; try { w = window.open(VOID_URL, '_blank', 'noopener') } catch (e) { }
-    if (!w) { const a = document.createElement('a'); a.id = 'voidLink'; a.href = VOID_URL; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Learn more →'; document.body.appendChild(a); setTimeout(() => a.remove(), 12000) }
+  function open() {   // the post, in the tab opened at the touch
+    const w = S_.win; S_.win = null; try { if (w && !w.closed) { w.opener = null; w.location.href = VOID_URL } } catch (e) { }
   }
-  function out() {   // back, well outside the galaxy, facing its heart
+  function out() {   // back out: high over the black hole, looking straight down on it
     S_.st = 'off'; S_.w = 0; S_.slow = 1; btn.visible = false;
-    const R = GAL_R0 + GAL_LEN, d = HOME_P.clone().sub(GC).projectOnPlane(GAL_UP).normalize();
-    player.pos.copy(GC).addScaledVector(d, R + (LOOK.voidOutD ?? 100000)); player.vel.set(0, 0, 0); aimAt(GC.clone().sub(player.pos), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
+    player.pos.copy(GC).addScaledVector(GAL_UP, LOOK.voidOutD ?? 30000); player.vel.set(0, 0, 0); aimAt(GAL_UP.clone().negate(), 1); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q); strands.length = 0; curStrand = null; camRelV.set(0, 0, 0);
   }
   return {
     get busy() { return S_.st !== 'off' }, get inside() { return S_.st !== 'off' }, get far() { return false }, get w() { return S_.w }, get hit() { return S_.st === 'hit' },

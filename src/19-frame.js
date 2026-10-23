@@ -44,7 +44,7 @@ function updateAndro() {
   { const Rc = (GAL_R0 + GAL_LEN) * (L.coreInR ?? .12); coreInK = 1 - (L.coreInFade ?? .6) * (1 - sstep(dGC, Rc * .2, Rc)) }   /* inside the core: its haze and volume thin out so you can see */
   const cg = (1 + ((L.coreGlows ?? 1) - 1) * coreIn) * coreInK;   // every big glow (core, bulge, haze, gas) scaled by "Glows in the core" while you're in it
   coreGlow.material.opacity = L.core * .22 * f * inK(coreGlow.scale.x) * cg; haze.u.op.value = L.haze * L.hazeBright * cg * (1 + ((L.mapHaze ?? 1) - 1) * mapK);   // on the map the arm haze (the glowing band along the timeline) has its own strength
-  wallSky.mesh.position.copy(camera.position); wallSky.u.op.value = L.wallpaper ? L.wallBlue : 0; wallSky.mesh.visible = !!L.wallpaper;
+  { const wp = intro.active && intro.ph === 0 ? L.portalWallpaper ?? 0 : 0; wallSky.mesh.position.copy(camera.position); wallSky.u.op.value = Math.max(L.wallpaper ? L.wallBlue : 0, wp * (L.wallBlue || .3)); wallSky.mesh.visible = !!L.wallpaper || wp > 0 }   // (on the opening screen too, if you want it there)
   sparkle.mesh.position.copy(camera.position); sparkle.u.op.value = L.wallpaper ? L.sparkle : 0; sparkle.mesh.visible = !!L.wallpaper && L.sparkle > 0;
   andro.visible = ANDRO; dustFil.visible = ANDRO && L.dustLanes > 0; dustFil2.visible = ANDRO && L.dust2 > 0; if (!ANDRO) return;
   bulgeSpr.forEach(s => { s.scale.setScalar(bulgeR * 2 * s.userData.k * L.bulgeSize); s.material.opacity = s.userData.o * L.bulge * f * inK(s.scale.x) * cg });
@@ -79,7 +79,7 @@ function updateTimeRings(dt) {
     ringFarK = 0;
   } else {
     // far enough out (above the disk or past its rim) the timeline comes into view: the five-year marks, and the spiral itself
-    const out = Math.max(Math.abs(lp.y), rr - Rr), F = Rr * (L.flyYearFar ?? .4), far = fr && booted && !intro.active; ringFarK += ((F > 0 ? sstep(out, F, F * 1.6) : 1) * (far ? 1 : 0) - ringFarK) * Math.min(1, dt * 1.5);   /* far out above (or beyond) the galaxy the timeline is there: year lines, dividers, the five-year marks */
+    const out = Math.max(Math.abs(lp.y), rr - Rr), F = L.flyLinesAt ?? 12000, far = fr && booted && !intro.active; ringFarK += ((F > 0 ? sstep(out, F, F * 1.6) : 1) * (far ? 1 : 0) - ringFarK) * Math.min(1, dt * 1.5);   /* far out above (or beyond) the galaxy the timeline is there: year lines, dividers, the five-year marks */
     const inside = (1 - sstep(Math.abs(lp.y), 60000, 200000)) * (1 - sstep(rr, Rr * 1.02, Rr * 1.2)); mapLvl[0] = ringFarK; mapLvl[1] = ringFarK * inside; mapLvl[2] = 0; mapStars = 0;
   }
   const show = map || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0; ruler.visible = timeRings.mesh.visible && !SPIRAL;   // with the single spiral, the spiral itself is the timeline (it carries its own dates)
