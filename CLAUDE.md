@@ -30,7 +30,7 @@ and gives quick visual feedback; keep replies short).
   crossing to another moves and turns the world (`uni.rebase` → `remap` in 13-universe; anything holding a world position or
   heading must be mapped there). `uniToWorld`/`worldToUni` convert; network, flags and the saved ship use universe coordinates.
   Others are snapshots (`uni.take`, one shared, one per galaxy with its own look) on disks. Dates (`yearU`, `T_A/T_B`) are the
-  current galaxy's years (`GYEAR`…`GEND`); winners' galaxy-frame positions are `PLL`, their galaxy `GI`. Per-galaxy settings: the galaxy
+  current galaxy's years (`GYEAR`…`GEND`); winners' galaxy-frame positions are `PLL`, their galaxy `GI`. Far galaxies differ by default (`galRnd` dice, `galRand`): colours via the playground's jitter, size/winding via `galForm` (picture and winners alike; the current galaxy eases to the built shape as its detail comes in, `UNI.m`). Per-galaxy settings: the galaxy
   playground (18-gallab, Look → Universe). Arriving prompts Enter/Play; Play is `gplay` (18-play) with its own look `LOOK_PLAY`.
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
   field for settings copied from the Ascent toy.

@@ -17,7 +17,7 @@ const gwarp = (() => {
   // a run to a target: { k } a galaxy, { cl } a cluster's middle, { home }
   function start(t) {
     const L = LOOK; st.on = true; st.t = 0; st.tgt = t; st.from.copy(player.pos);
-    if (t.k != null) { const c = uniAt(t.k, _a), dir = _b.copy(c).sub(player.pos).normalize(); st.to.copy(c).addScaledVector(dir, -R() * Math.max(1.05, (L.igFrom ?? 1.15) * 1.08)); st.q1.setFromRotationMatrix(_m.lookAt(new V3(), dir, GAL_UP)) }   // just outside its rim, on the way in
+    if (t.k != null) { const c = uniAt(t.k, _a), dir = _b.copy(c).sub(player.pos).normalize(); st.to.copy(c).addScaledVector(dir, -R() * Math.max(1, galForm(t.k).s) * Math.max(1.05, (L.igFrom ?? 1.15) * 1.08)); st.q1.setFromRotationMatrix(_m.lookAt(new V3(), dir, GAL_UP)) }   // just outside its rim, on the way in
     else { if (t.home) uniHome(st.to); else uni.clAt(t.cl, st.to); const dir = _b.copy(st.to).sub(player.pos); if (dir.lengthSq() < 1) dir.set(0, 0, -1).applyQuaternion(player.quat); dir.normalize(); if (!t.home && st.from.distanceTo(st.to) > CR() * 2) st.to.addScaledVector(dir, -CR() * 1.5 * (L.gwClusterStop ?? .6));   // a cluster, from outside it: stopping a little short of its middle, so its galaxies fill the view (from one of its galaxies: right to the middle)
       const look = t.home ? uniFace(_a).sub(st.to).normalize() : dir; st.q1.setFromRotationMatrix(_m.lookAt(new V3(), look, GAL_UP)) }   // (home: arriving facing the clusters' arc)
     st.q0.copy(player.quat); auto = null; lockI = -1; warp = null; camHold = null; buzz([20, 30, 60]); if (TEST) console.log('warp to', t.k != null ? galName(t.k) : t.home ? 'home' : clName(t.cl));
@@ -36,7 +36,7 @@ const gwarp = (() => {
           for (let k = 0; k < UNI_N + CL_N; k++) {
             const gal = k < UNI_N; if (gal ? clOf(k) !== lv.cl || k === lv.gal : k - UNI_N === lv.cl) continue;
             const c = uni.tagAt(k, _a); _b.copy(c).applyMatrix4(camera.matrixWorldInverse); if (_b.z > -1) continue;
-            _a.project(camera); const x = (_a.x * .5 + .5) * innerWidth, y = (-_a.y * .5 + .5) * innerHeight, rp = (gal ? R() : CR()) / (-_b.z * th) * innerHeight * .5 * .6, d = Math.hypot(x - ax, y - ay);
+            _a.project(camera); const x = (_a.x * .5 + .5) * innerWidth, y = (-_a.y * .5 + .5) * innerHeight, rp = (gal ? R() * galForm(k).s : CR()) / (-_b.z * th) * innerHeight * .5 * .6, d = Math.hypot(x - ax, y - ay);
             if (d < Math.max(50, rp) && d < bd) { bd = d; st.aim = k }
           }
         }

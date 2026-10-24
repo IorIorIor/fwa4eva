@@ -265,7 +265,16 @@ for (let i = 0; i < N; i++) {
 setGal(UNI_N - 1);
 // the winners' world positions, from their galaxies' centres as they are now (after the universe has moved, or its layout changed)
 const PLL = new Float64Array(N * 3); { const v = new V3(); for (let i = 0; i < N; i++) { v.fromArray(PL, i * 3).applyQuaternion(GQI); PLL[i * 3] = v.x; PLL[i * 3 + 1] = v.y; PLL[i * 3 + 2] = v.z } }   // each winner in its galaxy's own frame
-function uniPlaceStars() { const c = new V3(), q = new Q4(), v = new V3(); for (let i = 0; i < N; i++) { if (i === 0 || GI[i] !== GI[i - 1]) { uniAt(GI[i], c); uniQ(GI[i], q) } const o = i * 3; v.set(PLL[o], PLL[o + 1], PLL[o + 2]).applyQuaternion(q); P[o] = c.x + v.x; P[o + 1] = c.y + v.y; P[o + 2] = c.z + v.z; PL[o] = v.x; PL[o + 1] = v.y; PL[o + 2] = v.z } }
+// a galaxy's own dice: the same number in [-1, 1] every time for galaxy k and a salt (a number or a setting's name)
+const galRnd = (k, salt) => { let h = typeof salt === 'string' ? [...salt].reduce((a, ch) => Math.imul(a ^ ch.charCodeAt(0), 16777619), 2166136261) : salt * 2654435761; h = Math.imul(h ^ Math.imul(k + 1, 374761393), 668265263); h = Math.imul(h ^ h >>> 13, 1274126177); return ((h ^ h >>> 16) >>> 0) / 4294967296 * 2 - 1 };
+// seen from afar every galaxy has its own size and winding (its picture and its winners scaled, and turned by an angle that grows
+// with the radius); the galaxy you're in is built at the one size, so as its detail comes in it eases into that (m: 1 its own form … 0 the built one)
+const galForm = (k, m = 1, out = {}) => { let L = LOOK; try { L = LOOK_FLY || LOOK } catch (e) { }   // (LOOK_FLY comes later; at load they're one)
+  const rj = L.galRand ?? 1, s = Math.exp(galRnd(k, 'size') * .6 * (L.galSizeVar ?? 1) * Math.min(1.5, rj)), w = galRnd(k, 'wind'), tw = (w > 0 ? w * 10 : w * 6) * (L.galWindVar ?? 1) * rj;   /* (tw > 0 unwinds it toward open arms, < 0 winds it tighter) */ out.s = 1 + (s - 1) * m; out.tw = tw * m; return out };
+UNI.m = 0;
+function uniPlaceStars(only = -1) { const c = new V3(), q = new Q4(), v = new V3(), fm = {}, Rg = GAL_R0 + GAL_LEN; const i0 = only >= 0 ? Math.max(0, UNI_I0[only]) : 0, i1 = only >= 0 ? (UNI_I1[only] < 0 ? -1 : UNI_I1[only]) : N - 1;
+  for (let i = i0; i <= i1; i++) { if (i === i0 || GI[i] !== GI[i - 1]) { uniAt(GI[i], c); uniQ(GI[i], q); galForm(GI[i], GI[i] === UNI.k ? UNI.m : 1, fm) } const o = i * 3; v.set(PLL[o], PLL[o + 1], PLL[o + 2]);
+  if (fm.tw || fm.s !== 1) { const a = fm.tw * Math.min(Math.hypot(v.x, v.z) / Rg, 1.3), ca = Math.cos(a), sa = Math.sin(a), x = v.x * ca - v.z * sa, z = v.x * sa + v.z * ca; v.set(x * fm.s, v.y * fm.s, z * fm.s) } v.applyQuaternion(q); P[o] = c.x + v.x; P[o + 1] = c.y + v.y; P[o + 2] = c.z + v.z; PL[o] = v.x; PL[o + 1] = v.y; PL[o + 2] = v.z } }
 uniPlaceStars();
 const NEB_B = cloudField(7040, armPlace(17500, 2450));   // up to 7680 clouds with NEB_A (Cloud count × 640)
 const LANE_B = cloudField(500, armPlace(8750, 1400));
