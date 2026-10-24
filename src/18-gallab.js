@@ -19,14 +19,20 @@ const galLab = (() => {
   const MY_GALAXIES = { default: { spiralTurns: .5, spiralGap: 1.25, spiralHole: 1.5, armStart: 22000, armWiden: 1.08, armWidth: 2.52, starBandW: 3.3, starAlong: .1, starBandH: .72, starSep: 4500, spiralSize: .48 }, 2000: { radCol: .98 } };
   const st = Object.assign({ def: {}, g: {} }, store.json(KEY, null) || { def: MY_GALAXIES.default, g: { 2000: MY_GALAXIES[2000] } }); if (!st.g || typeof st.g !== 'object') st.g = {}; if (!st.def || typeof st.def !== 'object') st.def = {};
   const base = k => { const v = +uni.shared(LOOK_FLY)[k]; return Number.isFinite(v) ? v : ROW[k][3] };
-  const valOf = (y, k) => y === 'def' ? (st.def[k] ?? base(k)) : (st.g[y] && st.g[y][k] != null ? st.g[y][k] : st.def[k] ?? base(k));
+  // by default every galaxy wanders a little off the default (its own dice, so always the same; Look → Universe "Galaxies differ" says how far); a value set here stays as set
+  const JIT = { radHue1: .1, radHue2: .2, radHue3: .2, radSat: .15, radCol: .25, arcs: .3, haze: .2, hazeBright: .25, volGlow: .3 }, HUES = new Set(['radHue1', 'radHue2', 'radHue3']);
+  const valOf = (y, k) => { if (y === 'def') return st.def[k] ?? base(k); if (st.g[y] && st.g[y][k] != null) return st.g[y][k];
+    const v0 = st.def[k] ?? base(k), j = (JIT[k] || 0) * galRnd(galOfYear(y), k) * (LOOK_FLY.galRand ?? .5); if (!j) return v0;
+    const v = HUES.has(k) ? ((v0 + j) % 1 + 1) % 1 : Math.min(ROW[k][5], Math.max(ROW[k][4], v0 + j)); return +v.toFixed(3) };
   const save = () => store.set(KEY, JSON.stringify(st));
   // colours: straight into each galaxy's own look (what flight uses inside it)
   function pushColours(quiet) {
     for (const y of GKEYS) { const own = uni.own[y] = uni.own[y] || {}; COLOUR.forEach(k => { const v = valOf(y, k); if (v !== base(k)) own[k] = v; else delete own[k] }); if (!Object.keys(own).length) delete uni.own[y] }
+    const hd = (a, b) => ((a - b) % 1 + 1.5) % 1 - .5, hb = Math.max(.05, base('hazeBright'));   // the far pictures (until a galaxy has its own): turned toward its hues, as bright as its haze
+    for (const y of GKEYS) { const dh = (hd(valOf(y, 'radHue1'), base('radHue1')) + hd(valOf(y, 'radHue2'), base('radHue2')) + hd(valOf(y, 'radHue3'), base('radHue3'))) / 3; uni.setFar(galOfYear(y), dh * Math.PI * 2 * Math.min(1, valOf(y, 'radCol')), Math.max(.3, 1 + (valOf(y, 'hazeBright') / hb - 1) * .6)) }
     store.set('sotd-gal-looks', JSON.stringify(uni.own)); if (!quiet) { uni.galLook(); uni.markOwn() }
   }
-  pushColours(true);   // (the colours of every galaxy, ready for when you get there)
+  let rand = LOOK_FLY.galRand ?? .5; pushColours(true);   // (the colours of every galaxy, ready for when you get there)
 
   // the drawing: the same spiral and placement as the galaxy itself, from above
   const g32 = s => { let a = s >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296 } };
@@ -135,5 +141,5 @@ const galLab = (() => {
   function open() { if (!el) build(); el.hidden = false; document.body.classList.add('gallab'); if (document.pointerLockElement) document.exitPointerLock(); cols.forEach(c => c.refresh()) }
   function close() { unview(); if (el) el.hidden = true; document.body.classList.remove('gallab') }
   if (location.hash === '#galaxy-lab') setTimeout(open, 1500);
-  return { open, close, view, unview, cam, drive: () => viewing >= 0, get viewing() { return viewing }, get state() { return st }, copyText, importText };
+  return { open, close, view, unview, cam, drive: () => { const r = LOOK_FLY.galRand ?? .5; if (r !== rand) { rand = r; pushColours(); cols.forEach(c => c.refresh()) } return viewing >= 0 }, get viewing() { return viewing }, get state() { return st }, copyText, importText };
 })();
