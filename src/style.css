@@ -999,4 +999,9 @@ body.gallab #cross,body.gallab #wcmp,body.gallab #galTags,body.gallab #shipLayer
 #galLab canvas{cursor:zoom-in}#galLab .gl-c.def canvas{cursor:default}
 #galLab h4{display:flex;align-items:center;justify-content:space-between}#galLab h4 button{padding:1px 6px;font-size:12px;background:none;border-color:rgba(255,255,255,.18)}
 #galLab h4 small{font-size:8px;letter-spacing:.06em;color:rgba(255,255,255,.3);text-transform:none}
-#galTags .g span u{display:none;text-decoration:none;color:#fff;margin-top:2px}#galTags .g.aim span u{display:block}#galTags .g.aim span{background:rgba(26,20,40,.8);outline:1px solid rgba(255,255,255,.5)}#galTags .g.aim{z-index:2000!important;opacity:1!important}
+#galTags .g span u{display:none;text-decoration:none;color:#fff;margin-top:2px;background:linear-gradient(90deg,rgba(255,255,255,.35) calc(var(--hold,0)*100%),transparent 0);padding:1px 3px;margin-left:-3px}#galTags .g.aim span u{display:block}#galTags .g.aim span{background:rgba(26,20,40,.8);outline:1px solid rgba(255,255,255,.5)}#galTags .g.aim{z-index:2000!important;opacity:1!important}
+#galTags .g.cl span em{font-size:11px}
+#backBtn{position:fixed;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:12;display:flex;align-items:center;gap:9px;height:36px;padding:0 10px 0 12px;background:rgba(14,14,20,.62);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.25);color:#fff;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:12px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+#backBtn i{font-style:normal;font-size:14px}#backBtn kbd{font-family:var(--mono);font-size:9px;border:1px solid currentColor;border-radius:3px;padding:1px 5px 0;opacity:.6}
+#backBtn:hover{background:#fff;color:#000}
+body.intro #backBtn,body.playing #backBtn,body.map #backBtn{display:none}

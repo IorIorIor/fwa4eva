@@ -45,7 +45,7 @@ phoneTier(LOOK_MAP); let LOOK_INV = phoneTier({ ...LOOK, ...store.json(INV_KEY, 
 const PLAY_KEY = 'sotd-look-play'; let LOOK_PLAY = phoneTier({ ...LOOK, ...store.json(PLAY_KEY, {}) });   // Play mode's own look: a copy of the flying one until you tune it
 /* the galaxy's shape is one and the same in every look: these are built into the galaxy itself (on Rebuild), so flying,
    the map and the inverted look always share them, whichever one you change them in */
-const GAL_KEYS = ['galaxyStyle', 'armStart', 'armWindA', 'armWindG', 'armCount', 'armLock', 'armBeat', 'spiral', 'armWiden', 'armWidenCurve', 'spiralTurns', 'spiralGap', 'spiralHole', 'spiralSize', 'starBandW', 'starBandH', 'starCoreH', 'starAlong', 'starSep', 'nebOut', 'hazeCore', 'starHug', 'uniGap', 'uniTurn', 'uniRise', 'uniTilt', 'uniAz', 'uniLayout', 'uniSpread', 'uniArcR', 'uniArcWave', 'uniTiltVar', 'uniSpinVar', 'uniWander', 'uniGroups', 'uniJitter', 'uniSeed', 'galOwn'];
+const GAL_KEYS = ['galaxyStyle', 'armStart', 'armWindA', 'armWindG', 'armCount', 'armLock', 'armBeat', 'spiral', 'armWiden', 'armWidenCurve', 'spiralTurns', 'spiralGap', 'spiralHole', 'spiralSize', 'starBandW', 'starBandH', 'starCoreH', 'starAlong', 'starSep', 'nebOut', 'hazeCore', 'starHug', 'uniGap', 'uniTurn', 'uniRise', 'uniTilt', 'uniAz', 'uniLayout', 'uniSpread', 'uniArcR', 'uniClusterR', 'uniTiltVar', 'uniSpinVar', 'uniWander', 'uniGroups', 'uniJitter', 'uniSeed', 'galOwn'];
 GAL_KEYS.forEach(k => { if (k in LOOK_FLY) LOOK_MAP[k] = LOOK_INV[k] = LOOK_PLAY[k] = LOOK_FLY[k] });
 function syncGal() {
   if (LOOK === LOOK_MIX) return; let ch = false;
@@ -90,7 +90,7 @@ function saveLook() { if (LOOK === LOOK_MIX) return; syncGal(); if (LOOK === LOO
     const snap = await lookDoc.get(), d = snap.exists && snap.data();
     if (d && d.look && typeof d.look === 'object') {
       Object.keys(d.look).forEach(k => { if (k in LOOK_DEFAULTS && typeof d.look[k] === 'number') LOOK[k] = d.look[k] }); migrateLook(LOOK);
-      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3 || fix4 || fix5 || fix6 || fix7 || fix8 || fix9 || fix10 || fix11 || fix12 || fix13 || fix14 || fix15 || fix16 || fix17 || fix18 || fix19 || fix20 || fix21 || fix22 || fix23) saveLook(); store.set(LOOK_KEY, JSON.stringify(uni.shared(LOOK))); renderLook(); applyLook()
+      if (hudFix || STYLE_FIRST || speedFix || relFix || camFix || ringFix || moteFix || streakFix || menuFix || retFix || bandFix || streak3 || band3 || slow2 || slow3 || fix4 || fix5 || fix6 || fix7 || fix8 || fix9 || fix10 || fix11 || fix12 || fix13 || fix14 || fix15 || fix16 || fix17 || fix18 || fix19 || fix20 || fix21 || fix22 || fix23 || fix24) saveLook(); store.set(LOOK_KEY, JSON.stringify(uni.shared(LOOK))); renderLook(); applyLook()
     } else saveLook();
   } catch (e) { }
 })();

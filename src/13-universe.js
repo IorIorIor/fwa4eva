@@ -85,21 +85,30 @@ const uni = (() => {
 
   // year tags over the galaxies (when you're out between them) and their marks round the screen's edge
   const tags = document.createElement('div'); tags.id = 'galTags'; tags.className = 'hud'; tags.setAttribute('aria-hidden', 'true'); document.body.appendChild(tags);
-  const TAG = Array.from({ length: UNI_N }, (_, k) => { const e = document.createElement('div'); e.className = 'g'; const n = UNI_I0[k] >= 0 ? UNI_I1[k] - UNI_I0[k] + 1 : 0;
-    e.innerHTML = `<i></i><span><em>${galName(k)}</em><b></b><u>Z to warp</u></span>`; e.hidden = true; tags.appendChild(e); return { e, d: e.querySelector('b'), on: false, dt: '' } });   // like a winner's tag: the year, and how far
-  const fmtU = d => Math.round(d).toLocaleString('en');
+  // one tag per galaxy (0…26) and per cluster (27…31): at home the clusters; in a cluster its galaxies (and the other clusters)
+  const TAG = Array.from({ length: UNI_N + CL_N }, (_, k) => { const e = document.createElement('div'); e.className = 'g' + (k >= UNI_N ? ' cl' : '');
+    e.innerHTML = `<i></i><span><em>${k < UNI_N ? galName(k) : clName(k - UNI_N)}</em><b></b><u>Hold to warp</u></span>`; e.hidden = true; tags.appendChild(e); return { e, d: e.querySelector('b'), on: false, dt: '' } });   // like a winner's tag: the year, and how far
+  const fmtU = d => Math.round(d).toLocaleString('en'), clAt = (c, out = new V3()) => uniToWorld(UNI.cl[c], out), tagAt = (k, out) => k < UNI_N ? uniAt(k, out) : clAt(k - UNI_N, out);
+  // where you are: in a cluster (near its middle, or at one of its galaxies), at a galaxy, or out at home
+  const level = { cl: -1, gal: -1 };
+  function findLevel(p) {
+    let g = -1, gd = Infinity; for (let k = 0; k < UNI_N; k++) { const d = uniAt(k, _w).distanceTo(p); if (d < gd) { gd = d; g = k } } level.gal = gd < Rg * 1.6 ? g : -1;
+    const cr = Math.max(2.5, LOOK.uniClusterR ?? 5) * Rg; let c = -1, cd = Infinity; for (let j = 0; j < CL_N; j++) { const d = clAt(j, _w).distanceTo(p); if (d < cd) { cd = d; c = j } }
+    level.cl = level.gal >= 0 ? clOf(level.gal) : cd < cr * 1.9 ? c : -1;
+  }
   function updateTags() {
     const L = LOOK, W = innerWidth, H = innerHeight;
     tags.hidden = !booted || intro.active || gplay.on || !(L.galTips ?? 1); if (tags.hidden) return; const cmp = !!(L.galCompass ?? 1), cx = W / 2, cy = H / 2;   // always there (not over the opening, nor in Play)
-    const ord = TAG.map((t, k) => [uniAt(k, _v).distanceToSquared(camera.position), k]).sort((a, b) => a[0] - b[0]), boxes = [];   // nearest first: where tags would land on each other, the nearer one keeps its place
+    const show = k => k < UNI_N ? clOf(k) === level.cl : k - UNI_N !== level.cl; TAG.forEach((t, k) => { if (!show(k) && !t.e.hidden) t.e.hidden = true });
+    const ord = TAG.map((t, k) => [tagAt(k, _v).distanceToSquared(camera.position), k]).filter(o => show(o[1])).sort((a, b) => a[0] - b[0]), boxes = [];   // nearest first: where tags would land on each other, the nearer one keeps its place
     for (const [, k] of ord) {
-      const t = TAG[k], c = uniAt(k, _v), d = c.distanceTo(camera.position); _w.copy(c).applyMatrix4(camera.matrixWorldInverse); let x, y, edge = false, a = 0;
+      const t = TAG[k], c = tagAt(k, _v), d = c.distanceTo(camera.position); _w.copy(c).applyMatrix4(camera.matrixWorldInverse); let x, y, edge = false, a = 0;
       if (_w.z < 0) { _p.copy(c).project(camera); x = (_p.x * .5 + .5) * W; y = (-_p.y * .5 + .5) * H }
       if (_w.z >= 0 || x < 20 || x > W - 20 || y < 70 || y > H - 20) { if (!cmp) { t.e.hidden = true; continue } edge = true; a = _w.z < 0 ? Math.atan2(y - cy, x - cx) : Math.atan2(-_w.y, _w.x);
         const cs = Math.cos(a), sn = Math.sin(a), tx = cs > 0 ? (W - 22 - cx) / cs : cs < 0 ? (22 - cx) / cs : Infinity, ty = sn > 0 ? (H - 22 - cy) / sn : sn < 0 ? (100 - cy) / sn : Infinity, tt = Math.min(tx, ty); x = cx + cs * tt; y = cy + sn * tt }
       { const bw = 80, bh = 28, bx = x - bw / 2, by = y - bh / 2; if (boxes.some(b => Math.abs(b[0] - bx) < (b[2] + bw) / 2 && Math.abs(b[1] - by) < (b[3] + bh) / 2)) { t.e.hidden = true; continue } boxes.push([bx, by, bw, bh]) }
       const ds = fmtU(d); if (ds !== t.dt) { t.dt = ds; t.d.textContent = ds }
-      t.e.hidden = false; t.e.classList.toggle('aim', gwarp.aim === k); t.e.classList.toggle('edge', edge); t.e.classList.toggle('back', edge && _w.z >= 0); t.e.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+      t.e.hidden = false; t.e.classList.toggle('aim', gwarp.aim === k); t.e.style.setProperty('--hold', gwarp.aim === k ? gwarp.holdK.toFixed(3) : 0); t.e.classList.toggle('edge', edge); t.e.classList.toggle('back', edge && _w.z >= 0); t.e.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
       if (edge) { t.e.firstChild.style.transform = `rotate(${(a * 180 / Math.PI + 90).toFixed(1)}deg)`; const cs = Math.cos(a); t.e.lastChild.style.transform = `translate(${cs < -.3 ? -100 : cs > .3 ? 0 : -50}%,${Math.sin(a) > 0 ? -130 : 30}%)` } else t.e.lastChild.style.transform = 'translate(10px,-50%)';   // on screen: beside the galaxy's core, as a winner's tag sits beside its star
       t.e.style.zIndex = String(1000 - Math.round(Math.log10(1 + d) * 50));
     }
@@ -107,10 +116,10 @@ const uni = (() => {
 
   return {
     relayout() {   // a layout slider moved: the galaxies move (the one you're in stays where it is, round you)
-      const L = LOOK, key = ['uniGap', 'uniTurn', 'uniRise', 'uniTilt', 'uniAz', 'uniLayout', 'uniSpread', 'uniJitter', 'uniWander', 'uniGroups', 'uniSeed', 'uniArcR', 'uniArcWave', 'uniTiltVar', 'uniSpinVar'].map(k => L[k]).join(); if (key === relayoutKey) return; const first = relayoutKey == null; relayoutKey = key; if (first) return;
+      const L = LOOK, key = ['uniGap', 'uniTurn', 'uniRise', 'uniTilt', 'uniAz', 'uniLayout', 'uniSpread', 'uniJitter', 'uniWander', 'uniGroups', 'uniSeed', 'uniArcR', 'uniClusterR', 'uniTiltVar', 'uniSpinVar'].map(k => L[k]).join(); if (key === relayoutKey) return; const first = relayoutKey == null; relayoutKey = key; if (first) return;
       uniLayout(L); uniPlaceStars();   /* (the world is the galaxy you're in: it stays round you, the others move and turn) */ stars.mesh.geometry.attributes.aP.needsUpdate = true; nkAt.set(NaN, NaN, NaN);
     },
-    get k() { return UNI.k }, get galK() { return galK }, get ig() { return igK }, get cap() { return cap }, get out() { return outT > .35 }, get near() { return nearK }, get nearD() { return nearD },
+    get k() { return UNI.k }, level, clAt, tagAt, get galK() { return galK }, get ig() { return igK }, get cap() { return cap }, get out() { return outT > .35 }, get near() { return nearK }, get nearD() { return nearD },
     rebase, galLook, galSave, shared, take, R: Rg, own, OWN_KEYS, rt, markOwn() { wantOwn = 1; wantOwnT = performance.now() + 1200 },
     async dump(w = 256) {   // (tests: the far picture as an image)
       const px = await renderer.readRenderTargetPixelsAsync(rt, 0, 0, 1024, 1024), cv = document.createElement('canvas'); cv.width = cv.height = w; const g = cv.getContext('2d'), im = g.createImageData(w, w), f = 1024 / w, max = [0, 0, 0];
@@ -120,7 +129,7 @@ const uni = (() => {
     // before the flight: which galaxy you're nearest, intergalactic speed, the arrival brake, and moving the world over
     step(rdt) {
       const L = LOOK, p = S.mode === 'fly' ? player.pos : camera.position; let best = -1, bd = Infinity;
-      for (let k = 0; k < UNI_N; k++) { const d = uniAt(k, _v).distanceTo(p); if (d < bd) { bd = d; best = k } } nearK = best; nearD = bd;
+      for (let k = 0; k < UNI_N; k++) { const d = uniAt(k, _v).distanceTo(p); if (d < bd) { bd = d; best = k } } nearK = best; nearD = bd; findLevel(p);
       const from = Math.max(1, L.igFrom ?? 1.15) * Rg, igT = 1 + (Math.max(1, L.igSpeed ?? 12) - 1) * sstep(bd, from, from + Rg * .35);
       igK += (igT - igK) * Math.min(1, rdt * (igT > igK ? 1.5 : 6));
       // heading into a galaxy: at most the speed that reaches its edge in igBrake seconds (an easy exponential arrival)

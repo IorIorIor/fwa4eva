@@ -30,21 +30,27 @@ const GAL = { name: 'The Galaxy', y0: 2000, arms: ARMS, center: GC, quat: GQ };
    it a step further along), each turned its own way. UNI.c and UNI.q hold each one's centre and turn in universe coordinates;
    the world you see is the universe moved and turned (UNI.R) so that the galaxy you're in always sits at GC the way GQ
    says, where all its detail is built (far from home the numbers would otherwise lose their precision). */
-const UNI_Y0 = 2000, UNI_SPANS = [[2000, 2005], [2006, 2010], [2011, 2015], [2016, 2020], [2021, 2026]], UNI_N = UNI_SPANS.length;   // five galaxies of five years (2000 began in May, so the first carries 2005 too; the last has six)
+const UNI_Y0 = 2000, UNI_SPANS = Array.from({ length: 27 }, (_, k) => [2000 + k, 2000 + k]), UNI_N = UNI_SPANS.length;   // a galaxy for every year
 const galOfYear = y => { for (let k = 0; k < UNI_N; k++) if (y <= UNI_SPANS[k][1]) return k; return UNI_N - 1 };
-const galKey = k => UNI_SPANS[k][0], galName = k => UNI_SPANS[k][0] + '–' + UNI_SPANS[k][1];   // a galaxy's key (its first year, for its saved settings) and its name
-const UNI = { c: Array.from({ length: UNI_N }, () => new V3()), q: Array.from({ length: UNI_N }, () => GQ.clone()), k: UNI_N - 1, home: null, look: null, R: new Q4(), RI: new Q4() };   // home/look: where you start and what you face (universe), when the layout has its own
+const galKey = k => UNI_SPANS[k][0], galName = k => UNI_SPANS[k][0] === UNI_SPANS[k][1] ? String(UNI_SPANS[k][0]) : UNI_SPANS[k][0] + '–' + UNI_SPANS[k][1];   // a galaxy's key (its first year, for its saved settings) and its name
+// the clusters: five of five years (2000 began in May, so the first holds 2005 too; the last has six), the galaxies of each gathered round its middle
+const CL_SPANS = [[2000, 2005], [2006, 2010], [2011, 2015], [2016, 2020], [2021, 2026]], CL_N = CL_SPANS.length;
+const clOf = k => { const y = UNI_SPANS[k][0]; for (let c = 0; c < CL_N; c++) if (y <= CL_SPANS[c][1]) return c; return CL_N - 1 }, clName = c => CL_SPANS[c][0] + '–' + CL_SPANS[c][1];
+const clGals = c => { const r = []; for (let k = 0; k < UNI_N; k++) if (clOf(k) === c) r.push(k); return r };
+const UNI = { c: Array.from({ length: UNI_N }, () => new V3()), q: Array.from({ length: UNI_N }, () => GQ.clone()), k: UNI_N - 1, home: null, look: null, R: new Q4(), RI: new Q4(), cl: Array.from({ length: CL_N }, () => new V3()) };   // cl: each cluster's middle (universe)   // home/look: where you start and what you face (universe), when the layout has its own
 function uniLayout(L = LOOK) {
   const Rg = GAL_OUT, gap = Math.max(2.2, L.uniGap ?? 4.5) * Rg, th = (L.uniTurn ?? 40) * Math.PI / 180, h = gap * Math.max(0, Math.min(.95, L.uniRise ?? .35)), c = Math.sqrt(Math.max(0, gap * gap - h * h));
   const up = new V3(0, 1, 0).applyQuaternion(GQ), x0 = new V3(1, 0, 0).applyQuaternion(GQ), tl = (L.uniTilt ?? 35) * Math.PI / 180, az = (L.uniAz ?? 0) * Math.PI / 180;
   const A = up.clone().applyAxisAngle(x0, tl).applyAxisAngle(up, az).normalize(), B = new V3().crossVectors(A, Math.abs(A.dot(x0)) > .9 ? up : x0).normalize(), C = new V3().crossVectors(A, B);   // the helix's axis, and two directions across it
   const Rh = Math.abs(th) > 1e-3 ? c / (2 * Math.sin(Math.abs(th) / 2)) : 0, mode = Math.round(L.uniLayout ?? 0), rnd = mulberry32(9100 + Math.round(L.uniSeed ?? 1)), rv = () => new V3(rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1);
   UNI.home = null; UNI.look = null;
-  if (mode === 4) {   // a semicircle round you: the years from one end of the arc to the other, the oldest a little nearer, every other one a little
-    // above or below the arc so neighbours keep their distance; you start at its centre, facing its middle
-    const n = UNI_N, rr = Math.max(6, L.uniArcR ?? 16) * Rg, sp = L.uniSpread ?? .25, wv = (L.uniArcWave ?? 1.6) * Rg, M = new V3();
-    for (let k = 0; k < n; k++) { const f = k / (n - 1), a = -Math.PI / 2 + Math.PI * f, r = rr * (1 - sp * (1 - f)); UNI.c[k].copy(C).multiplyScalar(Math.cos(a) * r).addScaledVector(B, Math.sin(a) * r).addScaledVector(A, (k % 2 ? 1 : -1) * wv) }
-    const off = GC.clone().sub(UNI.c[n - 1]); UNI.c.forEach(c => c.add(off)); UNI.home = M.add(off); UNI.look = C.clone().multiplyScalar(rr).add(UNI.home);
+  if (mode === 4) {   // clusters on a semicircle round you: the five clusters from one end of the arc to the other (the oldest a little nearer),
+    // each cluster's galaxies spread round its middle in all directions; you start at the arc's centre, facing its middle
+    const rr = Math.max(8, L.uniArcR ?? 26) * Rg, sp = L.uniSpread ?? .4, cr = Math.max(2.5, L.uniClusterR ?? 5) * Rg, M = new V3(), ga = Math.PI * (3 - Math.sqrt(5));
+    for (let c = 0; c < CL_N; c++) { const f = c / (CL_N - 1), a = -Math.PI / 2 + Math.PI * f, r = rr * (1 - sp * (1 - f)); UNI.cl[c].copy(C).multiplyScalar(Math.cos(a) * r).addScaledVector(B, Math.sin(a) * r);
+      const ks = clGals(c), n = ks.length, q = new Q4().setFromAxisAngle(rv().normalize(), rnd() * Math.PI);   // round the middle: an even spread over a sphere, turned at random
+      ks.forEach((k, j) => { const y = 1 - 2 * (j + .5) / n, rs = Math.sqrt(1 - y * y), t = j * ga; UNI.c[k].set(Math.cos(t) * rs, y, Math.sin(t) * rs).applyQuaternion(q).multiplyScalar(cr * (.85 + .3 * rnd())).add(UNI.cl[c]) }) }
+    const off = GC.clone().sub(UNI.c[UNI_N - 1]); UNI.c.forEach(c => c.add(off)); UNI.cl.forEach(c => c.add(off)); UNI.home = M.add(off); UNI.look = C.clone().multiplyScalar(rr).add(UNI.home);
   } else if (mode === 3) {   // all round you: every year's galaxy at about the same distance in its own direction (spread evenly over the sky, one year
     // to the next as neighbours), the oldest nearest; you start in the middle. Laid out round the middle, then moved so 2026 sits at GC
     const n = UNI_N, ga = Math.PI * (3 - Math.sqrt(5)), sp = L.uniSpread ?? .6, M = new V3(), q = new Q4().setFromUnitVectors(new V3(0, 1, 0), A);
@@ -63,6 +69,7 @@ function uniLayout(L = LOOK) {
   const j = (L.uniJitter ?? 0) * gap * .5; if (j > 0) for (let k = 0; k < UNI_N - 1; k++) UNI.c[k].addScaledVector(rv(), j);   // a little randomness on top (2026 stays put)
   if (mode >= 3) for (let k = 0; k < UNI_N; k++) if (UNI.c[k].distanceTo(UNI.home) < gap * .8) UNI.c[k].sub(UNI.home).setLength(gap * .8).add(UNI.home);   // (none right on top of you)
   const m = Rg * 2.6; for (let it = 0; it < 40; it++) { let moved = false; for (let a = 0; a < UNI_N; a++) for (let b = a + 1; b < UNI_N; b++) { const v = UNI.c[b].clone().sub(UNI.c[a]), l = v.length(); if (l < m) { moved = true; v.setLength((m - l) * .5 + 1); if (b !== UNI_N - 1) UNI.c[b].add(v); if (a !== UNI_N - 1) UNI.c[a].sub(v); else UNI.c[b].add(v) } } if (!moved) break }   // never closer than 2.6 radii
+  if (mode !== 4) for (let c = 0; c < CL_N; c++) { const ks = clGals(c); UNI.cl[c].set(0, 0, 0); ks.forEach(k => UNI.cl[c].add(UNI.c[k])); UNI.cl[c].divideScalar(ks.length) }   // (other layouts: a cluster's middle is the mean of its galaxies)
   // and each turned its own way: tipped over by up to uniTiltVar, spun round its own axis (2026, the first, as built)
   const tv = (L.uniTiltVar ?? 70) * Math.PI / 180, sv = L.uniSpinVar ?? 1, rq = mulberry32(7300 + Math.round(L.uniSeed ?? 1)), _x = new V3(), _q = new Q4();
   for (let k = 0; k < UNI_N; k++) { const ax = _x.set(rq() * 2 - 1, 0, rq() * 2 - 1).normalize().applyQuaternion(GQ), tilt = tv * Math.sqrt(rq()), spin = sv * rq() * 2 * Math.PI;

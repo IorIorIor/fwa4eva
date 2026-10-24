@@ -28,7 +28,7 @@ canvas.addEventListener('pointerdown', e => {
   panV.set(0, 0, 0); down = { x: e.clientX, y: e.clientY, btn: e.button, shift: e.shiftKey, touch: e.pointerType !== 'mouse' }; dragged = false;
   // hold (100 ms, no star in reach, not dragging): the radial menu opens round the press
   clearTimeout(holdT); if (booted && !rmenu.open && !rmenu.panel && e.button === 0 && ptrs.size === 1) holdT = setTimeout(() => {
-    if (!down || dragged) return; const cx = locked() ? innerWidth / 2 : down.x, cy = locked() ? innerHeight / 2 : down.y;
+    if (!down || dragged || gwarp.aim >= 0) return; const cx = locked() ? innerWidth / 2 : down.x, cy = locked() ? innerHeight / 2 : down.y;
     const star = S.mode === 'fly' ? false : (hovPick >= 0 || !!mapHover(cx, cy).ring);   // in flight a long press always opens the menu, whatever you're pointing at or locked on
     if (!star) { rmenu.show(cx, cy); rmenu.held = true }
   }, LOOK.menuHold ?? 100);
