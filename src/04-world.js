@@ -46,7 +46,7 @@ function uniLayout(L = LOOK) {
   UNI.home = null; UNI.look = null;
   if (mode === 4) {   // clusters on a semicircle round you: the five clusters from one end of the arc to the other (the oldest a little nearer),
     // each cluster's galaxies spread round its middle in all directions; you start at the arc's centre, facing its middle
-    const rr = Math.max(8, L.uniArcR ?? 26) * Rg, sp = L.uniSpread ?? .4, cr = Math.max(2.5, L.uniClusterR ?? 5) * Rg, M = new V3(), ga = Math.PI * (3 - Math.sqrt(5));
+    const rr = Math.max(8, L.uniArcR ?? 26) * Rg, sp = L.uniSpread ?? .4, cr = Math.max(1.6, L.uniClusterR ?? 2.8) * Rg, M = new V3(), ga = Math.PI * (3 - Math.sqrt(5));
     for (let c = 0; c < CL_N; c++) { const f = c / (CL_N - 1), a = -Math.PI / 2 + Math.PI * f, r = rr * (1 - sp * (1 - f)); UNI.cl[c].copy(C).multiplyScalar(Math.cos(a) * r).addScaledVector(B, Math.sin(a) * r);
       const ks = clGals(c), n = ks.length, q = new Q4().setFromAxisAngle(rv().normalize(), rnd() * Math.PI);   // round the middle: an even spread over a sphere, turned at random
       ks.forEach((k, j) => { const y = 1 - 2 * (j + .5) / n, rs = Math.sqrt(1 - y * y), t = j * ga; UNI.c[k].set(Math.cos(t) * rs, y, Math.sin(t) * rs).applyQuaternion(q).multiplyScalar(cr * (.85 + .3 * rnd())).add(UNI.cl[c]) }) }

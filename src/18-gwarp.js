@@ -7,7 +7,7 @@
 const gwarp = (() => {
   const st = { aim: -1, hold: 0, on: false, t: 0, k: 0, tgt: null, from: new V3(), to: new V3(), q0: new Q4(), q1: new Q4(), fov: 0 };
   const _a = new V3(), _b = new V3(), _m = new THREE.Matrix4();
-  const R = () => GAL_R0 + GAL_LEN, CR = () => Math.max(2.5, LOOK.uniClusterR ?? 5) * R();
+  const R = () => GAL_R0 + GAL_LEN, CR = () => Math.max(1.6, LOOK.uniClusterR ?? 2.8) * R();
   // the way back, bottom left
   const back = document.createElement('button'); back.id = 'backBtn'; back.type = 'button'; back.className = 'hud'; back.hidden = true; back.innerHTML = '<i>←</i><span></span><kbd>Z</kbd>'; document.body.appendChild(back);
   back.addEventListener('pointerdown', e => e.stopPropagation()); back.onclick = () => goBack();

@@ -119,7 +119,7 @@ const uni = (() => {
   const level = { cl: -1, gal: -1 };
   function findLevel(p) {
     let g = -1, gd = Infinity; for (let k = 0; k < UNI_N; k++) { const d = uniAt(k, _w).distanceTo(p); if (d < gd) { gd = d; g = k } } level.gal = gd < Rg * 1.6 ? g : -1;
-    const cr = Math.max(2.5, LOOK.uniClusterR ?? 5) * Rg; let c = -1, cd = Infinity; for (let j = 0; j < CL_N; j++) { const d = clAt(j, _w).distanceTo(p); if (d < cd) { cd = d; c = j } }
+    const cr = Math.max(1.6, LOOK.uniClusterR ?? 2.8) * Rg; let c = -1, cd = Infinity; for (let j = 0; j < CL_N; j++) { const d = clAt(j, _w).distanceTo(p); if (d < cd) { cd = d; c = j } }
     level.cl = level.gal >= 0 ? clOf(level.gal) : cd < cr * 1.9 ? c : -1;
   }
   function updateTags() {
@@ -177,12 +177,12 @@ const uni = (() => {
       }
       bh.mesh.visible = galK > .01;
       // the far pictures, and their glows
-      u.soft.value = L.galFarSoft ?? .2; u.br.value = L.galFar ?? 1; u.flat.value = L.galFlat ?? .7; u.vol.value = L.galVol ?? .8; const rj = L.galRand ?? .5; const gg = L.galFarGlow ?? .5, vis = S.mode === 'fly' || S.mode === 'map'; PU.farOn.value = vis && u.has.value > 0 ? 1 : 0;
+      u.soft.value = L.galFarSoft ?? .2; u.br.value = L.galFar ?? 1; u.flat.value = L.galFlat ?? .7; u.vol.value = L.galVol ?? .8; const rj = L.galRand ?? 1; const gg = L.galFarGlow ?? .5, vis = S.mode === 'fly' || S.mode === 'map'; PU.farOn.value = vis && u.has.value > 0 ? 1 : 0;
       for (let k = 0; k < UNI_N; k++) {
         const c = uniAt(k, _p), f = k === UNI.k ? 1 - galK : 1 - gplay.k, d = c.distanceTo(camera.position);
         const dk = disks[k], gk = G[k]; dk.position.copy(c); uniQ(k, dk.quaternion); gk.f.value = f; dk.visible = f > .002 && u.flat.value > 0;
         gk.hue.value = dk.own ? 0 : gk.hueT; gk.gain.value = dk.own ? 1 : gk.gainT;   // (its own picture already has its own colours)
-        const vk = vols[k], th = Math.max(.005, L.galThick ?? .04) * (1 + galRnd(k, 91) * .4 * rj), bu = Math.max(0, L.galBulge ?? .22) * (1 + galRnd(k, 92) * .5 * rj), Hh = Math.max(th, bu) * 2.6;   // height and bulge, in galaxy radii (each galaxy a little its own)
+        const vk = vols[k], th = Math.max(.005, L.galThick ?? .04) * (1 + galRnd(k, 91) * .5 * rj), bu = Math.max(0, L.galBulge ?? .22) * (1 + galRnd(k, 92) * .7 * rj), Hh = Math.max(th, bu) * 2.6;   // height and bulge, in galaxy radii (each galaxy a little its own)
         vk.position.copy(c); vk.quaternion.copy(dk.quaternion); vk.scale.set(HALF, Hh * Rg, HALF); vk.visible = f > .002 && u.vol.value > 0; vk.updateMatrixWorld();
         gk.cam.value.copy(camera.position); vk.worldToLocal(gk.cam.value); gk.sx.value = HALF / (Hh * Rg); gk.disk.value = th / Hh; gk.bulge.value = Math.max(0, bu - th) / Hh;
         const g = glows[k]; g.position.copy(c); g.scale.setScalar(Math.max(Rg * .04, d * .05)); g.material.opacity = Math.min(1, gg) * f * (1 - sstep(d, Rg * 60, Rg * 140)) * (paperK > .5 ? 0 : 1); g.visible = g.material.opacity > .003; g.material.color.setRGB(1, .9, .78).multiplyScalar(Math.max(1, gg));
