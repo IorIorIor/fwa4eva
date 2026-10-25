@@ -2,17 +2,17 @@
    A big warm bulge, thin brown dust filaments hugging the inside edge of each arm, pink star-forming knots,
    blue star clouds, a soft blue outer disk and two satellite galaxies. */
 // soft round points sized in world units (like PointsMaterial with size attenuation), optionally dimmed with distance
-function softPoints(pos, { cols = null, size, color = 0xffffff, op = 1, far = false, target = softScene, order = 0, fx = false }) {   // fx: the puff controls (size variety, edge, texture, tint, brightness variety)
+function softPoints(pos, { cols = null, size, color = 0xffffff, op = 1, far = false, target = softScene, order = 0, fx = false, gw = false }) {   // fx: the puff controls (size variety, edge, texture, tint, brightness variety)
   const n = pos.length / 3, u = { op: uniform(op), color: uniform(new C3(color)), sz: uniform(size), vari: uniform(0), soft: uniform(1), tex: uniform(0), texS: uniform(3), tint: uniform(.5), flick: uniform(0) }, attrs = { aP: [pos, 3] }; if (cols) attrs.aC = [cols, 3];
   const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vS = varyingProperty('float', 'vS');
   m.vertexNode = Fn(() => {
-    const mv = modelViewMatrix.mul(vec4(ia('aP', 'vec3'), 1)).toVar(), z = mv.z.negate();
+    const mv = modelViewMatrix.mul(vec4(gw ? warpW(ia('aP', 'vec3')) : ia('aP', 'vec3'), 1)).toVar(), z = mv.z.negate();   // (gw: part of the galaxy, so pushed out with its arms)
     const ws = length(modelWorldMatrix.mul(vec4(1, 0, 0, 0)).xyz);   // points shrink with whatever they're part of (the exotic winners are scaled down)
     const h = fx ? hash3(ia('aP', 'vec3').mul(.0137).add(ia('aP', 'vec3').mul(91.7))) : float(.5), h2 = fx ? fract(h.mul(73.17)) : float(.5);   // two stable randoms per puff
     const px = u.sz.mul(ws).mul(U.res.y).mul(.5).div(max(z, 1e-3)).mul(fx ? mix(1, h.mul(1.6).add(.2), u.vari) : 1).toVar(), minPx = target === scene ? float(1) : U.minSoft;
     const tint = fx ? select(u.tint.lessThan(.5), mix(vec3(.72, .86, 1.2), vec3(1), u.tint.mul(2)), mix(vec3(1), vec3(1.2, .9, .62), u.tint.sub(.5).mul(2))).mul(mix(1, h2.mul(1.7).add(.15), u.flick)) : vec3(1);
     if (fx) vS.assign(h.mul(17.3));
-    vC.assign((cols ? ia('aC', 'vec3') : vec3(1)).mul(u.color).mul(tint).mul(far ? farDim(z) : 1).mul(min(1, px.div(minPx).mul(px.div(minPx)))));   // never below a pixel; dimmer instead
+    vC.assign((cols ? ia('aC', 'vec3') : vec3(1)).mul(u.color).mul(tint).mul(far ? farDim(z) : 1).mul(gw ? smoothstep(U.bhClear, U.bhClear2, distance(warpW(ia('aP', 'vec3')), U.GC)) : 1).mul(min(1, px.div(minPx).mul(px.div(minPx)))));   // never below a pixel; dimmer instead
     return billboardPx(mv, clamp(px, minPx, 1024));
   })();
   m.fragmentNode = Fn(() => {
@@ -29,7 +29,7 @@ const bulgeSpr = [[.7, .55], [1.3, .32], [2.4, .14]].map(([k, o]) => { const s =
 const bulgePts = (() => {
   const n = 48000, p = new Float32Array(n * 3), R_ = mulberry32(808), g = gaussOf(R_), q = new V3(), c = new Float32Array(n * 3), cc = new C3();
   for (let i = 0; i < n; i++) { q.set(g(), g() * .55, g()).multiplyScalar(bulgeR * .42); if (q.length() < BH.sh * 2) q.setLength(BH.sh * 2 + R_() * bulgeR * .3); q.applyMatrix4(GM4); p.set([q.x, q.y, q.z], i * 3); cc.setHSL(.08 + R_() * .04, .55, .6 + R_() * .2); c.set([cc.r, cc.g, cc.b], i * 3) }
-  const m = softPoints(p, { cols: c, size: 9000, op: .05, far: true, order: -1, fx: true }); andro.add(m); return m;
+  const m = softPoints(p, { cols: c, size: 9000, op: .05, far: true, order: -1, fx: true, gw: true }); andro.add(m); return m;
 })();
 /* dust filaments: thin dark ribbons following the spiral, mostly on the inner edge of each arm (one instanced mesh) */
 function makeDustFil(n, seed) {
@@ -51,7 +51,7 @@ function makeDustFil(n, seed) {
     const r = ia('aR0', 'float').add(ia('aOf', 'float').mul(u.armW)).mul(exp(aS.mul(len).div(ia('aK', 'float')))).mul(u.rs).add(u.ro);   // follows the arm's local winding
     const th = ia('aTh0', 'float').add(aS.mul(len)).add(u.rot).add(u.tw.mul(log(max(r, 1000).div(GAL_R0))));
     const rr = r.add(aSd.mul(ia('aW', 'float')).mul(.5).mul(u.wid).mul(u.blur.mul(2).add(1))).add(sin(aS.mul(len).mul(90).add(aJ.mul(40))).mul(ia('aW', 'float')).mul(u.wig));   // a slow meander
-    const w = fromGal(vec3(cos(th).mul(rr), ia('aY', 'float').add(u.yo), sin(th).mul(rr))).toVar();
+    const rw = gwRT(rr), w = fromGal(vec3(cos(th).mul(rw), ia('aY', 'float').add(u.yo), sin(th).mul(rw))).toVar();
     vN.assign(smoothstep(u.nearD.mul(.3), u.nearD, distance(cameraPosition, w))); vV.assign(aSd); vS.assign(aS); vA.assign(ia('aA', 'float')); vJ.assign(ia('aJ', 'float'));
     return cameraProjectionMatrix.mul(cameraViewMatrix.mul(vec4(w, 1)));
   })();
@@ -72,7 +72,7 @@ const knotPts = (() => {
   const mk = (n, u0, u1, cols, size, op, spread, seed) => {
     const R_ = mulberry32(seed), p = new Float32Array(n * 3), c = new Float32Array(n * 3), q = new V3(), cc = new C3(), W = new C3(1, 1, 1);
     for (let i = 0; i < n; i++) { const u = u0 + R_() * (u1 - u0), r = GAL_R0 + u * GAL_LEN, sd = (7700 + r * .045) * spread, arm = (R_() * ARMS) | 0; galPoint(GAL, arm, u, (R_() - .5) * sd * 2, (R_() - .5) * sd * 2 / r, (R_() - .5) * 1500, q); p.set([q.x, q.y, q.z], i * 3); cc.set(cols[(R_() * cols.length) | 0]).lerp(W, R_() * .25); c.set([cc.r, cc.g, cc.b], i * 3) }
-    const m = softPoints(p, { cols: c, size, op, far: true, order: 0 }); m.userData.o = op; andro.add(m); return m
+    const m = softPoints(p, { cols: c, size, op, far: true, order: 0, gw: true }); m.userData.o = op; andro.add(m); return m
   };
   return { knots: mk(1500, .12, 1, ['#ff6fa8', '#ff85b8', '#ff4f8f', '#ffa0c8'], 2600, .5, .8, 1001), clouds: mk(2600, .55, 1.05, ['#9ec3ff', '#b7d4ff', '#cfe0ff'], 6000, .16, 2.2, 1002) };
 })();

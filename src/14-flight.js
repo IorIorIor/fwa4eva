@@ -232,7 +232,7 @@ function updatePlayer(dt) {
   if (L.rings && !sing.inside) ringCheck(p);
   if (touch > 0 && !auto && lockI !== nearI) { const sp = p.vel.length(); if (sp > 1) p.base.slerp(lookAtQ(_vn.copy(p.vel).divideScalar(sp), Yv.clone().applyQuaternion(p.base), _nq), Math.min(1, dt * 6 * Math.min(1, touch * 3))) }   // pushed: the nose follows the bounce
   {
-    tmp.copy(p.pos).sub(GC); const d = tmp.length(), mn = BH.sh * 1.3, gR = BH.sh * Math.max(18, L.bhGravReach ?? 30);
+    tmp.copy(p.pos).sub(GC); const d = tmp.length(), mn = BH.sh * 1.3, gR = Math.min(BH.sh * Math.max(18, L.bhGravReach ?? 30), BH.sh * 1.3 + 150000);   /* (a giant hole pulls only from nearby) */
     if (d < mn && !(LOOK.singularity ?? 1)) { tmp.setLength(mn); p.pos.copy(GC).add(tmp); const n = tmp.normalize(), vn = p.vel.dot(n); if (vn < 0) p.vel.addScaledVector(n, -vn) }
     else if (d < gR && !auto && !sing.busy && !sing.far) {   // (out on the far side it lets you be)
       const sp = p.vel.length(), cap = 60 + Math.max(.35 * BH.sh, d - mn) * 6 * (L.bhCap ?? 2.5); if (d < BH.sh * 18 && sp > cap) p.vel.setLength(Math.max(cap, sp * Math.exp(-3 * dt)));   // close in it holds you to a speed you can still steer at

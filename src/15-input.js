@@ -172,7 +172,7 @@ const starPx = (i, w) => SIZE[i] * LOOK.starSize * pxJS() / w / DPR;   // a winn
 const ringPxAt = (i, w) => LOOK.rings ? starR(i) * (LOOK.ringSize ?? 1.6) * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * Math.max(w, 1)) : 0;   // a winner's ring radius on screen (px), in the rings game
 const _hd = new V3();
 function holeMask() {   // what the black hole hides from the camera: the sky behind its shadow (from outside, behind all the sky it bends)
-  if (!bh.mesh.visible) return null; const c = camera.position, dC = c.distanceTo(GC), Rl = RP * BH.rs, R = dC > Rl ? Rl * .9 : BH.sh * 1.3; if (dC <= R) return null;
+  if (!bh.mesh.visible) return null; const c = camera.position, dC = c.distanceTo(GC), Rl = BH_RP * BH.rs, R = dC > Rl ? Rl * .9 : BH.sh * 1.3; if (dC <= R) return null;
   _hd.copy(GC).sub(c).divideScalar(dC); return { d: dC - R, cos: Math.cos(Math.asin(R / dC)) };
 }
 function behindHole(m, px, py, pz) { if (!m) return false; const c = camera.position, x = px - c.x, y = py - c.y, z = pz - c.z, l = Math.hypot(x, y, z); return l > m.d && (x * _hd.x + y * _hd.y + z * _hd.z) / l > m.cos }

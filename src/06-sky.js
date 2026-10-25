@@ -43,13 +43,13 @@ const haze = (() => {
   const H = HAZE, u = { op: uniform(.22), size: uniform(1), soft: uniform(1), near: uniform(1), pal: uniform(.6), mono: uniform(0), h: uniform(1), g: uniform(1), ev: uniform(0), cut: uniform(0), csz: uniform(1), keep: uniform(0), reach: uniform(.18) };
   const m = skyMat(), vC = varyingProperty('vec3', 'vC'), vA = varyingProperty('float', 'vA');
   m.vertexNode = Fn(() => {
-    const ctr = ia('aCtr', 'vec3'), dl = U.GQI.mul(ia('aP', 'vec3').sub(ctr)).mul(vec3(u.g, u.h, u.g)), P = ctr.add(U.GQ.mul(dl)).toVar();
+    const ctr = ia('aCtr', 'vec3'), dl = U.GQI.mul(ia('aP', 'vec3').sub(ctr)).mul(vec3(u.g, u.h, u.g)), P = warpW(ctr).add(U.GQ.mul(dl)).toVar();
     const mv = cameraViewMatrix.mul(vec4(P, 1)).toVar(), z = mv.z.negate();
     const rr = length(toGal(ctr).xz).div(GAL_R0 + GAL_LEN);   // 0 at the core, 1 on the rim
     const even = pow(clamp(rr, .02, 1), u.ev).mul(smoothstep(u.cut.mul(.3), u.cut.add(.001), rr));   // thin the haze toward the core (the rim stays as it is), and clear a hole of radius cut
     const ps = ia('aS', 'float').mul(u.size).mul(mix(u.csz, 1, clamp(rr.mul(2), 0, 1))).mul(pxScale).div(max(z, 1)).toVar(), big = max(60, u.near.mul(320));
     const cw = exp(rr.div(u.reach).pow(2).negate());   // 1 at the core, fading out by `reach`: that haze is brighter and ignores the distance dimming
-    vA.assign(mix(farDim(z), 1, cw).mul(u.keep.mul(cw).add(1)).mul(u.op).mul(even).mul(smoothstep(big.mul(.5), big, ps).oneMinus()).mul(smoothstep(.6, 3, ps)).mul(smoothstep(U.bhClear, U.bhClear.mul(2.6), distance(P, U.GC))));
+    vA.assign(mix(farDim(z), 1, cw).mul(u.keep.mul(cw).add(1)).mul(u.op).mul(even).mul(smoothstep(big.mul(.5), big, ps).oneMinus()).mul(smoothstep(.6, 3, ps)).mul(smoothstep(U.bhClear, U.bhClear2, distance(P, U.GC))));
     const c = monoTint(mix(ia('aC', 'vec3'), ia('aPal', 'vec3'), u.pal), u.mono).toVar();
     vC.assign(mix(c, radCol(length(toGal(ctr).xz)).mul(luma(c).mul(1.4).add(.3)), U.rad));
     return billboardPx(mv, min(ps, big));
@@ -64,7 +64,7 @@ function cloudLayer(fields, u, frag, { blend = 'add', target = softScene, order 
   const n = fields.reduce((s, f) => s + f.n, 0), cat = k => { const s = fields[0][k].length / fields[0].n, a = new Float32Array(n * s); let o = 0; fields.forEach(f => { a.set(f[k], o); o += f[k].length }); return [a, s] };
   const m = skyMat({ blend }), vUv = varyingProperty('vec2', 'vTile'), vCol = varyingProperty('vec3', 'vCol'), vCol2 = varyingProperty('vec3', 'vCol2'), vA = varyingProperty('float', 'vA');
   m.vertexNode = Fn(() => {
-    const off = ia('aOff', 'vec3'), Lc = toGal(off).mul(vec3(1, u.flatY, 1)), O = fromGal(Lc).toVar();
+    const off = ia('aOff', 'vec3'), Lc = toGal(off).mul(vec3(1, u.flatY, 1)), O = fromGal(warpL(Lc)).toVar();
     const sc = pow(ia('aSc', 'float').div(60000), u.sizeVar).mul(60000).mul(u.scale).toVar(), rot = ia('aRot', 'float');
     const ang = rot.add(U.time.mul(u.drift).mul(fract(rot.mul(7.3)).sub(.5))), c = cos(ang), s = sin(ang), p = positionGeometry.xy;
     const q = vec2(c.mul(p.x).sub(s.mul(p.y)), s.mul(p.x).add(c.mul(p.y)));
@@ -73,7 +73,7 @@ function cloudLayer(fields, u, frag, { blend = 'add', target = softScene, order 
     const rc = radCol(length(toGal(off).xz)), k = U.rad.mul(u.radOn);
     vCol.assign(mix(ia('aCol', 'vec3'), rc, k)); vCol2.assign(mix(ia('aCol2', 'vec3'), rc.mul(.55), k));
     const dd = distance(cameraPosition, O);
-    vA.assign(sin(U.time.mul(.6).add(rot.mul(13))).mul(u.pulse).mul(.5).add(1).mul(farDim(dd)).mul(ia('aAl', 'float')).mul(smoothstep(sc.mul(.1).mul(u.nearK), sc.mul(.75).mul(u.nearK), dd)));
+    vA.assign(sin(U.time.mul(.6).add(rot.mul(13))).mul(u.pulse).mul(.5).add(1).mul(farDim(dd)).mul(ia('aAl', 'float')).mul(smoothstep(sc.mul(.1).mul(u.nearK), sc.mul(.75).mul(u.nearK), dd)).mul(smoothstep(U.bhClear, U.bhClear2, distance(O, U.GC))));
     const mv = cameraViewMatrix.mul(vec4(O, 1));
     return select(vA.lessThan(.002), vec4(2, 2, 2, 1), cameraProjectionMatrix.mul(vec4(mv.xy.add(q.mul(sc)), mv.z, 1)));   // a cloud faded right out (too near, too far) is dropped whole: no pixels at all
   })();
@@ -142,7 +142,7 @@ const arcs = (() => {
     const aS = attribute('aS', 'float'), aSide = attribute('aSide', 'float'), aR = ia('aR', 'float');
     const aWk = armWT(aR).div(SHAPE.widen + 1), Rr = aR.add(ia('aDr', 'float').mul(u.armW).mul(aWk)), w = u.spin.mul(.0035).mul(sqrt(float(GAL_R0).div(max(Rr, GAL_R0 * .3))));
     const th = ia('aTh', 'float').add(ia('aDt', 'float').mul(u.armW).mul(aWk)).add(U.time.mul(w)).add(aS.sub(.5).mul(ia('aLen', 'float')).mul(u.len).mul(.25)).toVar();
-    const l = vec3(cos(th).mul(Rr), ia('aY', 'float'), sin(th).mul(Rr)), tl = vec3(sin(th).negate(), 0, cos(th));
+    const Rw = gwRT(Rr), l = vec3(cos(th).mul(Rw), ia('aY', 'float'), sin(th).mul(Rw)), tl = vec3(sin(th).negate(), 0, cos(th));
     const wp = fromGal(l).toVar(), tw = normalize(U.GQ.mul(tl)), toC = cameraPosition.sub(wp), dist = length(toC).toVar();
     const sd0 = cross(tw, toC.div(max(dist, 1))), sl = length(sd0), sd = select(sl.greaterThan(1e-4), sd0.div(sl), vec3(0));
     const spread = u.blur.mul(4).add(1), wpx = u.width.mul(spread);
@@ -186,6 +186,7 @@ const vol = (() => {
       If(float(i).greaterThanEqual(u.steps).or(T.lessThan(.02)), () => { Break() });
       const p = ro.add(rd.mul(t)).toVar(); t.addAssign(ds);
       If(length(vec3(p.x, p.y.mul(VOL_H), p.z)).lessThan(u.bh), () => { Break() });   // the black hole swallows the ray
+      { const r0 = length(p.xz).mul(VOL_S), k = gwRiT(r0).div(max(r0, 1)); p.assign(vec3(p.x.mul(k), p.y, p.z.mul(k))) }   // (where this bit of gas was built, before a big black hole pushed the arms out)
       const rn = length(p.xz);
       If(rn.lessThanEqual(1), () => {
         const rw = max(rn.mul(VOL_S), GAL_R0 * .5), sda = fract(atan(p.z, p.x).sub(armPhT(rw)).mul(ARMS / 6.28318).add(.5)).sub(.5).mul(2), da = abs(sda);

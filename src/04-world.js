@@ -101,11 +101,18 @@ const eraOfU = u => { if (u >= 1) return 0; for (let k = 0; k < NERA; k++) if (u
 /* the black hole, sized from its mass on the winners' own scale: a Sun-like winner is ~27 units across one solar radius,
    so a horizon (2.95 km per solar mass) comes out at ~1.1e-4 units per solar mass. Andromeda's 1.4e8 suns: ~16 000 units. */
 const BH = {};
+/* a big black hole pushes the spiral out: everything built from the arms' start (GAL_R0) to the rim is squeezed into the ring from
+   just outside the hole (its shadow + bhGap) to the rim, and the core inside it is spread under the hole. GW_B: where the arms start now */
+let GW_B = GAL_R0;
+const gwR = (r, B = GW_B) => B === GAL_R0 ? r : r < GAL_R0 ? r * B / GAL_R0 : r < GAL_OUT ? B + (r - GAL_R0) * (GAL_OUT - B) / (GAL_OUT - GAL_R0) : r;   // built radius → where it is now
+const gwRi = (r, B = GW_B) => B === GAL_R0 ? r : r < B ? r * GAL_R0 / B : r < GAL_OUT ? GAL_R0 + (r - B) * (GAL_OUT - GAL_R0) / (GAL_OUT - B) : r;   // and back
+const gwStart = (sh, gap = LOOK.bhGap ?? 2000) => Math.min(GAL_OUT * .92, Math.max(GAL_R0, sh + gap));
+const bhLogM = L => (L.bhSizeG ?? 0) > 0 ? Math.log10((L.bhSizeG * GAL_OUT / 2.598) / (2.953 * 26.6 / 6.96e5)) : L.bhMass;   // its size as a share of the galaxy, or its mass
 function setBH(logM) { BH.M = Math.pow(10, logM); BH.rs = 2.953 * BH.M * (26.6 / 6.96e5); BH.sh = BH.rs * 2.598; BH.isco = BH.rs * 3; BH.disk1 = BH.rs * LOOK.bhDiskOut }   // horizon, shadow (√27/2 rs), inner disk edge, outer disk edge
-setBH(LOOK.bhMass);
+setBH(bhLogM(LOOK));
 const OUT_L = new V3().sub(GC).applyQuaternion(GQI), THETA_O = Math.atan2(OUT_L.z, OUT_L.x);   // where the outpost sits, seen from the core
 const THR = THETA_O - .3;   // the date ruler's direction (year labels sit along it)
-function ringPoint(u, th, y, out = new V3()) { const r = GAL_R0 + u * GAL_LEN; return out.set(Math.cos(th) * r, y, Math.sin(th) * r).applyQuaternion(GQ).add(GC) }
+function ringPoint(u, th, y, out = new V3()) { const r = gwR(GAL_R0 + u * GAL_LEN); return out.set(Math.cos(th) * r, y, Math.sin(th) * r).applyQuaternion(GQ).add(GC) }
 /* the arms: a log spiral near the core; between the 2025 and 2000 rings each arm turns the same angle every five
    years (armBeat × the spacing between arms), so with armBeat 1 every arm crosses every era ring at the same spots.
    The pieces are blended over a short stretch (h, in log radius) so the arm never kinks. armLock mixes in the plain spiral. */
@@ -272,8 +279,10 @@ const galRnd = (k, salt) => { let h = typeof salt === 'string' ? [...salt].reduc
 const galForm = (k, m = 1, out = {}) => { let L = LOOK; try { L = LOOK_FLY || LOOK } catch (e) { }   // (LOOK_FLY comes later; at load they're one)
   const rj = L.galRand ?? 1, s = Math.exp(galRnd(k, 'size') * .6 * (L.galSizeVar ?? 1) * Math.min(1.5, rj)), w = galRnd(k, 'wind'), tw = (w > 0 ? w * 10 : w * 6) * (L.galWindVar ?? 1) * rj;   /* (tw > 0 unwinds it toward open arms, < 0 winds it tighter) */ out.s = 1 + (s - 1) * m; out.tw = tw * m; return out };
 UNI.m = 0;
-function uniPlaceStars(only = -1) { const c = new V3(), q = new Q4(), v = new V3(), fm = {}, Rg = GAL_R0 + GAL_LEN; const i0 = only >= 0 ? Math.max(0, UNI_I0[only]) : 0, i1 = only >= 0 ? (UNI_I1[only] < 0 ? -1 : UNI_I1[only]) : N - 1;
-  for (let i = i0; i <= i1; i++) { if (i === i0 || GI[i] !== GI[i - 1]) { uniAt(GI[i], c); uniQ(GI[i], q); galForm(GI[i], GI[i] === UNI.k ? UNI.m : 1, fm) } const o = i * 3; v.set(PLL[o], PLL[o + 1], PLL[o + 2]);
+const galB = k => { try { return k === UNI.k ? GW_B : uni.bhB(k) } catch (e) { return GAL_R0 } };   // where galaxy k's arms start (uni comes later)
+function uniPlaceStars(only = -1) { const c = new V3(), q = new Q4(), v = new V3(), fm = {}, Rg = GAL_R0 + GAL_LEN; let gB = GAL_R0; const i0 = only >= 0 ? Math.max(0, UNI_I0[only]) : 0, i1 = only >= 0 ? (UNI_I1[only] < 0 ? -1 : UNI_I1[only]) : N - 1;
+  for (let i = i0; i <= i1; i++) { if (i === i0 || GI[i] !== GI[i - 1]) { uniAt(GI[i], c); uniQ(GI[i], q); galForm(GI[i], GI[i] === UNI.k ? UNI.m : 1, fm); gB = galB(GI[i]) } const o = i * 3; v.set(PLL[o], PLL[o + 1], PLL[o + 2]);
+  if (gB !== GAL_R0) { const r = Math.hypot(v.x, v.z); if (r > 1) { const k = gwR(r, gB) / r; v.x *= k; v.z *= k } }   // (pushed out by its black hole)
   if (fm.tw || fm.s !== 1) { const a = fm.tw * Math.min(Math.hypot(v.x, v.z) / Rg, 1.3), ca = Math.cos(a), sa = Math.sin(a), x = v.x * ca - v.z * sa, z = v.x * sa + v.z * ca; v.set(x * fm.s, v.y * fm.s, z * fm.s) } v.applyQuaternion(q); P[o] = c.x + v.x; P[o + 1] = c.y + v.y; P[o + 2] = c.z + v.z; PL[o] = v.x; PL[o + 1] = v.y; PL[o + 2] = v.z } }
 uniPlaceStars();
 const NEB_B = cloudField(7040, armPlace(17500, 2450));   // up to 7680 clouds with NEB_A (Cloud count × 640)

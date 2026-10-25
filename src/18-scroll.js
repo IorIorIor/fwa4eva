@@ -9,7 +9,7 @@ scrollMode = (() => {
   const dateEl = el.querySelector('.sdate'), xBtn = el.querySelector('.sx'), hint = el.querySelector('.shint');
   const st = { on: false, t: T_A, tc: T_A, th: null, zoom: -1, moved: 0 }, a = new V3(), b = new V3();
   const T_END = () => Math.min(T_B, Date.now());
-  const spine = (t, out) => galPoint(GAL, 0, yearU(t), 0, 0, 0, out);
+  const spine = (t, out) => { galPoint(GAL, 0, yearU(t), 0, 0, 0, out); if (GW_B !== GAL_R0) { const l = out.sub(GC).applyQuaternion(GQI), r = Math.hypot(l.x, l.z), k = gwR(r) / Math.max(r, 1); l.x *= k; l.z *= k; out.copy(l).applyQuaternion(GQ).add(GC) } return out };
   function pose() {   // the camera's orbit for the time the view is easing toward
     const L = LOOK, t = st.tc, u = yearU(t), r = GAL_R0 + u * GAL_LEN, days = Math.max(5, L.scrollDays ?? 45);
     spine(t, a); spine(Math.min(T_END(), t + 864e5 * 10), b);   // ten days on: which way the spiral goes from here, and how fast

@@ -43,7 +43,9 @@ const U = {
   // radial colour (cream core → pink-violet → blue rim) and distance dimming, shared by most galaxy layers
   rad: uniform(0), rc1: uniform(new C3()), rc2: uniform(new C3()), rc3: uniform(new C3()), farK: uniform(.5), far0: uniform(150000), far1: uniform(900000),
   dpr: uniform(1),             // device pixels per CSS pixel
-  bhClear: uniform(BH.sh * 1.5),   // haze thins out inside this radius of the black hole
+  bhClear: uniform(BH.sh * 1.5),
+  bhClear2: uniform(BH.sh * 3.9),   // …and is back in full from here
+  gwB: uniform(GAL_R0),         // where the arms start now (a big black hole pushes them out; see gwR)   // haze thins out inside this radius of the black hole
 };
 const pxScale = U.res.y.mul(.55);   // "uPx" in the old shaders: point size per unit of size·distance⁻¹
 
@@ -63,6 +65,11 @@ const farDim = d => float(1).sub(U.farK.mul(smoothstep(U.far0, U.far1, d)));
 const radCol = rr => { const u = rr.sub(GAL_R0).div(GAL_LEN); return select(u.lessThan(.4), mix(U.rc1, U.rc2, smoothstep(-.15, .4, u)), mix(U.rc2, U.rc3, smoothstep(.4, .85, u))) };
 const toGal = p => U.GQI.mul(p.sub(U.GC));            // world → galaxy frame (disk in xz)
 const fromGal = l => U.GC.add(U.GQ.mul(l));
+// the shaders' gwR / gwRi: built radius → where it is now, and back; warpL / warpW move a galaxy-frame / world point
+const gwRT = r => select(r.lessThan(GAL_R0), r.mul(U.gwB).div(GAL_R0), select(r.lessThan(GAL_OUT), r.sub(GAL_R0).mul(U.gwB.negate().add(GAL_OUT).div(GAL_OUT - GAL_R0)).add(U.gwB), r));
+const gwRiT = r => select(r.lessThan(U.gwB), r.mul(GAL_R0).div(U.gwB), select(r.lessThan(GAL_OUT), r.sub(U.gwB).mul(float(GAL_OUT - GAL_R0).div(U.gwB.negate().add(GAL_OUT))).add(GAL_R0), r));
+const warpL = l => { const r = length(l.xz), k = gwRT(r).div(max(r, 1)); return vec3(l.x.mul(k), l.y, l.z.mul(k)) };
+const warpW = p => fromGal(warpL(toGal(p)));
 // relativistic aberration, as it really is: moving at β, a source at angle θ from the direction of travel appears at
 // cos θ' = (cos θ + β) / (1 + β cos θ), so the sky crowds forward. (The colour shift and beaming happen per pixel in the final pass.)
 const aberrate = wp => {

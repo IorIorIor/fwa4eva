@@ -19,9 +19,10 @@ function applyLook() {
   bgStars.u.op.value = L.bgStars;
   // winners
   // the black hole: its mass sets its size, live
-  setBH(L.bhMass); U.bhClear.value = BH.sh * 1.5; vol.u.bh.value = BH.sh * 1.05 / VOL_S;
-  bh.mesh.scale.setScalar(RP * BH.rs); bh.shadow.scale.setScalar(BH.sh * .985);
-  { const b = bh.u; b.rin.value = 3; b.rout.value = Math.max(3.5, L.bhDiskOut); b.br.value = L.bhDisk * 8; b.hot.value = L.bhHot; b.warm.value = L.bhWarm ?? 0; b.spin.value = L.bhSpin; b.halo.value = L.bhHalo / .75; b.dop.value = L.bhDoppler; b.lens.value = L.bhLens; b.steps.value = Math.round(L.bhSteps); b.skyDark.value = L.bhSkyDark ?? 0; b.clear.value = L.bhDiskClear ?? 1 }
+  setBH(bhLogM(L)); U.bhClear.value = BH.sh * 1.5; U.bhClear2.value = BH.sh * 3.9; vol.u.bh.value = BH.sh * 1.05 / VOL_S;
+  { const b0 = GW_B; GW_B = gwStart(BH.sh); U.gwB.value = GW_B; if (GW_B > GAL_R0) { U.bhClear.value = BH.sh; U.bhClear2.value = Math.max(BH.sh * 1.02, GW_B) } if (GW_B !== b0 && typeof stars !== 'undefined') { uniPlaceStars(UNI.k); stars.mesh.geometry.attributes.aP.needsUpdate = true } }   // a big hole: the arms start just outside it
+  BH_RP = GW_B > GAL_R0 ? Math.max(4, Math.min(RP, GW_B / BH.rs * 1.6)) : RP; bh.u.rp.value = BH_RP; bh.mesh.scale.setScalar(BH_RP * BH.rs); bh.shadow.scale.setScalar(BH.sh * .985);
+  { const b = bh.u; b.rin.value = 3; b.rout.value = Math.max(3.5, Math.min(L.bhDiskOut, GW_B / BH.rs)); b.br.value = L.bhDisk * 8; b.hot.value = L.bhHot; b.warm.value = L.bhWarm ?? 0; b.spin.value = L.bhSpin; b.halo.value = L.bhHalo / .75; b.dop.value = L.bhDoppler; b.lens.value = L.bhLens; b.steps.value = Math.round(L.bhSteps); b.skyDark.value = L.bhSkyDark ?? 0; b.clear.value = L.bhDiskClear ?? 1 }
   SCUFF.update(); const su = stars.u; su.shine.value = L.awardShine ?? 1; su.specB.value = L.awardBright ?? 2.2; su.specS.value = L.awardSize ?? 1.35; su.sharp.value = L.starSharp; su.coreW.value = L.starCore; su.haloW.value = L.starHalo; su.fall.value = L.starFall; su.spikes.value = L.starSpikes; su.white.value = L.starWhite; su.twink.value = L.starTwinkle; su.size.value = L.starSize; su.glow.value = L.starGlow; su.flare.value = L.flares ? 1 : 0;
   constellation.u.shim.value = L.conShimmer ?? .6; constellation.u.shimS.value = L.conShimmerSpeed ?? .8; stars.u.gold.value = L.gotGold ?? 1; constellation.u.glow.value = L.lineGlow; constellation.u.w.value = L.conWidth ?? 2; constellation.u.gw.value = L.conGlowW ?? 10;
   avatar.userData.nav.forEach(b => b.visible = !!L.nav); beamPivot.visible = !!L.search;

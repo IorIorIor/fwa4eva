@@ -39,26 +39,26 @@ function beamMat(u) {
    radius rs, in the galaxy's own frame (disk in xz). Light bends as x'' = −1.5 h² x / r⁵ (the exact Schwarzschild path,
    h = |x × v| conserved), integrated with leapfrog steps that shrink near the hole. bgAt(uv) is the sky behind the
    scene; escaped rays read it where their bent direction lands on screen. */
-const RP = 26, BH_STEPS = 300;
+const RP = 26, BH_STEPS = 300; let BH_RP = RP;   // (BH_RP: the lens sphere now; a giant hole bends only what's close to it, or it would blow the whole galaxy up)
 function makeBlackHole(bgAt) {
   const u = {
     cam: uniform(new V3()), rot: uniform(new THREE.Matrix3()), vrot: uniform(new THREE.Matrix3()), px: uniform(1), py: uniform(1),
-    veil: uniform(0), rin: uniform(3), rout: uniform(10), br: uniform(1), hot: uniform(1), warm: uniform(0), spin: uniform(1), halo: uniform(1), dop: uniform(1), lens: uniform(1), steps: uniform(150), t: uniform(0), skyDark: uniform(0), clear: uniform(1),
+    veil: uniform(0), rin: uniform(3), rout: uniform(10), br: uniform(1), hot: uniform(1), warm: uniform(0), spin: uniform(1), halo: uniform(1), dop: uniform(1), lens: uniform(1), steps: uniform(150), t: uniform(0), skyDark: uniform(0), clear: uniform(1), rp: uniform(RP),
   };
   const m = new THREE.NodeMaterial(); m.side = THREE.BackSide; m.depthTest = false; m.depthWrite = false; m.transparent = false;
-  const accel = (q, h2, rr) => q.mul(h2.mul(-1.5).mul(u.lens).div(pow(rr, 5)).mul(smoothstep(RP, RP * .55, rr)));   // fades to straight lines at the rim, so the edge is seamless
+  const accel = (q, h2, rr) => q.mul(h2.mul(-1.5).mul(u.lens).div(pow(rr, 5)).mul(smoothstep(u.rp, u.rp.mul(.55), rr)));   // fades to straight lines at the rim, so the edge is seamless
   // the disk: thin, Keplerian, Novikov–Thorne temperature, turbulence that shears with the orbit (two phases cross-fade so it never winds up)
   const streaks = (a, r) => noise3(vec3(cos(a).mul(2.6), sin(a).mul(2.6), r.mul(1.7))).mul(.55).add(noise3(vec3(cos(a).mul(6.5), sin(a).mul(6.5), r.mul(4.9).add(7))).mul(.3)).add(noise3(vec3(cos(a).mul(15), sin(a).mul(15), r.mul(11).add(3))).mul(.15));
   m.fragmentNode = Fn(() => {
     const rd = normalize(u.rot.mul(positionWorld.sub(cameraPosition))).toVar(), ro = u.cam;
-    const b = dot(ro, rd), c = dot(ro, ro).sub(RP * RP), t0 = max(0, b.negate().sub(sqrt(max(b.mul(b).sub(c), 0))));
+    const b = dot(ro, rd), c = dot(ro, ro).sub(u.rp.mul(u.rp)), t0 = max(0, b.negate().sub(sqrt(max(b.mul(b).sub(c), 0))));
     const p = ro.add(rd.mul(t0)).toVar(), v = vec3(rd).toVar(), hv = cross(p, v), h2 = dot(hv, hv).toVar();
     const col = vec3(0).toVar(), A = float(0).toVar(), dead = float(0).toVar(), nX = float(0).toVar();
     Loop(BH_STEPS, ({ i }) => {
       const r = length(p).toVar();
       If(float(i).greaterThanEqual(u.steps).or(A.greaterThan(.995)), () => { Break() });
       If(r.lessThan(1.02).or(r.lessThan(1.5).and(dot(p, v).lessThan(0))), () => { dead.assign(1); Break() });   // inside the photon sphere and falling: gone
-      If(r.greaterThan(RP).and(dot(p, v).greaterThan(0)), () => { Break() });
+      If(r.greaterThan(u.rp).and(dot(p, v).greaterThan(0)), () => { Break() });
       const dt = clamp(r.mul(.085), .02, 4), pp = vec3(p).toVar();
       { const hy = p.y.div(r.mul(.05).add(.08)), gl = exp(hy.mul(hy).negate()).mul(smoothstep(u.rin.mul(.85), u.rin.mul(1.3), r)).mul(smoothstep(u.rout, u.rout.mul(.4), r));   // a faint warm haze hugging the inner disk
         col.addAssign(vec3(1, .62, .34).mul(gl).mul(dt).mul(u.br).mul(.016).mul(A.oneMinus())) }

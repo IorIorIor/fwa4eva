@@ -84,7 +84,7 @@ function updateTimeRings(dt) {
   }
   const show = map || ringFarK > .005; timeRings.mesh.visible = show && !SPIRAL && L.ruler + L.eraRings + L.ringYear > 0; ruler.visible = timeRings.mesh.visible && !SPIRAL;   // with the single spiral, the spiral itself is the timeline (it carries its own dates)
   if (monthTicks) { const fk = S.mode === 'fly' ? ringFarK * (L.flyYearLines ?? 1) : 0; monthTicks.visible = (map || fk > .005) && (L.mapMonths ?? 1) + (L.mapYearLines ?? 1) > 0; monthTicks.u.a.value = map ? mapK * .55 * (L.mapMonths ?? 1) * (1 - sstep(mapYrs, L.mapMonthYrs ?? 8, (L.mapMonthYrs ?? 8) * 1.7)) : fk * .55 * (L.mapMonths ?? 1) * (L.flyMonths ?? 1);   /* (flying far out: the months with the years) */ monthTicks.u.ya.value = Math.max(map ? mapK : 0, fk) * .6 * (L.mapYearLines ?? 1); monthTicks.setLen(L.mapTickLen ?? 1500, L.mapYearLen ?? 24000, L.mapEraLen ?? L.mapYearLen ?? 24000); monthTicks.u.fade.value = L.mapTickFade ?? .6 }   // month dividers once a few years fill the view
-  BHM.c.value.copy(GC).applyMatrix4(camera.matrixWorldInverse); BHM.r.value = RP * BH.rs * (L.bhLens ? 1 : 0);   // the lines fade where the hole would bend them
+  BHM.c.value.copy(GC).applyMatrix4(camera.matrixWorldInverse); BHM.r.value = BH_RP * BH.rs * (L.bhLens ? 1 : 0);   // the lines fade where the hole would bend them
   if (spiralLine) { spiralLine.visible = show; spiralLine.u.a.value = (map ? .55 * mapK : .5 * ringFarK) * Math.max(.3, Math.min(2, L.eraRings || 1)) }
   u.era.value = .3 * L.eraRings * mapLvl[0] * (map ? 1.3 : 1); u.yr.value = .13 * L.ringYear * mapLvl[1] * (map ? 1.4 : 1); u.mo.value = .1 * L.ringMonth * mapLvl[2] * (map ? 1.3 : 1);
   u.moR.value = map ? orbit.dist * 1.4 : L.monthRange; u.armOnly.value = SPIRAL ? 1 : L.ringArms; u.y0.value = S.y0; u.y1.value = S.y1;
@@ -101,11 +101,11 @@ function updateTimeRings(dt) {
   } else if (ruler.th !== THR) { ruler.turn(THR); rulerGoal = THR }
   { const ag = 1 - (L.agencyDim ?? .85) * conK; if (ag < .999) { if (spiralLine) spiralLine.u.a.value *= ag; if (monthTicks) { monthTicks.u.a.value *= ag; monthTicks.u.ya.value *= ag } ['era', 'yr', 'mo'].forEach(k => { ruler.u[k].value *= ag; u[k].value *= ag }) } }   // an agency's constellation up: the timeline steps back
   // you-are-here ring + date
-  const pl = toLocal(player.pos, tmp2), pr = Math.hypot(pl.x, pl.z), inMe = S.mode === 'fly' ? (1 - sstep(Math.abs(pl.y), 40000, 140000)) * (1 - sstep(pr, Rr * 1.01, Rr * 1.08)) * sstep(pr, GAL_R0 * .9, GAL_R0 * 1.2) : 0;
+  const pl = toLocal(player.pos, tmp2), pr = Math.hypot(pl.x, pl.z), inMe = S.mode === 'fly' ? (1 - sstep(Math.abs(pl.y), 40000, 140000)) * (1 - sstep(pr, Rr * 1.01, Rr * 1.08)) * sstep(pr, GW_B * .9, GW_B * 1.2) : 0;
   youRing.scale.setScalar(Math.max(1, pr)); youRing.material.opacity = .4 * L.youRing * inMe; youRing.visible = ringFarK > .01 && inMe > .01 && L.youRing > 0;   // the date still rides along; the ring only with time rings on
   const yt = $('youTime');
   if (inMe > .01 && L.youRing > 0) {
-    const t = new Date(uToT((pr - GAL_R0) / GAL_LEN)); _yt(MON3[t.getUTCMonth()] + ' ' + t.getUTCFullYear());
+    const t = new Date(uToT((gwRi(pr) - GAL_R0) / GAL_LEN)); _yt(MON3[t.getUTCMonth()] + ' ' + t.getUTCFullYear());
     const a = Math.atan2(pl.z, pl.x) + .0009 * Math.max(1, 600000 / Math.max(pr, 1)); tmp2.set(Math.cos(a) * pr, 0, Math.sin(a) * pr).applyQuaternion(GQ).add(GC).project(camera);
     if (tmp2.z < 1 && Math.abs(tmp2.x) < 1.1 && Math.abs(tmp2.y) < 1.1) { yt.hidden = false; yt.style.left = ((tmp2.x * .5 + .5) * innerWidth) + 'px'; yt.style.top = ((-tmp2.y * .5 + .5) * innerHeight) + 'px'; yt.style.opacity = Math.min(1, inMe) } else yt.hidden = true
   } else yt.hidden = true;

@@ -14,12 +14,14 @@ const uni = (() => {
   // a shared picture can be turned toward a galaxy's own colours (hue: radians round the colour wheel, gain: brightness) until it has its own
   const hueTurn = (c, a) => { const y = dot(c, vec3(.299, .587, .114)), i = dot(c, vec3(.596, -.274, -.322)), q = dot(c, vec3(.211, -.523, .312)), ca = cos(a), sa = sin(a), i2 = i.mul(ca).sub(q.mul(sa)), q2 = i.mul(sa).add(q.mul(ca));
     return max(vec3(y.add(i2.mul(.956)).add(q2.mul(.621)), y.sub(i2.mul(.272)).sub(q2.mul(.647)), y.sub(i2.mul(1.106)).add(q2.mul(1.703))), 0) };
+  const gwRu = (r, B) => select(r.lessThan(B), r.mul(GAL_R0).div(B), select(r.lessThan(GAL_OUT), r.sub(B).mul(float(GAL_OUT - GAL_R0).div(B.negate().add(GAL_OUT))).add(GAL_R0), r));   // gwRiT for a galaxy of its own (B: where its arms start)
   const mkMat = (r, g) => { const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false });
     m.colorNode = Fn(() => {
       const d = uv().sub(.5), a = g.tw.mul(min(length(d).mul(HALF * 2 / Rg), 1.3)), ca = cos(a), sa = sin(a), tuv = vec2(d.x.mul(ca).sub(d.y.mul(sa)), d.x.mul(sa).add(d.y.mul(ca))).add(.5);   // (wound up or unwound: the picture turned by an angle growing with the radius, as its winners are)
-      const c0 = texture(r.texture, tuv).rgb, c1 = texture(r.texture, tuv).level(3).rgb, c2 = texture(r.texture, tuv).level(5).rgb;
+      const wr = length(tuv.sub(.5)).mul(HALF * 2), wk = gwRu(wr, g.gB).div(max(wr, 1)), suv = tuv.sub(.5).mul(wk).add(.5), hole = select(g.gB.greaterThan(GAL_R0 + 1), smoothstep(g.gB.mul(.97), g.gB, wr), float(1));   // (a big black hole: the arms pushed out round it, nothing under it)
+      const c0 = texture(r.texture, suv).rgb, c1 = texture(r.texture, suv).level(3).rgb, c2 = texture(r.texture, suv).level(5).rgb;
       const rr = length(uv().sub(.5)).mul(2), edge = smoothstep(1, .86, rr);   // (nothing past the picture's own edge)
-      return hueTurn(c0.add(c1.mul(u.soft.mul(.6))).add(c2.mul(u.soft.mul(.5))), g.hue).mul(g.gain).mul(u.br).mul(u.flat).mul(edge).mul(u.has).mul(g.f);
+      return hueTurn(c0.add(c1.mul(u.soft.mul(.6))).add(c2.mul(u.soft.mul(.5))), g.hue).mul(g.gain).mul(u.br).mul(u.flat).mul(edge).mul(hole).mul(u.has).mul(g.f);
     })(); return m };
   // its height: a soft volume round the disk, the picture's light spread up and down (thin out at the rim, puffed up round the core), marched
   // through from wherever you are, so from the side a galaxy is a lens with a bulge, not a line
@@ -34,15 +36,15 @@ const uni = (() => {
       Loop(VSTEPS, () => {
         const p = ro.add(rd.mul(t)); t.addAssign(ds);
         const rn = length(p.xz), h = g.disk.add(g.bulge.mul(exp(rn.mul(rn).mul(-20)))), y = p.y.div(h), dens = exp(y.mul(y).negate()).div(h).mul(smoothstep(1, .8, rn));
-        const a = g.tw.mul(min(rn.mul(HALF / Rg), 1.3)), ca = cos(a), sa = sin(a), xs = p.x.mul(ca).add(p.z.mul(sa)), zs = p.z.mul(ca).sub(p.x.mul(sa));
-        col.addAssign(texture(r.texture, vec2(xs.mul(.5).add(.5), zs.mul(-.5).add(.5))).level(4).rgb.mul(dens.mul(dl)));
+        const a = g.tw.mul(min(rn.mul(HALF / Rg), 1.3)), ca = cos(a), sa = sin(a), wr = rn.mul(HALF), wk = gwRu(wr, g.gB).div(max(wr, 1)), xs = p.x.mul(ca).add(p.z.mul(sa)).mul(wk), zs = p.z.mul(ca).sub(p.x.mul(sa)).mul(wk);
+        col.addAssign(texture(r.texture, vec2(xs.mul(.5).add(.5), zs.mul(-.5).add(.5))).level(4).rgb.mul(dens.mul(dl)).mul(select(g.gB.greaterThan(GAL_R0 + 1), smoothstep(g.gB.mul(.97), g.gB, wr), float(1))));
       });
       const v = col.mul(.5642), lv = dot(v, vec3(.3, .5, .2));   // (÷√π: seen from straight above it adds up to the picture itself; seen edge-on it gathers far more, so it is eased off)
       return hueTurn(v.div(lv.mul(.6).add(1)), g.hue).mul(g.gain).mul(u.br).mul(u.vol).mul(u.has).mul(g.f);
     })(); return m };
   const geo = new THREE.PlaneGeometry(HALF * 2, HALF * 2).rotateX(-Math.PI / 2);   // in the disk's plane: u along the disk's x, v toward its -z (as the picture is taken)
   const vgeo = new THREE.SphereGeometry(1, 32, 16);
-  const G = Array.from({ length: UNI_N }, () => ({ f: uniform(0), hue: uniform(0), gain: uniform(1), cam: uniform(new V3()), sx: uniform(1), tw: uniform(0), disk: uniform(.1), bulge: uniform(.3), hueT: 0, gainT: 1 }));
+  const G = Array.from({ length: UNI_N }, () => ({ f: uniform(0), hue: uniform(0), gain: uniform(1), cam: uniform(new V3()), sx: uniform(1), tw: uniform(0), gB: uniform(GAL_R0), disk: uniform(.1), bulge: uniform(.3), hueT: 0, gainT: 1 }));
   const disks = G.map(g => { const m = new THREE.Mesh(geo, mkMat(rt, g)); m.g = g; m.frustumCulled = false; farScene.add(m); return m });
   const vols = G.map(g => { const m = new THREE.Mesh(vgeo, mkVol(rt, g)); m.frustumCulled = false; farScene.add(m); return m });
   const glows = Array.from({ length: UNI_N }, () => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot, color: new C3(1, .9, .78), blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true, opacity: 0, toneMapped: false })); s.frustumCulled = false; farScene.add(s); return s });
@@ -96,6 +98,8 @@ const uni = (() => {
   const OWN_KEYS = new Set(); LOOK_DEF.forEach(([t, rows]) => { if (OWN_SECS.includes(t)) rows.forEach(r => { if (r[2] === 's' || r[2] === 't') OWN_KEYS.add(r[0]) }) });
   const isOwn = k => OWN_KEYS.has(k) && !GAL_KEYS.includes(k);   // (the shape is built once, the same in every galaxy)
   const own = store.json('sotd-gal-looks', {}), base = {}; let ownOn = null;   // ownOn: the look this galaxy's own values sit in (base: the shared values they cover)
+  const sharedV = key => key in base ? base[key] : LOOK_FLY[key];
+  function bhB(k) { if (k === UNI.k) return GW_B; const o = own[galKey(k)] || {}, L = { bhSizeG: o.bhSizeG ?? sharedV('bhSizeG'), bhMass: o.bhMass ?? sharedV('bhMass') }; return gwStart(2.953 * Math.pow(10, bhLogM(L)) * (26.6 / 6.96e5) * 2.598, o.bhGap ?? sharedV('bhGap') ?? 2000) }   // where galaxy k's arms start (its black hole as its own look has it)
   function galLook() {   // the galaxy you're in: its own values on top (the shared ones put back first)
     if (ownOn) { for (const k in base) { ownOn[k] = base[k]; delete base[k] } ownOn = null }
     const mine = own[GYEAR]; if (mine && Object.keys(mine).length) { ownOn = LOOK_FLY; for (const k in mine) if (isOwn(k) && k in ownOn) { base[k] = ownOn[k]; ownOn[k] = mine[k] } }
@@ -146,7 +150,7 @@ const uni = (() => {
       uniLayout(L); uniPlaceStars();   /* (the world is the galaxy you're in: it stays round you, the others move and turn) */ stars.mesh.geometry.attributes.aP.needsUpdate = true; nkAt.set(NaN, NaN, NaN);
     },
     get k() { return UNI.k }, level, clAt, tagAt, get galK() { return galK }, get ig() { return igK }, get cap() { return cap }, get out() { return outT > .35 }, get near() { return nearK }, get nearD() { return nearD },
-    rebase, galLook, galSave, shared, take, R: Rg, own, setFar(k, hue, gain) { G[k].hueT = hue; G[k].gainT = gain }, OWN_KEYS, rt, markOwn() { wantOwn = 1; wantOwnT = performance.now() + 1200 },
+    rebase, galLook, galSave, shared, take, bhB, R: Rg, own, setFar(k, hue, gain) { G[k].hueT = hue; G[k].gainT = gain }, OWN_KEYS, rt, markOwn() { wantOwn = 1; wantOwnT = performance.now() + 1200 },
     async dump(w = 256) {   // (tests: the far picture as an image)
       const px = await renderer.readRenderTargetPixelsAsync(rt, 0, 0, 1024, 1024), cv = document.createElement('canvas'); cv.width = cv.height = w; const g = cv.getContext('2d'), im = g.createImageData(w, w), f = 1024 / w, max = [0, 0, 0];
       for (let y = 0; y < w; y++) for (let x = 0; x < w; x++) { const o = ((y * f | 0) * 1024 + (x * f | 0)) * 4, q = (y * w + x) * 4; for (let c = 0; c < 4; c++) { const v = px[o + c] > 1.5 ? px[o + c] : px[o + c] * 255; im.data[q + c] = c === 3 ? 255 : v; if (c < 3) max[c] = Math.max(max[c], px[o + c]) } }
@@ -185,7 +189,7 @@ const uni = (() => {
         const dk = disks[k], gk = G[k]; dk.position.copy(c); uniQ(k, dk.quaternion); gk.f.value = f; dk.visible = f > .002 && u.flat.value > 0;
         gk.hue.value = dk.own ? 0 : gk.hueT; gk.gain.value = dk.own ? 1 : gk.gainT;   // (its own picture already has its own colours)
         const vk = vols[k], th = Math.max(.005, L.galThick ?? .04) * (1 + galRnd(k, 91) * .5 * rj), bu = Math.max(0, L.galBulge ?? .22) * (1 + galRnd(k, 92) * .7 * rj), Hh = Math.max(th, bu) * 2.6;   // height and bulge, in galaxy radii (each galaxy a little its own)
-        const fm = galForm(k, k === UNI.k ? UNI.m : 1, _fm); dk.scale.setScalar(fm.s); gk.tw.value = fm.tw;
+        const fm = galForm(k, k === UNI.k ? UNI.m : 1, _fm); dk.scale.setScalar(fm.s); gk.tw.value = fm.tw; gk.gB.value = dk.own ? GAL_R0 : bhB(k);   // (its own picture already has its own black hole)
         vk.position.copy(c); vk.quaternion.copy(dk.quaternion); vk.scale.set(HALF * fm.s, Hh * Rg * fm.s, HALF * fm.s); vk.visible = f > .002 && u.vol.value > 0; vk.updateMatrixWorld();
         gk.cam.value.copy(camera.position); vk.worldToLocal(gk.cam.value); gk.sx.value = HALF / (Hh * Rg); gk.disk.value = th / Hh; gk.bulge.value = Math.max(0, bu - th) / Hh;
         const g = glows[k]; g.position.copy(c); g.scale.setScalar(Math.max(Rg * .04, d * .05)); g.material.opacity = Math.min(1, gg) * f * (1 - sstep(d, Rg * 60, Rg * 140)) * (paperK > .5 ? 0 : 1); g.visible = g.material.opacity > .003; g.material.color.setRGB(1, .9, .78).multiplyScalar(Math.max(1, gg));

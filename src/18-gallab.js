@@ -9,7 +9,8 @@ const galLab = (() => {
     ['Winding', [['spiralTurns', 'Turns of the spiral (core to rim)'], ['spiralGap', 'Windings at the core × further apart'], ['spiralHole', 'Open space round the core (×)'], ['spiralSize', 'Size'], ['armStart', 'Spiral starts at (from the core)'], ['armWiden', 'Arm widens toward the rim (×)'], ['armWidenCurve', '…how late the widening sets in'], ['armWidth', 'Arm width (gas)'], ['hazeCore', 'Gas gathers toward the core']]],
     ['Colours', [['radCol', 'Colour by radius'], ['radHue1', 'Core hue'], ['radHue2', 'Middle hue'], ['radHue3', 'Outer hue'], ['radSat', 'Saturation']]],
     ['Winners', [['starHug', 'Keep close to the line'], ['starBandW', 'Band width (across)'], ['starAlong', 'Spread along the spiral'], ['starBandH', 'Band height (off the disk)'], ['starCoreH', '…extra height toward the core'], ['starSep', 'Minimum spacing (u)']]],
-    ['Long exposure', [['arcs', 'Star arcs'], ['arcLen', 'Arc length'], ['arcWidth', 'Arc width (px)'], ['arcDensity', 'Arc count'], ['arcSpin', 'Arc drift speed'], ['arcCore', 'White-hot core'], ['rim', 'Bright rim']]],
+    ['Black hole', [['bhSizeG', 'Size (share of the galaxy; 0 = from its mass)'], ['bhMass', 'Mass (when size is 0)'], ['bhGap', 'Arms start this far outside it (u)'], ['bhDisk', 'Disk brightness'], ['bhDiskOut', 'Disk outer edge'], ['bhHot', 'Disk temperature'], ['bhWarm', 'Disk warmth'], ['bhHalo', 'Photon ring']]],
+    ['Long exposure', LOOK_DEF.find(d => d[0] === 'Long exposure')[1].filter(r => r[2] === 's' || r[2] === 't').map(r => [r[0], r[1]])],
     ['Haze', [['haze', 'Arm haze'], ['hazeBright', 'Brightness'], ['hazeDensity', 'Puff count'], ['hazeHeight', 'Band height'], ['hazeGirth', 'Band girth'], ['hazeSize', 'Puff size'], ['hazeSoft', 'Softness'], ['hazePal', 'Takes the galaxy\'s colours']]],
     ['Volumetric', [['volumetric', 'Volumetric gas (on/off)'], ['volGlow', 'Glow'], ['volDust', 'Dust absorption'], ['volCore', 'Core brightness'], ['volHeight', 'Volume height'], ['volThick', 'Flatness'], ['volWisp', 'Bright wisps'], ['volContrast', 'Wisp contrast']]],
   ];
@@ -30,7 +31,7 @@ const galLab = (() => {
     for (const y of GKEYS) { const own = uni.own[y] = uni.own[y] || {}; COLOUR.forEach(k => { const v = valOf(y, k); if (v !== base(k)) own[k] = v; else delete own[k] }); if (!Object.keys(own).length) delete uni.own[y] }
     const hd = (a, b) => ((a - b) % 1 + 1.5) % 1 - .5;   // the far pictures (until a galaxy has its own): turned toward its hues, a little brighter or dimmer
     for (const y of GKEYS) { const dh = (hd(valOf(y, 'radHue1'), base('radHue1')) + hd(valOf(y, 'radHue2'), base('radHue2')) + hd(valOf(y, 'radHue3'), base('radHue3'))) / 3; uni.setFar(galOfYear(y), dh * Math.PI * 2 * Math.min(1, valOf(y, 'radCol')), Math.max(.4, 1 + galRnd(galOfYear(y), 'gain') * .3 * (LOOK_FLY.galRand ?? 1))) }
-    store.set('sotd-gal-looks', JSON.stringify(uni.own)); if (!quiet) { uni.galLook(); uni.markOwn() }
+    store.set('sotd-gal-looks', JSON.stringify(uni.own)); uniPlaceStars(); stars.mesh.geometry.attributes.aP.needsUpdate = true; if (!quiet) { uni.galLook(); uni.markOwn() }   // (their black holes push their winners out)
   }
   let rand = LOOK_FLY.galRand ?? 1; pushColours(true);   // (the colours of every galaxy, ready for when you get there)
 
@@ -45,7 +46,8 @@ const galLab = (() => {
     const c1 = hsl(V('radHue1'), V('radSat'), .6), c2 = hsl(V('radHue2'), V('radSat') * .85, .5), c3 = hsl(V('radHue3'), V('radSat'), .5), rc = new C3(), cc = new C3(), rk = V('radCol');
     const ss = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t) };
     const radC = u => u < .4 ? rc.copy(c1).lerp(c2, ss(-.15, .4, u)) : rc.copy(c2).lerp(c3, ss(.4, .85, u));
-    const K = (W / 2 - 4) / 1.02e6, cx = W / 2, cy = W / 2, at = (r, a) => [cx + Math.cos(a) * r * K, cy + Math.sin(a) * r * K];
+    const bsh = 2.953 * Math.pow(10, bhLogM({ bhSizeG: V('bhSizeG'), bhMass: V('bhMass') })) * (26.6 / 6.96e5) * 2.598, B = Math.min(out * .92, Math.max(r0, bsh + V('bhGap'))), wr = r => B === r0 ? r : r < r0 ? r * B / r0 : r < out ? B + (r - r0) * (out - B) / (out - r0) : r;   // a big black hole: the arms squeezed into a ring round it
+    const K = (W / 2 - 4) / 1.02e6, cx = W / 2, cy = W / 2, at = (r, a) => [cx + Math.cos(a) * wr(r) * K, cy + Math.sin(a) * wr(r) * K];
     g.globalCompositeOperation = 'source-over'; g.fillStyle = '#040309'; g.fillRect(0, 0, W, W); g.globalCompositeOperation = 'lighter';
     // the gas: soft puffs along the spiral, coloured by how far out they are
     const hc = V('hazeCore'), aw = V('armWidth');
@@ -63,6 +65,7 @@ const galLab = (() => {
       const d = D[i], u = rho(1 - Math.max(0, Math.min(1, (d.t - t0) / (t1 - t0)))), r = r0 + u * len, s = 7700 + r * .045, wk = wAt(r), rr = Math.max(r0 * .3, r + gs() * s * .7 * bw * hug * wk), a = phase(r) + gs() * .1 * ba * s / r * wk;
       const [x, z] = at(rr, a), big = d.award === 'FOTY' ? 2.4 : d.award === 'SOTM' ? 1.7 : 1.1; g.fillStyle = d.award === 'FOTY' ? AWARD_COL.FOTY : d.award === 'SOTM' ? AWARD_COL.SOTM : 'rgba(255,255,255,.9)'; g.fillRect(x - big / 2, z - big / 2, big, big);
     }
+    if (bsh * K > .8) { g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.beginPath(); g.arc(cx, cy, bsh * K, 0, 7); g.fill(); g.strokeStyle = 'rgba(255,214,160,.55)'; g.lineWidth = 1.2; g.stroke() }   // the hole itself
   }
 
   // the page
