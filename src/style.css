@@ -943,3 +943,7 @@ html.roomboot:not(.roomlive) body::after{content:'Loading';position:fixed;left:5
 body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(script):not(style){visibility:hidden!important}
 body.room:not(.roomdive) #shipLayer{visibility:hidden!important}
 html.roomboot #portalLoad{will-change:transform}
+/* the room: no mark, only the galaxy; and a big Start on the glass (Look → Room: roomBtn, roomBtnY) */
+html.nomark #portalLoad > svg,html.nomark #plTag{display:none}
+html.nomark #plEnter{top:var(--rby,70%);transform:translate(-50%,-50%);font-size:calc(13px * var(--rbs,3.4));letter-spacing:.24em;padding:calc(12px * var(--rbs,3.4)) calc(30px * var(--rbs,3.4)) calc(11px * var(--rbs,3.4)) calc(33px * var(--rbs,3.4))}
+html.nomark #plEnter rect{stroke-width:calc(1.5px * var(--rbs,3.4) * .5)}

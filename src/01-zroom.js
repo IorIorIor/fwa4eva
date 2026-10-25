@@ -200,11 +200,12 @@ const room = (() => {
   const toWindow = (x, y) => { const m = st.Mi; if (!m) return [x, y]; const w = m[6] * x + m[7] * y + m[8]; return [(m[0] * x + m[1] * y + m[2]) / w, (m[3] * x + m[4] * y + m[5]) / w] };   // a point on screen → where it falls on the opening's page
 
   // ── each frame ──
-  const _b = new V3(), _t = new V3(), _q0 = new Q4(), _q1 = new Q4(), _p0 = new V3(), _p1 = new V3(), _m4 = new THREE.Matrix4(), _n = new V3(), _u = new V3();
+  const _b = new V3(), _t = new V3(), _q1 = new Q4(), _p0 = new V3(), _p1 = new V3(), _m4 = new THREE.Matrix4(), _n = new V3(), _u = new V3();
   function apply() {
     const warm = RL('roomLampWarm', .6), lc = new C3(1, 1 - .22 * warm, 1 - .5 * warm), lmp = RL('roomLamp', 1), scr = RL('roomScreen', .5);
     spot.color.copy(lc); spot.intensity = 11 * lmp; spot.angle = THREE.MathUtils.degToRad(RL('roomLampCone', 52)); spot.penumbra = RL('roomLampSoft', .65); spot.shadow.radius = RL('roomShadow', 4);
     bulbGlow.color.copy(lc); bulbGlow.intensity = .5 * lmp;
+    { const bs = RL('roomBtn', 3.4).toFixed(2), by = (RL('roomBtnY', .7) * 100).toFixed(1) + '%'; if (bs !== st.bs || by !== st.by) { st.bs = bs; st.by = by; H0.style.setProperty('--rbs', bs); H0.style.setProperty('--rby', by) } }   // the Start button's size and place on the glass
     scrLight.intensity = 3 * scr * (1 + U2.scrOn.value * 2); U2.glow.value = scr * 3; U2.scrBr.value = RL('roomScreenBright', 1.4); U2.scan.value = RL('roomScan', .12) * (1 - U2.k.value);
     hemi.intensity = .9 * RL('roomFill', 1);
     wall.color.copy(lin('#33465f')).multiplyScalar(RL('roomWall', 1)); const wk = RL('roomWood', 1); wood.color.setScalar(wk); woodV.color.copy(lin('#c8c8c8')).multiplyScalar(wk); woodDark.color.copy(lin('#8a8a8a')).multiplyScalar(wk);
@@ -222,15 +223,12 @@ const room = (() => {
     const cx = RL('roomCamX', 0);
     cam.fov = RL('roomFov', 36); cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     cam.position.set(cx + st.sway.x * sw * 2, RL('roomCamH', 1.2) - st.sway.y * sw, RL('roomCamZ', 2.45)); st.aim.set(cx * .6, RL('roomAimY', .9), .25); cam.up.set(0, 1, 0); cam.lookAt(st.aim);
-    if (st.phase === 'dive') {   // into the glass: from where you were to square in front of it, the window's part of it filling the window
-      const T = Math.max(.4, RL('roomDive', 1.9)); st.dv = Math.min(1, st.dv + dt / T);
-      const x = st.dv, e = x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;   // slow away, quick through the middle, settling onto the glass
-      glass.updateWorldMatrix(true, false); glass.getWorldPosition(_t); _n.set(0, 0, 1).transformDirection(glass.matrixWorld); _u.set(0, 1, 0).transformDirection(glass.matrixWorld);
-      const b = bandOf(), bh = (b[3] - b[1]) * SH, d = bh / (2 * Math.tan(cam.fov * Math.PI / 360));
-      _p1.copy(_t).addScaledVector(_n, d); _m4.lookAt(_p1, _t, _u); _q1.setFromRotationMatrix(_m4);
-      _p0.copy(st.p0); _q0.copy(st.q0); cam.position.lerpVectors(_p0, _p1, e); cam.quaternion.slerpQuaternions(_q0, _q1, e);
-      U2.k.value = sstep(x, .82, 1);
-      if (x >= 1) { finish(); return }
+    if (st.phase === 'dive') {   // into the glass, the first part of the one move (see mkRun): nearer by the same log distance as the run says, turning square onto it
+      const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr), p = s / R.Dr, w = sstep(p, 0, 1);
+      glassPose(); _p1.copy(_t).addScaledVector(_n, st.d0 * Math.exp(-R.Dr)); _m4.lookAt(_p1, _t, _u); _q1.setFromRotationMatrix(_m4);
+      _p0.copy(st.dir0).lerp(_n, w).normalize(); cam.position.copy(_t).addScaledVector(_p0, st.d0 * Math.exp(-s)); cam.quaternion.slerpQuaternions(st.q0, _q1, w);
+      U2.k.value = sstep(p, .8, 1);
+      if (R.s(R.t) >= R.Dr) { finish(); return }   // the glass fills the window: the galaxy carries on with the same run
     }
     cam.updateMatrixWorld();
     // the lamp's light leaves the bulb along the shade's axis
@@ -258,11 +256,19 @@ const room = (() => {
     renderer.setRenderTarget(gRT); try { fn() } finally { renderer.setRenderTarget(null); c.fov = fov; c.aspect = asp; c.updateProjectionMatrix() }
   }
   // Start: on the glass, the opening's button (or Enter / Space); Esc skips the room and the opening
+  // the one move, room → glass → galaxy → behind your pointer, as log distance travelled (each e-fold nearer counts 1): it eases in,
+  // then carries on at one steady pace through the glass and down into the galaxy, and the settle behind your pointer brakes it
+  // (intro.settleStart takes over at that pace). Dr: the room's share, Dg: the galaxy's
+  function mkRun(Dr, Dg, T) { const a = .45, L = Dr + Dg, k = L / (T * (1 - a / 2)); return { t: 0, Dr, Dg, L, vend: k, s: t => { const u = t / T; return k * T * (u < a ? u * u / (2 * a) : u - a / 2) } } }
+  function glassPose() { glass.updateWorldMatrix(true, false); glass.getWorldPosition(_t); _n.set(0, 0, 1).transformDirection(glass.matrixWorld); _u.set(0, 1, 0).transformDirection(glass.matrixWorld) }
   function dive() {
-    if (st.phase !== 'ready') return; st.phase = 'dive'; st.dv = 0; st.p0 = cam.position.clone(); st.q0 = cam.quaternion.clone(); document.body.classList.add('roomdive');
+    if (st.phase !== 'ready') return; st.phase = 'dive'; st.q0 = cam.quaternion.clone(); document.body.classList.add('roomdive');
+    glassPose(); const b = bandOf(), d1 = (b[3] - b[1]) * SH / (2 * Math.tan(cam.fov * Math.PI / 360)); st.d0 = cam.position.distanceTo(_t); st.dir0 = cam.position.clone().sub(_t).normalize();
+    let Dg = 1.8; try { Dg = Math.max(.3, intro.lnPV - intro.lnD0) } catch (e) { }
+    st.run = mkRun(Math.max(.2, Math.log(st.d0 / d1)), Dg, Math.max(.6, RL('roomDive', 2.8)));
     try { const [wx, wy] = toWindow(st.ptr.x, st.ptr.y); intro.mx = intro.mxs = Math.max(-1, Math.min(1, wx / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(wy / innerHeight * 2 - 1))) } catch (e) { }   // your pointer, where it is on the glass
     try { if (!coarse && !lockFailed) requestLock() } catch (e) { }
-    st.onDone = () => { try { intro.ready = true; intro.play = 1 } catch (e) { } };   // and the opening plays on from there
+    st.onDone = () => { try { intro.ready = true; intro.rr = st.run } catch (e) { } };   // and the opening carries on the same move from there
   }
   const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter');
   addEventListener('pointermove', e => { if (st.on && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } }, true);
@@ -271,11 +277,12 @@ const room = (() => {
   addEventListener('keydown', e => {
     if (!st.on || (e.target.matches && e.target.matches('input,textarea,select'))) return; const k = e.key;
     if (k === 'Enter' || k === ' ' || k === 'ArrowDown') { e.preventDefault(); e.stopImmediatePropagation(); if (st.phase === 'ready') { try { setMuted(false); setMusicOff(false); audio(); intro.heard = true } catch (er) { } dive() } }
-    else if (k === 'Escape') { if (st.phase === 'ready') { finish() } else e.stopImmediatePropagation() }   // (ready: the opening's own Esc then skips it too)
+    else if (k === 'Escape') { if (st.phase === 'ready') { st.onDone = null; finish() } else e.stopImmediatePropagation() }   // (ready: the opening's own Esc then skips it too)
   }, true);
   addEventListener('resize', () => { if (st.on) renderer.setSize(innerWidth, innerHeight, false) });
 
   // build, compile, show: then the galaxy loads behind the glass
+  H0.classList.add('nomark');   // (only the galaxy on the glass: no mark round it, here or after)
   const startP = (async () => {
     cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     try { await renderer.compileAsync(sc, cam) } catch (e) { }

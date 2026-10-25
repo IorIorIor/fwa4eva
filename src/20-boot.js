@@ -173,7 +173,7 @@ const intro = {
     $('intro').hidden = true; document.body.classList.remove('splash');
     this.at = null; this.start(true);
     document.body.classList.remove('opening'); this.ptrOn = false; this.ready = !!this.lab; $('plEnter').classList.remove('ready'); $('plEnter').querySelector('span').textContent = 'Loading';   // your own mouse pointer until you start: only then the 3D one takes over
-    this.ph = 0; this.pq = this.pqT = 0; this.play = 0; this.pt0 = performance.now(); this.heard = false; this.qv = 0; this.mx = this.my = this.mxs = this.mys = 0;
+    this.ph = 0; this.pq = this.pqT = 0; this.play = 0; this.rr = null; this.noMark = room.on0; this.pt0 = performance.now(); this.heard = false; this.qv = 0; this.mx = this.my = this.mxs = this.mys = 0;
     this.C0 = player.pos.clone(); camera.clearViewOffset();
     { const f = GC.clone().sub(this.C0).normalize();   // the heading you'll fly off with, wherever you start (saved spot or not): straight at the galaxy's core. It's the camera's too, all through the opening: the core sits dead centre behind the mark from the first frame, and never moves
       rig.q.copy(lookAtQ(f, Math.abs(f.dot(GAL_UP)) > .99 ? _ix.set(1, 0, 0) : GAL_UP)); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q) }
@@ -213,12 +213,14 @@ const intro = {
     return out.copy(this.fwd).multiplyScalar(-(1 - bl)).addScaledVector(this.offE, bl).normalize().multiplyScalar(Math.exp(ln)).add(A);
   },
   portalStep(dt, lab = false) {
-    const L = LOOK, P = this.pt; let crossed = 0; if (!lab) { if (this.play) this.pqT = Math.min(1.1, this.pqT + dt / Math.max(.5, L.portalPlay ?? 3.5));   // (the target runs a little past 1: you come out of the mark still moving, never easing to a stop just short of it)
+    const L = LOOK, P = this.pt; let crossed = 0, Dg = this.lnPV - this.lnD0; if (!lab && this.rr) {   // out of the room: the same move carries on (room.mkRun), straight in at its pace
+      const R = this.rr; R.t += dt; const s = R.s(R.t) - R.Dr, q0 = this.pq; this.pq = this.pqT = Math.max(0, Math.min(1, s / Dg)); if (dt > 0) this.qv = (this.pq - q0) / dt; if (s >= Dg) crossed = Math.max(1e-6, (s - Dg) / R.vend) }
+    else if (!lab) { if (this.play) this.pqT = Math.min(1.1, this.pqT + dt / Math.max(.5, L.portalPlay ?? 3.5));   // (the target runs a little past 1: you come out of the mark still moving, never easing to a stop just short of it)
       const q0 = this.pq; this.pq += (this.pqT - this.pq) * (1 - Math.exp(-dt * 6)); if (dt > 0) this.qv = (this.pq - q0) / dt; if (this.pq >= 1) { crossed = Math.max(1e-6, dt * (this.pq - 1) / Math.max(1e-9, this.pq - q0)); this.pq = 1 } }   // crossed: the part of this frame after you came through   // qv: how fast you're going through right now (it carries on past the mark)
     const q = Math.min(1, this.pq), eL = Math.pow(q, L.portalAccel ?? 2.2), lam = this.lam();
     // the dive, in log distance from the ship's spot: slow, then a rush, then easing out, but never to a stop: it arrives still moving
     // in at a share (lam) of its pace, and that is the speed the camera carries on with past the mark (so nothing jumps there)
-    const x = Math.pow(q, L.portalAccel ?? 2.2), eC = (1 - lam) * (1 - (1 - x) * (1 - x)) + lam * q, lnd = this.lnD0 + (this.lnPV - this.lnD0) * (1 - eC);
+    const x = Math.pow(q, L.portalAccel ?? 2.2), eC = this.rr ? q : (1 - lam) * (1 - (1 - x) * (1 - x)) + lam * q, lnd = this.lnD0 + (this.lnPV - this.lnD0) * (1 - eC);
     this.setFov(.6 * q); this.camAt(this.C0, lnd, camera.position); camera.quaternion.copy(rig.q); camera.updateMatrixWorld();   // it only closes in: the galaxy never turns
     const W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), Z0 = this.D0 * .6, wpx = Math.min(W * (L.portalSize ?? .62), H * 2.2), s = wpx / H * 2 * Z0 * th / 509, dep = (L.portalDepth ?? 200) * s;
     const z = -Z0 + (Z0 + dep * 1.05 + Z0 * .02) * eL;   // the mark comes at you, faster and faster, until you're out of the back of its walls
@@ -237,25 +239,25 @@ const intro = {
       P.wallBasic.opacity = P.wallMat.opacity; if (P.wallBasic.transparent !== P.wallMat.transparent) { P.wallBasic.transparent = P.wallMat.transparent; P.wallBasic.needsUpdate = true } P.wallM.material = fc > .001 ? P.wallMat : P.wallBasic }
     const en = !!LOOK.portalEnter; $('plTxt').hidden = en || !this.ready; $('plEnter').hidden = !en && this.ready;   // (the button is the loading bar either way; scrolling, it gives way to the hint once loaded)
     { const pw = Math.round(wpx) + 'px'; if (pw !== this.pwS) { this.pwS = pw; document.documentElement.style.setProperty('--pw', pw) } }   // the flat outline and the tagline stay exactly on the 3D mark   // (the opening's Enter switch can be flipped right here)
-    $('plTxt').classList.toggle('gone', q > .03); $('plTag').classList.toggle('gone', q > .03); $('plEnter').classList.toggle('gone', q > .01 || this.play > 0);
+    $('plTxt').classList.toggle('gone', q > .03); $('plTag').classList.toggle('gone', q > .03); $('plEnter').classList.toggle('gone', q > .01 || this.play > 0 || room.diving || !!this.rr); if (this.noMark) P.g.visible = false;   // (in the room: only the galaxy, no mark)
     // the pointer: the 3D ship, flat, right under your mouse. In the last stretch it starts to come closer, at exactly the pace the
     // camera will carry on closing in at, so past the mark it just keeps growing the same way (G: the rest of a smoothstep's area)
     { const f = Math.min(1, dt * 14 || 1); this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;
-      const qa = .9, tt = Math.max(0, Math.min(1, (q - qa) / (1 - qa))), G = (1 - qa) * (.5 - tt * tt * tt + tt * tt * tt * tt / 2), ty = Math.tan(camera.fov * Math.PI / 360), dp = Math.exp(this.lnD0 + lam * (this.lnPV - this.lnD0) * G) * Math.tan(LOOK.fov * Math.PI / 360) / ty;   // (with the wide lens it sits nearer, so it stays exactly pointer-sized)
+      const qa = .9, tt = Math.max(0, Math.min(1, (q - qa) / (1 - qa))), G = (1 - qa) * (.5 - tt * tt * tt + tt * tt * tt * tt / 2), ty = Math.tan(camera.fov * Math.PI / 360), dp = Math.exp(this.lnD0 + (this.rr ? 1 : lam) * (this.lnPV - this.lnD0) * G) * Math.tan(LOOK.fov * Math.PI / 360) / ty;   // (with the wide lens it sits nearer, so it stays exactly pointer-sized)
       avatar.position.set(this.mxs * ty * camera.aspect * dp, this.mys * ty * dp, -dp).applyQuaternion(camera.quaternion).add(camera.position); avatar.quaternion.copy(camera.quaternion).multiply(this.relQ); avatar.renderOrder = 5;
       flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab || room.diving; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on }   // the 3D pointer only from Start (or the first scroll), right where your mouse is
-    if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv); this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
+    if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv, this.rr ? this.rr.vend : null); this.rr = null; this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
   },
   lam() { return Math.max(.02, Math.min(.9, LOOK.portalCarry ?? .45)) },
   // after the mark, one movement: the camera carries on closing in at the speed it came through with and settles (springs, no
   // fixed timing) into the flying position behind the ship, swinging round from straight above as it slows. The ship keeps
   // following your mouse at first and lets go of it gradually, coming to rest wherever it ends up; the point the camera works
   // round (A) slides from where you came through over to the ship. sx: log of the camera's distance, sa: its angle from overhead
-  settleStart(qv) {
+  settleStart(qv, vAbs = null) {   // (vAbs: the pace to carry on at, in log distance a second, when the room's move hands it over)
     const L = LOOK, b = _ib.copy(INTRO_END).normalize();
     this.ph = 3; this.st = 0; this.reflGo = false; this.S = avatar.position.clone(); this.A = this.C0.clone(); avatar.renderOrder = 0; this.Qf = avatar.quaternion.clone();   // Qf: the pointer as it came through, flat to you
     this.sx = this.lnD0; this.sa = 0; this.saEnd = Math.acos(b.y); this.sxEnd = Math.log(INTRO_END.length());
-    this.svx = Math.max(-6, -this.lam() * (this.lnPV - this.lnD0) * Math.max(qv, .02)); this.sva = 0; this.lit = false; this.hud = false;   // exactly the dive's pace as it arrived
+    this.svx = Math.max(-6, vAbs != null ? -vAbs : -this.lam() * (this.lnPV - this.lnD0) * Math.max(qv, .02)); this.sva = 0; this.lit = false; this.hud = false;   // exactly the dive's pace as it arrived
     const gap = Math.max(1e-3, this.sx - this.sxEnd); this.sw = Math.max(1.1, Math.min(6, -this.svx / gap));   // its pace: the one at which that speed coasts to a stop right behind the ship (x = gap·e^(−wt): no push, only slowing)
   },
   settleStep(dt) {   // the camera keeps its heading; it closes in (a spring that only slows) on the point A, which slides over to wherever the ship is
