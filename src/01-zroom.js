@@ -265,7 +265,7 @@ const room = (() => {
     st.onDone = () => { try { intro.ready = true; intro.play = 1 } catch (e) { } };   // and the opening plays on from there
   }
   const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter');
-  addEventListener('pointermove', e => { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true }, true);
+  addEventListener('pointermove', e => { if (st.on && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } }, true);
   addEventListener('pointerup', e => { if (!st.on || (e.target.closest && e.target.closest('#lookPanel'))) return; if (st.phase === 'ready' && onBtn(e)) { e.stopImmediatePropagation(); dive() } else if (st.phase !== 'off') e.stopImmediatePropagation() }, true);
   addEventListener('wheel', e => { if (st.on && !(e.target.closest && e.target.closest('#lookPanel'))) e.stopImmediatePropagation() }, { capture: true, passive: true });
   addEventListener('keydown', e => {
@@ -285,7 +285,7 @@ const room = (() => {
   return {
     get on() { return st.on }, on0: true, get diving() { return st.phase === 'dive' }, get phase() { return st.phase }, startP, galaxy, dive,
     galaxyReady() { if (st.phase === 'loading') st.phase = 'ready' },   // the opening has its galaxy up: the glass shows it and Start works
-    skip() { if (st.on) finish() }, glass, cam, scene: sc,
+    skip() { if (st.on) finish() }, glass, cam, scene: sc, get st() { return st },
   };
 })();
 await room.startP;
