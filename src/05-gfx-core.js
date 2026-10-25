@@ -4,11 +4,10 @@
      softScene  everything soft and low-frequency (nebulae, lanes, glows, outer disk), at reduced resolution
      hazeScene  the arm haze, accumulated additively and then soft-clipped (a screen blend that can't blow out)
      scene      everything crisp at full resolution, laid over the other three, then bloom and the grade */
-const canvas = $('gl');
-const renderer = new THREE.WebGPURenderer({ canvas, antialias: false, forceWebGL: QS.has('webgl'), powerPreference: 'high-performance' });   // MSAA lives on the 3D pass only, not the full-screen post quad
+/* (the canvas and the renderer are made first thing, in 01-zroom, so the room can show while all this loads) */
 const shipCanvas = document.createElement('canvas'); shipCanvas.id = 'shipLayer'; shipCanvas.setAttribute('aria-hidden', 'true'); canvas.after(shipCanvas);
 const shipRenderer = new THREE.WebGPURenderer({ canvas: shipCanvas, antialias: true, alpha: true, forceWebGL: QS.has('webgl') });
-await Promise.all([renderer.init(), shipRenderer.init()]);   // both GPU contexts start up at once
+await shipRenderer.init();
 renderer.highPrecision = true;   // model-view matrices in 64-bit on the CPU: the ship stays rock steady a million units from home
 const GPU = renderer.backend.isWebGPUBackend === true;
 let DPR = Math.min(LOOK.maxDpr, devicePixelRatio || 1);

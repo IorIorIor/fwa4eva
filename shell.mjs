@@ -9,7 +9,8 @@ export const ROOT = dirname(fileURLToPath(import.meta.url));
 export const SRC = join(ROOT, 'src');
 const rd = f => readFileSync(join(SRC, f), 'utf8');
 
-export const appSource = () => readdirSync(SRC).filter(f => /^\d\d-.*\.js$/.test(f)).sort().map(rd).join('\n');
+// (after the room is up, every file starts with a breath for it to draw a frame: see roomYield in 01-zroom)
+export const appSource = () => { let past = false; return readdirSync(SRC).filter(f => /^\d\d-.*\.js$/.test(f)).sort().map(f => { const s = (past ? ';await roomYield();\n' : '') + rd(f); if (f.startsWith('01-zroom')) past = true; return s }).join('\n') };
 
 // the whole page around a script tag (or an inline script when `inline` is given)
 export function pageHtml({ script, inline } = {}) {

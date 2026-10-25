@@ -935,3 +935,11 @@ body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));cli
 #plEnter.ready:hover,#plEnter.ready:focus-visible{background:rgba(255,255,255,.82);outline:none}
 #plEnter.gone{opacity:0;pointer-events:none}
 @media (max-width:760px){#plTag{font-size:11px;letter-spacing:.22em}}
+
+/* the room (the year 2000, 01-zroom): black with a quiet "Loading" until it's built, then only the room, the opening on its
+   glass (#portalLoad, laid onto it by a CSS transform), the Look panel, and in the dive the pointer's layer */
+html.roomboot:not(.roomlive) #portalLoad{visibility:hidden}
+html.roomboot:not(.roomlive) body::after{content:'Loading';position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font:500 11px/1 "FF Good Pro Cond",var(--mono);letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.38);z-index:200;pointer-events:none}
+body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(script):not(style){visibility:hidden!important}
+body.room:not(.roomdive) #shipLayer{visibility:hidden!important}
+html.roomboot #portalLoad{will-change:transform}
