@@ -940,7 +940,7 @@ body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));cli
    glass (#portalLoad, laid onto it by a CSS transform), the Look panel, and in the dive the pointer's layer */
 html.roomboot:not(.roomlive) #portalLoad{visibility:hidden}
 html.roomboot:not(.roomlive) body::after{content:'Loading';position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font:500 11px/1 "FF Good Pro Cond",var(--mono);letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.38);z-index:200;pointer-events:none}
-body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(#crtLab):not(script):not(style){visibility:hidden!important}
+body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(#crtLab):not(#crtFx):not(script):not(style){visibility:hidden!important}
 body.room:not(.roommob) #shipLayer{visibility:hidden!important}
 html.roomboot #portalLoad{background:transparent!important}
 html.roomboot #portalLoad{will-change:transform}
@@ -970,3 +970,12 @@ html.nomark #rmLogo{display:block}
   #crtLab .x{font-size:24px;padding:4px 12px}
 }
 body.room{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+/* the CRT over the whole screen (01-zroom crtFx) */
+#crtFx{position:fixed;inset:0;pointer-events:none;z-index:260;display:none;overflow:hidden}
+#crtFx i{position:absolute;inset:0;display:block}
+#crtFx .cs{background:repeating-linear-gradient(to bottom,rgba(0,0,0,.8) 0,rgba(0,0,0,.8) calc(var(--sp) * .42),transparent calc(var(--sp) * .42),transparent var(--sp))}
+#crtFx .cm{background:linear-gradient(to right,#ff3a3a 0 33.33%,#3aff3a 33.33% 66.66%,#3a3aff 66.66% 100%);background-size:var(--tp) 100%;mix-blend-mode:multiply}
+#crtFx .cv{background:radial-gradient(ellipse at center,transparent 42%,rgba(0,0,0,.92) 100%)}
+#crtFx .cr{bottom:auto;height:24%;background:linear-gradient(to bottom,transparent,rgba(255,255,255,.08) 50%,transparent)}
+#crtFx .cn{background-repeat:repeat;mix-blend-mode:overlay}
+#crtFx .cf{background:#000}
