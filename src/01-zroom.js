@@ -73,12 +73,12 @@ const room = (() => {
   // the glass, set in a darker inner frame. It shows the galaxy's picture (gT) once it's there, faintly lined like a CRT
   const SW = .33, SH = .25, GA = SW / SH, glassZ = .14 + BD / 2 + .002;
   add(rbox(SW + .04, SH + .036, .01, .006), std('#a99f8a', .6), 0, by + .012, glassZ - .006, mon);
-  const gRT = new THREE.RenderTarget(4, 3, { depthBuffer: false }); const gT = texture(gRT.texture);
+  const gRT = new THREE.RenderTarget(4, 3, { depthBuffer: false }); const gT = texture(gRT.texture), FLIP = renderer.backend.isWebGPUBackend === true;   // (WebGPU keeps a render target top row first: read it the other way up)
   const U2 = { exp: uniform(0), bloomK: uniform(.35), vig: uniform(.55), grain: uniform(.035), time: uniform(0), res: uniform(new THREE.Vector2(1, 1)), scrOn: uniform(0), scrBr: uniform(1), scan: uniform(.12), glow: uniform(.35), k: uniform(0), band: uniform(new THREE.Vector4(0, 0, 1, 1)) };
   const glassMat = new THREE.MeshPhysicalNodeMaterial({ color: lin('#0b0f12'), roughness: .12, metalness: 0, clearcoat: 1, clearcoatRoughness: .05 });
   glassMat.emissiveNode = Fn(() => {
     const q = uv().sub(.5).mul(2), vig = float(1).sub(dot(q.mul(q), vec2(.22, .3))).clamp(0, 1), lines = sin(uv().y.mul(SH * 1900)).mul(.5).add(.5).mul(U2.scan).oneMinus();
-    const pic = pow(gT.sample(uv()).rgb, vec3(2.2)).mul(U2.scrBr).mul(U2.scrOn);   // (the picture is display-ready: back to light, so the room's grade treats it like any other light)
+    const pic = pow(gT.sample(FLIP ? vec2(uv().x, uv().y.oneMinus()) : uv()).rgb, vec3(2.2)).mul(U2.scrBr).mul(U2.scrOn);   // (the picture is display-ready: back to light, so the room's grade treats it like any other light)
     return pic.add(vec3(.012, .02, .026).mul(U2.glow)).mul(mix(vig.mul(lines), 1, U2.k));
   })();
   const glass = add(new THREE.PlaneGeometry(SW, SH), glassMat, 0, by + .012, glassZ, mon); glass.castShadow = false;
@@ -172,7 +172,7 @@ const room = (() => {
     const q = screenUV.sub(.5), v = float(1).sub(dot(q, q).mul(U2.vig.mul(1.6))).clamp(0, 1);
     const c = acesFilmicToneMapping(col.rgb.add(bl.rgb.mul(U2.bloomK.div(.35))), U2.exp).mul(v).toVar();
     const n = fract(sin(dot(screenUV.mul(U2.res).add(fract(U2.time.mul(7.13)).mul(91.7)), vec2(12.9898, 78.233))).mul(43758.5453)).sub(.5);
-    const B = U2.band, direct = gT.sample(vec2(mix(B.x, B.z, screenUV.x), mix(B.y.oneMinus(), B.w.oneMinus(), screenUV.y))).rgb;   // the window's part of the glass, full screen: the galaxy exactly as it'll be drawn next
+    const B = U2.band, direct = gT.sample(vec2(mix(B.x, B.z, screenUV.x), FLIP ? mix(B.y, B.w, screenUV.y) : mix(B.y.oneMinus(), B.w.oneMinus(), screenUV.y))).rgb;   // the window's part of the glass, full screen: the galaxy exactly as it'll be drawn next
     return vec4(mix(sRGBTransferOETF(c).add(n.mul(U2.grain)), direct, U2.k), 1);
   })();
 
@@ -189,7 +189,7 @@ const room = (() => {
     const mi = [(E * I - F * Hh) / det, (C * Hh - B * I) / det, (B * F - C * E) / det, (F * G - Dd * I) / det, (A * I - C * G) / det, (C * Dd - A * F) / det, (Dd * Hh - E * G) / det, (B * G - A * Hh) / det, (A * E - B * Dd) / det];
     return { css: `matrix3d(${m[0]},${m[3]},0,${m[6]},${m[1]},${m[4]},0,${m[7]},0,0,1,0,${m[2]},${m[5]},0,${m[8]})`, mi };
   }
-  const layers = () => [$('portalLoad'), $('shipLayer')].filter(Boolean);
+  const layers = () => [$('portalLoad')].filter(Boolean);   // (the 3D pointer only takes over once you're through the glass: until then it's your own)
   function place() {
     const b = bandOf(); st.band = b; U2.band.value.set(b[0], b[1], b[2], b[3]);
     const P = [toScreen(b[0], b[1]), toScreen(b[2], b[1]), toScreen(b[2], b[3]), toScreen(b[0], b[3])], hm = homography(innerWidth, innerHeight, P); st.Mi = hm.mi;
@@ -197,7 +197,6 @@ const room = (() => {
     const pl = $('portalLoad'); if (pl) pl.style.opacity = st.fade.toFixed(3);
   }
   const unplace = () => { for (const el of layers()) { el.style.transform = ''; el.style.transformOrigin = '' } const pl = $('portalLoad'); if (pl) pl.style.opacity = '' };
-  const toWindow = (x, y) => { const m = st.Mi; if (!m) return [x, y]; const w = m[6] * x + m[7] * y + m[8]; return [(m[0] * x + m[1] * y + m[2]) / w, (m[3] * x + m[4] * y + m[5]) / w] };   // a point on screen → where it falls on the opening's page
 
   // ── each frame ──
   const _b = new V3(), _t = new V3(), _q1 = new Q4(), _p0 = new V3(), _p1 = new V3(), _m4 = new THREE.Matrix4(), _n = new V3(), _u = new V3();
@@ -205,7 +204,8 @@ const room = (() => {
     const warm = RL('roomLampWarm', .6), lc = new C3(1, 1 - .22 * warm, 1 - .5 * warm), lmp = RL('roomLamp', 1), scr = RL('roomScreen', .5);
     spot.color.copy(lc); spot.intensity = 11 * lmp; spot.angle = THREE.MathUtils.degToRad(RL('roomLampCone', 52)); spot.penumbra = RL('roomLampSoft', .65); spot.shadow.radius = RL('roomShadow', 4);
     bulbGlow.color.copy(lc); bulbGlow.intensity = .5 * lmp;
-    { const bs = RL('roomBtn', 3.4).toFixed(2), by = (RL('roomBtnY', .7) * 100).toFixed(1) + '%'; if (bs !== st.bs || by !== st.by) { st.bs = bs; st.by = by; H0.style.setProperty('--rbs', bs); H0.style.setProperty('--rby', by) } }   // the Start button's size and place on the glass
+    logoAt(1);
+    { const bs = RL('roomBtn', 6.8).toFixed(2), by = (RL('roomBtnY', .82) * 100).toFixed(1) + '%'; if (bs !== st.bs || by !== st.by) { st.bs = bs; st.by = by; H0.style.setProperty('--rbs', bs); H0.style.setProperty('--rby', by) } }   // the Start button's size and place on the glass
     scrLight.intensity = 3 * scr * (1 + U2.scrOn.value * 2); U2.glow.value = scr * 3; U2.scrBr.value = RL('roomScreenBright', 1.4); U2.scan.value = RL('roomScan', .12) * (1 - U2.k.value);
     hemi.intensity = .9 * RL('roomFill', 1);
     wall.color.copy(lin('#33465f')).multiplyScalar(RL('roomWall', 1)); const wk = RL('roomWood', 1); wood.color.setScalar(wk); woodV.color.copy(lin('#c8c8c8')).multiplyScalar(wk); woodDark.color.copy(lin('#8a8a8a')).multiplyScalar(wk);
@@ -266,23 +266,25 @@ const room = (() => {
     glassPose(); const b = bandOf(), d1 = (b[3] - b[1]) * SH / (2 * Math.tan(cam.fov * Math.PI / 360)); st.d0 = cam.position.distanceTo(_t); st.dir0 = cam.position.clone().sub(_t).normalize();
     let Dg = 1.8; try { Dg = Math.max(.3, intro.lnPV - intro.lnD0) } catch (e) { }
     st.run = mkRun(Math.max(.2, Math.log(st.d0 / d1)), Dg, Math.max(.6, RL('roomDive', 2.8)));
-    try { const [wx, wy] = toWindow(st.ptr.x, st.ptr.y); intro.mx = intro.mxs = Math.max(-1, Math.min(1, wx / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(wy / innerHeight * 2 - 1))) } catch (e) { }   // your pointer, where it is on the glass
-    try { if (!coarse && !lockFailed) requestLock() } catch (e) { }
-    st.onDone = () => { try { intro.ready = true; intro.rr = st.run } catch (e) { } };   // and the opening carries on the same move from there
+    st.onDone = () => { try { intro.ready = true; intro.rr = st.run; intro.mx = intro.mxs = Math.max(-1, Math.min(1, st.ptr.x / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(st.ptr.y / innerHeight * 2 - 1))); if (!coarse && !lockFailed) { st.lockT = performance.now() + 800; requestLock() } } catch (e) { } };   // the opening carries on the same move from there, and your pointer becomes the 3D one right where it is (the lock still counts as part of the click)
   }
   const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter');
-  addEventListener('pointermove', e => { if (st.on && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } }, true);
+  addEventListener('pointermove', e => { if ((st.on || performance.now() < (st.lockT || 0)) && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } }, true);
   addEventListener('pointerup', e => { if (!st.on || (e.target.closest && e.target.closest('#lookPanel'))) return; if (st.phase === 'ready' && onBtn(e)) { e.stopImmediatePropagation(); dive() } else if (st.phase !== 'off') e.stopImmediatePropagation() }, true);
   addEventListener('wheel', e => { if (st.on && !(e.target.closest && e.target.closest('#lookPanel'))) e.stopImmediatePropagation() }, { capture: true, passive: true });
   addEventListener('keydown', e => {
     if (!st.on || (e.target.matches && e.target.matches('input,textarea,select'))) return; const k = e.key;
     if (k === 'Enter' || k === ' ' || k === 'ArrowDown') { e.preventDefault(); e.stopImmediatePropagation(); if (st.phase === 'ready') { try { setMuted(false); setMusicOff(false); audio(); intro.heard = true } catch (er) { } dive() } }
-    else if (k === 'Escape') { if (st.phase === 'ready') { st.onDone = null; finish() } else e.stopImmediatePropagation() }   // (ready: the opening's own Esc then skips it too)
+    else if (k === 'Escape') { if (st.phase === 'ready') { st.onDone = null; finish(); logoAt(9) } else e.stopImmediatePropagation() }   // (ready: the opening's own Esc then skips it too)
   }, true);
   addEventListener('resize', () => { if (st.on) renderer.setSize(innerWidth, innerHeight, false) });
 
   // build, compile, show: then the galaxy loads behind the glass
   H0.classList.add('nomark');   // (only the galaxy on the glass: no mark round it, here or after)
+  // the FWA logo on the glass, flat on it, near the top: it comes at you with the glass and, once you're through, carries on
+  // past you at the same pace (afterGlass, from the opening's move) and is gone
+  const logo = (() => { const pl = $('portalLoad'), mk = document.querySelector('#intro .mark'); if (!pl || !mk) return null; const el = document.createElement('div'); el.id = 'rmLogo'; const sv = mk.cloneNode(true); sv.removeAttribute('class'); el.appendChild(sv); pl.appendChild(el); return el })();
+  const logoAt = (m = 1) => { if (!logo) return; const y = RL('roomLogoY', .2) * 100, w = RL('roomLogo', .46) * 100; logo.style.top = (50 + (y - 50) * m).toFixed(3) + '%'; logo.style.width = (w * m).toFixed(3) + '%'; logo.style.opacity = (1 - sstep(m, 1.5, 3)).toFixed(3); logo.style.display = m > 3.2 ? 'none' : '' };   // m: how much nearer than on the glass (scaled about the middle of the view)
   const startP = (async () => {
     cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     try { await renderer.compileAsync(sc, cam) } catch (e) { }
@@ -292,7 +294,7 @@ const room = (() => {
   return {
     get on() { return st.on }, on0: true, get diving() { return st.phase === 'dive' }, get phase() { return st.phase }, startP, galaxy, dive,
     galaxyReady() { if (st.phase === 'loading') st.phase = 'ready' },   // the opening has its galaxy up: the glass shows it and Start works
-    skip() { if (st.on) finish() }, glass, cam, scene: sc, get st() { return st },
+    skip() { if (st.on) finish(); logoAt(9) }, afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st },
   };
 })();
 await room.startP;

@@ -941,9 +941,14 @@ body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));cli
 html.roomboot:not(.roomlive) #portalLoad{visibility:hidden}
 html.roomboot:not(.roomlive) body::after{content:'Loading';position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font:500 11px/1 "FF Good Pro Cond",var(--mono);letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.38);z-index:200;pointer-events:none}
 body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(script):not(style){visibility:hidden!important}
-body.room:not(.roomdive) #shipLayer{visibility:hidden!important}
+body.room #shipLayer{visibility:hidden!important}
+html.roomboot #portalLoad{background:transparent!important}
 html.roomboot #portalLoad{will-change:transform}
 /* the room: no mark, only the galaxy; and a big Start on the glass (Look → Room: roomBtn, roomBtnY) */
 html.nomark #portalLoad > svg,html.nomark #plTag{display:none}
-html.nomark #plEnter{top:var(--rby,70%);transform:translate(-50%,-50%);font-size:calc(13px * var(--rbs,3.4));letter-spacing:.24em;padding:calc(12px * var(--rbs,3.4)) calc(30px * var(--rbs,3.4)) calc(11px * var(--rbs,3.4)) calc(33px * var(--rbs,3.4))}
-html.nomark #plEnter rect{stroke-width:calc(1.5px * var(--rbs,3.4) * .5)}
+html.nomark #plEnter{top:var(--rby,82%);transform:translate(-50%,-50%);font-size:calc(var(--rbs,6.8) * min(13px, .82vw));letter-spacing:.24em;padding:.92em 2.3em .85em 2.55em}   /* (sized to the window, as if it were a page on that screen: the same share of it on any screen) */
+html.nomark #plEnter rect{stroke-width:calc(var(--rbs,6.8) * min(.75px, .047vw))}
+#rmLogo{display:none;position:absolute;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+html.nomark #rmLogo{display:block}
+#portalLoad #rmLogo svg{position:static;display:block;width:100%;height:auto;opacity:1;left:auto;top:auto;filter:drop-shadow(0 0 .35vw rgba(255,255,255,.55))}
+#portalLoad #rmLogo path{fill:#fff;stroke:none;filter:none;animation:none}

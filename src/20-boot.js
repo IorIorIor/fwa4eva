@@ -214,7 +214,7 @@ const intro = {
   },
   portalStep(dt, lab = false) {
     const L = LOOK, P = this.pt; let crossed = 0, Dg = this.lnPV - this.lnD0; if (!lab && this.rr) {   // out of the room: the same move carries on (room.mkRun), straight in at its pace
-      const R = this.rr; R.t += dt; const s = R.s(R.t) - R.Dr, q0 = this.pq; this.pq = this.pqT = Math.max(0, Math.min(1, s / Dg)); if (dt > 0) this.qv = (this.pq - q0) / dt; if (s >= Dg) crossed = Math.max(1e-6, (s - Dg) / R.vend) }
+      const R = this.rr; R.t += dt; const s = R.s(R.t) - R.Dr, q0 = this.pq; room.afterGlass(s);   /* (the logo that was on the glass flies past) */ this.pq = this.pqT = Math.max(0, Math.min(1, s / Dg)); if (dt > 0) this.qv = (this.pq - q0) / dt; if (s >= Dg) crossed = Math.max(1e-6, (s - Dg) / R.vend) }
     else if (!lab) { if (this.play) this.pqT = Math.min(1.1, this.pqT + dt / Math.max(.5, L.portalPlay ?? 3.5));   // (the target runs a little past 1: you come out of the mark still moving, never easing to a stop just short of it)
       const q0 = this.pq; this.pq += (this.pqT - this.pq) * (1 - Math.exp(-dt * 6)); if (dt > 0) this.qv = (this.pq - q0) / dt; if (this.pq >= 1) { crossed = Math.max(1e-6, dt * (this.pq - 1) / Math.max(1e-9, this.pq - q0)); this.pq = 1 } }   // crossed: the part of this frame after you came through   // qv: how fast you're going through right now (it carries on past the mark)
     const q = Math.min(1, this.pq), eL = Math.pow(q, L.portalAccel ?? 2.2), lam = this.lam();
@@ -245,8 +245,8 @@ const intro = {
     { const f = Math.min(1, dt * 14 || 1); this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;
       const qa = .9, tt = Math.max(0, Math.min(1, (q - qa) / (1 - qa))), G = (1 - qa) * (.5 - tt * tt * tt + tt * tt * tt * tt / 2), ty = Math.tan(camera.fov * Math.PI / 360), dp = Math.exp(this.lnD0 + (this.rr ? 1 : lam) * (this.lnPV - this.lnD0) * G) * Math.tan(LOOK.fov * Math.PI / 360) / ty;   // (with the wide lens it sits nearer, so it stays exactly pointer-sized)
       avatar.position.set(this.mxs * ty * camera.aspect * dp, this.mys * ty * dp, -dp).applyQuaternion(camera.quaternion).add(camera.position); avatar.quaternion.copy(camera.quaternion).multiply(this.relQ); avatar.renderOrder = 5;
-      flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab || room.diving; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on }   // the 3D pointer only from Start (or the first scroll), right where your mouse is
-    if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv, this.rr ? this.rr.vend : null); this.rr = null; this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
+      flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab || !!this.rr; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on }   // the 3D pointer only from Start (or the first scroll), right where your mouse is
+    if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv, this.rr ? this.rr.vend : null); if (this.rr) room.afterGlass(9); this.rr = null; this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
   },
   lam() { return Math.max(.02, Math.min(.9, LOOK.portalCarry ?? .45)) },
   // after the mark, one movement: the camera carries on closing in at the speed it came through with and settles (springs, no
