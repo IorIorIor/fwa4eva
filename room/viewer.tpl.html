@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Room Props</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +48,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 %%PROPS%%
 const IMG = %%IMAGES%%, LOGO = %%LOGO%%;
 const load = src => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = src });
-const [kesey, webdesign, motd, sotd] = await Promise.all([IMG.kesey, IMG.webdesign, IMG.motd, IMG.sotd].map(load));
+const [kesey, webdesign, motd, sotd, persepolis] = await Promise.all([IMG.kesey, IMG.webdesign, IMG.motd, IMG.sotd, IMG.persepolis].map(load));
 try { await Promise.race([Promise.all(['20px "IBM Plex Mono"', 'bold 20px "IBM Plex Mono"'].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 2500))]) } catch (e) { }
 
 const canvas = document.getElementById('gl'), renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -56,7 +57,7 @@ renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadow
 const env = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), .04).texture;
 const shadowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(0,0,0,.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c) })();
 
-const props = makeProps(THREE, { RoundedBoxGeometry, img: { kesey, webdesign, motd, sotd }, logo: LOGO });
+const props = makeProps(THREE, { RoundedBoxGeometry, img: { kesey, webdesign, motd, sotd, persepolis }, logo: LOGO });
 const grid = document.getElementById('grid'); grid.innerHTML = '';
 const views = props.map(p => {
   const card = document.createElement('article'); card.className = 'card';
@@ -67,16 +68,17 @@ const views = props.map(p => {
   const key = new THREE.DirectionalLight(0xfff1dc, 2.2); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -.0002; key.shadow.normalBias = .02; scene.add(key, key.target);
   scene.add(new THREE.HemisphereLight(0xbfd2ff, 0x1a1408, .5));
   const box = new THREE.Box3().setFromObject(obj), size = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3()), R = Math.max(size.x, size.y, size.z) || .1;
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(R * 2.6, R * 2.6), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })); floor.rotation.x = -Math.PI / 2; floor.position.y = box.min.y + .0005; scene.add(floor);
-  const sh = new THREE.Mesh(new THREE.PlaneGeometry(R * 3, R * 3), new THREE.ShadowMaterial({ opacity: .35 })); sh.rotation.x = -Math.PI / 2; sh.position.y = box.min.y + .0003; sh.receiveShadow = true; scene.add(sh);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(R * 2.6, R * 2.6), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })); floor.rotation.x = -Math.PI / 2; floor.position.y = box.min.y - .0002; scene.add(floor);
+  const sh = new THREE.Mesh(new THREE.PlaneGeometry(R * 3, R * 3), new THREE.ShadowMaterial({ opacity: .35 })); sh.rotation.x = -Math.PI / 2; sh.position.y = box.min.y - .0004; sh.receiveShadow = true; scene.add(sh);
   key.position.set(ctr.x + R * 1.2, ctr.y + R * 2.2, ctr.z + R * 1.6); key.target.position.copy(ctr); const sc = key.shadow.camera; sc.left = sc.bottom = -R * 1.5; sc.right = sc.top = R * 1.5; sc.near = R * .2; sc.far = R * 6; sc.updateProjectionMatrix();
   const cam = new THREE.PerspectiveCamera(30, 4 / 3, R * .02, R * 40), home = new THREE.Vector3();
   const dist = R / (2 * Math.tan(15 * Math.PI / 180)) * 1.25; home.set(ctr.x + dist * .55, ctr.y + dist * .42, ctr.z + dist * .72).sub(ctr).setLength(dist).add(ctr); cam.position.copy(home);
   const ctl = new OrbitControls(cam, stage); ctl.target.copy(ctr); ctl.enableZoom = false; ctl.enablePan = false; ctl.enableDamping = true; ctl.dampingFactor = .08; ctl.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches; ctl.autoRotateSpeed = 1.1; ctl.update();
   ctl.addEventListener('start', () => { ctl.autoRotate = false });
   stage.addEventListener('dblclick', () => { cam.position.copy(home); ctl.target.copy(ctr); ctl.update() });
-  return { stage, scene, cam, ctl, obj };
+  return { stage, scene, cam, ctl, obj, ctr, dist, id: p.id };
 });
+window.__views = views;   // (for scripted looks)
 
 const bg = new THREE.Color('#0f1526');
 function frame(now) {

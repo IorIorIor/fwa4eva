@@ -2,7 +2,7 @@
    Everything that will stand on the desk or hang on the wall, built from plain three.js parts in metres at real size, so the
    same code drops into the room (01-zroom) later. makeProps(THREE, ctx) → [{ id, name, note, make() → Object3D }]; an object
    may carry userData.update(t) for anything that moves (the modem's lights). ctx: { RoundedBoxGeometry, img: { kesey, webdesign,
-   motd, sotd } (loaded <img>s), logo (the FWA mark's SVG path, viewBox 509 × 149), col(hex) → THREE.Color }. */
+   motd, sotd, persepolis } (loaded <img>s), logo (the FWA mark's SVG path, viewBox 509 × 149), col(hex) → THREE.Color }. */
 export function makeProps(THREE, ctx) {
   const { RoundedBoxGeometry, img, logo } = ctx, col = ctx.col || (h => new THREE.Color(h));
   const rnd = (() => { let a = 2000; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } })();
@@ -19,6 +19,18 @@ export function makeProps(THREE, ctx) {
   const pagesTex = (n = 400) => tex(512, 64, (g, w, h) => { g.fillStyle = '#f1ebdc'; g.fillRect(0, 0, w, h); for (let i = 0; i < n; i++) { const y = rnd() * h; g.fillStyle = `rgba(120,105,80,${.05 + rnd() * .12})`; g.fillRect(0, y, w, .6) } });
   const box6 = (g, mats) => new THREE.Mesh(g, mats);   // (box faces: +x −x +y −y +z −z)
   const at = (o, x, y, z, parent) => { o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; parent.add(o); return o };
+  const ext = (s, depth, bev = 0, seg = 3) => new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelSegments: seg, curveSegments: 24 });
+  const rrect = (w, h, r, x = 0, y = 0) => { const s = new THREE.Shape(), l = x - w / 2, rt = x + w / 2, b = y - h / 2, t = y + h / 2; s.moveTo(l + r, b); s.lineTo(rt - r, b); s.quadraticCurveTo(rt, b, rt, b + r); s.lineTo(rt, t - r); s.quadraticCurveTo(rt, t, rt - r, t); s.lineTo(l + r, t); s.quadraticCurveTo(l, t, l, t - r); s.lineTo(l, b + r); s.quadraticCurveTo(l, b, l + r, b); return s };
+  const ellipse = (rx, ry = rx) => { const s = new THREE.Shape(); s.absellipse(0, 0, rx, ry, 0, Math.PI * 2, false, 0); return s };
+  const poly = pts => { const s = new THREE.Shape(); pts.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); s.closePath(); return s };
+  // UVs laid flat over a shape's outline (x, y → 0..1 across its bounds); planar() also paints a canvas for it, the drawing done in the
+  // shape's own units through X(x), Y(y) (s: canvas pixels per unit)
+  const flatUV = geo => { geo.computeBoundingBox(); const b = geo.boundingBox, p = geo.attributes.position, uv = geo.attributes.uv, w = b.max.x - b.min.x, h = b.max.y - b.min.y; for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) - b.min.x) / w, (p.getY(i) - b.min.y) / h); return b };
+  // smooth shading across an extrusion's bevels (it comes out faceted): normals averaged over every corner sharing a point
+  const smooth = geo => { geo.computeVertexNormals(); const p = geo.attributes.position, n = geo.attributes.normal, acc = new Map(), key = i => `${p.getX(i).toFixed(4)},${p.getY(i).toFixed(4)},${p.getZ(i).toFixed(4)}`;
+    for (let i = 0; i < p.count; i++) { const k = key(i), a = acc.get(k) || [0, 0, 0]; a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); acc.set(k, a) }
+    for (let i = 0; i < p.count; i++) { const [x, y, z] = acc.get(key(i)), l = Math.hypot(x, y, z) || 1; n.setXYZ(i, x / l, y / l, z / l) } return geo };
+  const planar = (geo, ppu, draw, o) => { const b = flatUV(geo), w = b.max.x - b.min.x, h = b.max.y - b.min.y; return tex(Math.ceil(w * ppu), Math.ceil(h * ppu), (c, cw, ch) => draw(c, x => (x - b.min.x) * cw / w, y => (b.max.y - y) * ch / h, cw / w, cw, ch), o) };
 
   // ── 1. The Kesey Signal (paperback) ──
   function kesey() {
@@ -62,24 +74,10 @@ export function makeProps(THREE, ctx) {
     g.position.y = H / 2; const r = new THREE.Group(); r.add(g); return r;
   }
 
-  // ── 5. A postcard from the Getty: Persepolis ──
+  // ── 5. A postcard from the Getty: Persepolis (the Apadana as it was, from "Persepolis Reimagined"), 10 × 15 cm ──
   function postcard() {
-    const W = .148, H = .105, F = 1480, Fh = 1050;
-    const front = tex(F, Fh, (c, w, h) => {
-      const sky = c.createLinearGradient(0, 0, 0, h * .7); sky.addColorStop(0, '#f2b46a'); sky.addColorStop(.55, '#f6d49a'); sky.addColorStop(1, '#f9e7c4'); c.fillStyle = sky; c.fillRect(0, 0, w, h);
-      c.fillStyle = 'rgba(255,240,210,.9)'; c.beginPath(); c.arc(w * .78, h * .3, 70, 0, 7); c.fill();   // the low sun
-      c.fillStyle = '#b98a5c'; c.beginPath(); c.moveTo(0, h * .55); for (let x = 0; x <= w; x += 40) c.lineTo(x, h * .5 - Math.sin(x * .004) * 40 - Math.sin(x * .011) * 18); c.lineTo(w, h); c.lineTo(0, h); c.fill();   // the mountain behind
-      c.fillStyle = '#c9a37a'; c.fillRect(0, h * .74, w, h * .26); c.fillStyle = '#a57d55'; c.fillRect(0, h * .74, w, 10);   // the terrace
-      const stone = '#8a6646', shade = '#6e4f35';
-      const column = (x, top, wid) => { c.fillStyle = stone; c.fillRect(x - wid / 2, top, wid, h * .74 - top); c.fillStyle = shade; for (let k = -2; k <= 2; k++) c.fillRect(x + k * wid / 5 - 1, top + 10, 2, h * .74 - top - 20); c.fillStyle = stone; c.fillRect(x - wid * .9, h * .74 - 22, wid * 1.8, 22);
-        c.beginPath(); c.moveTo(x - wid * 1.6, top); c.quadraticCurveTo(x - wid * 1.9, top - 28, x - wid * 1.2, top - 36); c.lineTo(x + wid * 1.2, top - 36); c.quadraticCurveTo(x + wid * 1.9, top - 28, x + wid * 1.6, top); c.fill() };   // fluted, with a double-bull capital
-      [[120, .2], [260, .26], [400, .17], [700, .3], [860, .24], [1010, .33]].forEach(([x, t]) => column(x, h * t, 34));
-      c.fillStyle = stone; c.fillRect(1150, h * .28, 70, h * .46); c.fillRect(1330, h * .28, 70, h * .46); c.fillRect(1130, h * .24, 290, 40);   // the Gate of All Nations
-      c.fillStyle = shade; c.beginPath(); c.moveTo(1158, h * .62); c.lineTo(1212, h * .44); c.lineTo(1212, h * .62); c.fill(); c.beginPath(); c.moveTo(1392, h * .62); c.lineTo(1338, h * .44); c.lineTo(1338, h * .62); c.fill();   // (its winged bulls, in silhouette)
-      c.fillStyle = 'rgba(70,40,20,.25)'; for (let i = 0; i < 900; i++) c.fillRect(rnd() * w, h * .74 + rnd() * h * .26, 2, 2);
-      c.fillStyle = '#fffaf0'; c.font = `600 76px Georgia, "Times New Roman", serif`; c.fillText('PERSEPOLIS', 70, h - 110); c.font = `italic 34px Georgia, serif`; c.fillText('Persepolis Reimagined · Getty Villa', 74, h - 58);
-      c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 10; c.strokeRect(5, 5, w - 10, h - 10);
-    });
+    const W = .15, H = .10, F = 1500, Fh = 1000, im = img.persepolis, cw = Math.min(im.naturalWidth, Math.round(im.naturalHeight * 1.5)), chh = Math.round(cw / 1.5);
+    const front = imgTex(im, [Math.round((im.naturalWidth - cw) / 2), Math.round((im.naturalHeight - chh) / 2), cw, chh]);
     const back = tex(F, Fh, (c, w, h) => {
       c.fillStyle = '#f7f2e6'; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(120,100,70,.05)'; for (let i = 0; i < 3000; i++) c.fillRect(rnd() * w, rnd() * h, 2, 2);
       c.strokeStyle = '#b9ae98'; c.lineWidth = 3; c.beginPath(); c.moveTo(w * .55, 90); c.lineTo(w * .55, h - 90); c.stroke(); for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(w * .6, h * .45 + i * 110); c.lineTo(w - 90, h * .45 + i * 110); c.stroke() }
@@ -93,24 +91,71 @@ export function makeProps(THREE, ctx) {
     g.rotation.x = -Math.PI / 2; g.position.y = .004; const r = new THREE.Group(); r.add(g); return r;
   }
 
-  // ── 6. A medal of honour: a gold medal on its ribbon ──
+  // ── 6. The Medal of Honor, the Army's: a gold star hanging one point down, each point ending in a trefoil with a green oak leaf on it,
+  //       in a green laurel wreath, Minerva in the middle ringed by UNITED STATES OF AMERICA; two rings hang it from the bar that says
+  //       VALOR, an eagle on top, and that from the light blue ribbon with its white stars (built in millimetres) ──
   function medal() {
-    const g = new THREE.Group(), R = .022, gold = std('#d8b04a', .28, 1);
-    const relief = tex(512, 512, (c, w, h) => { c.fillStyle = '#000'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff';
-      c.save(); c.translate(256, 256); c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 70 : 170, a = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(Math.cos(a) * r, Math.sin(a) * r) } c.closePath(); c.fill();   // a star
-      for (const sd of [-1, 1]) for (let k = 0; k < 11; k++) { const a = Math.PI / 2 + sd * (.35 + k * .22); c.save(); c.translate(Math.cos(a) * 205, Math.sin(a) * 205); c.rotate(a + sd * .9); c.beginPath(); c.ellipse(0, 0, 24, 9, 0, 0, 7); c.fill(); c.restore() }   // a laurel wreath round it
-      c.lineWidth = 10; c.strokeStyle = '#fff'; c.beginPath(); c.arc(0, 0, 240, 0, 7); c.stroke(); c.restore() }, { data: true });
-    const face = new THREE.MeshStandardMaterial({ color: col('#d8b04a'), roughness: .3, metalness: 1, bumpMap: relief, bumpScale: 2.2 });
-    const disc = mesh(new THREE.CylinderGeometry(R, R, .0028, 64), [gold, face, gold], 0, 0, 0, g); disc.rotation.x = Math.PI / 2;
-    mesh(new THREE.TorusGeometry(R, .0016, 12, 64), gold, 0, 0, 0, g);
-    mesh(new THREE.TorusGeometry(.0035, .0009, 8, 24), gold, 0, R + .003, 0, g);   // the suspension ring
-    // the ribbon: a strip folded to a point at the bottom, red with a white stripe and gold edges
-    const rib = tex(128, 256, (c, w, h) => { c.fillStyle = '#9e1b24'; c.fillRect(0, 0, w, h); c.fillStyle = '#f4efe4'; c.fillRect(w * .42, 0, w * .16, h); c.fillStyle = '#c9a23e'; c.fillRect(0, 0, 8, h); c.fillRect(w - 8, 0, 8, h); for (let y = 0; y < h; y += 2) { c.fillStyle = `rgba(0,0,0,${.04 + rnd() * .05})`; c.fillRect(0, y, w, 1) } });
-    const s = new THREE.Shape(), rw = .036, rh = .05; s.moveTo(-rw / 2, rh); s.lineTo(rw / 2, rh); s.lineTo(rw / 2, .008); s.lineTo(0, 0); s.lineTo(-rw / 2, .008); s.closePath();
-    const rg = new THREE.ShapeGeometry(s); { const p = rg.attributes.position, uvA = rg.attributes.uv; for (let i = 0; i < p.count; i++) uvA.setXY(i, (p.getX(i) + rw / 2) / rw, p.getY(i) / rh) }
-    const ribbon = mesh(rg, new THREE.MeshStandardMaterial({ map: rib, roughness: .7, side: THREE.DoubleSide }), 0, R + .006, -.001, g);
-    mesh(new THREE.BoxGeometry(rw + .004, .006, .003), gold, 0, R + .006 + rh, -.001, g);   // the bar at the top
-    g.rotation.x = -Math.PI / 2 + .12; g.position.y = .004; const r = new THREE.Group(); r.add(g); return r;
+    const md = new THREE.Group(), gold = std('#e2b24c', .28, 1), enamel = phys('#0c4a29', { roughness: .2, clearcoat: 1, clearcoatRoughness: .06 }), HI = '#f6d681', LO = '#a8792b', INK = '#6e4c17';
+    const relief = (t, b = 1.6) => new THREE.MeshStandardMaterial({ map: t, bumpMap: t, bumpScale: b, roughness: .3, metalness: 1 });   // (bright = raised)
+    const field = (c, cw, ch, f = LO) => { c.fillStyle = f; c.fillRect(0, 0, cw, ch) };
+    const trace = (c, X, Y, pts, close = true) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(X(x), Y(y)) : c.moveTo(X(x), Y(y))); if (close) c.closePath() };
+    // the star: five rays from inner corners at 12.3 out to 21.4, where the trefoils sit
+    const Rin = 12.3, Ra = 21.4, hw = 1.8, ang = k => -Math.PI / 2 + k * Math.PI * 2 / 5, dir = a => [Math.cos(a), Math.sin(a)], sp = [];
+    for (let k = 0; k < 5; k++) { const [ux, uy] = dir(ang(k)), [ix, iy] = dir(ang(k) - Math.PI / 5); sp.push([ix * Rin, iy * Rin], [ux * Ra + uy * hw, uy * Ra - ux * hw], [ux * Ra - uy * hw, uy * Ra + ux * hw]) }
+    const sg = ext(poly(sp), 1.1, .45, 3), sT = planar(sg, 24, (c, X, Y, s, cw, ch) => { field(c, cw, ch, '#d4a64a'); c.strokeStyle = HI; c.lineWidth = s * .8; c.lineJoin = 'round'; trace(c, X, Y, sp); c.stroke();
+      c.strokeStyle = '#b8892f'; c.lineWidth = s * .25; for (let k = 0; k < 5; k++) { const [ux, uy] = dir(ang(k)); c.beginPath(); c.moveTo(X(ux * 10), Y(uy * 10)); c.lineTo(X(ux * Ra), Y(uy * Ra)); c.stroke() } });   // a raised edge and a ridge down each ray
+    mesh(sg, relief(sT, 1.2), 0, 0, 1, md);
+    const lobeL = ext(ellipse(2.05), 1.1, .45, 3), lobeS = ext(ellipse(1.7), 1.1, .45, 3);
+    for (let k = 0; k < 5; k++) { const [ux, uy] = dir(ang(k)); mesh(lobeL, gold, ux * (Ra + 1.5), uy * (Ra + 1.5), 1, md); for (const s of [-1, 1]) mesh(lobeS, gold, ux * (Ra - .4) - s * uy * 2.3, uy * (Ra - .4) + s * ux * 2.3, 1, md) }   // the trefoils
+    { const n = 28, L = 7, up = [];   // a lobed oak leaf in green enamel on each ray
+      for (let i = 0; i <= n; i++) { const t = i / n; up.push([t * L, 1.45 * Math.sin(Math.PI * Math.pow(t, .8)) * (1 + .3 * Math.cos(t * Math.PI * 7))]) }
+      const og = new THREE.ShapeGeometry(poly([...up, ...up.slice(1, -1).reverse().map(([x, y]) => [x, -y])]));
+      for (let k = 0; k < 5; k++) { const a = ang(k), [ux, uy] = dir(a), o = mesh(og, enamel, ux * 13.3, uy * 13.3, 2.6, md); o.rotation.z = a; o.castShadow = false } }
+    // the laurel wreath behind it: a gold stem, the leaves in pairs climbing both sides from the bottom, green in gold rims
+    const Rw = 20.2; mesh(new THREE.TorusGeometry(Rw, .55, 8, 128), gold, 0, 0, .5, md);
+    { const leaf = new THREE.Shape(); leaf.moveTo(0, 0); leaf.quadraticCurveTo(2.3, 1.4, 4.8, 0); leaf.quadraticCurveTo(2.3, -1.4, 0, 0);
+      const lg = ext(leaf, .3, .25, 2), lgIn = new THREE.ShapeGeometry(leaf, 10), tilt = .5;
+      for (const side of [-1, 1]) for (let i = 0; i < 12; i++) {
+        const a = -Math.PI / 2 + side * (.16 + i * .253), gx = -Math.sin(a) * side, gy = Math.cos(a) * side, ga = Math.atan2(gy, gx), nx = Math.cos(a), ny = Math.sin(a);
+        for (const io of [1, -1]) { const lf = new THREE.Group(); lf.position.set(nx * (Rw + io * .35), ny * (Rw + io * .35), .4); lf.rotation.z = ga - io * side * tilt; md.add(lf);
+          mesh(lg, gold, 0, 0, 0, lf); const e = mesh(lgIn, enamel, .43, 0, .58, lf); e.scale.setScalar(.82); e.castShadow = false } } }
+    // Minerva, in her crested helmet, facing right, UNITED STATES OF AMERICA round her and a little shield below
+    const mg = ext(ellipse(10.6), .9, .4, 3), mT = planar(mg, 48, (c, X, Y, s, cw, ch) => { field(c, cw, ch);
+      c.fillStyle = HI; trace(c, X, Y, [[-3.4, -7.2], [2.2, -7.2], [1.6, -5.2], [1.5, -4.1], [2.6, -3.6], [3, -3], [2.9, -2.5], [3.2, -2.2], [2.95, -1.9], [3.25, -1.6], [3.3, -1.2], [3.9, -1.05], [3.15, .55], [3, .9], [4.1, 1.3], [4, 1.9], [2.6, 2.3], [2.4, 3.6], [1.4, 4.6], [2, 5.6], [1, 6.6], [-1.2, 7], [-3.4, 6.2], [-5.2, 4.4], [-6.4, 2], [-5.6, 1.8], [-4.6, 3.2], [-4.4, 2.2], [-4.6, .8], [-5, -.2], [-4.6, -1.6], [-5, -3], [-4, -3.6], [-3.4, -4.2], [-3, -5.2]]); c.fill();
+      c.strokeStyle = INK; c.lineWidth = s * .22; c.lineCap = c.lineJoin = 'round';
+      trace(c, X, Y, [[2.6, 2.3], [0, 1.7], [-2.4, 1.2], [-4.5, 1]], false); c.stroke();   // the helmet's rim
+      trace(c, X, Y, [[1.4, 4.6], [-.8, 5.4], [-3, 4.9], [-4.6, 3.2]], false); c.stroke();   // under the crest
+      for (let k = 0; k < 5; k++) { trace(c, X, Y, [[1 - k * 1.3, 6.4 - k * .25], [.2 - k * 1.25, 5.3 - k * .3]], false); c.stroke() }   // the plume's strands
+      trace(c, X, Y, [[1.9, .25], [2.55, .45], [2.3, -.05]], false); c.stroke();   // an eye
+      for (let k = 0; k < 4; k++) { trace(c, X, Y, [[-2.2 - k * .55, .6], [-2.6 - k * .6, -1.6], [-2.4 - k * .55, -3.4]], false); c.stroke() }   // her hair
+      trace(c, X, Y, [[1.2, -1.6], [.4, -2.6]], false); c.stroke();
+      c.fillStyle = HI; trace(c, X, Y, [[-1.1, -7.7], [1.1, -7.7], [1.1, -8.7], [0, -9.7], [-1.1, -8.7]]); c.fill(); c.strokeStyle = INK; c.lineWidth = s * .15; for (const x of [-.55, 0, .55]) { c.beginPath(); c.moveTo(X(x), Y(-8.1)); c.lineTo(X(x), Y(-9.2)); c.stroke() }
+      c.fillStyle = HI; c.font = `bold ${1.55 * s}px Georgia, "Times New Roman", serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; const words = 'UNITED STATES OF AMERICA', a0 = 208 * Math.PI / 180, a1 = -28 * Math.PI / 180;
+      [...words].forEach((chr, i) => { const t = a0 + (a1 - a0) * i / (words.length - 1); c.save(); c.translate(X(Math.cos(t) * 8.55), Y(Math.sin(t) * 8.55)); c.rotate(Math.PI / 2 - t); c.fillText(chr, 0, 0); c.restore() });
+      c.strokeStyle = HI; c.lineWidth = s * .35; c.beginPath(); c.arc(X(0), Y(0), s * 9.9, 0, 7); c.stroke() });
+    mesh(mg, relief(mT, 2.2), 0, 0, 2.3, md); mesh(new THREE.TorusGeometry(10.6, .5, 10, 96), gold, 0, 0, 3.6, md);
+    // the bar, VALOR on it between raised borders, with the two rings down to the star's upper points
+    const bw = 32, bh = 6.2, by = 24.7, bg = ext(rrect(bw, bh, .6), .8, .35, 2), bT = planar(bg, 32, (c, X, Y, s, cw, ch) => { field(c, cw, ch); c.strokeStyle = HI; c.lineWidth = s * .6; c.strokeRect(X(-bw / 2 + .5), Y(bh / 2 - .5), (bw - 1) * s, (bh - 1) * s);
+      c.fillStyle = HI; c.font = `bold ${4.3 * s}px Georgia, "Times New Roman", serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; try { c.letterSpacing = `${1.4 * s}px` } catch (e) { } c.fillText('VALOR', X(.7), Y(-.15)) });
+    mesh(bg, relief(bT, 2), 0, by, 1.2, md);
+    for (const sd of [-1, 1]) { mesh(ext(ellipse(1.3), .7, .3, 2), gold, sd * 12.8, by - bh / 2 - .2, 1.3, md); const rg = mesh(new THREE.TorusGeometry(1.9, .42, 10, 32), gold, sd * 13.2, 20.3, 2.1, md); rg.rotation.set(0, 1.15, sd * .35) }
+    // the eagle, wings raised, head turned to its right, on crossed arrows
+    const eg = [[-3.2, 0], [-4, 3], [-8, 3.5], [-8, 5], [-11.5, 6], [-11, 7.5], [-14, 9], [-13, 10.5], [-16, 12], [-15, 13.5], [-17.5, 15.5], [-16.5, 18.2], [-11, 16.2], [-6.5, 13.2], [-3, 10.5], [-2.8, 11.6], [-4.8, 12.3], [-3.2, 13.2], [-1.6, 14.4], [.4, 14.2], [1.5, 12.6], [2.4, 10.6], [6.5, 13.2], [11, 16.2], [16.5, 18.2], [17.5, 15.5], [15, 13.5], [16, 12], [13, 10.5], [14, 9], [11, 7.5], [11.5, 6], [8, 5], [8, 3.5], [4, 3], [3.2, 0]];
+    const egG = ext(poly(eg), 1.3, .5, 3), eT = planar(egG, 28, (c, X, Y, s, cw, ch) => { field(c, cw, ch, '#ecc263'); c.strokeStyle = INK; c.lineWidth = s * .28; c.lineCap = 'round';
+      for (const sd of [-1, 1]) { for (const [x, y] of [[8, 4.2], [11.2, 6.8], [13.5, 9.8], [15.5, 12.8], [17, 16.5], [13.5, 16.4], [9.5, 14.4]]) { c.beginPath(); c.moveTo(X(sd * 4), Y(9.4)); c.lineTo(X(sd * x), Y(y)); c.stroke() } }   // the long feathers
+      for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(X(-2.3), Y(8.6 - k * 2)); c.lineTo(X(0), Y(7.6 - k * 2)); c.lineTo(X(2.3), Y(8.6 - k * 2)); c.stroke() }   // breast feathers
+      c.beginPath(); c.moveTo(X(-4.6), Y(12.4)); c.lineTo(X(-3), Y(12.2)); c.stroke(); c.fillStyle = INK; c.beginPath(); c.arc(X(-2.2), Y(12.95), s * .38, 0, 7); c.fill() });
+    mesh(egG, relief(eT, 1.6), 0, by + bh / 2, 1.2, md);
+    for (const sd of [-1, 1]) { const th = .28, rod = mesh(new THREE.CylinderGeometry(.5, .5, 13.4, 10), gold, sd * 8.6, by + bh / 2 + 2.4, 1.7, md); rod.rotation.z = -sd * (Math.PI / 2 - th); const tip = mesh(new THREE.ConeGeometry(1.1, 2.6, 12), gold, sd * 15.6, by + bh / 2 + 4.4, 1.7, md); tip.rotation.z = rod.rotation.z }
+    // the ribbon: light blue moiré, thirteen white stars
+    const ribT = tex(1024, 384, (c, w, h) => { c.fillStyle = '#3c72c6'; c.fillRect(0, 0, w, h);
+      for (let i = 0; i < 170; i++) { c.strokeStyle = `rgba(255,255,255,${.02 + rnd() * .035})`; c.lineWidth = 2 + rnd() * 5; const y = rnd() * h; c.beginPath(); c.moveTo(0, y); c.bezierCurveTo(w * .3, y + (rnd() - .5) * 120, w * .7, y + (rnd() - .5) * 120, w, y + (rnd() - .5) * 60); c.stroke() }
+      c.fillStyle = 'rgba(0,0,20,.14)'; c.fillRect(0, 0, w, 7); c.fillRect(0, h - 7, w, 7);
+      const star5 = (x, y, r) => { c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .42 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) } c.closePath(); c.fill() };
+      c.fillStyle = '#f7f6f1'; [[4, .25], [5, .5], [4, .75]].forEach(([n, fy]) => { for (let i = 0; i < n; i++) star5(w / 2 + (i - (n - 1) / 2) * 96, h * fy, 22) }) });
+    const rgeo = new THREE.PlaneGeometry(84, 32, 48, 4), rp = rgeo.attributes.position; for (let i = 0; i < rp.count; i++) rp.setZ(i, -.9 + .5 * Math.sin(rp.getX(i) * .09)); rgeo.computeVertexNormals();
+    mesh(rgeo, new THREE.MeshStandardMaterial({ map: ribT, roughness: .75, envMapIntensity: .25, side: THREE.DoubleSide }), 0, by + bh / 2 + 28, 0, md);
+    md.scale.setScalar(.001); md.rotation.x = -Math.PI / 2; md.position.y = .0015; const r = new THREE.Group(); r.add(md); return r;
   }
 
   // ── 7. A black 1967 Ford Mustang fastback, a 1:24 toy ──
@@ -143,23 +188,82 @@ export function makeProps(THREE, ctx) {
     return g;
   }
 
-  // ── 8. Nokia 3310 (2000), dark blue, Snake on the screen ──
+  // ── 8. Nokia 3310 (2000), dark blue with its silver frame, traced off a photo of one: built in millimetres, P(x, y) turning the
+  //       photo's pixels into them; the screen is its own 84 × 48 pixels ──
   function nokia() {
-    const g = new THREE.Group(), W = .048, H = .113, navy = phys('#14204a', { roughness: .5, clearcoat: .4, clearcoatRoughness: .35, envMapIntensity: .6 }), greyBack = std('#5d6068', .6), keyM = std('#b9bcc4', .7);
-    mesh(rbox(W, H, .015, .0085, 5), navy, 0, 0, .0035, g); mesh(rbox(W - .003, H - .004, .011, .007, 4), greyBack, 0, .001, -.004, g);
-    const bezel = mesh(rbox(.036, .034, .002, .004, 3), std('#9ea2ab', .4, .3), 0, .028, .0105, g);
-    const lcd = tex(336, 192, (c, w, h) => { c.fillStyle = '#8fb26a'; c.fillRect(0, 0, w, h); const px = 4, dk = '#1d2a12'; c.fillStyle = dk; c.font = `bold 22px ${mono}`; c.fillText('0042', 12, 26); c.fillRect(8, 34, w - 16, 3); c.fillRect(8, h - 12, w - 16, 3); c.fillRect(8, 34, 3, h - 43); c.fillRect(w - 11, 34, 3, h - 43);
-      const snake = [[20, 20], [21, 20], [22, 20], [23, 20], [24, 20], [25, 20], [25, 21], [25, 22], [26, 22], [27, 22], [28, 22], [29, 22], [30, 22], [31, 22], [31, 23], [31, 24]]; snake.forEach(([x, y]) => c.fillRect(x * px * 1.5 - 60, y * px * 1.5 - 70, px * 1.4, px * 1.4)); c.fillRect(60 * 1.5 + 30, 30 * 1.5 + 60, 6, 6) });
-    mesh(new THREE.PlaneGeometry(.029, .0165), std('#8fb26a', .5, 0, { map: lcd, emissive: col('#ffffff'), emissiveMap: lcd, emissiveIntensity: .45 }), 0, .027, .0116, g);
-    const label = tex(256, 48, (c, w, h) => { c.fillStyle = '#9ea2ab'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = `bold 30px ${sans}`; c.textAlign = 'center'; c.fillText('NOKIA', w / 2, 34) });
-    mesh(new THREE.PlaneGeometry(.022, .004), new THREE.MeshStandardMaterial({ map: label, roughness: .5 }), 0, .0415, .0116, g);
-    mesh(rbox(.012, .0018, .002, .0008, 2), std('#0a0a0c', .8), 0, .051, .0105, g);   // the earpiece
-    // the navi key, the C key and the up / down rocker
-    const navi = mesh(new THREE.CylinderGeometry(.0085, .0085, .003, 40), std('#2f4e9a', .45, .1), 0, .0035, .011, g); navi.rotation.x = Math.PI / 2; navi.scale.set(1.25, 1, .62);
-    mesh(rbox(.007, .0045, .003, .0018, 3), keyM, .0165, .006, .0108, g); mesh(rbox(.0065, .011, .003, .0025, 3), keyM, -.0165, .0035, .0108, g);
-    const keyT = d => tex(64, 48, (c, w, h) => { c.fillStyle = '#b9bcc4'; c.fillRect(0, 0, w, h); c.fillStyle = '#20232b'; c.font = `bold 26px ${sans}`; c.textAlign = 'center'; c.fillText(d, w / 2, 34) });
-    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].forEach((d, i) => { const x = (i % 3 - 1) * .0125, y = -.012 - Math.floor(i / 3) * .0092; const k = mesh(rbox(.0105, .0072, .0028, .0025, 3), keyM, x, y, .0106, g); mesh(new THREE.PlaneGeometry(.0095, .0066), new THREE.MeshStandardMaterial({ map: keyT(d), roughness: .7 }), x, y, .0121, g) });
-    g.rotation.x = -Math.PI / 2 + .02; g.position.y = .011; const r = new THREE.Group(); r.add(g); return r;
+    const ph = new THREE.Group(), KY = 17.4, P = (x, y) => [(x - 527) / 16.7, (1005 - y) / KY];
+    const navy = phys('#1f2640', { roughness: .55, clearcoat: .25, clearcoatRoughness: .35 }), frameM = std('#aaa693', .35, .55), keyHex = '#cfcfc9', ink = '#1d3324';
+    const D = 7, BT = 6, BS = 3.5, F = D / 2 + BT;   // the body's depth, its edges rounded right round, and where the front face is
+    // the body, a little wider through the middle, its edges rounded right off
+    const body = new THREE.Shape(); body.moveTo(0, 53.2); body.lineTo(-11.5, 53.2); body.quadraticCurveTo(-19.4, 53.1, -19.5, 45.1); body.bezierCurveTo(-19.8, 29.4, -20.7, 0, -20.5, -19.6); body.bezierCurveTo(-20.4, -34.3, -19.8, -41.2, -19.6, -45.1); body.quadraticCurveTo(-19.2, -53.2, -11.5, -53.2);
+    body.lineTo(11.5, -53.2); body.quadraticCurveTo(19.2, -53.2, 19.6, -45.1); body.bezierCurveTo(19.8, -41.2, 20.4, -34.3, 20.5, -19.6); body.bezierCurveTo(20.7, 0, 19.8, 29.4, 19.5, 45.1); body.quadraticCurveTo(19.4, 53.1, 11.5, 53.2); body.closePath();
+    const bgeo = new THREE.ExtrudeGeometry(body, { depth: D, bevelEnabled: true, bevelThickness: BT, bevelSize: BS, bevelSegments: 10, curveSegments: 24 }); bgeo.translate(0, 0, -D / 2); mesh(smooth(bgeo), navy, 0, 0, 0, ph);
+    mesh(rbox(9, 3, 5, 1.2), std('#17191f', .5), 0, 56.4, 0, ph);   // the power key, on top
+    mesh(rbox(10, 1.2, 3, .4), std('#0b0c10', .6), 0, -56.6, -1.5, ph);   // the charger socket
+    // the silver frame: round the top, down both sides of the screen and closing under it where the keys sit
+    const fr = new THREE.Shape(); fr.moveTo(...P(527, 85)); fr.bezierCurveTo(...P(337, 84), ...P(212, 100), ...P(202, 200)); fr.bezierCurveTo(...P(192, 420), ...P(177, 800), ...P(192, 980)); fr.bezierCurveTo(...P(207, 1120), ...P(337, 1250), ...P(527, 1255));
+    fr.bezierCurveTo(...P(717, 1250), ...P(847, 1120), ...P(862, 980)); fr.bezierCurveTo(...P(877, 800), ...P(862, 420), ...P(852, 200)); fr.bezierCurveTo(...P(842, 100), ...P(717, 84), ...P(527, 85));
+    const hole = new THREE.Path(); hole.moveTo(...P(527, 112)); hole.bezierCurveTo(...P(367, 112), ...P(269, 118), ...P(257, 200)); hole.bezierCurveTo(...P(245, 450), ...P(222, 800), ...P(229, 935)); hole.bezierCurveTo(...P(235, 990), ...P(337, 1028), ...P(527, 1030));
+    hole.bezierCurveTo(...P(717, 1028), ...P(819, 990), ...P(825, 935)); hole.bezierCurveTo(...P(832, 800), ...P(809, 450), ...P(797, 200)); hole.bezierCurveTo(...P(785, 118), ...P(687, 112), ...P(527, 112)); fr.holes.push(hole);
+    mesh(ext(fr, .2, .3, 3), frameM, 0, 0, F - .1, ph);
+    // the earpiece: a raised spine with five holes
+    { const s = new THREE.Shape(); s.moveTo(...P(527, 95)); s.bezierCurveTo(...P(549, 135), ...P(549, 310), ...P(527, 350)); s.bezierCurveTo(...P(505, 310), ...P(505, 135), ...P(527, 95));
+      mesh(ext(s, .25, .12, 2), phys('#212945', { roughness: .45, clearcoat: .3 }), 0, 0, F - .1, ph);
+      const hg = new THREE.ShapeGeometry(ellipse(.55, .32), 16), hm = std('#05060a', .9); for (const y of [125, 170, 215, 263, 313]) mesh(hg, hm, ...P(527, y), F + .29, ph) }
+    // the NOKIA badge
+    { const t = tex(512, 96, (c, w, h) => { c.fillStyle = '#d8d8d4'; c.fillRect(0, 0, w, h); c.strokeStyle = '#111'; c.lineWidth = 9; c.strokeRect(4, 4, w - 8, h - 8); c.fillStyle = '#111'; c.font = `bold 70px ${sans}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.save(); c.translate(w / 2, h / 2 + 3); c.scale(1.85, 1); c.fillText('NOKIA', 0, 0); c.restore() });
+      at(box6(new THREE.BoxGeometry(14.7, 2.8, .4), [frameM, frameM, frameM, frameM, std('#ffffff', .3, .5, { map: t }), frameM]), ...P(527, 423), F + .15, ph) }
+    // the screen: 84 × 48 pixels, the clock, signal and battery, the ringing-tone face singing, Menü
+    const lcd = (() => {
+      const W = 84, H = 48, on = new Uint8Array(W * H), set = (x, y) => { if (x >= 0 && y >= 0 && x < W && y < H) on[y * W + x] = 1 };
+      const put = (rows, x0, y0) => rows.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (r[i] === '#') set(x0 + i, y0 + j) });
+      const line = (x0, y0, x1, y1) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let i = 0; i <= n; i++) set(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n)) };
+      const font = { '1': ['..##.', '.###.', '..##.', '..##.', '..##.', '..##.', '.####'], '6': ['.###.', '##...', '##...', '####.', '##.##', '##.##', '.###.'], '5': ['#####', '##...', '####.', '...##', '...##', '##.##', '.###.'], '2': ['.###.', '##.##', '...##', '..##.', '.##..', '##...', '#####'], ':': ['..', '##', '##', '..', '##', '##', '..'],
+        M: ['##...##', '###.###', '#######', '##.#.##', '##...##', '##...##', '##...##'], e: ['.....', '.....', '.###.', '##.##', '#####', '##...', '.####'], n: ['.....', '.....', '####.', '##.##', '##.##', '##.##', '##.##'], 'ü': ['##.##', '.....', '##.##', '##.##', '##.##', '##.##', '.####'] };
+      const word = (s, x, y) => { for (const ch of s) { put(font[ch], x, y); x += font[ch][0].length + 1 } };
+      word('16:52', 50, 1); word('Menü', 30, 40);
+      for (let k = 0; k < 4; k++) for (let j = 0; j < 4; j++) for (const x of [1, 2, 81, 82]) set(x, 14 + k * 5 + j);   // signal (left) and battery (right)
+      put(['#.#.#', '#.#.#', '.###.', '..#..', '..#..'], 0, 34); put(['.###.', '#####', '#...#', '#...#', '#####'], 79, 34);   // the aerial and the battery under them
+      for (let a = 0; a < 360; a += 3) set(Math.round(44 + 10.5 * Math.cos(a * Math.PI / 180)), Math.round(22 + 9.5 * Math.sin(a * Math.PI / 180)));   // the face
+      put(['.#', '#.', '#.'], 41, 17); put(['.#', '#.', '#.'], 47, 17); put(['..##', '.###', '####', '###.', '##..'], 38, 24);   // its eyes, its mouth open in song
+      line(25, 20, 33, 23); line(24, 25, 34, 26); line(25, 30, 33, 28);   // the song blowing out
+      const two = ['..#####', '..#...#', '..#...#', '..#...#', '###.###', '###.###'], one = ['..#..', '..##.', '..#.#', '..#..', '###..', '###..'];
+      put(two, 10, 11); put(one, 19, 9); put(one, 10, 23); put(two, 15, 25);   // and its notes
+      return tex(640, 448, (c, w, h) => {
+        const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#a8c681'); gr.addColorStop(1, '#8fb067'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+        const ox = 26, oy = 32, each = f => { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on[y * W + x]) f(ox + x * 7, oy + y * 8) };
+        c.fillStyle = 'rgba(40,60,20,.16)'; each((x, y) => c.fillRect(x + 2, y + 2, 6, 7)); c.fillStyle = '#141c0f'; each((x, y) => c.fillRect(x, y, 6, 7));   // each pixel, and its shadow on the back of the glass
+        const v = c.createRadialGradient(w / 2, h / 2, h * .3, w / 2, h / 2, w * .62); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,40,10,.3)'); c.fillStyle = v; c.fillRect(0, 0, w, h);
+      });
+    })();
+    { const [lx, ly] = P(527, 735); mesh(new THREE.ShapeGeometry(rrect(34.2, 24.5, 1.7, lx, ly), 8), std('#141912', .5), 0, 0, F + .02, ph);
+      const lg = new THREE.ShapeGeometry(rrect(33.2, 23.5, 1.3, lx, ly), 8); flatUV(lg); mesh(lg, std('#ffffff', .45, 0, { map: lcd, emissive: col('#ffffff'), emissiveMap: lcd, emissiveIntensity: .25, envMapIntensity: .35 }), 0, 0, F + .05, ph) }
+    // the navi key with its blue line, the C key and the up / down rocker either side
+    { const s = new THREE.Shape(); s.moveTo(...P(372, 1048)); s.quadraticCurveTo(...P(527, 990), ...P(682, 1048)); s.quadraticCurveTo(...P(527, 1135), ...P(372, 1048));
+      mesh(ext(s, .5, .45, 4), std(keyHex, .3, .45), 0, 0, F + .55, ph);
+      mesh(new THREE.ShapeGeometry(rrect(8, .6, .3, ...P(527, 1047)), 6), std('#3d9ee6', .35, 0, { emissive: col('#2a8ad8'), emissiveIntensity: .3 }), 0, 0, F + 1.52, ph) }
+    const soft = (w, h, r, px, py, rot, draw) => { const geo = ext(rrect(w, h, r), .6, .45, 4), t = planar(geo, 30, (c, X, Y, s, cw, ch) => { c.fillStyle = keyHex; c.fillRect(0, 0, cw, ch); c.strokeStyle = ink; c.lineWidth = s * .42; c.lineCap = 'round'; draw(c, X, Y, s) }); mesh(geo, new THREE.MeshStandardMaterial({ map: t, roughness: .3, metalness: .45 }), ...P(px, py), F + .35, ph).rotation.z = rot };
+    soft(8.4, 5, 1.6, 332, 1122, -.35, (c, X, Y, s) => { c.beginPath(); c.arc(X(-.6), Y(0), s * 1.1, Math.PI * .3, Math.PI * 1.7); c.stroke() });
+    soft(12.8, 6, 2, 690, 1150, .31, (c, X, Y, s) => { c.beginPath(); c.moveTo(X(2.4), Y(1.8)); c.quadraticCurveTo(X(3.5), Y(1.8), X(3.6), Y(.5)); c.stroke(); c.beginPath(); c.moveTo(X(-3.6), Y(-.5)); c.quadraticCurveTo(X(-3.5), Y(-1.8), X(-2.4), Y(-1.8)); c.stroke() });
+    // the twelve oval keys, fanned in a smile, each in its dark surround
+    const keyGeo = ext(ellipse(4.3, 2.5), .6, .45, 4), rimGeo = new THREE.ShapeGeometry(ellipse(5, 3.15), 32), rimM = std('#0f1324', .7); flatUV(keyGeo);
+    const label = (d, l) => tex(300, 186, (c, w, h) => {
+      c.fillStyle = keyHex; c.fillRect(0, 0, w, h); c.fillStyle = c.strokeStyle = ink; c.lineWidth = 7; c.lineCap = c.lineJoin = 'round';
+      const big = (t, x, y) => { c.font = `bold 80px ${sans}`; c.fillText(t, x, y) }, sm = (t, x, y) => { c.font = `bold 46px ${sans}`; c.fillText(t, x, y) };
+      ({ '1': () => { big('1', 62, 92); c.beginPath(); c.arc(166, 118, 14, 0, 7); c.stroke(); c.beginPath(); c.arc(212, 118, 14, 0, 7); c.stroke(); c.beginPath(); c.moveTo(166, 132); c.lineTo(212, 132); c.stroke() },
+        '3': () => { sm(l, 58, 132); big(d, 196, 94) }, '6': () => { sm(l, 52, 136); big(d, 200, 92) }, '9': () => { sm(l, 46, 140); big(d, 204, 92) },
+        '4': () => { big(d, 62, 92); sm(l, 120, 140) }, '7': () => { big(d, 60, 92); sm(l, 104, 142) },
+        '*': () => { big('*', 82, 136); c.font = `bold 56px ${sans}`; c.fillText('+', 150, 146) },
+        '0': () => { big('0', 92, 124); c.beginPath(); c.moveTo(150, 104); c.lineTo(150, 124); c.lineTo(206, 124); c.lineTo(206, 104); c.stroke() },
+        '#': () => { c.beginPath(); c.moveTo(82, 140); c.lineTo(82, 112); c.lineTo(104, 92); c.lineTo(126, 112); c.lineTo(126, 140); c.closePath(); c.stroke(); big('#', 168, 104) } }[d] || (() => { big(d, 86, 122); sm(l, 146, 122) }))();
+    });
+    const lab = [['1', ''], ['2', 'abc'], ['3', 'def'], ['4', 'ghi'], ['5', 'jkl'], ['6', 'mno'], ['7', 'pqrs'], ['8', 'tuv'], ['9', 'wxyz'], ['*', ''], ['0', ''], ['#', '']];
+    [[13.4, 1307, 1335, 12], [13.1, 1420, 1460, 10], [12.9, 1555, 1590, 12], [12.2, 1690, 1720, 16]].forEach(([dx, ys, ym, tilt], row) => [-1, 0, 1].forEach(sd => {
+      const [d, l] = lab[row * 3 + sd + 1], x = sd * dx, y = (1005 - (sd ? ys : ym)) / KY, rot = sd * tilt * Math.PI / 180;
+      mesh(rimGeo, rimM, x, y, F + .02, ph).rotation.z = rot;
+      mesh(keyGeo, new THREE.MeshStandardMaterial({ map: label(d, l), roughness: .3, metalness: .45 }), x, y, F + .35, ph).rotation.z = rot }));
+    { const dg = new THREE.ShapeGeometry(ellipse(.3), 10), dm = std('#0b0d18', .8); for (const x of [-1.1, 1.1]) mesh(dg, dm, x, (1005 - 1530) / KY, F + .02, ph) }   // the microphone
+    ph.scale.setScalar(.001); ph.rotation.x = -Math.PI / 2; ph.position.y = F * .001; const r = new THREE.Group(); r.add(ph); return r;
   }
 
   // ── 9. A 56K modem: beige, a smoked front with its little red lights blinking away ──
@@ -241,7 +345,8 @@ export function makeProps(THREE, ctx) {
     const prof = [[0, 0], [R - .006, 0], [R - .002, .0015], [R, .006], [R, Hm - .002], [R - .0012, Hm], [R - wall, Hm - .0005], [R - wall, .012], [R - wall - .006, .0065], [0, .0065]].map(([x, y]) => new THREE.Vector2(x, y));
     mesh(new THREE.LatheGeometry(prof, 72), glaze, 0, 0, 0, g);
     mesh(new THREE.CircleGeometry(R - wall - .0002, 48), phys('#2a160c', { roughness: .08, clearcoat: 1 }), 0, Hm - .014, 0, g).rotation.x = -Math.PI / 2;   // the coffee
-    const h = mesh(new THREE.TorusGeometry(.024, .0065, 16, 40, Math.PI * 1.12), glaze, R + .006, Hm * .52, 0, g); h.rotation.z = -Math.PI * .56; h.scale.set(.85, 1.15, 1);   // the handle
+    const hc = new THREE.CatmullRomCurve3([[R - .003, .079], [R + .009, .0805], [R + .023, .076], [R + .031, .062], [R + .0325, .046], [R + .027, .031], [R + .014, .0215], [R - .003, .02]].map(([x, y]) => new THREE.Vector3(x, y, 0)), false, 'centripetal');
+    mesh(new THREE.TubeGeometry(hc, 72, .0056, 16, false), glaze, 0, 0, 0, g).scale.z = 1.3;   // the handle, both ends sunk into the wall (a little wider than it is thick)
     const print = tex(1024, 512, (c, w, hh) => { c.clearRect(0, 0, w, hh); drawLogo(c, w * .5 - 190, hh * .5 - 80, 380, '#111'); c.fillStyle = '#111'; c.font = `500 22px ${mono}`; c.textAlign = 'center'; c.fillText('FAVOURITE WEBSITE AWARDS', w * .5, hh * .5 + 74) });
     const pg = new THREE.CylinderGeometry(R + .0004, R + .0004, Hm * .62, 64, 1, true, .6 - Math.PI * .4, Math.PI * .8); const pm = mesh(pg, new THREE.MeshStandardMaterial({ map: print, transparent: true, roughness: .3, depthWrite: false }), 0, Hm * .5, 0, g); pm.castShadow = false;   // the print, turned a little toward the handle's side (as you'd see it holding the mug)
     return g;
@@ -252,10 +357,10 @@ export function makeProps(THREE, ctx) {
     { id: 'webdesign', name: 'Web Design: The Evolution of the Digital World 1990–Today', note: 'Rob Ford, TASCHEN hardcover · 25 × 32 cm', make: webdesign },
     { id: 'motd', name: 'Mobile of the Day certificate', note: 'Framed, behind glass · 43 × 64 cm', make: () => framed(img.motd) },
     { id: 'sotd', name: 'Site of the Day certificate', note: 'Framed, behind glass · 43 × 64 cm', make: () => framed(img.sotd) },
-    { id: 'postcard', name: 'Postcard: Persepolis, from the Getty', note: 'Front and back, slightly bowed · 14.8 × 10.5 cm', make: postcard },
-    { id: 'medal', name: 'Medal of honour', note: 'Gold, on its ribbon · 4.4 cm across', make: medal },
+    { id: 'postcard', name: 'Postcard: Persepolis, from the Getty', note: 'Front and back, slightly bowed · 15 × 10 cm', make: postcard },
+    { id: 'medal', name: 'Medal of Honor', note: 'The Army’s: star, wreath, VALOR bar and eagle, on its ribbon · 5 cm across', make: medal },
     { id: 'mustang', name: '1967 Ford Mustang fastback', note: 'Black, a 1:24 toy · 19 cm long', make: mustang },
-    { id: 'nokia', name: 'Nokia 3310', note: 'Came out in 2000 · Snake on the screen', make: nokia },
+    { id: 'nokia', name: 'Nokia 3310', note: 'Came out in 2000 · 11.3 × 4.8 cm, a ringing tone on the screen', make: nokia },
     { id: 'modem', name: '56K modem', note: 'Its lights always chattering away', make: modem },
     { id: 'webcam', name: 'Ball webcam', note: 'Sits on top of the monitor', make: webcam },
     { id: 'flash', name: 'Macromedia Flash 5', note: 'The box, 2000 · what the early winners were made with', make: flashbox },
