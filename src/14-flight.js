@@ -45,7 +45,8 @@ const mapHomeD = () => (GAL_R0 + GAL_LEN) * 1.6;   // the whole disk, filling th
 
 const panV = new V3(); let panT = 0;   // the map's drag speed (world units per second): let go and it coasts on
 function setMode(m) {
-  if (m === S.mode) return; if (m === 'fly' && scrollMode.on) scrollMode.exit(); S.mode = m; document.body.classList.toggle('map', m === 'map');
+  if (m === S.mode || COLL && m === 'fly' && booted) return;   // (the collection is only the map)
+  if (m === 'fly' && scrollMode.on) scrollMode.exit(); S.mode = m; document.body.classList.toggle('map', m === 'map');
   if (booted && (LOOK.mapFilters ?? 1) && !phone) { const el = $('panel'), on = m === 'map' && store.get('sotd-map-filters') !== '0';   /* (closed on the map once: stays closed) */ el.classList.toggle('open', on); el.inert = !on; $('fbtn').setAttribute('aria-expanded', on); document.body.classList.toggle('panel-open', on || $('lookPanel').classList.contains('open')) }   // the filters are out whenever you're on the map (docked left, so the Look panel can stay open too)
   $('vFly').setAttribute('aria-pressed', m === 'fly'); $('vMap').setAttribute('aria-pressed', m === 'map');
   player.vel.set(0, 0, 0); player.cruise = 0; auto = null; lockI = -1; sparks.stop(); camHold = null;

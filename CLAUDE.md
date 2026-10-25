@@ -25,6 +25,10 @@ and gives quick visual feedback; keep replies short).
   ↑/↓ speed mode, ←/→ or Q/E nearer/farther winner, F free pointer.
 - Data: the real archive (IorIorIor/fwa4eva-data, private) ships with the app in `public/data/` (archive.json + shots/YYYY/*.webp).
   Refresh it with `npm run data` (copies from a clone at `../fwa4eva-data`). Days before the archive starts borrow real winners.
+- THE COLLECTION (branch `the-collection`, `COLL` in 03-settings; `?galaxy` gives the usual app): only the map, on paper; every
+  winner a box with its picture, in date order evenly along the spiral (`src/18-collection.js`, Look → Collection). Boxes are one
+  InstancedMesh in the galaxy frame drawn on the ship's renderer (not colour-inverted like the paper page), pictures from one atlas;
+  click → camera in front of its face, it pops out, neighbours part (full-res pictures on the picked one and two each side).
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
   field for settings copied from the Ascent toy.
 - Multiplayer: `relay.mjs` (WebSocket at `/ws`, positions only, deals each pilot a distinct hue). On claude.ai the page

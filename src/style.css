@@ -935,3 +935,10 @@ body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));cli
 #plEnter.ready:hover,#plEnter.ready:focus-visible{background:rgba(255,255,255,.82);outline:none}
 #plEnter.gone{opacity:0;pointer-events:none}
 @media (max-width:760px){#plTag{font-size:11px;letter-spacing:.22em}}
+/* THE COLLECTION: only the map, on paper; the boxes have their own tag and caption */
+body.coll #labels,body.coll #dayLabels,body.coll #tip,body.coll #zoneTip,body.coll #youTime,body.coll #dash,body.coll #wcmp,body.coll #peerMarks,body.coll #vFly,body.coll #coach,body.coll #lockMark,body.coll #mapSearch{display:none!important}
+#colTip{position:fixed;left:0;top:0;z-index:8;pointer-events:none;display:flex;flex-direction:column;gap:2px;padding:5px 8px 4px;background:#111;color:#fff;font-family:var(--mono);font-size:10px;letter-spacing:.04em;max-width:260px}
+#colTip b{font-weight:600;text-transform:uppercase}#colTip span{opacity:.6}
+#colCap{left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:12;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px 8px;background:#111;color:#fff;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-align:center;max-width:min(560px,calc(100vw - 32px));pointer-events:none}
+#colCap b{font-size:14px;text-transform:uppercase;font-weight:600}#colCap span{opacity:.7}#colCap i{font-style:normal;opacity:.4;font-size:9px;margin-top:2px}
+body.coll #topnav [data-k=map],body.coll #topnav [data-k=scroll],body.coll #topnav [data-k=tour],body.coll #topnav [data-k=filters],body.coll #recPlay,body.coll #panel{display:none!important}

@@ -27,7 +27,7 @@ canvas.addEventListener('pointerdown', e => {
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y) }
   panV.set(0, 0, 0); down = { x: e.clientX, y: e.clientY, btn: e.button, shift: e.shiftKey, touch: e.pointerType !== 'mouse' }; dragged = false;
   // hold (100 ms, no star in reach, not dragging): the radial menu opens round the press
-  clearTimeout(holdT); if (booted && !rmenu.open && !rmenu.panel && e.button === 0 && ptrs.size === 1) holdT = setTimeout(() => {
+  clearTimeout(holdT); if (booted && !COLL && !rmenu.open && !rmenu.panel && e.button === 0 && ptrs.size === 1) holdT = setTimeout(() => {
     if (!down || dragged) return; const cx = locked() ? innerWidth / 2 : down.x, cy = locked() ? innerHeight / 2 : down.y;
     const star = S.mode === 'fly' ? false : (hovPick >= 0 || !!mapHover(cx, cy).ring);   // in flight a long press always opens the menu, whatever you're pointing at or locked on
     if (!star) { rmenu.show(cx, cy); rmenu.held = true }
@@ -67,6 +67,7 @@ const endPtr = e => {
     else if (rmenu.panel) { rmenu.close(); if (fly && !down.touch && !locked() && !lockFailed) requestLock() }
     else if (fly && !down.touch && !locked() && !lockFailed) { const i = hov(e.clientX, e.clientY); requestLock(); if (i >= 0 && i !== lockI) focus(i) }   // fly: click a star to lock the ship to it (or just take the pointer back)
     else if (fly) { const i = hov(cx, cy); if (i >= 0) { if (i !== lockI) focus(i) } else if (lockI >= 0) unlock() }   // a star (inside its ring, for a 3D one): lock on; anywhere else: let go
+    else if (COLL) coll.click(e.clientX, e.clientY);   // the collection: a box, or back out
     else { const h = mapHover(e.clientX, e.clientY), rg = mapRingAt(e.clientX, e.clientY), i = rg >= 0 ? rg : coarse || down.touch ? h.i : hovPick; if (i >= 0) focus(i); else if (!scrollMode.on && !mapZone.click() && h.ring) ringZoom(h.ring)   /* a lit zone (year or month) wins over the old time ring under it */ }   // map: a star once you're close, else the ring under the cursor, else the menu
   }
   if (!ptrs.size) down = null;
@@ -127,6 +128,7 @@ addEventListener('keydown', e => {
   if (k === 'h') goHome();
   if (k === 'c') $('lbtn').click();   // C opens and closes the Look panel
   // (R did the rings game on/off; off for now)
+  if (COLL && coll.key(k)) { keys[k] = false; e.preventDefault(); return }
   if (k === 'escape' && tour.on) stopTour();
   if (k === 'escape' && mapZone.on) mapZone.clear();
   if (k === 'escape' && (rmenu.open || rmenu.panel)) { rmenu.close(); return }

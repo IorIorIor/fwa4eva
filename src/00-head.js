@@ -5,7 +5,7 @@ import * as THREE from 'three/webgpu';
 import {
   Fn, If, Loop, Break, Discard, select, uniform, attribute, varying, varyingProperty, texture, pass, screenUV, uv, viewportSharedTexture,
   float, vec2, vec3, vec4,
-  positionGeometry, positionWorld, normalWorld, modelViewMatrix, modelWorldMatrix, positionView, normalView, positionLocal,
+  positionGeometry, positionWorld, normalLocal, normalWorld, modelViewMatrix, modelWorldMatrix, positionView, normalView, positionLocal,
   cameraPosition, cameraViewMatrix, cameraProjectionMatrix, modelScale, transpose,
   abs, acos, atan, clamp, cos, cross, distance, dot, exp, floor, fract, fwidth, length, log, max, min, mix, mod, normalize, pow, sin, smoothstep, sqrt, step,
 } from 'three/tsl';
