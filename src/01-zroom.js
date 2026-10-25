@@ -209,7 +209,7 @@ const room = (() => {
     const mi = [(E * I - F * Hh) / det, (C * Hh - B * I) / det, (B * F - C * E) / det, (F * G - Dd * I) / det, (A * I - C * G) / det, (C * Dd - A * F) / det, (Dd * Hh - E * G) / det, (B * G - A * Hh) / det, (A * E - B * Dd) / det];
     return { css: `matrix3d(${m[0]},${m[3]},0,${m[6]},${m[1]},${m[4]},0,${m[7]},0,0,1,0,${m[2]},${m[5]},0,${m[8]})`, mi };
   }
-  const MOB = matchMedia('(pointer: coarse)').matches;   // a phone or tablet: no pointer of your own, so the 3D one sits on the glass from the start and goes where you tap
+  const MOB = matchMedia('(pointer: coarse)').matches, SHEET = matchMedia('(max-width: 760px), (pointer: coarse)');   // a phone or tablet: no pointer of your own, so the 3D one sits on the glass from the start and goes where you tap
   const layers = () => [$('portalLoad'), MOB ? $('shipLayer') : null].filter(Boolean);   // (with a mouse the 3D pointer only takes over once you're through the glass: until then it's your own)
   function place() {
     const b = bandOf(); st.band = b; U2.band.value.set(b[0], b[1], b[2], b[3]);
@@ -247,7 +247,7 @@ const room = (() => {
     cam.fov = RL('roomFov', 36); cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     cam.position.set(cx + st.sway.x * sw * 2, RL('roomCamH', 1.2) - st.sway.y * sw, RL('roomCamZ', 2.45)); st.aim.set(cx * .6, RL('roomAimY', .9), .25); cam.up.set(0, 1, 0); cam.lookAt(st.aim);
     const peak = RL('crtPeak', 1), cin = Math.min(.95, RL('crtIn', .55)), out = Math.max(.05, RL('crtOut', .7));
-    if (st.lab) labStep(dt);   // the CRT playground: the move held wherever you scrub it
+    if (st.lab) { labStep(dt); const sh = SHEET.matches ? innerHeight * .2 * (1 - sstep(Math.max(0, st.lab.p), .6, 1)) : 0; if (sh > .5) cam.setViewOffset(innerWidth, innerHeight, 0, sh, innerWidth, innerHeight); else cam.clearViewOffset() }   /* (on a phone the playground is a sheet over the bottom: the room is lifted into the top part) */ else if (cam.view && cam.view.enabled) cam.clearViewOffset();   // the CRT playground: the move held wherever you scrub it
     else if (st.phase === 'dive') {   // into the glass, the first part of the one move (see mkRun)
       const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr); posed(s / R.Dr);
       C.A.value = peak * sstep(s / R.Dr, cin, 1); C.P.value = 1;
@@ -310,9 +310,11 @@ const room = (() => {
   // input: in the room nothing reaches the galaxy (no dragging, swiping or scrolling it round); only Start, the panels, and on a phone the taps that move the pointer on the glass
   const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter'), inUI = e => e.target && e.target.closest && e.target.closest('#lookPanel,#crtLab'), held = () => st.on && st.phase !== 'post';
   addEventListener('pointermove', e => { if ((st.on || performance.now() < (st.lockT || 0)) && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);
-  addEventListener('pointerdown', e => { if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);
+  addEventListener('pointerdown', e => { if (held() && !inUI(e)) { e.stopImmediatePropagation(); if (e.pointerType === 'touch' && (st.phase === 'ready' || st.phase === 'loading')) { const x0 = e.clientX, y0 = e.clientY; clearTimeout(st.lp); st.lpAt = [x0, y0]; st.lp = setTimeout(() => { st.lp = 0; st.lpFired = true; if (st.lab) lab(false); else lab(true) }, 650) } } }, true);   // a long press on the room (touch): the CRT playground, open or shut
+  addEventListener('pointermove', e => { if (st.lp && st.lpAt && Math.hypot(e.clientX - st.lpAt[0], e.clientY - st.lpAt[1]) > 12) { clearTimeout(st.lp); st.lp = 0 } }, true);
+  ['pointerup', 'pointercancel'].forEach(t => addEventListener(t, () => { if (st.lp) { clearTimeout(st.lp); st.lp = 0 } }, true));
   addEventListener('pointerup', e => {
-    if (!held() || inUI(e)) return; e.stopImmediatePropagation(); if (st.phase !== 'ready' || st.lab) return;
+    if (!held() || inUI(e)) return; e.stopImmediatePropagation(); if (st.phase !== 'ready' || st.lab || st.lpFired) { st.lpFired = false; return }
     if (MOB) { const [wx, wy] = toWindow(e.clientX, e.clientY); if (wx >= 0 && wx <= innerWidth && wy >= 0 && wy <= innerHeight) try { intro.mx = wx / innerWidth * 2 - 1; intro.my = -(wy / innerHeight * 2 - 1) } catch (er) { } }   // a tap on the glass: the pointer glides there
     if (onBtn(e)) dive();
   }, true);

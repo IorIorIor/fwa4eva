@@ -961,3 +961,12 @@ html.nomark #rmLogo{display:block}
 #crtLab input[type=range]{width:100%}#crtLab .cl-btns{display:flex;gap:6px;margin-top:8px}#crtLab .btn{flex:1;font:inherit;color:#fff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:6px;padding:6px 4px;cursor:pointer}#crtLab .btn.on{background:#fff;color:#000}
 #crtLab .cl-row{display:grid;grid-template-columns:1fr 46px;gap:2px 8px;align-items:center;margin:7px 0}#crtLab .cl-row span{grid-column:1/3;opacity:.8}#crtLab .cl-row output{text-align:right;opacity:.7}
 #crtLab .cl-msg{opacity:.7;word-break:break-all;margin:8px 0 0}
+/* the playground on a phone: a sheet over the bottom of the screen (the room lifts into the top), big enough to drag the sliders */
+@media (max-width:760px),(pointer:coarse){
+  #crtLab{left:8px;right:8px;top:auto;bottom:8px;width:auto;height:44vh;max-height:44vh;padding:10px 12px;font-size:13px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+  #crtLab header{position:sticky;top:-10px;background:rgba(8,8,14,.96);margin:-10px -12px 6px;padding:10px 12px;z-index:1}
+  #crtLab input[type=range]{height:30px;touch-action:none}
+  #crtLab .btn{padding:10px 4px}
+  #crtLab .x{font-size:24px;padding:4px 12px}
+}
+body.room{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
