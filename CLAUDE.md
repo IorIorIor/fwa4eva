@@ -29,7 +29,9 @@ and gives quick visual feedback; keep replies short).
   first thing, so the room shows before anything else loads; `shell.mjs` puts `await roomYield()` between the later files so it keeps
   drawing while the galaxy loads). The opening (`intro.startPortal`) runs on the CRT: the galaxy is rendered into the glass's render
   target (`room.galaxy(fn)` wraps every main render while `room.on`) and `#portalLoad` + `#shipLayer` are laid onto the glass with a CSS
-  matrix3d. Start (the opening's button) → `room.dive()`; when the glass fills the window the room is removed and the opening plays on.
+  matrix3d. Start → `room.dive()`: one move (`mkRun`, log distance) into the glass; at the glass (`through`) the opening takes the move on
+  (`intro.rr`) while the room still shows the galaxy full screen through its CRT effect for `crtOut` s (phase `post`), then the room goes.
+  CRT: Look → Room: CRT and its playground (`room.lab()`, `#crt-lab`). On touch the 3D pointer sits on the glass and goes where you tap.
   Look → Room; `?noroom` (or roomOn 0) skips it.
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
   field for settings copied from the Ascent toy.

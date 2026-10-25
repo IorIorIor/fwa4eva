@@ -200,7 +200,7 @@ const intro = {
     if (PORTAL_LAB) this.lab = makePortalLab(this);
     return true;
   },
-  fovAt(p) { const L = LOOK, f0 = L.fov, f1 = Math.max(f0, L.portalFov ?? 120); return f0 + (f1 - f0) * Math.pow(1 - Math.max(0, Math.min(1, p)), 1.6) },   // wide while the mark is up, your own by the time you land (p: 0 … 1 over the whole opening)
+  fovAt(p) { const L = LOOK, f0 = L.fov, f1 = Math.max(f0, this.noMark ? RL('roomGalFov', 80) : (L.portalFov ?? 120));   /* (in the room: narrower, so the galaxy fills the monitor) */ return f0 + (f1 - f0) * Math.pow(1 - Math.max(0, Math.min(1, p)), 1.6) },   // wide while the mark is up, your own by the time you land (p: 0 … 1 over the whole opening)
   setFov(p) { const f = this.fovAt(p); if (Math.abs(camera.fov - f) > 1e-4) { camera.fov = f; camera.updateProjectionMatrix() } },
   portalView() {   // where the dive starts: just behind the ship's spot, looking the way you'll fly (the camera never turns: only its path bends)
     const L = LOOK, R = GAL_R0 + GAL_LEN, D = this.D0 * Math.max(1, L.portalDist ?? 1.25);   // the camera starts just back from where your pointer is pointer-sized: it barely moves
@@ -245,7 +245,7 @@ const intro = {
     { const f = Math.min(1, dt * 14 || 1); this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;
       const qa = .9, tt = Math.max(0, Math.min(1, (q - qa) / (1 - qa))), G = (1 - qa) * (.5 - tt * tt * tt + tt * tt * tt * tt / 2), ty = Math.tan(camera.fov * Math.PI / 360), dp = Math.exp(this.lnD0 + (this.rr ? 1 : lam) * (this.lnPV - this.lnD0) * G) * Math.tan(LOOK.fov * Math.PI / 360) / ty;   // (with the wide lens it sits nearer, so it stays exactly pointer-sized)
       avatar.position.set(this.mxs * ty * camera.aspect * dp, this.mys * ty * dp, -dp).applyQuaternion(camera.quaternion).add(camera.position); avatar.quaternion.copy(camera.quaternion).multiply(this.relQ); avatar.renderOrder = 5;
-      flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab || !!this.rr; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on }   // the 3D pointer only from Start (or the first scroll), right where your mouse is
+      flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab || !!this.rr || room.ptrOn; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on }   // the 3D pointer only from Start (or the first scroll), right where your mouse is
     if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv, this.rr ? this.rr.vend : null); if (this.rr) room.afterGlass(9); this.rr = null; this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
   },
   lam() { return Math.max(.02, Math.min(.9, LOOK.portalCarry ?? .45)) },

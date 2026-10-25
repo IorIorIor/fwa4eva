@@ -337,7 +337,7 @@ function tick(now) {
     fl.material.color.copy(trailColour(1, 1, _flc, gasOn || !boosting ? 1 : 0, boosting ? 1 : 0).lerp(_amber, gasOn && !boosting ? 1 : 0));   // the flame takes the trail's colour
   } else if (booted) { nearest(camera.position) }   // on the map, the winners right around you become suns as you zoom in
   if (!intro.active) updateCamera(dt); else intro.update(dt);
-  portal.update(rdt);   /* the phone tilts the view round the ship (or steers) */
+  if (!room.on || room.phase === 'post') portal.update(rdt);   /* the phone tilts the view round the ship (or steers) */
   engineLook(dt);
   { if (!shipR0) { const sc = avatar.scale.x || 1; shipR0 = new THREE.Box3().setFromObject(avatar).getSize(tmp).length() / 2 / sc }   // the ship's own radius at scale 1, measured once
     const d = Math.max(1e-3, camera.position.distanceTo(player.pos)), px = 2 * shipR0 * avatar.scale.x / d * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360)); tmp.copy(player.pos).project(camera);

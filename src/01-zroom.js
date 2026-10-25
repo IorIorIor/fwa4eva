@@ -37,14 +37,14 @@ const room = (() => {
   const woodV = new THREE.MeshPhysicalNodeMaterial({ color: lin('#c8c8c8'), map: woodSide, roughness: .5, clearcoat: .35, clearcoatRoughness: .4 });
   const woodDark = new THREE.MeshPhysicalNodeMaterial({ color: lin('#8a8a8a'), map: woodSide, roughness: .55, clearcoat: .25, clearcoatRoughness: .45 });
   const wall = new THREE.MeshStandardNodeMaterial({ color: lin('#33465f'), roughness: .95, bumpMap: plaster, bumpScale: .6 });
-  const floor = std('#17130f', .85);
+  const floorM = std('#17130f', .85);
   const beige = std('#d9ceb5', .5), beigeD = std('#c7bb9f', .55), beigeL = std('#e4dac4', .45), grey = std('#7d7a72', .6), dark = std('#1c1b1a', .7);
 
   // ── the room ──
   const W = 6, H = 3;
   add(new THREE.PlaneGeometry(W, H), wall, 0, H / 2, 0).castShadow = false;
   { const m = add(new THREE.PlaneGeometry(3, H), wall, 1.32, H / 2, 1.5); m.rotation.y = -Math.PI / 2; m.castShadow = false }   // the side wall on the right
-  { const m = add(new THREE.PlaneGeometry(W, 4), floor, 0, 0, 2); m.rotation.x = -Math.PI / 2; m.castShadow = false }
+  { const m = add(new THREE.PlaneGeometry(W, 4), floorM, 0, 0, 2); m.rotation.x = -Math.PI / 2; m.castShadow = false }
   { const sk = std('#1d2230', .7); add(new THREE.BoxGeometry(W, .08, .015), sk, 0, .04, .008); add(new THREE.BoxGeometry(.015, .08, 3), sk, 1.312, .04, 1.5) }   // skirting
 
   // ── the desk ── top 1.72 × .66 at .74 m; a cabinet each side, the keyboard tray pulled out between them
@@ -73,13 +73,28 @@ const room = (() => {
   // the glass, set in a darker inner frame. It shows the galaxy's picture (gT) once it's there, faintly lined like a CRT
   const SW = .33, SH = .25, GA = SW / SH, glassZ = .14 + BD / 2 + .002;
   add(rbox(SW + .04, SH + .036, .01, .006), std('#a99f8a', .6), 0, by + .012, glassZ - .006, mon);
-  const gRT = new THREE.RenderTarget(4, 3, { depthBuffer: false }); const gT = texture(gRT.texture), FLIP = renderer.backend.isWebGPUBackend === true;   // (WebGPU keeps a render target top row first: read it the other way up)
-  const U2 = { exp: uniform(0), bloomK: uniform(.35), vig: uniform(.55), grain: uniform(.035), time: uniform(0), res: uniform(new THREE.Vector2(1, 1)), scrOn: uniform(0), scrBr: uniform(1), scan: uniform(.12), glow: uniform(.35), k: uniform(0), band: uniform(new THREE.Vector4(0, 0, 1, 1)) };
+  const gRT = new THREE.RenderTarget(4, 3, { depthBuffer: false, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }); const gT = texture(gRT.texture), FLIP = renderer.backend.isWebGPUBackend === true;   // (WebGPU keeps a render target top row first: read it the other way up)
+  const U2 = { exp: uniform(0), bloomK: uniform(.35), vig: uniform(.55), grain: uniform(.035), time: uniform(0), res: uniform(new THREE.Vector2(1, 1)), scrOn: uniform(0), scrBr: uniform(1), glow: uniform(.35), k: uniform(0), band: uniform(new THREE.Vector4(0, 0, 1, 1)) };
+  // the CRT (Look → Room: CRT, and its playground): its scan lines and phosphor stripes always (they show as you come close), and
+  // round the move through the glass (A: rises as you reach it, dies away once you're through) a curved picture, colour fringes,
+  // flicker, a rolling bar, static and the glow of the phosphor. P: how much of the pattern is left once you're through
+  const C = { lines: uniform(260), triads: uniform(340), scan: uniform(.35), mask: uniform(.35), curve: uniform(.6), aberr: uniform(1), glow: uniform(.5), flick: uniform(.25), roll: uniform(.3), noise: uniform(.25), vig: uniform(.6), idle: uniform(.3), A: uniform(0), P: uniform(1) };
+  const h1 = x => fract(sin(x.mul(12.9898)).mul(43758.5453));
+  const texUV = g => FLIP ? g : vec2(g.x, g.y.oneMinus());   // a point on the glass (v from the top) → the picture
+  const crtPat = (g, amt) => {   // scan lines and the R G B stripes at glass point g, faded where they'd be finer than a pixel (far off: a slight dimming; close: you see them)
+    const ly = g.y.mul(C.lines), lx = g.x.mul(C.triads), sv = smoothstep(.35, .75, fwidth(ly)).oneMinus().mul(C.scan).mul(amt), mv = smoothstep(.25, .6, fwidth(lx)).oneMinus().mul(C.mask).mul(amt);
+    const scan = float(1).sub(sv.mul(cos(ly.mul(6.28318)).mul(-.5).add(.5))).mul(sv.mul(.5).add(1)), ph = fract(lx);
+    const w = vec3(cos(ph.sub(1 / 6).mul(6.28318)), cos(ph.sub(.5).mul(6.28318)), cos(ph.sub(5 / 6).mul(6.28318))).mul(.5).add(.5);
+    return mix(vec3(1), w.mul(2), mv).mul(scan);
+  };
+  const rollAt = (y, amt) => exp(fract(y.sub(U2.time.mul(.23))).sub(.5).mul(9).pow(2).negate()).mul(C.roll).mul(amt).mul(.12);   // a soft brighter band drifting down the screen
+  const flickAt = amt => float(1).sub(h1(floor(U2.time.mul(24))).mul(C.flick).mul(amt).mul(.18));
   const glassMat = new THREE.MeshPhysicalNodeMaterial({ color: lin('#0b0f12'), roughness: .12, metalness: 0, clearcoat: 1, clearcoatRoughness: .05 });
   glassMat.emissiveNode = Fn(() => {
-    const q = uv().sub(.5).mul(2), vig = float(1).sub(dot(q.mul(q), vec2(.22, .3))).clamp(0, 1), lines = sin(uv().y.mul(SH * 1900)).mul(.5).add(.5).mul(U2.scan).oneMinus();
-    const pic = pow(gT.sample(FLIP ? vec2(uv().x, uv().y.oneMinus()) : uv()).rgb, vec3(2.2)).mul(U2.scrBr).mul(U2.scrOn);   // (the picture is display-ready: back to light, so the room's grade treats it like any other light)
-    return pic.add(vec3(.012, .02, .026).mul(U2.glow)).mul(mix(vig.mul(lines), 1, U2.k));
+    const g = vec2(uv().x, uv().y.oneMinus()), q = uv().sub(.5).mul(2), vig = float(1).sub(dot(q.mul(q), vec2(.22, .3))).clamp(0, 1);
+    const pic = pow(gT.sample(texUV(g)).rgb, vec3(2.2)).mul(U2.scrBr), glow = pow(gT.sample(texUV(g)).level(4).rgb, vec3(2.2)).mul(C.glow).mul(.5);   // (the picture is display-ready: back to light, so the room's grade treats it like any other light)
+    const lit = pic.mul(crtPat(g, 1)).add(glow).mul(U2.scrOn).add(rollAt(g.y, C.idle).mul(U2.scrOn)).mul(flickAt(C.idle));
+    return lit.add(vec3(.012, .02, .026).mul(U2.glow)).mul(mix(vig, 1, U2.k));
   })();
   const glass = add(new THREE.PlaneGeometry(SW, SH), glassMat, 0, by + .012, glassZ, mon); glass.castShadow = false;
   for (let k = 0; k < 5; k++) add(rbox(.022, .008, .006, .002), beigeD, -.07 + k * .03, .07 + .028, .14 + BD / 2 + .002, mon);   // the adjust buttons
@@ -172,7 +187,12 @@ const room = (() => {
     const q = screenUV.sub(.5), v = float(1).sub(dot(q, q).mul(U2.vig.mul(1.6))).clamp(0, 1);
     const c = acesFilmicToneMapping(col.rgb.add(bl.rgb.mul(U2.bloomK.div(.35))), U2.exp).mul(v).toVar();
     const n = fract(sin(dot(screenUV.mul(U2.res).add(fract(U2.time.mul(7.13)).mul(91.7)), vec2(12.9898, 78.233))).mul(43758.5453)).sub(.5);
-    const B = U2.band, direct = gT.sample(vec2(mix(B.x, B.z, screenUV.x), FLIP ? mix(B.y, B.w, screenUV.y) : mix(B.y.oneMinus(), B.w.oneMinus(), screenUV.y))).rgb;   // the window's part of the glass, full screen: the galaxy exactly as it'll be drawn next
+    // the window's part of the glass, full screen: the galaxy exactly as it'll be drawn next (with A and P at 0, nothing added)
+    const B = U2.band, A = C.A, d = screenUV.sub(.5), r2 = dot(d, d), sw = screenUV.add(d.mul(r2.mul(C.curve).mul(A).mul(.9)));   // the picture bulges like the tube's face
+    const ins = smoothstep(-.004, .004, sw.x).mul(smoothstep(1.004, .996, sw.x)).mul(smoothstep(-.004, .004, sw.y)).mul(smoothstep(1.004, .996, sw.y)), g = vec2(mix(B.x, B.z, sw.x), mix(B.y, B.w, sw.y)), ab = d.mul(C.aberr).mul(A).mul(.01);
+    const dc = vec3(gT.sample(texUV(g.add(ab))).r, gT.sample(texUV(g)).g, gT.sample(texUV(g.sub(ab))).b).mul(crtPat(g, C.P)).add(gT.sample(texUV(g)).level(4).rgb.mul(C.glow).mul(A).mul(.5));
+    const st0 = h1(dot(screenUV.mul(U2.res), vec2(.1031, .11369)).add(fract(U2.time.mul(3.7)).mul(17.3))).sub(.5).mul(C.noise).mul(A).mul(.25);
+    const direct = dc.mul(flickAt(A)).mul(float(1).sub(C.vig.mul(A).mul(smoothstep(.12, .5, r2)))).add(rollAt(g.y, A)).add(st0).mul(ins);
     return vec4(mix(sRGBTransferOETF(c).add(n.mul(U2.grain)), direct, U2.k), 1);
   })();
 
@@ -189,13 +209,15 @@ const room = (() => {
     const mi = [(E * I - F * Hh) / det, (C * Hh - B * I) / det, (B * F - C * E) / det, (F * G - Dd * I) / det, (A * I - C * G) / det, (C * Dd - A * F) / det, (Dd * Hh - E * G) / det, (B * G - A * Hh) / det, (A * E - B * Dd) / det];
     return { css: `matrix3d(${m[0]},${m[3]},0,${m[6]},${m[1]},${m[4]},0,${m[7]},0,0,1,0,${m[2]},${m[5]},0,${m[8]})`, mi };
   }
-  const layers = () => [$('portalLoad')].filter(Boolean);   // (the 3D pointer only takes over once you're through the glass: until then it's your own)
+  const MOB = matchMedia('(pointer: coarse)').matches;   // a phone or tablet: no pointer of your own, so the 3D one sits on the glass from the start and goes where you tap
+  const layers = () => [$('portalLoad'), MOB ? $('shipLayer') : null].filter(Boolean);   // (with a mouse the 3D pointer only takes over once you're through the glass: until then it's your own)
   function place() {
     const b = bandOf(); st.band = b; U2.band.value.set(b[0], b[1], b[2], b[3]);
     const P = [toScreen(b[0], b[1]), toScreen(b[2], b[1]), toScreen(b[2], b[3]), toScreen(b[0], b[3])], hm = homography(innerWidth, innerHeight, P); st.Mi = hm.mi;
     for (const el of layers()) { el.style.transformOrigin = '0 0'; el.style.transform = hm.css }
-    const pl = $('portalLoad'); if (pl) pl.style.opacity = st.fade.toFixed(3);
+    const pl = $('portalLoad'); if (pl) pl.style.opacity = (st.lab && st.lab.p > 1 ? 0 : st.fade).toFixed(3);
   }
+  const toWindow = (x, y) => { const m = st.Mi; if (!m) return [x, y]; const w = m[6] * x + m[7] * y + m[8]; return [(m[0] * x + m[1] * y + m[2]) / w, (m[3] * x + m[4] * y + m[5]) / w] };   // a point on screen → where it falls on the opening's page
   const unplace = () => { for (const el of layers()) { el.style.transform = ''; el.style.transformOrigin = '' } const pl = $('portalLoad'); if (pl) pl.style.opacity = '' };
 
   // ── each frame ──
@@ -206,7 +228,8 @@ const room = (() => {
     bulbGlow.color.copy(lc); bulbGlow.intensity = .5 * lmp;
     logoAt(1);
     { const bs = RL('roomBtn', 6.8).toFixed(2), by = (RL('roomBtnY', .82) * 100).toFixed(1) + '%'; if (bs !== st.bs || by !== st.by) { st.bs = bs; st.by = by; H0.style.setProperty('--rbs', bs); H0.style.setProperty('--rby', by) } }   // the Start button's size and place on the glass
-    scrLight.intensity = 3 * scr * (1 + U2.scrOn.value * 2); U2.glow.value = scr * 3; U2.scrBr.value = RL('roomScreenBright', 1.4); U2.scan.value = RL('roomScan', .12) * (1 - U2.k.value);
+    scrLight.intensity = 3 * scr * (1 + U2.scrOn.value * 2); U2.glow.value = scr * 3; U2.scrBr.value = RL('roomScreenBright', 1.4);
+    C.lines.value = RL('crtLines', 260); C.triads.value = RL('crtTriads', 340); C.scan.value = RL('crtScan', .35); C.mask.value = RL('crtMask', .35); C.curve.value = RL('crtCurve', .6); C.aberr.value = RL('crtAberr', 1); C.glow.value = RL('crtGlow', .5); C.flick.value = RL('crtFlicker', .25); C.roll.value = RL('crtRoll', .3); C.noise.value = RL('crtNoise', .25); C.vig.value = RL('crtVig', .6); C.idle.value = RL('crtIdle', .3);
     hemi.intensity = .9 * RL('roomFill', 1);
     wall.color.copy(lin('#33465f')).multiplyScalar(RL('roomWall', 1)); const wk = RL('roomWood', 1); wood.color.setScalar(wk); woodV.color.copy(lin('#c8c8c8')).multiplyScalar(wk); woodDark.color.copy(lin('#8a8a8a')).multiplyScalar(wk);
     U2.exp.value = RL('roomExposure', 1.3) * st.fade; U2.bloomK.value = RL('roomBloom', .35); U2.vig.value = RL('roomVignette', .55) * (1 - U2.k.value); U2.grain.value = RL('roomGrain', .035);
@@ -219,16 +242,20 @@ const room = (() => {
     renderer.getDrawingBufferSize(U2.res.value);
     // the camera: in front of the desk, a little above it, swaying a touch with the pointer
     const sw = RL('roomSway', .04), px = st.ptr.in ? st.ptr.x / innerWidth - .5 : 0, py = st.ptr.in ? st.ptr.y / innerHeight - .5 : 0, f = Math.min(1, dt * 3);
-    if (st.phase !== 'dive') { st.sway.x += (px - st.sway.x) * f; st.sway.y += (py - st.sway.y) * f }
+    if (st.phase !== 'dive' && !st.lab) { st.sway.x += (px - st.sway.x) * f; st.sway.y += (py - st.sway.y) * f } else if (st.lab) st.sway.set(0, 0)
     const cx = RL('roomCamX', 0);
     cam.fov = RL('roomFov', 36); cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     cam.position.set(cx + st.sway.x * sw * 2, RL('roomCamH', 1.2) - st.sway.y * sw, RL('roomCamZ', 2.45)); st.aim.set(cx * .6, RL('roomAimY', .9), .25); cam.up.set(0, 1, 0); cam.lookAt(st.aim);
-    if (st.phase === 'dive') {   // into the glass, the first part of the one move (see mkRun): nearer by the same log distance as the run says, turning square onto it
-      const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr), p = s / R.Dr, w = sstep(p, 0, 1);
-      glassPose(); _p1.copy(_t).addScaledVector(_n, st.d0 * Math.exp(-R.Dr)); _m4.lookAt(_p1, _t, _u); _q1.setFromRotationMatrix(_m4);
-      _p0.copy(st.dir0).lerp(_n, w).normalize(); cam.position.copy(_t).addScaledVector(_p0, st.d0 * Math.exp(-s)); cam.quaternion.slerpQuaternions(st.q0, _q1, w);
-      U2.k.value = sstep(p, .8, 1);
-      if (R.s(R.t) >= R.Dr) { finish(); return }   // the glass fills the window: the galaxy carries on with the same run
+    const peak = RL('crtPeak', 1), cin = Math.min(.95, RL('crtIn', .55)), out = Math.max(.05, RL('crtOut', .7));
+    if (st.lab) labStep(dt);   // the CRT playground: the move held wherever you scrub it
+    else if (st.phase === 'dive') {   // into the glass, the first part of the one move (see mkRun)
+      const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr); posed(s / R.Dr);
+      C.A.value = peak * sstep(s / R.Dr, cin, 1); C.P.value = 1;
+      if (R.s(R.t) >= R.Dr) { through(); return }   // the glass fills the window: the galaxy carries on with the same run
+    } else if (st.phase === 'post') {   // through: the galaxy, full screen, still a picture on the tube for a moment, the tube fading away
+      st.pt += dt / out; const x = Math.min(1, st.pt); C.A.value = peak * (1 - x) * (1 - x); C.P.value = Math.pow(1 - x, 1.5); U2.k.value = 1;
+      if (x >= 1) { finish(); return }
+      pipe.render(); return
     }
     cam.updateMatrixWorld();
     // the lamp's light leaves the bulb along the shade's axis
@@ -238,9 +265,23 @@ const room = (() => {
     pipe.render();
   }
   const loop = now => { if (!st.on) return; requestAnimationFrame(loop); try { frame(now) } catch (e) { console.error(e) } };
-  function finish() {   // the glass fills the window: the room goes, the opening carries on full size
-    st.on = false; st.phase = 'done'; unplace();
-    H0.classList.remove('roomboot', 'roomlive'); document.body.classList.remove('room', 'roomdive');
+  // the camera at a point p (0 … 1) of the way into the glass: nearer by the run's log distance, turning square onto it
+  function prepRun() {
+    st.q0 = cam.quaternion.clone(); glassPose(); const b = bandOf(), d1 = (b[3] - b[1]) * SH / (2 * Math.tan(cam.fov * Math.PI / 360)); st.d0 = cam.position.distanceTo(_t); st.dir0 = cam.position.clone().sub(_t).normalize();
+    let Dg = 1.8; try { Dg = Math.max(.3, intro.lnPV - intro.lnD0) } catch (e) { }
+    st.run = mkRun(Math.max(.2, Math.log(st.d0 / d1)), Dg, Math.max(.6, RL('roomDive', 2.8)));
+  }
+  function posed(p) {
+    const w = sstep(p, 0, 1), Dr = st.run.Dr; glassPose(); _p1.copy(_t).addScaledVector(_n, st.d0 * Math.exp(-Dr)); _m4.lookAt(_p1, _t, _u); _q1.setFromRotationMatrix(_m4);
+    _p0.copy(st.dir0).lerp(_n, w).normalize(); cam.position.copy(_t).addScaledVector(_p0, st.d0 * Math.exp(-Dr * p)); cam.quaternion.slerpQuaternions(st.q0, _q1, w); U2.k.value = sstep(p, .8, 1);
+  }
+  function through() {   // at the glass: the opening takes the move on (and the pointer), the tube fades off the galaxy (post), then the room goes
+    st.phase = 'post'; st.pt = 0; U2.k.value = 1; unplace(); document.body.classList.remove('room', 'roommob'); H0.classList.remove('roomlive');
+    const cb = st.onDone; st.onDone = null; if (cb) cb();
+  }
+  function finish() {
+    st.on = false; st.phase = 'done'; unplace(); if (st.lab) lab(false);
+    H0.classList.remove('roomboot', 'roomlive'); document.body.classList.remove('room', 'roommob');
     renderer.shadowMap.enabled = false; const cb = st.onDone; st.onDone = null; if (cb) cb();
     setTimeout(() => { sc.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose() }); gRT.dispose() }, 2000);
   }
@@ -249,7 +290,7 @@ const room = (() => {
   const _s = new THREE.Vector2();
   function galaxy(fn) {
     if (!st.on) return fn();
-    renderer.getDrawingBufferSize(_s); const w = Math.max(64, Math.min(1600, Math.round(_s.x))), h = Math.round(w / GA); if (gRT.width !== w || gRT.height !== h) gRT.setSize(w, h);
+    renderer.getDrawingBufferSize(_s); const w = Math.max(64, Math.min(st.phase === 'post' ? 2560 : 1600, Math.round(_s.x))), h = Math.round(w / GA); if (gRT.width !== w || gRT.height !== h) gRT.setSize(w, h);
     const c = camera;
     const fov = c.fov, asp = c.aspect, A = innerWidth / Math.max(1, innerHeight), t = Math.tan(fov * Math.PI / 360), tR = A >= GA ? t * A / GA : t;
     c.fov = 2 * Math.atan(tR) * 180 / Math.PI; c.aspect = GA; c.updateProjectionMatrix();
@@ -262,22 +303,65 @@ const room = (() => {
   function mkRun(Dr, Dg, T) { const a = .45, L = Dr + Dg, k = L / (T * (1 - a / 2)); return { t: 0, Dr, Dg, L, vend: k, s: t => { const u = t / T; return k * T * (u < a ? u * u / (2 * a) : u - a / 2) } } }
   function glassPose() { glass.updateWorldMatrix(true, false); glass.getWorldPosition(_t); _n.set(0, 0, 1).transformDirection(glass.matrixWorld); _u.set(0, 1, 0).transformDirection(glass.matrixWorld) }
   function dive() {
-    if (st.phase !== 'ready') return; st.phase = 'dive'; st.q0 = cam.quaternion.clone(); document.body.classList.add('roomdive');
-    glassPose(); const b = bandOf(), d1 = (b[3] - b[1]) * SH / (2 * Math.tan(cam.fov * Math.PI / 360)); st.d0 = cam.position.distanceTo(_t); st.dir0 = cam.position.clone().sub(_t).normalize();
-    let Dg = 1.8; try { Dg = Math.max(.3, intro.lnPV - intro.lnD0) } catch (e) { }
-    st.run = mkRun(Math.max(.2, Math.log(st.d0 / d1)), Dg, Math.max(.6, RL('roomDive', 2.8)));
-    st.onDone = () => { try { intro.ready = true; intro.rr = st.run; intro.mx = intro.mxs = Math.max(-1, Math.min(1, st.ptr.x / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(st.ptr.y / innerHeight * 2 - 1))); if (!coarse && !lockFailed) { st.lockT = performance.now() + 800; requestLock() } } catch (e) { } };   // the opening carries on the same move from there, and your pointer becomes the 3D one right where it is (the lock still counts as part of the click)
+    if (st.phase !== 'ready' || st.lab) return; st.phase = 'dive'; prepRun();
+    try { setMuted(false); setMusicOff(false); audio(); intro.heard = true } catch (e) { }   // (the sound starts with Start)
+    st.onDone = () => { try { intro.ready = true; intro.rr = st.run; if (MOB) return; intro.mx = intro.mxs = Math.max(-1, Math.min(1, st.ptr.x / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(st.ptr.y / innerHeight * 2 - 1))); if (!coarse && !lockFailed) { st.lockT = performance.now() + 800; requestLock() } } catch (e) { } };   // the opening carries on the same move from there, and your pointer becomes the 3D one right where it is (the lock still counts as part of the click)
   }
-  const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter');
-  addEventListener('pointermove', e => { if ((st.on || performance.now() < (st.lockT || 0)) && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } }, true);
-  addEventListener('pointerup', e => { if (!st.on || (e.target.closest && e.target.closest('#lookPanel'))) return; if (st.phase === 'ready' && onBtn(e)) { e.stopImmediatePropagation(); dive() } else if (st.phase !== 'off') e.stopImmediatePropagation() }, true);
-  addEventListener('wheel', e => { if (st.on && !(e.target.closest && e.target.closest('#lookPanel'))) e.stopImmediatePropagation() }, { capture: true, passive: true });
+  // input: in the room nothing reaches the galaxy (no dragging, swiping or scrolling it round); only Start, the panels, and on a phone the taps that move the pointer on the glass
+  const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter'), inUI = e => e.target && e.target.closest && e.target.closest('#lookPanel,#crtLab'), held = () => st.on && st.phase !== 'post';
+  addEventListener('pointermove', e => { if ((st.on || performance.now() < (st.lockT || 0)) && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);
+  addEventListener('pointerdown', e => { if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);
+  addEventListener('pointerup', e => {
+    if (!held() || inUI(e)) return; e.stopImmediatePropagation(); if (st.phase !== 'ready' || st.lab) return;
+    if (MOB) { const [wx, wy] = toWindow(e.clientX, e.clientY); if (wx >= 0 && wx <= innerWidth && wy >= 0 && wy <= innerHeight) try { intro.mx = wx / innerWidth * 2 - 1; intro.my = -(wy / innerHeight * 2 - 1) } catch (er) { } }   // a tap on the glass: the pointer glides there
+    if (onBtn(e)) dive();
+  }, true);
+  ['touchstart', 'touchmove', 'touchend'].forEach(t => addEventListener(t, e => { if (held() && !inUI(e)) { e.stopImmediatePropagation(); if (t === 'touchmove' && e.cancelable) e.preventDefault() } }, { capture: true, passive: false }));
+  addEventListener('wheel', e => { if (held() && !inUI(e)) e.stopImmediatePropagation() }, { capture: true, passive: true });
   addEventListener('keydown', e => {
     if (!st.on || (e.target.matches && e.target.matches('input,textarea,select'))) return; const k = e.key;
-    if (k === 'Enter' || k === ' ' || k === 'ArrowDown') { e.preventDefault(); e.stopImmediatePropagation(); if (st.phase === 'ready') { try { setMuted(false); setMusicOff(false); audio(); intro.heard = true } catch (er) { } dive() } }
+    if (st.phase === 'post') return;
+    if (k === 'Enter' || k === ' ' || k === 'ArrowDown') { e.preventDefault(); e.stopImmediatePropagation(); if (st.phase === 'ready') dive() }
+    else if (k === 'Escape' && st.lab) { e.stopImmediatePropagation(); lab(false) }
     else if (k === 'Escape') { if (st.phase === 'ready') { st.onDone = null; finish(); logoAt(9) } else e.stopImmediatePropagation() }   // (ready: the opening's own Esc then skips it too)
   }, true);
   addEventListener('resize', () => { if (st.on) renderer.setSize(innerWidth, innerHeight, false) });
+
+  // ── the CRT playground (Look → Room: CRT → Playground, or #crt-lab): the move held wherever you scrub it, or played through,
+  // over and over, with every CRT setting beside it. 0 … 1 is the room up to the glass, 1 … 1.4 is just through it ──
+  const LAB_KEYS = ['crtPeak', 'crtIn', 'crtOut', 'crtScan', 'crtLines', 'crtMask', 'crtTriads', 'crtCurve', 'crtAberr', 'crtGlow', 'crtFlicker', 'crtRoll', 'crtNoise', 'crtVig', 'crtIdle', 'roomDive'];
+  let labEl = null, labSave = 0;
+  function buildLab() {
+    if (labEl) return; const rows = []; LOOK_DEF.forEach(([, rs]) => rs.forEach(r => { if (LAB_KEYS.includes(r[0])) rows.push(r) })); rows.sort((a, b) => LAB_KEYS.indexOf(a[0]) - LAB_KEYS.indexOf(b[0]));
+    labEl = document.createElement('div'); labEl.id = 'crtLab';
+    labEl.innerHTML = `<header><b>CRT playground</b><button type="button" class="x" aria-label="Close">✕</button></header><div class="cl-scrub"><span>The move: room · glass · through</span><input type="range" min="0" max="1.4" step=".001" value="0"><div class="cl-btns"><button type="button" class="btn play">▶ Play</button><button type="button" class="btn loop">Loop</button><button type="button" class="btn copy">Copy settings</button></div></div><div class="cl-rows"></div><p class="cl-msg"></p>`;
+    const box = labEl.querySelector('.cl-rows'), scrub = labEl.querySelector('.cl-scrub input'), msg = labEl.querySelector('.cl-msg');
+    for (const [k, label, , def, mn, mx, stp] of rows) {
+      const w = document.createElement('label'); w.className = 'cl-row'; const dec = stp < .01 ? 3 : stp < 1 ? 2 : 0, v = LOOK[k] ?? def;
+      w.innerHTML = `<span>${label}</span><input type="range" min="${mn}" max="${mx}" step="${stp}" value="${v}"><output>${(+v).toFixed(dec)}</output>`;
+      const inp = w.querySelector('input'), o = w.querySelector('output'); inp.oninput = () => { LOOK[k] = +inp.value; o.textContent = (+inp.value).toFixed(dec); clearTimeout(labSave); labSave = setTimeout(() => { try { saveLook() } catch (e) { } }, 300) };
+      box.appendChild(w);
+    }
+    scrub.oninput = () => { if (st.lab) { st.lab.p = +scrub.value; st.lab.play = false } };
+    labEl.querySelector('.play').onclick = () => { if (st.lab) { st.lab.play = true; st.lab.t = 0; st.lab.tArr = null } };
+    labEl.querySelector('.loop').onclick = e => { if (st.lab) { st.lab.loop = !st.lab.loop; e.target.classList.toggle('on', st.lab.loop); if (st.lab.loop && !st.lab.play) { st.lab.play = true; st.lab.t = 0; st.lab.tArr = null } } };
+    labEl.querySelector('.copy').onclick = async () => { const o = {}; LAB_KEYS.forEach(k => { if (LOOK[k] != null) o[k] = LOOK[k] }); const t = 'FWA FOREVER look settings: ' + JSON.stringify(o); try { await navigator.clipboard.writeText(t); msg.textContent = 'Copied: paste it in the chat' } catch (e) { msg.textContent = t } };
+    labEl.querySelector('.x').onclick = () => lab(false);
+    labEl.scrub = scrub; document.body.appendChild(labEl);
+  }
+  function lab(on = true) {
+    if (on && !st.lab && st.on && st.phase !== 'dive' && st.phase !== 'post') { buildLab(); st.lab = { p: 0, play: false, loop: false, t: 0, tArr: null, prep: false }; labEl.hidden = false; labEl.scrub.value = 0 }
+    else if (!on && st.lab) { st.lab = null; if (labEl) labEl.hidden = true; C.A.value = 0; C.P.value = 1; U2.k.value = 0 }
+  }
+  function labStep(dt) {
+    const L = st.lab, peak = RL('crtPeak', 1), cin = Math.min(.95, RL('crtIn', .55)), out = Math.max(.05, RL('crtOut', .7)); if (!L.prep) { prepRun(); L.prep = true }   // (from where the camera rests)
+    if (L.play) {   // the real timing: the run up to the glass, then the fade once through
+      L.t += dt; const R = st.run, s = R.s(L.t); if (s >= R.Dr && L.tArr == null) L.tArr = L.t;
+      L.p = L.tArr == null ? s / R.Dr : 1 + .4 * Math.min(1, (L.t - L.tArr) / out);
+      if (L.p >= 1.4) { if (L.loop) { L.t = -.6; L.tArr = null } else L.play = false } labEl.scrub.value = Math.max(0, L.p);
+    }
+    const p = Math.max(0, L.p); if (p <= 1) { posed(p); C.A.value = peak * sstep(p, cin, 1); C.P.value = 1 } else { posed(1); const x = Math.min(1, (p - 1) / .4); C.A.value = peak * (1 - x) * (1 - x); C.P.value = Math.pow(1 - x, 1.5); U2.k.value = 1 }
+  }
 
   // build, compile, show: then the galaxy loads behind the glass
   H0.classList.add('nomark');   // (only the galaxy on the glass: no mark round it, here or after)
@@ -288,12 +372,12 @@ const room = (() => {
   const startP = (async () => {
     cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     try { await renderer.compileAsync(sc, cam) } catch (e) { }
-    st.on = true; st.phase = 'loading'; document.body.classList.add('room'); H0.classList.add('roomlive'); requestAnimationFrame(loop);
+    st.on = true; st.phase = 'loading'; document.body.classList.add('room'); if (MOB) document.body.classList.add('roommob'); H0.classList.add('roomlive'); requestAnimationFrame(loop);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // (two frames of it on screen before the heavy loading starts)
   })();
   return {
     get on() { return st.on }, on0: true, get diving() { return st.phase === 'dive' }, get phase() { return st.phase }, startP, galaxy, dive,
-    galaxyReady() { if (st.phase === 'loading') st.phase = 'ready' },   // the opening has its galaxy up: the glass shows it and Start works
+    galaxyReady() { if (st.phase === 'loading') { st.phase = 'ready'; if (/crt-?lab/.test(location.hash)) lab(true) } }, lab, get ptrOn() { return MOB && (st.phase === 'ready' || st.phase === 'dive') },   // the opening has its galaxy up: the glass shows it and Start works
     skip() { if (st.on) finish(); logoAt(9) }, afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st },
   };
 })();
