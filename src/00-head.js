@@ -14,6 +14,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
 THREE.ColorManagement.enabled = false;   // colours are authored as plain sRGB numbers and shown as-is (the look was tuned that way)
 const V3 = THREE.Vector3, Q4 = THREE.Quaternion, C3 = THREE.Color;

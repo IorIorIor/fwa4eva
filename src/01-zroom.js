@@ -71,8 +71,8 @@ const room = (() => {
   { const g = new THREE.CylinderGeometry(.18, .275, .34, 4, 1); g.rotateY(Math.PI / 4); g.rotateX(-Math.PI / 2); g.scale(1, .93, 1); add(g, beige, 0, by - .01, -.07, mon) }   // the tube's housing tapering back
   add(rbox(.2, .16, .06, .02), beigeD, 0, by - .02, -.27, mon);   // the neck at the very back
   // the glass, set in a darker inner frame. It shows the galaxy's picture (gT) once it's there, faintly lined like a CRT
-  const SW = .33, SH = .25, GA = SW / SH, glassZ = .14 + BD / 2 + .002;
-  add(rbox(SW + .04, SH + .036, .01, .006), std('#a99f8a', .6), 0, by + .012, glassZ - .006, mon);
+  const SW = .355, SH = .266, GA = SW / SH, glassZ = .14 + BD / 2 + .002;
+  add(rbox(SW + .026, SH + .028, .01, .006), std('#a99f8a', .6), 0, by + .012, glassZ - .006, mon);
   const gRT = new THREE.RenderTarget(4, 3, { depthBuffer: false, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }); const gT = texture(gRT.texture), FLIP = renderer.backend.isWebGPUBackend === true;   // (WebGPU keeps a render target top row first: read it the other way up)
   const U2 = { exp: uniform(0), bloomK: uniform(.35), vig: uniform(.55), grain: uniform(.035), time: uniform(0), res: uniform(new THREE.Vector2(1, 1)), scrOn: uniform(0), scrBr: uniform(1), glow: uniform(.35), k: uniform(0), band: uniform(new THREE.Vector4(0, 0, 1, 1)) };
   // the monitor from afar: a faint rolling bar and flicker (gone as you reach the glass); the CRT proper is laid over the whole
@@ -84,7 +84,7 @@ const room = (() => {
   const flickAt = amt => float(1).sub(h1(floor(U2.time.mul(24))).mul(C.flick).mul(amt).mul(.18));
   const glassMat = new THREE.MeshPhysicalNodeMaterial({ color: lin('#0b0f12'), roughness: .12, metalness: 0, clearcoat: 1, clearcoatRoughness: .05 });
   glassMat.emissiveNode = Fn(() => {
-    const g = vec2(uv().x, uv().y.oneMinus()), q = uv().sub(.5).mul(2), vig = float(1).sub(dot(q.mul(q), vec2(.22, .3))).clamp(0, 1);
+    const g = vec2(uv().x, uv().y.oneMinus()), q = uv().sub(.5).mul(2), vig = float(1).sub(dot(q.mul(q), vec2(.12, .16))).clamp(0, 1);
     const pic = pow(gT.sample(texUV(g)).rgb, vec3(2.2)).mul(U2.scrBr), glow = pow(gT.sample(texUV(g)).level(4).rgb, vec3(2.2)).mul(.12), idle = C.idle.mul(U2.k.oneMinus());   // (the picture is display-ready: back to light, so the room's grade treats it like any other light)
     const lit = pic.add(glow).mul(U2.scrOn).add(rollAt(g.y, idle).mul(U2.scrOn)).mul(flickAt(idle));
     return lit.add(vec3(.012, .02, .026).mul(U2.glow)).mul(mix(vig, 1, U2.k));
@@ -104,7 +104,7 @@ const room = (() => {
     add(new THREE.SphereGeometry(.009, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2), std('#3a3631', .5), 0, .165, d / 2 + .003, g);
     return g;
   };
-  spk(-.34); const spR = spk(.33);
+  const spL = spk(-.34), spR = spk(.33);
   add(new THREE.CylinderGeometry(.006, .006, .004, 16).rotateX(Math.PI / 2), grey, .02, .03, .05 + .002, spR); add(new THREE.CylinderGeometry(.006, .006, .004, 16).rotateX(Math.PI / 2), grey, -.02, .03, .05 + .002, spR);   // volume knobs
 
   // ── the tower ──
@@ -135,8 +135,9 @@ const room = (() => {
     im.castShadow = im.receiveShadow = true; kb.add(im);
   }
   // the mouse on its pad
-  { add(rbox(.23, .004, .2, .002), std('#3d3644', .95, 0, { map: noiseTex(128, 70, 140, [2, 2]) }), .3, .012, -.02, tray);
-    const ms = add(new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), beigeL, .31, .014, -.03, tray); ms.scale.set(.032, .03, .055); ms.rotation.y = -.15 }
+  const mouse = new THREE.Group(); mouse.position.set(.3, .012, -.02); tray.add(mouse);
+  { add(rbox(.23, .004, .2, .002), std('#3d3644', .95, 0, { map: noiseTex(128, 70, 140, [2, 2]) }), 0, 0, 0, mouse);
+    const ms = add(new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), beigeL, .01, .002, -.01, mouse); ms.scale.set(.032, .03, .055); ms.rotation.y = -.15 }
 
   // ── cables ── (to the back of the desk)
   const cab = (pts, r = .0035, m = std('#2a2826', .6)) => add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new V3(...p))), 48, r, 6), m);
@@ -167,6 +168,15 @@ const room = (() => {
   // ── the things on the desk and the wall: room/props.js builds each at real size (the same code as its viewer), set here in
   // its place. Each is baked to one mesh per material (same look, far fewer draws); they reflect the room itself (env, below) ──
   const propUpd = [], propMats = new Set();
+  // everything that can be picked up and moved in the playground (Arrange), by name. Where things stand: the at(...) list and the
+  // room's own build, then ROOM_POS (Laurens's arrangement, pasted from Arrange → Copy positions), then what's kept in this browser
+  const ROOM_POS = {}, POS_KEY = 'fwa-room-pos-v1', picks = new Map();   // ROOM_POS: { name: [x, y, z, turn x, y, z] }
+  const posOf = o => [o.position.x, o.position.y, o.position.z, o.rotation.x, o.rotation.y, o.rotation.z].map(v => +v.toFixed(4));
+  const pickable = (id, o) => { picks.set(id, o); o.userData.pickId = id; o.userData.home = posOf(o) };
+  const setPos = (o, v) => { o.position.set(v[0], v[1], v[2]); o.rotation.set(v[3], v[4], v[5]) };
+  const moved = () => Object.fromEntries([...picks].map(([id, o]) => [id, posOf(o)]).filter(([id, v]) => v.some((x, i) => Math.abs(x - picks.get(id).userData.home[i]) > 1e-4)));
+  function applyPos() { let kept = {}; try { kept = JSON.parse(localStorage.getItem(POS_KEY) || '{}') || {} } catch (e) { } for (const src of [ROOM_POS, kept]) for (const [id, v] of Object.entries(src)) { const o = picks.get(id); if (o && Array.isArray(v) && v.length >= 6) setPos(o, v) } }
+  [['monitor', mon], ['speakerL', spL], ['speakerR', spR], ['tower', tw], ['keyboard', kb], ['mouse', mouse], ['lamp', lamp], ['lampHead', shade]].forEach(([id, o]) => pickable(id, o));
   const bake = root => {
     root.updateWorldMatrix(true, true); const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), groups = new Map(), drop = [];
     root.traverse(o => {
@@ -180,8 +190,9 @@ const room = (() => {
     for (const g of groups.values()) { const geo = g.geos.length > 1 ? mergeGeometries(g.geos) : g.geos[0]; if (!geo) continue; const m = new THREE.Mesh(geo, g.m); m.castShadow = g.cs; m.receiveShadow = g.rs; root.add(m) }
     for (const o of drop) o.removeFromParent();
   };
-  // put one down: turned (pre), then stood on y with its middle at x, z, and turned ry round its own vertical (rz: tilted on the wall)
-  const put = (o, x, y, z, ry = 0, pre = null, rz = 0) => { if (pre) pre(o); bake(o); const b = new THREE.Box3().setFromObject(o), w = new THREE.Group(); o.position.x -= (b.min.x + b.max.x) / 2; o.position.z -= (b.min.z + b.max.z) / 2; o.position.y -= b.min.y; w.add(o); w.position.set(x, y, z); w.rotation.set(0, ry, rz); sc.add(w); return w };
+  // put one down: turned (pre), then stood on y with its middle at x, z, and turned ry round its own vertical (rz: tilted on the wall;
+  // raw: its own origin put at x, y, z instead)
+  const put = (o, x, y, z, ry = 0, pre = null, rz = 0, raw = false) => { if (pre) pre(o); bake(o); const b = new THREE.Box3().setFromObject(o), w = new THREE.Group(); if (!raw) { o.position.x -= (b.min.x + b.max.x) / 2; o.position.z -= (b.min.z + b.max.z) / 2; o.position.y -= b.min.y } w.add(o); w.position.set(x, y, z); w.rotation.set(0, ry, rz); sc.add(w); return w };
   const flat = o => { o.rotation.x = -Math.PI / 2 }, upright = o => { o.rotation.x = Math.PI / 2 };
   const propsP = (async () => {
     let off = false; try { off = JSON.parse(localStorage.getItem('sotd-look-v6') || 'null')?.roomProps === 0 } catch (e) { }   // (the saved setting: the settings themselves load later)
@@ -189,7 +200,7 @@ const room = (() => {
     const load = src => new Promise(ok => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = src });
     const got = await Promise.race([Promise.all(Object.entries(ROOM_IMG).map(async ([k, s]) => [k, await load(s)])), new Promise(r => setTimeout(() => r([]), 5000))]);
     const mk = document.querySelector('#intro .mark path:last-of-type'), list = makeProps(THREE, { RoundedBoxGeometry, img: Object.fromEntries(got.filter(([, im]) => im)), logo: mk && mk.getAttribute('d'), col: lin });
-    const at = (id, ...a) => { const p = list.find(p => p.id === id); if (!p) return; try { const w = put(p.make(), ...a); w.traverse(o => { if (o.userData.update) propUpd.push(o.userData.update); if (o.material) [].concat(o.material).forEach(m => propMats.add(m)) }) } catch (e) { console.warn('room prop', id, e) } };
+    const at = (id, ...a) => { const p = list.find(p => p.id === id); if (!p) return; try { const w = put(p.make(), ...a); pickable(id, w); w.traverse(o => { if (o.userData.update) propUpd.push(o.userData.update); if (o.material) [].concat(o.material).forEach(m => propMats.add(m)) }) } catch (e) { console.warn('room prop', id, e) } };
     const top = D.h, frameY = 1.07;
     at('motd', -.6, frameY, .0125);   // the two certificates, either side of the monitor
     at('sotd', .62, frameY, .0125);
@@ -202,7 +213,7 @@ const room = (() => {
     at('postit', .13, top, .62, .25);
     at('mug', .465, top, .54, .5);
     at('modem', .66, top + .44, .32);   // on the tower
-    at('webcam', -.03, top + .475, .47);   // on the monitor
+    at('webcam', -.03 + BW / 2 - .045, top + .07 + BH, .33 + .14 + BD / 2, 0, null, 0, true);   // clipped over the monitor's top right corner
   })();
 
   // ── light ──
@@ -297,7 +308,7 @@ const room = (() => {
     cam.fov = RL('roomFov', 36); cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     cam.position.set(cx + st.sway.x * sw * 2, RL('roomCamH', 1.2) - st.sway.y * sw, RL('roomCamZ', 2.45)); st.aim.set(cx * .6, RL('roomAimY', .9), .25); cam.up.set(0, 1, 0); cam.lookAt(st.aim);
     const peak = RL('crtPeak', 1), cin = Math.min(.99, RL('crtIn', .9)), out = Math.max(.05, RL('crtOut', .7));
-    if (st.lab) { labStep(dt); const sh = SHEET.matches ? innerHeight * .2 * (1 - sstep(Math.max(0, st.lab.p), .6, 1)) : 0; if (sh > .5) cam.setViewOffset(innerWidth, innerHeight, 0, sh, innerWidth, innerHeight); else cam.clearViewOffset() }   /* (on a phone the playground is a sheet over the bottom: the room is lifted into the top part) */ else if (cam.view && cam.view.enabled) cam.clearViewOffset();   // the CRT playground: the move held wherever you scrub it
+    if (st.lab) { labStep(dt); const fade = 1 - sstep(Math.max(0, st.lab.p), .6, 1), sh = SHEET.matches ? innerHeight * .2 * fade : 0, sx = !SHEET.matches && labEl ? (labEl.offsetWidth + 14) / 2 * fade : 0; if (sh > .5 || sx > .5) cam.setViewOffset(innerWidth, innerHeight, sx, sh, innerWidth, innerHeight); else cam.clearViewOffset() }   /* (the playground covers part of the window: on a phone a sheet over the bottom, else a column on the right; the room moves into what's left) */ else if (cam.view && cam.view.enabled) cam.clearViewOffset();   // the CRT playground: the move held wherever you scrub it
     else if (st.phase === 'dive') {   // into the glass, the first part of the one move (see mkRun); the CRT comes over the screen as the glass fills it
       const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr); posed(s / R.Dr); crtFx.set(peak * sstep(s / R.Dr, cin, 1));
       if (R.s(R.t) >= R.Dr) { finish(); crtFx.decay(out, peak); return }   // the glass fills the window: the galaxy carries on with the same run, the CRT fades off it
@@ -351,7 +362,7 @@ const room = (() => {
     st.onDone = () => { try { intro.ready = true; intro.rr = st.run; if (MOB) return; intro.mx = intro.mxs = Math.max(-1, Math.min(1, st.ptr.x / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(st.ptr.y / innerHeight * 2 - 1))); if (!coarse && !lockFailed) { st.lockT = performance.now() + 800; requestLock() } } catch (e) { } };   // the opening carries on the same move from there, and your pointer becomes the 3D one right where it is (the lock still counts as part of the click)
   }
   // input: in the room nothing reaches the galaxy (no dragging, swiping or scrolling it round); only Start, the panels, and on a phone the taps that move the pointer on the glass
-  const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter'), inUI = e => e.target && e.target.closest && e.target.closest('#lookPanel,#crtLab'), held = () => st.on && st.phase !== 'post';
+  const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter'), inUI = e => e.target && e.target.closest && e.target.closest('#lookPanel,#crtLab,#rmArr'), held = () => st.on && st.phase !== 'post';
   addEventListener('pointermove', e => { if ((st.on || performance.now() < (st.lockT || 0)) && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);
   addEventListener('pointerdown', e => { if (held() && !inUI(e)) { e.stopImmediatePropagation(); if (e.pointerType === 'touch' && (st.phase === 'ready' || st.phase === 'loading')) { const x0 = e.clientX, y0 = e.clientY; clearTimeout(st.lp); st.lpAt = [x0, y0]; st.lp = setTimeout(() => { st.lp = 0; st.lpFired = true; if (st.lab) lab(false); else lab(true) }, 650) } } }, true);   // a long press on the room (touch): the CRT playground, open or shut
   addEventListener('pointermove', e => { if (st.lp && st.lpAt && Math.hypot(e.clientX - st.lpAt[0], e.clientY - st.lpAt[1]) > 12) { clearTimeout(st.lp); st.lp = 0 } }, true);
@@ -379,7 +390,7 @@ const room = (() => {
   function buildLab() {
     if (labEl) return; const rows = []; LOOK_DEF.forEach(([, rs]) => rs.forEach(r => { if (LAB_KEYS.includes(r[0])) rows.push(r) })); rows.sort((a, b) => LAB_KEYS.indexOf(a[0]) - LAB_KEYS.indexOf(b[0]));
     labEl = document.createElement('div'); labEl.id = 'crtLab';
-    labEl.innerHTML = `<header><b>CRT playground</b><button type="button" class="x" aria-label="Close">✕</button></header><div class="cl-scrub"><span>The move: room · glass · through</span><input type="range" min="0" max="1.4" step=".001" value="0"><div class="cl-btns"><button type="button" class="btn play">▶ Play</button><button type="button" class="btn loop">Loop</button><button type="button" class="btn copy">Copy settings</button></div></div><div class="cl-rows"></div><p class="cl-msg"></p>`;
+    labEl.innerHTML = `<header><b>Room playground</b><button type="button" class="x" aria-label="Close">✕</button></header><div class="cl-arr"><span>Arrange: click anything in the room to move it (the lamp's head turns)</span><div class="cl-btns"><button type="button" class="btn arr">Arrange</button><button type="button" class="btn mv on">Move</button><button type="button" class="btn rt">Turn</button><button type="button" class="btn cpos">Copy positions</button><button type="button" class="btn rst">Reset</button></div><p class="cl-sel"></p></div><div class="cl-scrub"><span>The CRT</span><span>The move: room · glass · through</span><input type="range" min="0" max="1.4" step=".001" value="0"><div class="cl-btns"><button type="button" class="btn play">▶ Play</button><button type="button" class="btn loop">Loop</button><button type="button" class="btn copy">Copy settings</button></div></div><div class="cl-rows"></div><p class="cl-msg"></p>`;
     const box = labEl.querySelector('.cl-rows'), scrub = labEl.querySelector('.cl-scrub input'), msg = labEl.querySelector('.cl-msg');
     for (const [k, label, , def, mn, mx, stp] of rows) {
       const w = document.createElement('label'); w.className = 'cl-row'; const dec = stp < .01 ? 3 : stp < 1 ? 2 : 0, v = LOOK[k] ?? def;
@@ -392,11 +403,44 @@ const room = (() => {
     labEl.querySelector('.loop').onclick = e => { if (st.lab) { st.lab.loop = !st.lab.loop; e.target.classList.toggle('on', st.lab.loop); if (st.lab.loop && !st.lab.play) { st.lab.play = true; st.lab.t = 0; st.lab.tArr = null } } };
     labEl.querySelector('.copy').onclick = async () => { const o = {}; LAB_KEYS.forEach(k => { if (LOOK[k] != null) o[k] = LOOK[k] }); const t = 'FWA FOREVER look settings: ' + JSON.stringify(o); try { await navigator.clipboard.writeText(t); msg.textContent = 'Copied: paste it in the chat' } catch (e) { msg.textContent = t } };
     labEl.querySelector('.x').onclick = () => lab(false);
+    labEl.querySelector('.arr').onclick = () => arrange(!(arr && arr.on));
+    const mode = m => { if (!arr || !arr.on) arrange(true); arr.mode = m; labEl.querySelector('.mv').classList.toggle('on', m === 'translate'); labEl.querySelector('.rt').classList.toggle('on', m === 'rotate'); arr.tc.setMode(m) };
+    labEl.querySelector('.mv').onclick = () => mode('translate'); labEl.querySelector('.rt').onclick = () => mode('rotate');
+    labEl.querySelector('.cpos').onclick = async () => { const t = 'FWA FOREVER room positions: ' + JSON.stringify(moved()); try { await navigator.clipboard.writeText(t); msg.textContent = 'Copied: paste it in the chat' } catch (e) { msg.textContent = t } };
+    labEl.querySelector('.rst').onclick = () => { try { localStorage.removeItem(POS_KEY) } catch (e) { } for (const o of picks.values()) setPos(o, o.userData.home); for (const [id, v] of Object.entries(ROOM_POS)) { const o = picks.get(id); if (o) setPos(o, v) } msg.textContent = 'Back to where they were' };
     labEl.scrub = scrub; document.body.appendChild(labEl);
   }
   function lab(on = true) {
     if (on && !st.lab && st.on && st.phase !== 'dive' && st.phase !== 'post') { buildLab(); st.lab = { p: 0, play: false, loop: false, t: 0, tArr: null, prep: false }; labEl.hidden = false; labEl.scrub.value = 0 }
-    else if (!on && st.lab) { st.lab = null; if (labEl) labEl.hidden = true; crtFx.set(0); U2.k.value = 0 }
+    else if (!on && st.lab) { st.lab = null; if (labEl) labEl.hidden = true; crtFx.set(0); U2.k.value = 0; arrange(false) }
+  }
+  // Arrange: an overlay over the room takes the pointer; a click picks the thing under it and the classic gizmo moves it (arrows
+  // for x, y, z) or turns it (rings); everything moved is kept in this browser and Copy positions hands it over
+  let arr = null;
+  function arrange(on) {
+    if (on && !arr) {
+      const el = document.createElement('div'); el.id = 'rmArr'; document.body.appendChild(el);
+      const tc = new TransformControls(cam, el); tc.setSize(MOB ? 1.6 : 1.1); sc.add(tc.getHelper());
+      const ray = new THREE.Raycaster(), nd = new THREE.Vector2(); let down = null, sv = 0;
+      tc.addEventListener('objectChange', () => { clearTimeout(sv); sv = setTimeout(() => { try { localStorage.setItem(POS_KEY, JSON.stringify(moved())) } catch (e) { } }, 250) });
+      el.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, axis: tc.axis } });   // (after the gizmo's own: axis says whether it took it)
+      el.addEventListener('pointerup', e => {
+        const d = down; down = null; if (!d || d.axis || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6) return;
+        nd.set(e.clientX / innerWidth * 2 - 1, 1 - e.clientY / innerHeight * 2); ray.setFromCamera(nd, cam);
+        let id = null; for (const h of ray.intersectObjects([...picks.values()], true)) { let o = h.object; while (o && !o.userData.pickId) o = o.parent; if (o) { id = o.userData.pickId; break } }
+        pick(id);
+      });
+      arr = { tc, el, on: false, sel: null, mode: 'translate' };
+    }
+    if (!arr) return;
+    arr.on = !!on; arr.el.hidden = !on; arr.tc.enabled = !!on; if (!on) pick(null);
+    if (labEl) labEl.querySelector('.arr').classList.toggle('on', !!on);
+    if (!on && !st.lab) { arr.tc.detach(); arr.tc.getHelper().removeFromParent(); arr.tc.dispose(); arr.el.remove(); arr = null }
+  }
+  function pick(id) {
+    if (!arr) return; const o = id ? picks.get(id) : null; arr.sel = o ? id : null;
+    if (o) { arr.tc.attach(o); const head = id === 'lampHead'; arr.tc.setMode(head ? 'rotate' : arr.mode); arr.tc.setSpace(head ? 'local' : 'world') } else arr.tc.detach();
+    const p = labEl && labEl.querySelector('.cl-sel'); if (p) p.textContent = o ? 'Selected: ' + id : (arr.on ? 'Click something in the room' : '');
   }
   function labStep(dt) {
     const L = st.lab, peak = RL('crtPeak', 1), cin = Math.min(.99, RL('crtIn', .9)), out = Math.max(.05, RL('crtOut', .7)); if (!L.prep) { prepRun(); L.prep = true }   // (from where the camera rests)
@@ -416,7 +460,7 @@ const room = (() => {
   const logoAt = (m = 1) => { if (!logo) return; const y = RL('roomLogoY', .2) * 100, w = RL('roomLogo', .46) * 100; logo.style.top = (50 + (y - 50) * m).toFixed(3) + '%'; logo.style.width = (w * m).toFixed(3) + '%'; logo.style.opacity = (1 - sstep(m, 1.5, 3)).toFixed(3); logo.style.display = m > 3.2 ? 'none' : '' };   // m: how much nearer than on the glass (scaled about the middle of the view)
   const startP = (async () => {
     cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
-    await propsP;
+    await propsP; applyPos();
     // what the props reflect: the room itself, lit, seen from just over the desk (so the gold and chrome have something to show)
     if (propMats.size) try { apply(); aimLamp(); const env = new THREE.PMREMGenerator(renderer).fromScene(sc, .02, .02, 12, { size: 128, position: new V3(0, D.h + .22, .55) }).texture; for (const m of propMats) if ('envMap' in m) m.envMap = env } catch (e) { console.warn('room env', e) }
     try { await renderer.compileAsync(sc, cam) } catch (e) { }
@@ -426,9 +470,10 @@ const room = (() => {
   return {
     get on() { return st.on }, on0: true, get diving() { return st.phase === 'dive' }, get phase() { return st.phase }, startP, galaxy, dive,
     galaxyReady() { if (st.phase === 'loading') { st.phase = 'ready'; if (/crt-?lab/.test(location.hash)) lab(true) } }, lab, get ptrOn() { return MOB && (st.phase === 'ready' || st.phase === 'dive') },   // the opening has its galaxy up: the glass shows it and Start works
-    skip() { if (st.on) finish(); logoAt(9) }, afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st },
+    skip() { if (st.on) finish(); logoAt(9) }, afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st }, picks, arrange, pick,
   };
 })();
+window.__room = room;   // (for scripted looks at it)
 await room.startP;
 // between the files that follow, a breath for the room to draw a frame (see shell.mjs), so it never freezes while the galaxy loads
 let roomYT = 0;

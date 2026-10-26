@@ -287,16 +287,21 @@ export function makeProps(THREE, ctx) {
     return g;
   }
 
-  // ── 10. A ball webcam on its stand ──
+  // ── 10. A ball webcam on a clip, over the top edge of a monitor: its origin is that edge (the top of the monitor at y 0, its front at
+  //        z 0); a lip down the front, a pad on top, a leg hinged down the back ──
   function webcam() {
-    const g = new THREE.Group(), R = .03, shell = phys('#e9eaee', { roughness: .32, clearcoat: .8, clearcoatRoughness: .2 }), dark = std('#18191c', .4);
-    const base = mesh(new THREE.CylinderGeometry(.03, .034, .008, 48), std('#c9cbd1', .4, .2), 0, .004, 0, g);
-    mesh(new THREE.CylinderGeometry(.006, .008, .03, 24), std('#c9cbd1', .35, .3), 0, .022, 0, g);
-    const orb = new THREE.Group(); orb.position.y = .037 + R; g.add(orb);
+    const g = new THREE.Group(), R = .03, shell = phys('#e9eaee', { roughness: .32, clearcoat: .8, clearcoatRoughness: .2 }), dark = std('#18191c', .4), clipM = std('#c9cbd1', .4, .2), rub = std('#2a2a2e', .9);
+    mesh(rbox(.05, .006, .046, .0025), clipM, 0, .003, -.021, g);   // the pad on top
+    mesh(rbox(.05, .002, .04, .001), rub, 0, .0005, -.022, g);   // (its rubber underside)
+    mesh(rbox(.05, .022, .005, .002), clipM, 0, -.008, .0025, g);   // the lip down the front
+    mesh(new THREE.CylinderGeometry(.0042, .0042, .05, 16), clipM, 0, .003, -.046, g).rotation.z = Math.PI / 2;   // the hinge
+    { const leg = new THREE.Group(); leg.position.set(0, .003, -.046); leg.rotation.x = .55; g.add(leg); mesh(rbox(.044, .062, .005, .002), clipM, 0, -.031, 0, leg); mesh(rbox(.044, .006, .008, .002), rub, 0, -.062, .001, leg) }   // the leg down the back, a rubber foot
+    mesh(new THREE.CylinderGeometry(.007, .011, .012, 24), clipM, 0, .012, -.02, g);   // the neck
+    const orb = new THREE.Group(); orb.position.set(0, .016 + R, -.02); orb.rotation.y = -.2; g.add(orb);   // (turned a little toward you)
     mesh(new THREE.SphereGeometry(R, 48, 32), shell, 0, 0, 0, orb);
     mesh(new THREE.TorusGeometry(R * .995, .0007, 8, 64), std('#b5b7be', .4, .3), 0, 0, 0, orb).rotation.y = Math.PI / 2;   // the seam
     const face = mesh(new THREE.CylinderGeometry(R * .62, R * .62, .004, 48), dark, 0, 0, R * .84, orb); face.rotation.x = Math.PI / 2;
-    const ring = mesh(new THREE.TorusGeometry(.0105, .0016, 12, 48), std('#9fa3ab', .2, 1), 0, 0, R * .84 + .002, orb);
+    mesh(new THREE.TorusGeometry(.0105, .0016, 12, 48), std('#9fa3ab', .2, 1), 0, 0, R * .84 + .002, orb);
     const lens = mesh(new THREE.SphereGeometry(.0095, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), phys('#0b1626', { roughness: .02, metalness: .2, clearcoat: 1, iridescence: .6 }), 0, 0, R * .84 + .001, orb); lens.rotation.x = Math.PI / 2; lens.scale.y = .5;
     const led = mesh(new THREE.SphereGeometry(.0015, 12, 8), std('#103a8a', .3, 0, { emissive: col('#3a7dff'), emissiveIntensity: 2.5 }), .013, .012, R * .84 + .002, orb);
     g.userData.update = t => { led.material.emissiveIntensity = 1.6 + Math.sin(t * 3) * .9 };
@@ -362,7 +367,7 @@ export function makeProps(THREE, ctx) {
     { id: 'mustang', name: '1967 Ford Mustang fastback', note: 'Black, a 1:24 toy · 19 cm long', make: mustang },
     { id: 'nokia', name: 'Nokia 3310', note: 'Came out in 2000 · 11.3 × 4.8 cm, a ringing tone on the screen', make: nokia },
     { id: 'modem', name: '56K modem', note: 'Its lights always chattering away', make: modem },
-    { id: 'webcam', name: 'Ball webcam', note: 'Sits on top of the monitor', make: webcam },
+    { id: 'webcam', name: 'Ball webcam', note: 'On a clip, over the corner of the monitor', make: webcam },
     { id: 'flash', name: 'Macromedia Flash 5', note: 'The box, 2000 · what the early winners were made with', make: flashbox },
     { id: 'postit', name: 'Post-it: SOTY', note: 'Marker, the corner curling up', make: postit },
     { id: 'mug', name: 'FWA mug', note: 'With coffee in it', make: mug },
