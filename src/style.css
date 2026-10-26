@@ -943,7 +943,8 @@ html.roomboot:not(.roomlive) body::after{content:'Loading';position:fixed;left:5
 body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(#crtLab):not(#crtFx):not(#rmArr):not(script):not(style){visibility:hidden!important}
 html.roomboot #portalLoad{opacity:0}   /* (until the room lays it onto the glass: no full-size flash of it first) */
 #rmArr{position:fixed;inset:0;z-index:80;touch-action:none;cursor:crosshair}#rmArr[hidden]{display:none}
-body.room:not(.roommob) #shipLayer{visibility:hidden!important}
+body.room:not(.roommob):not(.roomptr) #shipLayer{visibility:hidden!important}
+body.roomptr,body.roomptr *{cursor:none!important}
 html.roomboot #portalLoad{background:transparent!important}
 html.roomboot #portalLoad{will-change:transform}
 /* the room: no mark, only the galaxy; and a big Start on the glass (Look → Room: roomBtn, roomBtnY) */

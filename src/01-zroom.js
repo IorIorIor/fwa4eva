@@ -266,7 +266,8 @@ const room = (() => {
     return { css: `matrix3d(${m[0]},${m[3]},0,${m[6]},${m[1]},${m[4]},0,${m[7]},0,0,1,0,${m[2]},${m[5]},0,${m[8]})`, mi };
   }
   const MOB = matchMedia('(pointer: coarse)').matches, SHEET = matchMedia('(max-width: 760px), (pointer: coarse)');   // a phone or tablet: no pointer of your own, so the 3D one sits on the glass from the start and goes where you tap
-  const layers = () => [$('portalLoad'), MOB ? $('shipLayer') : null].filter(Boolean);   // (with a mouse the 3D pointer only takes over once you're through the glass: until then it's your own)
+  const early = () => !MOB && !!RL('roomPtrEarly', 0) && st.phase === 'dive';   // (the switch: with a mouse, the 3D pointer takes over right at Start instead of once through the glass)
+  const layers = () => [$('portalLoad'), MOB || early() ? $('shipLayer') : null].filter(Boolean);   // (with a mouse the 3D pointer only takes over once you're through the glass: until then it's your own)
   function place() {
     const b = bandOf(); st.band = b;
     { const G = [toScreen(0, 0), toScreen(1, 0), toScreen(1, 1), toScreen(0, 1)], W = innerWidth, Hh = innerHeight, gm = homography(1, 1, G.map(([x, y]) => [x / W, y / Hh])).mi;   // the screen → a point on the glass, for the picture
@@ -381,8 +382,9 @@ const room = (() => {
   function glassPose() { glass.updateWorldMatrix(true, false); glass.getWorldPosition(_t); _n.set(0, 0, 1).transformDirection(glass.matrixWorld); _u.set(0, 1, 0).transformDirection(glass.matrixWorld) }
   function dive() {
     if (st.phase !== 'ready' || st.lab) return; st.phase = 'dive'; prepRun();
+    if (early()) { place(); const [wx, wy] = toWindow(st.ptr.x, st.ptr.y); try { intro.mx = intro.mxs = Math.max(-1, Math.min(1, wx / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(wy / innerHeight * 2 - 1))) } catch (e) { } document.body.classList.add('roomptr'); try { if (!coarse && !lockFailed) requestLock() } catch (e) { } }   // the 3D pointer right where you clicked, on the glass
     try { setMuted(false); setMusicOff(false); audio(); intro.heard = true } catch (e) { }   // (the sound starts with Start)
-    st.onDone = () => { try { intro.ready = true; intro.rr = st.run; if (MOB) return; intro.mx = intro.mxs = Math.max(-1, Math.min(1, st.ptr.x / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(st.ptr.y / innerHeight * 2 - 1))); if (!coarse && !lockFailed) { st.lockT = performance.now() + 800; requestLock() } } catch (e) { } };   // the opening carries on the same move from there, and your pointer becomes the 3D one right where it is (the lock still counts as part of the click)
+    st.onDone = () => { try { intro.ready = true; intro.rr = st.run; if (MOB || document.body.classList.contains('roomptr')) { document.body.classList.remove('roomptr'); return } intro.mx = intro.mxs = Math.max(-1, Math.min(1, st.ptr.x / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(st.ptr.y / innerHeight * 2 - 1))); if (!coarse && !lockFailed) { st.lockT = performance.now() + 800; requestLock() } } catch (e) { } };   // the opening carries on the same move from there, and your pointer becomes the 3D one right where it is (the lock still counts as part of the click)
   }
   // input: in the room nothing reaches the galaxy (no dragging, swiping or scrolling it round); only Start, the panels, and on a phone the taps that move the pointer on the glass
   const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter'), inUI = e => e.target && e.target.closest && e.target.closest('#lookPanel,#crtLab,#rmArr'), held = () => st.on && st.phase !== 'post';
@@ -492,7 +494,7 @@ const room = (() => {
   })();
   return {
     get on() { return st.on }, on0: true, get diving() { return st.phase === 'dive' }, get phase() { return st.phase }, startP, galaxy, dive,
-    galaxyReady() { if (st.phase === 'loading') { st.phase = 'ready'; if (/crt-?lab/.test(location.hash)) lab(true) } }, lab, get ptrOn() { return MOB && (st.phase === 'ready' || st.phase === 'dive') },   // the opening has its galaxy up: the glass shows it and Start works
+    galaxyReady() { if (st.phase === 'loading') { st.phase = 'ready'; if (/crt-?lab/.test(location.hash)) lab(true) } }, lab, get ptrOn() { return MOB && (st.phase === 'ready' || st.phase === 'dive') || early() },   // the opening has its galaxy up: the glass shows it and Start works
     skip() { if (st.on) finish(); logoAt(9) }, afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st }, picks, arrange, pick, U2, gRT, renderer,
   };
 })();

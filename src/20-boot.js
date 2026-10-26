@@ -275,10 +275,10 @@ const intro = {
     if (g > 1e-4) { const f = Math.min(1, dt * 14 || 1) * g; this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;
       const qi = _q.copy(camera.quaternion).invert(), dz = -_ia.copy(this.S).sub(camera.position).applyQuaternion(qi).z, ty = Math.tan(camera.fov * Math.PI / 360);
       if (dz > 1e-6) { const tgt = _ib.set(this.mxs * ty * camera.aspect * dz, this.mys * ty * dz, -dz).applyQuaternion(camera.quaternion).add(camera.position), al = 1 - Math.pow(1 - g, Math.max(dt, 0) * 60); this.S.lerp(tgt, al) } }
-    const turn = sstep(this.st, this.sT - Math.max(.1, L.portalTurn ?? 1.5), this.sT); player.pos.copy(this.S); avatar.position.copy(this.S); avatar.quaternion.copy(this.Qf).slerp(player.quat, turn); flatPtr(1 - turn);   // the pointer becomes the ship as it turns, in the last portalTurn seconds before it lands
-    emitGlow = quint(sstep(turn, .4, 1));
-    if (!this.lit && turn > .85) { this.lit = true; if (!this.lab) { igniteK = 1; engineLook.burst = 1.5 } }   // ignition as it comes in behind
-    if (turn > .5) this.reflGo = true;   // the ship's reflections start fading in (over two seconds: about the rest of the move)
+    const turn = sstep(this.st, Math.max(0, this.sT - Math.max(.1, L.portalTurn ?? 3.5)), this.sT); player.pos.copy(this.S); avatar.position.copy(this.S); avatar.quaternion.copy(this.Qf).slerp(player.quat, turn); flatPtr(1 - turn);   // the pointer becomes the ship as it turns, in the last portalTurn seconds before it lands
+    emitGlow = quint(sstep(turn, .97, 1));
+    if (!this.lit && turn > .995) { this.lit = true; if (!this.lab) { igniteK = 1; engineLook.burst = 1.5 } }   // ignition as it comes in behind
+    if (turn > .995) this.reflGo = true;   // the ship's reflections start fading in (over two seconds: about the rest of the move)
     if (!this.hud && u > .7 && !this.lab) { this.hud = true; document.body.classList.remove('intro'); flickIn(1.2) }
     return g < .01 && Math.abs(this.sx - this.sxEnd) < .02 && Math.abs(this.svx) < .05;   // close enough: the flying camera takes over from exactly here
   },
