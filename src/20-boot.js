@@ -245,7 +245,7 @@ const intro = {
     { const f = Math.min(1, dt * 14 || 1); this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;
       const qa = .9, tt = Math.max(0, Math.min(1, (q - qa) / (1 - qa))), G = (1 - qa) * (.5 - tt * tt * tt + tt * tt * tt * tt / 2), ty = Math.tan(camera.fov * Math.PI / 360), dp = Math.exp(this.lnD0 + (this.rr ? 1 : lam) * (this.lnPV - this.lnD0) * G) * Math.tan(LOOK.fov * Math.PI / 360) / ty;   // (with the wide lens it sits nearer, so it stays exactly pointer-sized)
       avatar.position.set(this.mxs * ty * camera.aspect * dp, this.mys * ty * dp, -dp).applyQuaternion(camera.quaternion).add(camera.position); avatar.quaternion.copy(camera.quaternion).multiply(this.relQ); avatar.renderOrder = 5;
-      flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab || !!this.rr || room.ptrOn; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on }   // the 3D pointer only from Start (or the first scroll), right where your mouse is
+      flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab || !!this.rr || room.ptrOn; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on || room.on }   // (in the room it's drawn all along on its hidden layer, so it's compiled and there the instant it takes over: no gap, no white frames)   // the 3D pointer only from Start (or the first scroll), right where your mouse is
     if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv, this.rr ? this.rr.vend : null); this.logoS = this.rr ? this.lnPV - this.lnD0 : null; this.logoV = this.rr ? this.rr.vend : 0; this.rr = null; this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
   },
   lam() { return Math.max(.02, Math.min(.9, LOOK.portalCarry ?? .45)) },
@@ -259,19 +259,16 @@ const intro = {
     this.sx = this.lnD0; this.sa = 0; this.saEnd = Math.acos(b.y); this.sxEnd = Math.log(INTRO_END.length());
     this.svx = Math.max(-6, vAbs != null ? -vAbs : -this.lam() * (this.lnPV - this.lnD0) * Math.max(qv, .02)); this.sva = 0; this.lit = false; this.hud = false;   // exactly the dive's pace as it arrived
     const gap = Math.max(1e-3, this.sx - this.sxEnd); this.sw = Math.max(1.1, Math.min(6, -this.svx / gap));   // its pace: the one at which that speed coasts to a stop right behind the ship (x = gap·e^(−wt): no push, only slowing)
-    { const w = this.sw * 2.2 / Math.max(.3, L.portalSettle ?? 2.2), h = 1 / 120, lg = Math.max(.2, L.portalLetGo ?? 1.4); let x = this.sx, v = this.svx, t = 0;   // how long it'll take to land (the same spring, run ahead), so the pointer can turn into the ship in just the last of it
-      for (; t < 30; t += h) { v += (w * w * (this.sxEnd - x) - 2 * w * v) * h; x += v * h; const u = Math.max(0, Math.min(1, (this.lnD0 - x) / Math.max(1e-6, this.lnD0 - this.sxEnd))); if (Math.pow(1 - u, lg) < .01 && Math.abs(x - this.sxEnd) < .02 && Math.abs(v) < .05) break }
-      this.sT = t }
+    { const v0 = Math.max(.05, -this.svx), want = 1.6 * Math.max(.3, L.portalSettle ?? 2.2);   // the landing: x = gap·(1 − t/T)^p, starting at the speed you came through with and still moving right up to the end (no long tail)
+      this.sp = Math.max(1.4, Math.min(3.5, v0 * want / gap)); this.sT = this.sp * gap / v0; this.sGap = gap }
   },
   settleStep(dt) {   // the camera keeps its heading; it closes in (a spring that only slows) on the point A, which slides over to wherever the ship is
-    const L = LOOK, w = this.sw * 2.2 / Math.max(.3, L.portalSettle ?? 2.2), n = Math.max(1, Math.ceil(dt * 120));
-    for (let i = 0; i < n; i++) { const s = dt / n; this.svx += (w * w * (this.sxEnd - this.sx) - 2 * w * this.svx) * s; this.sx += this.svx * s }
-    this.st += dt; const u = Math.max(0, Math.min(1, (this.lnD0 - this.sx) / Math.max(1e-6, this.lnD0 - this.sxEnd)));   // how far in it has come
+    const L = LOOK; this.st += dt; { const r = Math.max(0, 1 - this.st / Math.max(1e-3, this.sT)); this.sx = this.sxEnd + this.sGap * Math.pow(r, this.sp); this.svx = -this.sp * this.sGap / Math.max(1e-3, this.sT) * Math.pow(r, this.sp - 1) } const u = Math.max(0, Math.min(1, (this.lnD0 - this.sx) / Math.max(1e-6, this.lnD0 - this.sxEnd)));   // how far in it has come
     if (this.logoS != null) room.afterGlass(this.logoS + Math.max(this.lnD0 - this.sx, this.logoV * this.st));   // the room's logo keeps coming at you at the pace you came through with (however the camera slows), so it's past you well before the end
     this.A.copy(this.S).sub(this.C0).multiplyScalar(sstep(u, .05, 1)).add(this.C0);
     this.setFov(.6 + .4 * u); this.camAt(this.A, this.sx, camera.position); camera.quaternion.copy(rig.q); camera.updateMatrixWorld();
     // the ship: under your (smoothed) mouse, letting go of it gradually all the way in, only still once the camera has landed; and it turns from the flat pointer to show you its back
-    const g = Math.pow(1 - u, Math.max(.2, L.portalLetGo ?? 1.4));
+    const g = this.st >= this.sT ? 0 : Math.pow(1 - u, Math.max(.2, L.portalLetGo ?? 1.4));
     if (g > 1e-4) { const f = Math.min(1, dt * 14 || 1) * g; this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;
       const qi = _q.copy(camera.quaternion).invert(), dz = -_ia.copy(this.S).sub(camera.position).applyQuaternion(qi).z, ty = Math.tan(camera.fov * Math.PI / 360);
       if (dz > 1e-6) { const tgt = _ib.set(this.mxs * ty * camera.aspect * dz, this.mys * ty * dz, -dz).applyQuaternion(camera.quaternion).add(camera.position), al = 1 - Math.pow(1 - g, Math.max(dt, 0) * 60); this.S.lerp(tgt, al) } }
@@ -280,7 +277,7 @@ const intro = {
     if (!this.lit && turn > .995) { this.lit = true; if (!this.lab) { igniteK = 1; engineLook.burst = 1.5 } }   // ignition as it comes in behind
     if (turn > .995) this.reflGo = true;   // the ship's reflections start fading in (over two seconds: about the rest of the move)
     if (!this.hud && u > .7 && !this.lab) { this.hud = true; document.body.classList.remove('intro'); flickIn(1.2) }
-    return g < .01 && Math.abs(this.sx - this.sxEnd) < .02 && Math.abs(this.svx) < .05;   // close enough: the flying camera takes over from exactly here
+    return this.st >= this.sT;   // close enough: the flying camera takes over from exactly here
   },
   ez(t) {   // the zoom: creeping at first, faster and faster (exponentially), then landing softly
     const x = Math.min(1, Math.max(0, (t - .02) / .96)), k = LOOK.introEaseIn ?? 5, f = (Math.exp(k * x) - 1) / (Math.exp(k) - 1); return 1 - Math.pow(1 - f, LOOK.introEaseOut ?? 2.2);

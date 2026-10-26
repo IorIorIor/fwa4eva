@@ -11,6 +11,7 @@ function spaceIR(sec) {   // a room: quick onset, then a tail that darkens as it
   return b;
 }
 function audio() {
+  if (room.on && room.phase !== 'dive') return;   // in the room the sound waits for Start
   if (AC) { if (AC.state === 'suspended') AC.resume().catch(() => { }); return }
   try {
     AC = new (window.AudioContext || window.webkitAudioContext)();
