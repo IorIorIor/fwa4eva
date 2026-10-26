@@ -480,7 +480,7 @@ const room = (() => {
   // the FWA logo on the glass, flat on it, near the top: it comes at you with the glass and, once you're through, carries on
   // past you at the same pace (afterGlass, from the opening's move) and is gone
   const logo = (() => { const pl = $('portalLoad'), mk = document.querySelector('#intro .mark'); if (!pl || !mk) return null; const el = document.createElement('div'); el.id = 'rmLogo'; const sv = mk.cloneNode(true); sv.removeAttribute('class'); el.appendChild(sv); pl.appendChild(el); return el })();
-  const logoAt = (m = 1) => { if (!logo) return; const y = RL('roomLogoY', .2) * 100, w = RL('roomLogo', .46) * 100, top = 50 + (y - 50) * m, hPct = w * m * innerWidth / Math.max(1, innerHeight) * 149 / 509; logo.style.top = top.toFixed(3) + '%'; logo.style.width = (w * m).toFixed(3) + '%'; logo.style.opacity = '1'; logo.style.display = top + hPct / 2 < 0 || top - hPct / 2 > 100 || m > 60 ? 'none' : '' };   // m: how much nearer than on the glass (scaled about the middle of the view); it stays whole until it has gone past you, off the screen
+  const logoAt = (m = 1) => { if (!logo) return; const y = RL('roomLogoY', .2) * 100, w = RL('roomLogo', .46) * 100, top = 50 + (y - 50) * m; logo.style.top = top.toFixed(3) + '%'; logo.style.width = (w * m).toFixed(3) + '%'; logo.style.opacity = '1'; logo.style.display = m > 40 ? 'none' : '' };   // m: how much nearer than on the glass (scaled about the middle of the view); it stays whole all the way (the opening takes it away when it ends)
   const startP = (async () => {
     cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     await propsP; applyPos();

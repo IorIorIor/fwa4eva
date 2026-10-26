@@ -951,6 +951,7 @@ html.nomark #portalLoad > svg,html.nomark #plTag{display:none}
 html.nomark #plEnter{top:var(--rby,82%);transform:translate(-50%,-50%);font-size:calc(var(--rbs,6.8) * min(13px, .82vw));letter-spacing:.24em;padding:.92em 2.3em .85em 2.55em}   /* (sized to the window, as if it were a page on that screen: the same share of it on any screen) */
 html.nomark #plEnter rect{stroke-width:calc(var(--rbs,6.8) * min(.75px, .047vw))}
 #rmLogo{display:none;position:absolute;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+#portalLoad.pldone > *:not(#rmLogo){visibility:hidden!important}   /* (past the glass: only the room's logo, flying past, until the opening ends) */
 html.nomark #rmLogo{display:block}
 #portalLoad #rmLogo svg{position:static;display:block;width:100%;height:auto;opacity:1;left:auto;top:auto;filter:drop-shadow(0 0 .35vw rgba(255,255,255,.55))}
 #portalLoad #rmLogo path{fill:#fff;stroke:none;filter:none;animation:none}

@@ -192,7 +192,7 @@ const intro = {
     const pup = e => { if (off(e)) { down = null; return } if (down && Math.abs(e.clientY - down.y0) + Math.abs(e.clientX - down.x) < 8 && (!LOOK.portalEnter || e.target.closest && e.target.closest('#plEnter'))) go(); down = null };   // a click or a tap plays it through (the Enter opening: on its button)
     const key = e => { if (e.target.matches && e.target.matches('input,textarea')) return; if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); go() } else if (e.key === 'ArrowUp' && !LOOK.portalEnter) { this.play = 0; this.pqT = Math.max(0, this.pqT - .1) } else if (e.key === 'Escape' && !this.lab) { gesture(); this.finish() } };
     addEventListener('wheel', wheel, { passive: false }); addEventListener('pointerdown', pdown, true); addEventListener('pointermove', pmove, true); addEventListener('pointermove', pmv, true); addEventListener('pointerup', pup, true); addEventListener('keydown', key, true);
-    this.portalOff = () => { removeEventListener('wheel', wheel, { passive: false }); removeEventListener('pointerdown', pdown, true); removeEventListener('pointermove', pmove, true); removeEventListener('pointerup', pup, true); removeEventListener('keydown', key, true); $('portalLoad').hidden = true; this.portalOff = null };
+    this.portalOff = () => { removeEventListener('wheel', wheel, { passive: false }); removeEventListener('pointerdown', pdown, true); removeEventListener('pointermove', pmove, true); removeEventListener('pointerup', pup, true); removeEventListener('keydown', key, true); if (room.on0 && $('rmLogo')) $('portalLoad').classList.add('pldone'); else $('portalLoad').hidden = true; this.portalOff = null };   // (in the room: only its logo stays, flying past, until the opening ends)
     this.pmvOff = () => { removeEventListener('pointermove', pmv, true); this.pmvOff = null };   // (the mouse still steers the ship a moment past the mark)
     const load = $('portalLoad'); load.hidden = false; this.pf = 0;
     const reveal = () => { if (this.pf < 4 && !this.lab) return requestAnimationFrame(reveal); const dev = GPU && renderer.backend && renderer.backend.device; Promise.race([dev ? dev.queue.onSubmittedWorkDone() : Promise.resolve(), new Promise(r => setTimeout(r, 700))]).then(() => requestAnimationFrame(show), show) };   // (never waiting long on the GPU)   // the black lifts only once the portal view has really been drawn, so no earlier frame ever shows
@@ -246,7 +246,7 @@ const intro = {
       const qa = .9, tt = Math.max(0, Math.min(1, (q - qa) / (1 - qa))), G = (1 - qa) * (.5 - tt * tt * tt + tt * tt * tt * tt / 2), ty = Math.tan(camera.fov * Math.PI / 360), dp = Math.exp(this.lnD0 + (this.rr ? 1 : lam) * (this.lnPV - this.lnD0) * G) * Math.tan(LOOK.fov * Math.PI / 360) / ty;   // (with the wide lens it sits nearer, so it stays exactly pointer-sized)
       avatar.position.set(this.mxs * ty * camera.aspect * dp, this.mys * ty * dp, -dp).applyQuaternion(camera.quaternion).add(camera.position); avatar.quaternion.copy(camera.quaternion).multiply(this.relQ); avatar.renderOrder = 5;
       flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab || !!this.rr || room.ptrOn; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on }   // the 3D pointer only from Start (or the first scroll), right where your mouse is
-    if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv, this.rr ? this.rr.vend : null); if (this.rr) room.afterGlass(9); this.rr = null; this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
+    if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv, this.rr ? this.rr.vend : null); this.logoS = this.rr ? this.lnPV - this.lnD0 : null; this.rr = null; this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
   },
   lam() { return Math.max(.02, Math.min(.9, LOOK.portalCarry ?? .45)) },
   // after the mark, one movement: the camera carries on closing in at the speed it came through with and settles (springs, no
@@ -267,6 +267,7 @@ const intro = {
     const L = LOOK, w = this.sw * 2.2 / Math.max(.3, L.portalSettle ?? 2.2), n = Math.max(1, Math.ceil(dt * 120));
     for (let i = 0; i < n; i++) { const s = dt / n; this.svx += (w * w * (this.sxEnd - this.sx) - 2 * w * this.svx) * s; this.sx += this.svx * s }
     this.st += dt; const u = Math.max(0, Math.min(1, (this.lnD0 - this.sx) / Math.max(1e-6, this.lnD0 - this.sxEnd)));   // how far in it has come
+    if (this.logoS != null) room.afterGlass(this.logoS + this.lnD0 - this.sx);   // the room's logo keeps coming past at the same pace
     this.A.copy(this.S).sub(this.C0).multiplyScalar(sstep(u, .05, 1)).add(this.C0);
     this.setFov(.6 + .4 * u); this.camAt(this.A, this.sx, camera.position); camera.quaternion.copy(rig.q); camera.updateMatrixWorld();
     // the ship: under your (smoothed) mouse, letting go of it gradually all the way in, only still once the camera has landed; and it turns from the flat pointer to show you its back
@@ -335,6 +336,7 @@ const intro = {
   },
   finish() {
     if (this.pt) this.pt.g.visible = false; this.portalOff && this.portalOff(); this.pmvOff && this.pmvOff();
+    if (this.logoS != null || $('portalLoad').classList.contains('pldone')) { $('portalLoad').hidden = true; $('portalLoad').classList.remove('pldone'); this.logoS = null }   // the room's logo goes only now, with the opening done
     if (logo3d) logo3d.visible = false; curEl.style.display = 'none'; this.ph = 2; if (this.lowDpr) { this.lowDpr = false; setDpr(Math.min(LOOK.maxDpr, devicePixelRatio || 1), true) }
     document.body.classList.remove('opening'); flatPtr(0); if (!this.active) return; this.active = introActive = false; veil.visible = false; emitGlow = 1; camera.clearViewOffset(); this.at = null;
     if (this.settled) camRel.copy(camera.position).sub(player.pos).applyQuaternion(_q.copy(rig.q).invert()); else camRel.copy(INTRO_END); camRelV.set(0, 0, 0); this.settled = false; fovS = camera.fov;   /* after the portal's settle: from exactly where the camera is, so the hand-over can't jump */ /* (the lens carries on from where the opening left it) */ camHold = { from: player.pos.clone(), dir: INTRO_END.clone().normalize(), d0: INTRO_END.length() }; if (!this.hud) { document.body.classList.remove('intro'); flickIn() } if (!booted) handOver();
