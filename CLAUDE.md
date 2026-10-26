@@ -25,7 +25,7 @@ and gives quick visual feedback; keep replies short).
   ↑/↓ speed mode, ←/→ or Q/E nearer/farther winner, F free pointer.
 - Data: the real archive (IorIorIor/fwa4eva-data, private) ships with the app in `public/data/` (archive.json + shots/YYYY/*.webp).
   Refresh it with `npm run data` (copies from a clone at `../fwa4eva-data`). Days before the archive starts borrow real winners.
-- THE ROOM (branch `the-room`, from `main`): it opens in a 3D room in the year 2000 (`src/01-zroom.js`: the renderer is made there,
+- THE ROOM (on `main`, merged from the `the-room` branch): it opens in a 3D room in the year 2000 (`src/01-zroom.js`: the renderer is made there,
   first thing, so the room shows before anything else loads; `shell.mjs` puts `await roomYield()` between the later files so it keeps
   drawing while the galaxy loads). The opening (`intro.startPortal`) runs on the CRT: the galaxy is rendered into the glass's render
   target (`room.galaxy(fn)` wraps every main render while `room.on`) and `#portalLoad` + `#shipLayer` are laid onto the glass with a CSS
