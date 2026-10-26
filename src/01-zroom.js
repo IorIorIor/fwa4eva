@@ -326,7 +326,7 @@ const room = (() => {
     st.on = false; st.phase = 'done'; unplace(); if (st.lab) lab(false);
     H0.classList.remove('roomboot', 'roomlive'); document.body.classList.remove('room', 'roommob');
     renderer.shadowMap.enabled = false; const cb = st.onDone; st.onDone = null; if (cb) cb();
-    setTimeout(() => { sc.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose() }); gRT.dispose() }, 2000);
+    setTimeout(() => { sc.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => m.dispose()) }); gRT.dispose() }, 2000);
   }
   // the galaxy's picture for the glass: the main render, aimed into the render target, with the lens opened out so the window's
   // own view is exactly the middle of it (the glass's shape around it)
