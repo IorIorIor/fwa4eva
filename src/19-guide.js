@@ -17,8 +17,8 @@ const coach = {
     { t: `Move the ${K('mouse')} to steer`, ok: () => coach.look > 1 },
     { t: `Press ${K('shift')} to boost`, ok: () => boosting && (coach.hold += coach.dt) > .35 },
     { t: `Press ${K('s')} to brake`, ok: () => keys.s && brakeK > .6 },
-    { t: `${K('q')} ${K('e')} pick the nearest FWA`, ok: () => coach.qd && coach.ed },   // both keys, nearer and farther
-    { t: 'Visit and collect an FWA', s: () => `lock on with ${K('q')} ${K('e')}, then hold ${K('w')}`, ok: () => coach.ring || (!LOOK.rings && cardI >= 0) },
+    { t: `Click on a star or press ${K('q')} ${K('e')} to lock to an FWA`, ok: () => lockI >= 0 },
+    { t: `Click, ${K('q')} ${K('e')} and ${K('w')} to fly towards it`, ok: () => coach.ring || cardI >= 0 || (lockI >= 0 && keys.w && (coach.hold += coach.dt) > 1.2) },
     { t: 'Click and hold for the menu', s: 'pick anything you like', ok: () => !!(rmenu.open || rmenu.panel) },
     { t: `Press ${K('m')} for the map`, ok: () => S.mode === 'map', skip: () => S.mode === 'map' },   // (skipped if the menu already took you there)
     { t: `Press ${K('m')} to go back to your ship`, ok: () => S.mode === 'fly' && !(tween && tween.mode), map: true },

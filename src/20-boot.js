@@ -134,7 +134,7 @@ const sStars = (() => {
 const curEl = (() => { const e = document.createElement('img'); e.id = 'introCur'; e.alt = ''; e.style.cssText = 'position:fixed;left:0;top:0;z-index:60;pointer-events:none;display:none'; document.body.appendChild(e); return e })();   // the opening's plain mouse pointer
 // the pointer looks like a real one (flat black, white rim, no light on it) until it turns into the ship: k = 1 flat, 0 the ship's own metal
 const SHIP_MAT0 = { m: SHIP_MAT.black.metalness, r: SHIP_MAT.black.roughness, e: SHIP_MAT.black.envMapIntensity ?? 1, we: SHIP_MAT.white.emissiveIntensity };
-function flatPtr(k) { const b = SHIP_MAT.black, w = SHIP_MAT.white, a = 1 - k; b.metalness = SHIP_MAT0.m * a; b.roughness = SHIP_MAT0.r + (1 - SHIP_MAT0.r) * k; b.envMapIntensity = SHIP_MAT0.e * a; w.emissiveIntensity = SHIP_MAT0.we + (1 - SHIP_MAT0.we) * k }
+function flatPtr(k) { PTR_FLAT = k; SHIP_MAT.black.metalness = SHIP_MAT0.m * (1 - k) }   // the pointer flat (1) or the ship (0): its reflections, gloss and scuffs follow in shipEnv
 const intro = {
   logoAt: null,
   active: false, t: 0, glow: 0, dur: 8, D0: 10, up0: new V3(), upW: new V3(), ph: 2, lt: 0,
@@ -172,7 +172,7 @@ const intro = {
     if (!logoShapes() || !(this.pt || (this.pt = makePortal()))) return false;
     $('intro').hidden = true; document.body.classList.remove('splash');
     this.at = null; this.start(true);
-    document.body.classList.remove('opening'); this.ptrOn = false; this.ready = !!this.lab; $('plEnter').classList.remove('ready'); $('plEnter').querySelector('span').textContent = 'Loading';   // your own mouse pointer until you start: only then the 3D one takes over
+    document.body.classList.remove('opening'); this.ptrOn = false; this.ready = !!this.lab; $('plEnter').classList.remove('ready'); $('plEnter').querySelector('span').textContent = window.__plYear ? window.__plYear() : 'Loading';   // your own mouse pointer until you start: only then the 3D one takes over
     this.ph = 0; this.pq = this.pqT = 0; this.play = 0; this.rr = null; this.noMark = room.on0; this.pt0 = performance.now(); this.heard = false; this.qv = 0; this.mx = this.my = this.mxs = this.mys = 0;
     this.C0 = player.pos.clone(); camera.clearViewOffset();
     { const f = GC.clone().sub(this.C0).normalize();   // the heading you'll fly off with, wherever you start (saved spot or not): straight at the galaxy's core. It's the camera's too, all through the opening: the core sits dead centre behind the mark from the first frame, and never moves
@@ -196,7 +196,7 @@ const intro = {
     this.pmvOff = () => { removeEventListener('pointermove', pmv, true); this.pmvOff = null };   // (the mouse still steers the ship a moment past the mark)
     const load = $('portalLoad'); load.hidden = false; this.pf = 0;
     const reveal = () => { if (this.pf < 4 && !this.lab) return requestAnimationFrame(reveal); const dev = GPU && renderer.backend && renderer.backend.device; Promise.race([dev ? dev.queue.onSubmittedWorkDone() : Promise.resolve(), new Promise(r => setTimeout(r, 700))]).then(() => requestAnimationFrame(show), show) };   // (never waiting long on the GPU)   // the black lifts only once the portal view has really been drawn, so no earlier frame ever shows
-    const show = () => { this.pt0 = performance.now();   /* (the galaxy's fade in behind the letters starts as it shows) */ load.classList.add('live'); $('plTxt').textContent = coarse ? 'Swipe up to continue' : 'Scroll to continue'; $('plEnter').classList.remove('gone'); $('plTag').classList.remove('gone'); $('plEnter').querySelector('span').textContent = room.on ? 'Start' : 'Enter'; $('plEnter').classList.add('ready'); this.ready = true; if (room.on) { this.ready = false; room.galaxyReady() } };   /* (in the room, Start first flies you into the monitor: see room.dive) */ requestAnimationFrame(reveal);   // scroll, or (the other opening) an Enter button   // the 3D mark is drawn in the same place: the flat one hands over
+    const show = () => { this.pt0 = performance.now();   /* (the galaxy's fade in behind the letters starts as it shows) */ load.classList.add('live'); $('plTxt').textContent = coarse ? 'Swipe up to continue' : 'Scroll to continue'; $('plEnter').classList.remove('gone'); $('plTag').classList.remove('gone'); { const lbl = () => { $('plEnter').querySelector('span').textContent = room.on ? 'Start' : 'Enter'; $('plEnter').classList.add('ready') }; if (window.__plWhen) window.__plWhen(lbl); else lbl() } this.ready = true; if (room.on) { this.ready = false; room.galaxyReady() } };   /* (in the room, Start first flies you into the monitor: see room.dive) */ requestAnimationFrame(reveal);   // scroll, or (the other opening) an Enter button   // the 3D mark is drawn in the same place: the flat one hands over
     if (PORTAL_LAB) this.lab = makePortalLab(this);
     return true;
   },

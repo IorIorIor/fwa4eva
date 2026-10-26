@@ -929,8 +929,8 @@ body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));cli
 /* the line above the mark, and the Enter button (the autoplay opening) */
 #plTag{position:absolute;left:0;right:0;top:calc(50% - var(--pw) * .1464 - 30px);transform:translateY(-100%);margin:0;text-align:center;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.78);transition:opacity .8s ease}
 #plTag.gone{opacity:0}
-#plEnter{position:absolute;left:50%;top:calc(50% + var(--pw) * .1464 + 26px);transform:translateX(-50%);pointer-events:auto;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#fff;background:transparent;border:0;padding:12px 30px 11px 33px;cursor:inherit;transition:background .45s ease,color .45s ease,opacity .6s}
-#plEnter svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}#plEnter rect{fill:none;stroke:#fff;stroke-width:1.5px;vector-effect:non-scaling-stroke;stroke-dasharray:1 1;stroke-dashoffset:1;transition:stroke-dashoffset .4s ease}#plEnter span{position:relative}
+#plEnter{position:absolute;left:50%;top:calc(50% + var(--pw) * .1464 + 26px);transform:translateX(-50%);pointer-events:auto;font-family:"FF Good Pro Cond",var(--mono);font-weight:500;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#fff;background:transparent;border:0;padding:12px 30px 11px 33px;cursor:inherit;font-variant-numeric:tabular-nums;transition:background .45s ease,color .45s ease,opacity .6s}
+#plEnter svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}#plEnter rect{fill:none;stroke:#fff;stroke-width:1.5px;vector-effect:non-scaling-stroke;stroke-dasharray:0 100000}#plEnter span{position:relative}
 #plEnter.ready{background:#fff;color:#000}   /* loaded: the outline closes, it fills, and it's the way in */
 #plEnter.ready:hover,#plEnter.ready:focus-visible{background:rgba(255,255,255,.82);outline:none}
 #plEnter.gone{opacity:0;pointer-events:none}

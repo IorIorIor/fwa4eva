@@ -2,6 +2,7 @@
    A small panorama of the sky as seen from the ship, redrawn every half second and used as the arrow's environment map:
    the galaxy's disk (where a ray from the ship would hit it), the warm glow of the core, and the nearest winner as a
    bright spot in its own colour. So the arrow picks up the core when you face it and a band of blue when you skim the disk. */
+let PTR_FLAT = 0;   // the opening's pointer, flat (1) → the ship (0): set by flatPtr as it turns
 const shipEnv = (() => {
   const W = 128, H = 64, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), img = g.createImageData(W, H), px = img.data;
   const tex = new THREE.CanvasTexture(c); tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
@@ -54,8 +55,8 @@ const shipEnv = (() => {
       if (LT.hemi && LT.key && LT.rim) lights();
       // wh: the white paint glows a little of its own, so it reads white, not grey, whatever the light
       const k = LOOK.shipReflect ?? 1, gl = LOOK.shipGloss ?? .5, sc = LOOK.shipScuff ?? 1, wh = LOOK.shipWhite ?? .75, key = k + ',' + gl + ',' + sc + ',' + wh; SHIP_MAT.white.emissiveIntensity = wh; if (key !== on) { on = key; base.forEach(({ m, r, mt }) => { m.envMap = k > 0 ? tex : null; m.envMapIntensity = k * 2.5; m.roughness = r * (1 - .6 * Math.min(1, k * gl)); m.metalness = Math.max(mt, .35 * Math.min(1, k)); if (m.isMeshPhysicalMaterial) { m.clearcoat = Math.min(1, k); m.clearcoatRoughness = .02 + .3 * (1 - gl) } if (m.bumpMap) m.bumpScale = .35 * sc; m.needsUpdate = true }); fxNow = -1 }   // the lacquer (clearcoat) mirrors the panorama sharply; gloss tightens it
-      { const tgt = intro.active ? (intro.ph === 1 || intro.ph === 0 ? 0 : intro.ph === 3 ? (intro.reflGo ? 1 : 0) : intro.portal ? 1 : sstep(intro.t, .8, .99)) : 1;   // in the opening: none, then they fade in over the last two seconds of the move in (and finish fading after, never a jump)
-        fxK = tgt < fxK ? tgt : Math.min(tgt, fxK + dt / 2); const fx = Math.round(fxK * fxK * (3 - 2 * fxK) * 200) / 200; if (fx !== fxNow) { fxNow = fx; base.forEach(({ m, r }) => { m.envMapIntensity = k * 2.5 * fx; m.roughness = r * (1 - .6 * Math.min(1, k * gl) * fx) + .5 * (1 - fx); if (m.isMeshPhysicalMaterial) m.clearcoat = Math.max(.001, Math.min(1, k) * fx); if (m.bumpMap) m.bumpScale = .35 * sc * fx }) } }   // in the opening the arrow is tiny and its glints, lacquer and scuffs only shimmer: they come in once it's close
+      { const turning = intro.active && intro.ph === 3, tgt = intro.active ? (intro.ph === 1 || intro.ph === 0 ? 0 : turning ? 1 - PTR_FLAT : intro.portal ? 1 : sstep(intro.t, .8, .99)) : 1;   // in the opening: none, then they fade in as the pointer turns into the ship (and finish fading after, never a jump)
+        fxK = tgt < fxK || turning ? tgt : Math.min(tgt, fxK + dt / 2); const fx = Math.round(fxK * fxK * (3 - 2 * fxK) * 200) / 200; if (fx !== fxNow) { fxNow = fx; base.forEach(({ m, r }) => { m.envMapIntensity = k * 2.5 * fx; m.roughness = r * (1 - .6 * Math.min(1, k * gl) * fx) + .5 * (1 - fx); if (m.isMeshPhysicalMaterial) m.clearcoat = Math.max(.001, Math.min(1, k) * fx); if (m.bumpMap) m.bumpScale = .35 * sc * fx }) } }   // in the opening the arrow is tiny and its glints, lacquer and scuffs only shimmer: they come in once it's close
       if (k > 0 && (t -= dt) <= 0) { t = .5; draw() }
     },
   };
