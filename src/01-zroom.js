@@ -15,7 +15,8 @@ const room = (() => {
   const H0 = document.documentElement, on0 = H0.classList.contains('roomboot') && !QS.has('test');
   const st = { on: false, phase: 'off', t: 0, fade: 0, sway: new THREE.Vector2(), aim: new V3(), ptr: { x: innerWidth / 2, y: innerHeight / 2, in: false }, dv: 0, M: null, Mi: null, band: [0, 0, 1, 1], onDone: null };
   if (!on0) { H0.classList.remove('roomboot'); return { on: false, on0: false, diving: false, galaxy: f => f(), galaxyReady() { }, skip() { } } }
-  renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); renderer.setSize(innerWidth, innerHeight, false);
+  const baseDpr = Math.min(2, devicePixelRatio || 1); let curDpr = baseDpr; renderer.setPixelRatio(baseDpr); renderer.setSize(innerWidth, innerHeight, false);
+  const dynRes = k => { const d = Math.max(.25, Math.round(baseDpr * k * 10) / 10); if (d !== curDpr) { curDpr = d; renderer.setPixelRatio(d) } };   // the resolution, in steps of a tenth (each change reallocates the buffers)
   const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, .02, 40);
   const lin = h => new C3(h).convertSRGBToLinear();
   const std = (hex, rough = .6, metal = 0, o = {}) => Object.assign(new THREE.MeshStandardNodeMaterial({ color: lin(hex), roughness: rough, metalness: metal }), o);
@@ -232,6 +233,8 @@ const room = (() => {
   const scrLight = new THREE.SpotLight(0x9fc4ff, 1, 4, THREE.MathUtils.degToRad(75), 1, 2); mon.add(scrLight, scrLight.target); scrLight.position.set(0, by, glassZ + .02); scrLight.target.position.set(0, by - .05, 1.5);
   const hemi = new THREE.HemisphereLight(0x2a3a5c, 0x0a0806, 1); sc.add(hemi);
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // the shadows are baked: drawn once and kept (nothing that casts one moves), redrawn only when something is moved or the lamp changes
+  const bakeShadows = () => { for (const l of [spot, ...propLights]) if (l.castShadow) { l.shadow.autoUpdate = false; l.shadow.needsUpdate = true } };
 
   // ── the picture: tone mapped, bloom, vignette, grain. At the end of the dive it hands over to the galaxy's own picture (k) ──
   const pipe = new THREE.RenderPipeline(renderer); pipe.outputColorTransform = false;
@@ -306,7 +309,7 @@ const room = (() => {
   const _b = new V3(), _t = new V3(), _q1 = new Q4(), _p0 = new V3(), _p1 = new V3(), _m4 = new THREE.Matrix4(), _n = new V3(), _u = new V3();
   function apply() {
     const warm = RL('roomLampWarm', .6), lc = new C3(1, 1 - .22 * warm, 1 - .5 * warm), lmp = RL('roomLamp', 1), scr = RL('roomScreen', .5);
-    spot.color.copy(lc); spot.intensity = 11 * lmp; spot.angle = THREE.MathUtils.degToRad(RL('roomLampCone', 52)); spot.penumbra = RL('roomLampSoft', .65); spot.shadow.radius = RL('roomShadow', 4);
+    spot.color.copy(lc); spot.intensity = 11 * lmp; spot.angle = THREE.MathUtils.degToRad(RL('roomLampCone', 52)); spot.penumbra = RL('roomLampSoft', .65); spot.shadow.radius = RL('roomShadow', 4); { const sig = [spot.angle, spot.penumbra, spot.shadow.radius].join(); if (sig !== st.shSig) { st.shSig = sig; bakeShadows() } }
     bulbGlow.color.copy(lc); bulbGlow.intensity = .5 * lmp;
     logoAt(1);
     { const bs = RL('roomBtn', 6.8).toFixed(2), by = (RL('roomBtnY', .82) * 100).toFixed(1) + '%'; if (bs !== st.bs || by !== st.by) { st.bs = bs; st.by = by; H0.style.setProperty('--rbs', bs); H0.style.setProperty('--rby', by) } }   // the Start button's size and place on the glass
@@ -334,10 +337,10 @@ const room = (() => {
     if (st.phase !== 'dive' && !st.lab) crtFx.set(rest);   // (the monitor at rest)
     if (st.lab) { labStep(dt); const fade = 1 - sstep(Math.max(0, st.lab.p), .6, 1), sh = SHEET.matches ? innerHeight * .2 * fade : 0, sx = !SHEET.matches && labEl ? (labEl.offsetWidth + 14) / 2 * fade : 0; if (sh > .5 || sx > .5) cam.setViewOffset(innerWidth, innerHeight, sx, sh, innerWidth, innerHeight); else cam.clearViewOffset() }   /* (the playground covers part of the window: on a phone a sheet over the bottom, else a column on the right; the room moves into what's left) */ else if (cam.view && cam.view.enabled) cam.clearViewOffset();   // the CRT playground: the move held wherever you scrub it
     else if (st.phase === 'dive') {   // into the glass, the first part of the one move (see mkRun); the CRT comes over the screen as the glass fills it
-      const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr); posed(s / R.Dr); crtFx.set(rest + (peak - rest) * sstep(s / R.Dr, cin, 1));
+      const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr); posed(s / R.Dr); if (RL('roomDynRes', 1)) dynRes(1 - .5 * sstep(s / R.Dr, 0, 1)); crtFx.set(rest + (peak - rest) * sstep(s / R.Dr, cin, 1));
       if (R.s(R.t) >= R.Dr) { finish(); crtFx.decay(out, peak); return }   // the glass fills the window: the galaxy carries on with the same run, the CRT fades off it
     }
-    cam.updateMatrixWorld(); aimLamp();
+    cam.updateMatrixWorld(); aimLamp(); if (st.bakeN > 0) { st.bakeN--; bakeShadows() }
     for (const f of propUpd) f(now / 1000);   // (the modem's lights, the webcam's)
     place();
     pipe.render();
@@ -432,7 +435,7 @@ const room = (() => {
     const mode = m => { if (!arr || !arr.on) arrange(true); arr.mode = m; labEl.querySelector('.mv').classList.toggle('on', m === 'translate'); labEl.querySelector('.rt').classList.toggle('on', m === 'rotate'); labEl.querySelector('.sc').classList.toggle('on', m === 'scale'); arr.tc.setMode(m) };
     labEl.querySelector('.mv').onclick = () => mode('translate'); labEl.querySelector('.rt').onclick = () => mode('rotate'); labEl.querySelector('.sc').onclick = () => mode('scale');
     labEl.querySelector('.cpos').onclick = async () => { const t = 'FWA FOREVER room positions: ' + JSON.stringify(moved()); try { await navigator.clipboard.writeText(t); msg.textContent = 'Copied: paste it in the chat' } catch (e) { msg.textContent = t } };
-    labEl.querySelector('.rst').onclick = () => { try { localStorage.removeItem(POS_KEY) } catch (e) { } for (const o of picks.values()) setPos(o, o.userData.home); for (const [id, v] of Object.entries(ROOM_POS)) { const o = picks.get(id); if (o) setPos(o, v) } msg.textContent = 'Back to where they were' };
+    labEl.querySelector('.rst').onclick = () => { try { localStorage.removeItem(POS_KEY) } catch (e) { } for (const o of picks.values()) setPos(o, o.userData.home); for (const [id, v] of Object.entries(ROOM_POS)) { const o = picks.get(id); if (o) setPos(o, v) } bakeShadows(); msg.textContent = 'Back to where they were' };
     labEl.scrub = scrub; document.body.appendChild(labEl);
   }
   function lab(on = true) {
@@ -447,7 +450,7 @@ const room = (() => {
       const el = document.createElement('div'); el.id = 'rmArr'; document.body.appendChild(el);
       const tc = new TransformControls(cam, el); tc.setSize(MOB ? 1.6 : 1.1); sc.add(tc.getHelper());
       const ray = new THREE.Raycaster(), nd = new THREE.Vector2(); let down = null, sv = 0;
-      tc.addEventListener('objectChange', () => { clearTimeout(sv); sv = setTimeout(() => { try { localStorage.setItem(POS_KEY, JSON.stringify(moved())) } catch (e) { } }, 250) });
+      tc.addEventListener('objectChange', () => { bakeShadows(); clearTimeout(sv); sv = setTimeout(() => { try { localStorage.setItem(POS_KEY, JSON.stringify(moved())) } catch (e) { } }, 250) });
       el.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, axis: tc.axis } });   // (after the gizmo's own: axis says whether it took it)
       el.addEventListener('pointerup', e => {
         const d = down; down = null; if (!d || d.axis || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6) return;
@@ -489,6 +492,7 @@ const room = (() => {
     // what the props reflect: the room itself, lit, seen from just over the desk (so the gold and chrome have something to show)
     if (propMats.size) try { apply(); aimLamp(); const env = new THREE.PMREMGenerator(renderer).fromScene(sc, .02, .02, 12, { size: 128, position: new V3(0, D.h + .22, .55) }).texture; for (const m of propMats) if ('envMap' in m) m.envMap = env; sc.environment = env } catch (e) { console.warn('room env', e) }   // (and the room as a whole, a little: its light bouncing round it, roomBounce)
     try { await renderer.compileAsync(sc, cam) } catch (e) { }
+    bakeShadows(); st.bakeN = 8;   // (and again over the first few frames, till everything's surely in)
     st.on = true; st.phase = 'loading'; document.body.classList.add('room'); if (MOB) document.body.classList.add('roommob'); H0.classList.add('roomlive'); requestAnimationFrame(loop);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // (two frames of it on screen before the heavy loading starts)
   })();

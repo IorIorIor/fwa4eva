@@ -264,6 +264,7 @@ const intro = {
   },
   settleStep(dt) {   // the camera keeps its heading; it closes in (a spring that only slows) on the point A, which slides over to wherever the ship is
     const L = LOOK; this.st += dt; { const r = Math.max(0, 1 - this.st / Math.max(1e-3, this.sT)); this.sx = this.sxEnd + this.sGap * Math.pow(r, this.sp); this.svx = -this.sp * this.sGap / Math.max(1e-3, this.sT) * Math.pow(r, this.sp - 1) } const u = Math.max(0, Math.min(1, (this.lnD0 - this.sx) / Math.max(1e-6, this.lnD0 - this.sxEnd)));   // how far in it has come
+    if (this.logoS != null && (L.roomDynRes ?? 1)) setDpr(Math.round(Math.min(L.maxDpr, devicePixelRatio || 1) * (.5 + .5 * sstep(this.st / Math.max(1e-3, this.sT), 0, .5)) * 10) / 10);   // out of the room at half resolution: back to full by halfway in (in steps, while it's all moving)
     if (this.logoS != null) room.afterGlass(this.logoS + Math.max(this.lnD0 - this.sx, this.logoV * this.st));   // the room's logo keeps coming at you at the pace you came through with (however the camera slows), so it's past you well before the end
     this.A.copy(this.S).sub(this.C0).multiplyScalar(sstep(u, .05, 1)).add(this.C0);
     this.setFov(.6 + .4 * u); this.camAt(this.A, this.sx, camera.position); camera.quaternion.copy(rig.q); camera.updateMatrixWorld();
