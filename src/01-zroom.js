@@ -367,7 +367,7 @@ const room = (() => {
   const _s = new THREE.Vector2();
   function galaxy(fn) {
     if (!st.on) return fn();
-    renderer.getDrawingBufferSize(_s); const big = st.phase === 'ready' || st.phase === 'dive', bw = st.band ? Math.max(.3, st.band[2] - st.band[0]) : 1, w = Math.max(64, Math.min(big ? 3072 : 1600, Math.round(_s.x / (big ? bw : 1)))), h = Math.round(w / GA);   // (ready and in the move: the window's part of the glass at the window's own resolution) if (gRT.width !== w || gRT.height !== h) gRT.setSize(w, h);
+    renderer.getDrawingBufferSize(_s); const w = Math.max(64, Math.min(1600, Math.round(_s.x))), h = Math.round(w / GA); if (gRT.width !== w || gRT.height !== h) gRT.setSize(w, h);
     const c = camera;
     const fov = c.fov, asp = c.aspect, A = innerWidth / Math.max(1, innerHeight), t = Math.tan(fov * Math.PI / 360), tR = A >= GA ? t * A / GA : t;
     c.fov = 2 * Math.atan(tR) * 180 / Math.PI; c.aspect = GA; c.updateProjectionMatrix();
@@ -493,7 +493,7 @@ const room = (() => {
   return {
     get on() { return st.on }, on0: true, get diving() { return st.phase === 'dive' }, get phase() { return st.phase }, startP, galaxy, dive,
     galaxyReady() { if (st.phase === 'loading') { st.phase = 'ready'; if (/crt-?lab/.test(location.hash)) lab(true) } }, lab, get ptrOn() { return MOB && (st.phase === 'ready' || st.phase === 'dive') },   // the opening has its galaxy up: the glass shows it and Start works
-    skip() { if (st.on) finish(); logoAt(9) }, afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st }, picks, arrange, pick,
+    skip() { if (st.on) finish(); logoAt(9) }, afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st }, picks, arrange, pick, U2, gRT, renderer,
   };
 })();
 window.__room = room;   // (for scripted looks at it)
