@@ -172,7 +172,7 @@ const intro = {
     if (!logoShapes() || !(this.pt || (this.pt = makePortal()))) return false;
     $('intro').hidden = true; document.body.classList.remove('splash');
     this.at = null; this.start(true);
-    document.body.classList.remove('opening'); this.ptrOn = false; this.ready = !!this.lab; $('plEnter').classList.remove('ready'); $('plEnter').querySelector('span').textContent = window.__plYear ? window.__plYear() : 'Loading';   // your own mouse pointer until you start: only then the 3D one takes over
+    document.body.classList.remove('opening'); this.ptrOn = false; this.ready = !!this.lab; $('plEnter').classList.remove('ready'); $('plEnter').querySelector('span').textContent = 'Loading';   // your own mouse pointer until you start: only then the 3D one takes over
     this.ph = 0; this.pq = this.pqT = 0; this.play = 0; this.rr = null; this.noMark = room.on0; this.pt0 = performance.now(); this.heard = false; this.qv = 0; this.mx = this.my = this.mxs = this.mys = 0;
     this.C0 = player.pos.clone(); camera.clearViewOffset();
     { const f = GC.clone().sub(this.C0).normalize();   // the heading you'll fly off with, wherever you start (saved spot or not): straight at the galaxy's core. It's the camera's too, all through the opening: the core sits dead centre behind the mark from the first frame, and never moves

@@ -939,7 +939,8 @@ body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));cli
 /* the room (the year 2000, 01-zroom): black with a quiet "Loading" until it's built, then only the room, the opening on its
    glass (#portalLoad, laid onto it by a CSS transform), the Look panel, and in the dive the pointer's layer */
 html.roomboot:not(.roomlive) #portalLoad{visibility:hidden}
-html.roomboot:not(.roomlive) body::after{content:'Loading';position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font:500 11px/1 "FF Good Pro Cond",var(--mono);letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.38);z-index:200;pointer-events:none}
+#rmCount{display:none}
+html.roomboot:not(.roomlive) #rmCount{display:block;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font:500 15px/1 "FF Good Pro Cond",var(--mono);letter-spacing:.3em;padding-left:.3em;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.6);z-index:200;pointer-events:none}   /* the countdown before the room */
 body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(#crtLab):not(#crtFx):not(#rmArr):not(script):not(style){visibility:hidden!important}
 html.roomboot #portalLoad{opacity:0}   /* (until the room lays it onto the glass: no full-size flash of it first) */
 #rmArr{position:fixed;inset:0;z-index:80;touch-action:none;cursor:crosshair}#rmArr[hidden]{display:none}

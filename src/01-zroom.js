@@ -495,6 +495,7 @@ const room = (() => {
     if (propMats.size) try { apply(); aimLamp(); const env = new THREE.PMREMGenerator(renderer).fromScene(sc, .02, .02, 12, { size: 128, position: new V3(0, D.h + .22, .55) }).texture; for (const m of propMats) if ('envMap' in m) m.envMap = env; sc.environment = env } catch (e) { console.warn('room env', e) }   // (and the room as a whole, a little: its light bouncing round it, roomBounce)
     try { await renderer.compileAsync(sc, cam) } catch (e) { }
     bakeShadows(); st.bakeN = 8;   // (and again over the first few frames, till everything's surely in)
+    if (window.__rmCount) await window.__rmCount();   // (the countdown before the room reaches 2000 first)
     st.on = true; st.phase = 'loading'; document.body.classList.add('room'); if (MOB) document.body.classList.add('roommob'); H0.classList.add('roomlive'); requestAnimationFrame(loop);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // (two frames of it on screen before the heavy loading starts)
   })();
