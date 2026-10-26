@@ -164,8 +164,49 @@ const room = (() => {
   const bulb = add(new THREE.SphereGeometry(.022, 20, 12), new THREE.MeshBasicNodeMaterial({ color: lin('#fff1d8').multiplyScalar(6) }), 0, -.03, 0, shade); bulb.castShadow = false;
   { add(new THREE.CylinderGeometry(.0008, .0008, .06, 6), std('#4a463f', .5, .4), .055, -.085, 0, shade); add(new THREE.SphereGeometry(.0035, 8, 6), std('#6a655c', .6), .055, -.115, 0, shade) }   // the pull chain
 
+  // ── the things on the desk and the wall: room/props.js builds each at real size (the same code as its viewer), set here in
+  // its place. Each is baked to one mesh per material (same look, far fewer draws); they reflect the room itself (env, below) ──
+  const propUpd = [], propMats = new Set();
+  const bake = root => {
+    root.updateWorldMatrix(true, true); const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), groups = new Map(), drop = [];
+    root.traverse(o => {
+      if (!o.isMesh || Array.isArray(o.material) || o.children.length) return;
+      const k = o.material.uuid + (o.castShadow ? 'c' : '') + (o.receiveShadow ? 'r' : ''); let g = groups.get(k); if (!g) groups.set(k, g = { m: o.material, cs: o.castShadow, rs: o.receiveShadow, geos: [] });
+      const geo = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+      for (const a of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv'].includes(a)) geo.deleteAttribute(a);
+      if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+      g.geos.push(geo); drop.push(o);
+    });
+    for (const g of groups.values()) { const geo = g.geos.length > 1 ? mergeGeometries(g.geos) : g.geos[0]; if (!geo) continue; const m = new THREE.Mesh(geo, g.m); m.castShadow = g.cs; m.receiveShadow = g.rs; root.add(m) }
+    for (const o of drop) o.removeFromParent();
+  };
+  // put one down: turned (pre), then stood on y with its middle at x, z, and turned ry round its own vertical (rz: tilted on the wall)
+  const put = (o, x, y, z, ry = 0, pre = null, rz = 0) => { if (pre) pre(o); bake(o); const b = new THREE.Box3().setFromObject(o), w = new THREE.Group(); o.position.x -= (b.min.x + b.max.x) / 2; o.position.z -= (b.min.z + b.max.z) / 2; o.position.y -= b.min.y; w.add(o); w.position.set(x, y, z); w.rotation.set(0, ry, rz); sc.add(w); return w };
+  const flat = o => { o.rotation.x = -Math.PI / 2 }, upright = o => { o.rotation.x = Math.PI / 2 };
+  const propsP = (async () => {
+    let off = false; try { off = JSON.parse(localStorage.getItem('sotd-look-v6') || 'null')?.roomProps === 0 } catch (e) { }   // (the saved setting: the settings themselves load later)
+    if (off || typeof makeProps !== 'function') return;
+    const load = src => new Promise(ok => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = src });
+    const got = await Promise.race([Promise.all(Object.entries(ROOM_IMG).map(async ([k, s]) => [k, await load(s)])), new Promise(r => setTimeout(() => r([]), 5000))]);
+    const mk = document.querySelector('#intro .mark path:last-of-type'), list = makeProps(THREE, { RoundedBoxGeometry, img: Object.fromEntries(got.filter(([, im]) => im)), logo: mk && mk.getAttribute('d'), col: lin });
+    const at = (id, ...a) => { const p = list.find(p => p.id === id); if (!p) return; try { const w = put(p.make(), ...a); w.traverse(o => { if (o.userData.update) propUpd.push(o.userData.update); if (o.material) [].concat(o.material).forEach(m => propMats.add(m)) }) } catch (e) { console.warn('room prop', id, e) } };
+    const top = D.h, frameY = 1.07;
+    at('motd', -.6, frameY, .0125);   // the two certificates, either side of the monitor
+    at('sotd', .62, frameY, .0125);
+    at('postcard', -.44, frameY + .02, .027, 0, upright, -.12);   // tucked into the corner of one of them
+    at('medal', -.38, .95, .004, 0, upright);   // the medal on a pin, in the lamp's light
+    at('webdesign', -.6, top, .5, .1, flat); at('kesey', -.585, top + .048, .5, -.16, flat);   // the books, one on the other
+    at('flash', -.75, top, .095, .3);   // Flash 5, stood at the back
+    at('mustang', -.385, top, .62, .5);
+    at('nokia', -.09, top, .615, -.35);
+    at('postit', .13, top, .62, .25);
+    at('mug', .465, top, .54, .5);
+    at('modem', .66, top + .44, .32);   // on the tower
+    at('webcam', -.03, top + .475, .47);   // on the monitor
+  })();
+
   // ── light ──
-  const spot = new THREE.SpotLight(0xffffff, 1, 6, THREE.MathUtils.degToRad(52), .65, 2);
+  const spot =new THREE.SpotLight(0xffffff, 1, 6, THREE.MathUtils.degToRad(52), .65, 2);
   spot.castShadow = true; spot.shadow.mapSize.set(2048, 2048); spot.shadow.bias = -.0004; spot.shadow.normalBias = .01; spot.shadow.camera.near = .05; spot.shadow.camera.far = 6;
   sc.add(spot, spot.target);
   const bulbGlow = new THREE.PointLight(0xffd29a, 1, 1.6, 2); sc.add(bulbGlow);   // the shade's own glow, close in
@@ -239,6 +280,7 @@ const room = (() => {
     scrLight.intensity = 3 * scr * (1 + U2.scrOn.value * 2); U2.glow.value = scr * 3; U2.scrBr.value = RL('roomScreenBright', 1.4);
     C.flick.value = RL('crtFlicker', .25); C.roll.value = RL('crtRoll', .3); C.idle.value = RL('crtIdle', .3);
     hemi.intensity = .9 * RL('roomFill', 1);
+    { const e = RL('roomPropsEnv', 1); if (e !== st.pe) { st.pe = e; for (const m of propMats) { if (m.userData.ei0 == null) m.userData.ei0 = m.envMapIntensity ?? 1; m.envMapIntensity = m.userData.ei0 * e } } }
     wall.color.copy(lin('#33465f')).multiplyScalar(RL('roomWall', 1)); const wk = RL('roomWood', 1); wood.color.setScalar(wk); woodV.color.copy(lin('#c8c8c8')).multiplyScalar(wk); woodDark.color.copy(lin('#8a8a8a')).multiplyScalar(wk);
     U2.exp.value = RL('roomExposure', 1.3) * st.fade; U2.bloomK.value = RL('roomBloom', .35); U2.vig.value = RL('roomVignette', .55) * (1 - U2.k.value); U2.grain.value = RL('roomGrain', .035);
   }
@@ -260,12 +302,14 @@ const room = (() => {
       const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr); posed(s / R.Dr); crtFx.set(peak * sstep(s / R.Dr, cin, 1));
       if (R.s(R.t) >= R.Dr) { finish(); crtFx.decay(out, peak); return }   // the glass fills the window: the galaxy carries on with the same run, the CRT fades off it
     }
-    cam.updateMatrixWorld();
-    // the lamp's light leaves the bulb along the shade's axis
-    shade.updateWorldMatrix(true, false); bulb.getWorldPosition(_b); spot.position.copy(_b); bulbGlow.position.copy(_b).add(_t.set(0, -.03, 0));
-    _t.set(0, -1, 0).transformDirection(shade.matrixWorld); spot.target.position.copy(_b).addScaledVector(_t, 1);
+    cam.updateMatrixWorld(); aimLamp();
+    for (const f of propUpd) f(now / 1000);   // (the modem's lights, the webcam's)
     place();
     pipe.render();
+  }
+  function aimLamp() {   // the lamp's light leaves the bulb along the shade's axis
+    shade.updateWorldMatrix(true, false); bulb.getWorldPosition(_b); spot.position.copy(_b); bulbGlow.position.copy(_b).add(_t.set(0, -.03, 0));
+    _t.set(0, -1, 0).transformDirection(shade.matrixWorld); spot.target.position.copy(_b).addScaledVector(_t, 1);
   }
   const loop = now => { if (!st.on) return; requestAnimationFrame(loop); try { frame(now) } catch (e) { console.error(e) } };
   // the camera at a point p (0 … 1) of the way into the glass: nearer by the run's log distance, turning square onto it
@@ -372,6 +416,9 @@ const room = (() => {
   const logoAt = (m = 1) => { if (!logo) return; const y = RL('roomLogoY', .2) * 100, w = RL('roomLogo', .46) * 100; logo.style.top = (50 + (y - 50) * m).toFixed(3) + '%'; logo.style.width = (w * m).toFixed(3) + '%'; logo.style.opacity = (1 - sstep(m, 1.5, 3)).toFixed(3); logo.style.display = m > 3.2 ? 'none' : '' };   // m: how much nearer than on the glass (scaled about the middle of the view)
   const startP = (async () => {
     cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
+    await propsP;
+    // what the props reflect: the room itself, lit, seen from just over the desk (so the gold and chrome have something to show)
+    if (propMats.size) try { apply(); aimLamp(); const env = new THREE.PMREMGenerator(renderer).fromScene(sc, .02, .02, 12, { size: 128, position: new V3(0, D.h + .22, .55) }).texture; for (const m of propMats) if ('envMap' in m) m.envMap = env } catch (e) { console.warn('room env', e) }
     try { await renderer.compileAsync(sc, cam) } catch (e) { }
     st.on = true; st.phase = 'loading'; document.body.classList.add('room'); if (MOB) document.body.classList.add('roommob'); H0.classList.add('roomlive'); requestAnimationFrame(loop);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // (two frames of it on screen before the heavy loading starts)

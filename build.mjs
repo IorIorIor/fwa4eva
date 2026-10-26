@@ -9,7 +9,7 @@ import { ROOT, appSource, pageHtml } from './shell.mjs';
 
 const THREE = join(ROOT, 'node_modules', 'three'), OUT = join(ROOT, 'dist-single');
 const CDN = `https://cdn.jsdelivr.net/npm/three@${JSON.parse(readFileSync(join(THREE, 'package.json'), 'utf8')).version}`;
-const js = appSource();
+const js = appSource({ inline: true });   // (the room's pictures written into the page)
 const r = await esbuild.build({
   stdin: { contents: js, sourcefile: 'app.js', resolveDir: ROOT, loader: 'js' }, bundle: true, format: 'esm', write: false, logLevel: 'warning',
   external: ['three', 'three/webgpu'], alias: { 'three/tsl': join(THREE, 'build', 'three.tsl.js'), 'three/addons': join(THREE, 'examples', 'jsm') },

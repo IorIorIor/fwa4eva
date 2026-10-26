@@ -6,11 +6,17 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = dirname(fileURLToPath(import.meta.url));
-export const SRC = join(ROOT, 'src');
+export const SRC = join(ROOT, 'src'), ROOM = join(ROOT, 'room');
 const rd = f => readFileSync(join(SRC, f), 'utf8');
 
+// the room's props (room/props.js, shared with its viewer) go in just before the room, with the pictures they use: as files in
+// public/room, or (inline: the single-file build) written into the page
+const ROOM_IMGS = ['kesey', 'webdesign', 'motd', 'sotd', 'persepolis'];
+const roomProps = inline => `const ROOM_IMG = ${JSON.stringify(Object.fromEntries(ROOM_IMGS.map(k => [k, inline ? 'data:image/jpeg;base64,' + readFileSync(join(ROOT, 'public', 'room', k + '.jpg')).toString('base64') : `room/${k}.jpg`])))};\n`
+  + readFileSync(join(ROOM, 'props.js'), 'utf8').replace('export function makeProps', 'function makeProps') + '\n';
+
 // (after the room is up, every file starts with a breath for it to draw a frame: see roomYield in 01-zroom)
-export const appSource = () => { let past = false; return readdirSync(SRC).filter(f => /^\d\d-.*\.js$/.test(f)).sort().map(f => { const s = (past ? ';await roomYield();\n' : '') + rd(f); if (f.startsWith('01-zroom')) past = true; return s }).join('\n') };
+export const appSource = ({ inline = false } = {}) => { let past = false; return readdirSync(SRC).filter(f => /^\d\d-.*\.js$/.test(f)).sort().map(f => { const s = (past ? ';await roomYield();\n' : '') + (f.startsWith('01-zroom') ? roomProps(inline) : '') + rd(f); if (f.startsWith('01-zroom')) past = true; return s }).join('\n') };
 
 // the whole page around a script tag (or an inline script when `inline` is given)
 export function pageHtml({ script, inline } = {}) {

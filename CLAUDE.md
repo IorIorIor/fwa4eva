@@ -33,6 +33,9 @@ and gives quick visual feedback; keep replies short).
   the opening takes the move on (`intro.rr`). The CRT is plain CSS layers over the whole screen (`crtFx`), on as the glass fills it and
   fading off after. CRT: Look → Room: CRT and its playground (`room.lab()`, `#crt-lab`). On touch the 3D pointer sits on the glass and goes where you tap.
   Look → Room; `?noroom` (or roomOn 0) skips it.
+  The props (books, certificates, postcard, medal, Mustang, Nokia, modem, webcam, Flash box, Post-it, mug) are `room/props.js`: plain three.js
+  at real size, shared with their viewer (`python3 room/build-viewer.py out.html`); `shell.mjs` puts it just before 01-zroom with `ROOM_IMG`
+  (the pictures in `public/room/`, written inline in the single build). Where each stands: the `at(...)` list in 01-zroom.
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
   field for settings copied from the Ascent toy.
 - Multiplayer: `relay.mjs` (WebSocket at `/ws`, positions only, deals each pilot a distinct hue). On claude.ai the page
