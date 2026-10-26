@@ -357,6 +357,136 @@ export function makeProps(THREE, ctx) {
     return g;
   }
 
+  // the hand that writes on things: a marker font where there is one, a little wobble
+  const hand = '"Marker Felt", "Comic Sans MS", "Chalkboard SE", "Segoe Print", cursive';
+  const scrawl = (c, lines, x, y, size, lh, rot = 0, color = '#151515') => { c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = color; c.font = `bold ${size}px ${hand}`; c.textAlign = 'center'; lines.forEach((l, i) => { c.save(); c.translate((rnd() - .5) * size * .1, i * lh); c.rotate((rnd() - .5) * .06); c.fillText(l, 0, 0); c.restore() }); c.restore() };
+
+  // ── 14. CD-Rs: a jewel case, a disc rainbow side up on it and one on top, label up, in Sharpie ──
+  function cdrs() {
+    const g = new THREE.Group(), R = .06, r0 = .0075, T = .0012;
+    const dye = phys('#a9b9cc', { metalness: 1, roughness: .1, iridescence: 1, iridescenceIOR: 2, iridescenceThicknessRange: [200, 900] }), edge = std('#c9ccd2', .3, .6);
+    const label = (lines, rot) => tex(1024, 1024, (c, w) => {
+      const C = w / 2, gr = c.createRadialGradient(C, C, 60, C, C, C); gr.addColorStop(0, '#e9eaee'); gr.addColorStop(1, '#c4c6cc'); c.fillStyle = gr; c.fillRect(0, 0, w, w);
+      c.strokeStyle = 'rgba(255,255,255,.35)'; for (let i = 0; i < 70; i++) { c.lineWidth = 1 + rnd() * 2; c.beginPath(); c.arc(C, C, C * (.3 + rnd() * .7), 0, 7); c.stroke() }   // (brushed, in rings)
+      c.fillStyle = 'rgba(205,210,216,.9)'; c.beginPath(); c.arc(C, C, C * .3, 0, 7); c.fill(); c.strokeStyle = 'rgba(120,125,135,.6)'; c.lineWidth = 3; c.beginPath(); c.arc(C, C, C * .3, 0, 7); c.stroke(); c.beginPath(); c.arc(C, C, C * .22, 0, 7); c.stroke();   // the clear hub and its stacking ring
+      c.fillStyle = '#3d4552'; c.font = `bold 34px ${sans}`; c.textAlign = 'center'; c.save(); c.translate(C, C); c.rotate(-.5); c.fillText('CD-R  80 min  700 MB', 0, -C * .82); c.restore();
+      c.strokeStyle = '#3d4552'; c.lineWidth = 4; c.beginPath(); c.arc(C, C, C * .9, -2.6, -.4); c.stroke();
+      scrawl(c, lines, C, C - 150, 92, 104, rot);
+    });
+    const disc = (tTop) => { const d = new THREE.Group(); const top = mesh(new THREE.RingGeometry(r0, R, 96, 1), new THREE.MeshStandardMaterial({ map: tTop, roughness: .35, metalness: .3 }), 0, T / 2, 0, d); top.rotation.x = -Math.PI / 2;
+      const bot = mesh(new THREE.RingGeometry(r0, R, 96, 1), dye, 0, -T / 2, 0, d); bot.rotation.x = Math.PI / 2;
+      mesh(new THREE.CylinderGeometry(R, R, T, 96, 1, true), edge, 0, 0, 0, d); mesh(new THREE.CylinderGeometry(r0, r0, T, 32, 1, true), edge, 0, 0, 0, d); return d };
+    // the jewel case: black tray, clear lid on its hinge, a disc in it
+    const cw = .142, cd = .125, ch = .0104, clear = phys('#ffffff', { roughness: .04, transparent: true, opacity: .16, clearcoat: 1, clearcoatRoughness: .02 });
+    mesh(rbox(cw - .006, .006, cd - .002, .001, 2), std('#111114', .45), .003, .003, 0, g);
+    mesh(new THREE.CylinderGeometry(.007, .007, .002, 32), std('#1a1a1e', .4), .006, .007, 0, g);   // the hub that holds it
+    { const inner = disc(label(['fonts', '+ old sites'], -.1)); inner.position.set(.006, .0068, 0); inner.rotation.y = 1.9; g.add(inner) }
+    const lid = mesh(rbox(cw, .003, cd, .0008, 2), clear, 0, ch - .0015, 0, g); lid.castShadow = false;
+    mesh(new THREE.CylinderGeometry(.0024, .0024, cd, 12), clear, -cw / 2 + .0024, ch - .0026, 0, g).rotation.x = Math.PI / 2;
+    // and two on top of it: the rainbow one, then the one that matters
+    const b = disc(label(['music', 'mix 2000'], .2)); b.rotation.set(Math.PI, .5, 0); b.position.set(-.014, ch + T / 2, .008); g.add(b);
+    const a = disc(label(['FWA', 'site v3 FINAL', 'final_FINAL2.fla'], 0)); a.rotation.y = -.35; a.position.set(.024, ch + T * 1.5 + .0002, -.012); g.add(a);
+    return g;
+  }
+
+  // ── 15. A pen cup in black wire mesh, three Sharpies and a pencil in it ──
+  function pencup() {
+    const g = new THREE.Group(), Rc = .036, Hc = .1, wire = std('#141416', .55, .4);
+    const holes = tex(64, 64, (c, w, h) => { c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.fillStyle = '#000'; c.beginPath(); c.arc(w / 2, h / 2, w * .34, 0, 7); c.fill() }, { data: true, rep: [34, 11] });
+    mesh(new THREE.CylinderGeometry(Rc, Rc * .94, Hc, 64, 1, true), new THREE.MeshStandardMaterial({ color: col('#141416'), roughness: .55, metalness: .4, alphaMap: holes, alphaTest: .5, side: THREE.DoubleSide }), 0, Hc / 2, 0, g);
+    mesh(new THREE.CylinderGeometry(Rc * .94, Rc * .94, .003, 48), wire, 0, .0015, 0, g);   // the bottom
+    mesh(new THREE.TorusGeometry(Rc, .0018, 8, 64), wire, 0, Hc, 0, g).rotation.x = Math.PI / 2; mesh(new THREE.TorusGeometry(Rc * .94, .0018, 8, 64), wire, 0, .002, 0, g).rotation.x = Math.PI / 2;   // its rims
+    const band = tex(64, 512, (c, w, h) => { c.fillStyle = '#d7d8db'; c.fillRect(0, 0, w, h); c.save(); c.translate(w / 2 + 12, 30); c.rotate(Math.PI / 2); c.fillStyle = '#111'; c.font = `italic bold 44px ${sans}`; c.fillText('SHARPIE', 0, 0); c.font = `bold 16px ${sans}`; c.fillText('PERMANENT MARKER', 230, -6); c.restore() });
+    const sharpie = ink => { const s = new THREE.Group(), capM = std(ink, .4), r = .0057;
+      mesh(new THREE.CylinderGeometry(r, r, .078, 24), new THREE.MeshStandardMaterial({ map: band, roughness: .5 }), 0, .039, 0, s);   // the barrel, its label
+      mesh(new THREE.CylinderGeometry(r, r * .8, .016, 24), capM, 0, -.008, 0, s);   // the end, the ink's colour
+      mesh(new THREE.CylinderGeometry(r * 1.1, r * 1.1, .046, 24), capM, 0, .078 + .023, 0, s); mesh(new THREE.SphereGeometry(r * 1.1, 24, 8, 0, Math.PI * 2, 0, Math.PI / 2), capM, 0, .124, 0, s);   // the cap
+      mesh(rbox(.0035, .03, .0022, .0009, 2), capM, 0, .106, r * 1.1 + .0008, s);   // its clip
+      return s };
+    const pencil = () => { const s = new THREE.Group(), r = .0037;
+      mesh(new THREE.CylinderGeometry(r, r, .15, 6), std('#f2c21b', .5), 0, .075, 0, s); mesh(new THREE.ConeGeometry(r, .016, 6), std('#e8c9a0', .8), 0, -.008, 0, s).rotation.x = Math.PI;
+      mesh(new THREE.CylinderGeometry(r * 1.05, r * 1.05, .011, 16), std('#c9cbd0', .25, 1), 0, .1555, 0, s); mesh(new THREE.CylinderGeometry(r, r, .008, 16), std('#f08aa0', .8), 0, .165, 0, s);   // the ferrule and the rubber
+      return s };
+    [[sharpie('#111111'), -.008, .006, .22, .1], [sharpie('#c4161c'), .009, -.004, -.16, .2], [sharpie('#1f4fbf'), -.004, -.01, .08, -.24], [pencil(), .007, .01, -.2, -.12]].forEach(([p, x, z, rz, rx]) => { p.position.set(x, .016, z); p.rotation.set(rx, 0, rz); g.add(p) });
+    return g;
+  }
+
+  // ── 16. Game Boy Color, in purple, a game going on its screen (built in millimetres) ──
+  function gameboy() {
+    const gb = new THREE.Group(), body = phys('#6a4c9c', { roughness: .38, clearcoat: .55, clearcoatRoughness: .3 }), dark = std('#26232c', .45), D = 15, BT = 6, F = D / 2 + BT;
+    { const s = new THREE.Shape(), w = 36, t = 63.5, b = -63.5, rt = 4, rb = 12; s.moveTo(-w + rt, t); s.lineTo(w - rt, t); s.quadraticCurveTo(w, t, w, t - rt); s.lineTo(w, b + rb); s.quadraticCurveTo(w, b, w - rb, b); s.lineTo(-w + rb, b); s.quadraticCurveTo(-w, b, -w, b + rb); s.lineTo(-w, t - rt); s.quadraticCurveTo(-w, t, -w + rt, t);
+      const geo = new THREE.ExtrudeGeometry(s, { depth: D, bevelEnabled: true, bevelThickness: BT, bevelSize: 3, bevelSegments: 8, curveSegments: 16 }); geo.translate(0, 0, -D / 2); mesh(smooth(geo), body, 0, 0, 0, gb) }
+    // the screen's lens, GAME BOY COLOR under the screen, the power light
+    { const lg = new THREE.ShapeGeometry(rrect(60, 50, 5, 0, 32), 6); const t = planar(lg, 12, (c, X, Y, s, cw, ch) => { c.fillStyle = '#2c2b33'; c.fillRect(0, 0, cw, ch); c.font = `italic bold ${3.6 * s}px ${sans}`; c.textAlign = 'center'; c.fillStyle = '#d8d6e0'; c.fillText('GAME BOY', X(-6), Y(10)); [['C', '#e03a3a'], ['O', '#f0a020'], ['L', '#3cb043'], ['O', '#2f7fe0'], ['R', '#9a4fd0']].forEach(([l, cl], i) => { c.fillStyle = cl; c.fillText(l, X(9.5 + i * 3.4), Y(10)) }); c.fillStyle = '#ff2a2a'; c.beginPath(); c.arc(X(-25), Y(42), s * 1.1, 0, 7); c.fill() });
+      mesh(lg, std('#ffffff', .15, 0, { map: t }), 0, 0, F + .05, gb) }
+    const scr = tex(640, 576, c => {   // 160 × 144: a sky, clouds, hills, a little hero on the ground, coins in the air
+      c.imageSmoothingEnabled = false; const p = (x, y, w, h, cl) => { c.fillStyle = cl; c.fillRect(x * 4, y * 4, w * 4, h * 4) };
+      p(0, 0, 160, 144, '#7ec8f8'); for (const [x, y] of [[20, 20], [96, 34], [130, 14]]) { p(x, y, 22, 6, '#fff'); p(x + 4, y - 4, 12, 4, '#fff') }
+      for (let x = 0; x < 160; x += 2) { const h = 26 + Math.round(10 * Math.sin(x * .05) + 6 * Math.sin(x * .13)); p(x, 144 - 24 - h, 2, h, '#4caf50') }
+      p(0, 120, 160, 24, '#c8783c'); for (let x = 0; x < 160; x += 16) { p(x, 120, 16, 3, '#8a4a20'); p(x + 7, 123, 2, 21, '#8a4a20') }
+      p(40, 104, 10, 6, '#e53935'); p(40, 110, 10, 7, '#1e3a8a'); p(42, 100, 6, 4, '#ffcc99'); p(40, 117, 4, 3, '#5d3a1a'); p(46, 117, 4, 3, '#5d3a1a');   // the hero
+      for (const [x, y] of [[70, 84], [82, 78], [94, 84]]) { p(x, y, 6, 8, '#ffd23f'); p(x + 2, y + 2, 2, 4, '#c9971a') }
+      p(110, 92, 16, 16, '#d97a2b'); p(113, 95, 10, 10, '#f0b04a');   // a block with something in it
+    });
+    mesh(new THREE.PlaneGeometry(44, 39.6), std('#ffffff', .3, 0, { map: scr, emissive: col('#ffffff'), emissiveMap: scr, emissiveIntensity: .35 }), 0, 33, F + .1, gb);
+    mesh(new THREE.PlaneGeometry(14, 3.5), new THREE.MeshStandardMaterial({ map: tex(256, 64, (c, w, h) => { c.fillStyle = '#6a4c9c'; c.fillRect(0, 0, w, h); c.fillStyle = '#4a3374'; c.font = `bold 44px ${sans}`; c.textAlign = 'center'; c.fillText('Nintendo', w / 2, 46) }), roughness: .4 }), 0, 1, F + .03, gb);
+    // the cross, the A and B, SELECT and START, the speaker
+    mesh(new THREE.CircleGeometry(12, 40), std('#55397f', .5), -19, -24, F + .02, gb);
+    mesh(ext(poly([[-3.5, 10], [3.5, 10], [3.5, 3.5], [10, 3.5], [10, -3.5], [3.5, -3.5], [3.5, -10], [-3.5, -10], [-3.5, -3.5], [-10, -3.5], [-10, 3.5], [-3.5, 3.5]]), 1.2, .5, 2), dark, -19, -24, F + .2, gb);
+    for (const [x, y] of [[24, -18], [11, -25]]) mesh(new THREE.CylinderGeometry(4.6, 4.6, 2.6, 32), dark, x, y, F + .6, gb).rotation.x = Math.PI / 2;
+    for (const x of [-6.5, 6.5]) mesh(rbox(9, 3.2, 1.6, 1.5), std('#7c7a86', .5), x, -44, F + .3, gb).rotation.z = .45;
+    for (let k = 0; k < 6; k++) mesh(rbox(1.4, 11, 1, .6), std('#3a2a55', .7), 17 + k * 3, -47 + k * 1.2, F, gb).rotation.z = -.45;
+    // a cartridge in the slot at the back of the top
+    mesh(rbox(57, 30, 7.5, 1.5), std('#6f7075', .5), 0, 63.5 + 1 + 14 - 15, -8.5, gb);
+    gb.scale.setScalar(.001); gb.rotation.x = -Math.PI / 2; gb.position.y = F * .001; const r = new THREE.Group(); r.add(gb); return r;
+  }
+
+  // ── 17. A lava lamp: the rocket, purple liquid, orange wax rising and falling, and the glow it gives ──
+  function lavalamp() {
+    const g = new THREE.Group(), lathe = (pts, m) => mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 64), m, 0, 0, 0, g);
+    const metal = std('#c9a64a', .25, 1);
+    lathe([[0, 0], [.056, 0], [.057, .004], [.05, .05], [.04, .1], [.034, .13], [0, .13]], metal);   // the base
+    lathe([[0, .33], [.023, .33], [.017, .35], [.011, .37], [0, .372]], metal);   // the cap
+    const bottle = [[.033, .13], [.04, .16], [.045, .2], [.043, .24], [.035, .28], [.026, .31], [.023, .33]];
+    const glass = lathe([[0, .13], ...bottle, [0, .33]], phys('#5a1f86', { roughness: .05, clearcoat: 1, clearcoatRoughness: .03, transparent: true, opacity: .5, depthWrite: false, emissive: col('#6a2aa0'), emissiveIntensity: .7 })); glass.castShadow = false;
+    const rAt = y => { for (let i = 1; i < bottle.length; i++) { const [r1, y1] = bottle[i], [r0, y0] = bottle[i - 1]; if (y <= y1) return r0 + (r1 - r0) * (y - y0) / (y1 - y0) } return .023 };
+    const wax = std('#ff7a1a', .5, 0, { emissive: col('#ff5a10'), emissiveIntensity: 1.3 });
+    const pool = mesh(new THREE.SphereGeometry(1, 32, 16), wax, 0, .138, 0, g); pool.scale.set(.03, .008, .03); pool.castShadow = false;
+    const blobs = [.014, .011, .016, .009, .012, .008].map((s, i) => { const m = mesh(new THREE.SphereGeometry(1, 24, 16), wax, 0, .15, 0, g); m.castShadow = false; m.userData.live = true; return { m, s, ph: i * 1.7, T: 22 + i * 7, ax: (i % 3 - 1) * .006 } });
+    pool.userData.live = true;
+    const light = new THREE.PointLight(0xff8a40, .3, 1.2, 2); light.position.y = .22; light.userData.base = .3; g.add(light); g.userData.light = light;
+    g.userData.update = t => {   // each blob rises, lingers at the top, sinks again, stretching as it goes
+      for (const b of blobs) { const u = (t / b.T + b.ph) % 1, e = .5 - .5 * Math.cos(u * Math.PI * 2), y = .148 + e * .155, v = Math.abs(Math.sin(u * Math.PI * 2)), rr = Math.min(b.s, rAt(y) - .004);
+        b.m.position.set(b.ax + Math.sin(t * .2 + b.ph) * .004, y, Math.cos(t * .17 + b.ph) * .004); b.m.scale.set(rr * (1 - .2 * v), rr * (1 + .45 * v), rr * (1 - .2 * v)) }
+      pool.scale.y = .008 + .002 * Math.sin(t * .3);
+    };
+    g.userData.update(0); return g;
+  }
+
+  // ── 18. A wall clock on the time where you are (the second hand ticks) ──
+  function clock() {
+    const g = new THREE.Group(), R = .125, Dp = .04, black = std('#151517', .4);
+    const face = tex(1024, 1024, (c, w) => { const C = w / 2; c.fillStyle = '#f6f4ee'; c.fillRect(0, 0, w, w); c.fillStyle = '#151515';
+      for (let i = 0; i < 60; i++) { c.save(); c.translate(C, C); c.rotate(i * Math.PI / 30); c.fillRect(i % 5 ? -2 : -6, -C * .93, i % 5 ? 4 : 12, i % 5 ? 22 : 54); c.restore() }
+      c.font = `500 104px ${sans}`; c.textAlign = 'center'; c.textBaseline = 'middle'; for (let n = 1; n <= 12; n++) { const a = n * Math.PI / 6; c.fillText(n, C + Math.sin(a) * C * .7, C - Math.cos(a) * C * .7) }
+      c.font = `500 28px ${sans}`; c.fillStyle = '#777'; c.fillText('QUARTZ', C, C + C * .36) });
+    { const rim = mesh(new THREE.TorusGeometry(R, .011, 16, 96), black, 0, 0, Dp - .011, g); mesh(new THREE.CylinderGeometry(R, R, Dp - .011, 96, 1, true), black, 0, 0, (Dp - .011) / 2, g).rotation.x = Math.PI / 2; rim.castShadow = true }
+    mesh(new THREE.CircleGeometry(R - .004, 96), new THREE.MeshStandardMaterial({ map: face, roughness: .7 }), 0, 0, .012, g);
+    const hand = (len, w, tail, m, z) => { const p = new THREE.Group(); p.position.z = z; p.userData.live = true; g.add(p); mesh(rbox(w, len + tail, .0012, Math.min(w / 2.2, .002), 2), m, 0, (len - tail) / 2, 0, p); return p };
+    const hH = hand(.062, .0075, .014, black, .016), hM = hand(.094, .005, .016, black, .0175), hS = hand(.1, .0016, .026, std('#d0201a', .4), .019);
+    mesh(new THREE.CylinderGeometry(.0045, .0045, .006, 24), std('#d0201a', .4), 0, 0, .02, g).rotation.x = Math.PI / 2;
+    const glass = mesh(new THREE.CircleGeometry(R - .002, 96), phys('#ffffff', { roughness: .03, transparent: true, opacity: .07, clearcoat: 1 }), 0, 0, Dp - .012, g); glass.castShadow = false;
+    g.userData.update = () => { const d = new Date(), s = d.getSeconds(), m = d.getMinutes() + s / 60, h = d.getHours() % 12 + m / 60; hS.rotation.z = -s * Math.PI / 30; hM.rotation.z = -m * Math.PI / 30; hH.rotation.z = -h * Math.PI / 6 };
+    g.userData.update(); g.position.y = R + .011; const r = new THREE.Group(); r.add(g); return r;
+  }
+
+  // ── 19. Post-its for the monitor's bezel, upright, stuck by the top and curling off a little below (origin: the middle of its back) ──
+  function note(lines, hex, size = 88) {
+    const S = .076, t = tex(512, 512, (c, w, h) => { c.fillStyle = hex; c.fillRect(0, 0, w, h); const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,.12)'); gr.addColorStop(.2, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(90,60,0,.1)'); c.fillStyle = gr; c.fillRect(0, 0, w, h); scrawl(c, lines, w / 2, 170, size, size * 1.15, -.05) });
+    const geo = new THREE.PlaneGeometry(S, S, 10, 10), p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i) / S + .5; p.setZ(i, Math.pow(Math.max(0, .55 - y), 2) * .028) } geo.computeVertexNormals();
+    const g = new THREE.Group(), m = mesh(geo, new THREE.MeshStandardMaterial({ map: t, roughness: .85, side: THREE.DoubleSide }), 0, 0, .0003, g); m.receiveShadow = false; return g;
+  }
+
   return [
     { id: 'kesey', name: 'The Kesey Signal', note: 'Rob Ford’s thriller, paperback · 15.2 × 22.7 cm', make: kesey },
     { id: 'webdesign', name: 'Web Design: The Evolution of the Digital World 1990–Today', note: 'Rob Ford, TASCHEN hardcover · 25 × 32 cm', make: webdesign },
@@ -371,5 +501,12 @@ export function makeProps(THREE, ctx) {
     { id: 'flash', name: 'Macromedia Flash 5', note: 'The box, 2000 · what the early winners were made with', make: flashbox },
     { id: 'postit', name: 'Post-it: SOTY', note: 'Marker, the corner curling up', make: postit },
     { id: 'mug', name: 'FWA mug', note: 'With coffee in it', make: mug },
+    { id: 'cdrs', name: 'CD-Rs', note: 'A jewel case and two discs, one in Sharpie: FWA site v3 FINAL', make: cdrs },
+    { id: 'pencup', name: 'Pen cup', note: 'Black wire mesh: three Sharpies and a pencil', make: pencup },
+    { id: 'gameboy', name: 'Game Boy Color', note: 'In purple, a game on · 13.3 × 7.8 cm', make: gameboy },
+    { id: 'lavalamp', name: 'Lava lamp', note: 'Purple, the orange wax rising and falling, and its glow · 37 cm', make: lavalamp },
+    { id: 'clock', name: 'Wall clock', note: 'On your own time · 25 cm', make: clock },
+    { id: 'noteA', name: 'Post-it on the monitor', note: 'Pink, stuck to the bezel', make: () => note(['judge', '12 sites', 'by FRI!'], '#ff9fc6', 80) },
+    { id: 'noteB', name: 'Post-it on the monitor', note: 'Yellow, stuck to the bezel', make: () => note(['BACKUP', 'the .fla!!'], '#fbe96a', 84) },
   ];
 }

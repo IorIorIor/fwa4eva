@@ -167,7 +167,7 @@ const room = (() => {
 
   // ── the things on the desk and the wall: room/props.js builds each at real size (the same code as its viewer), set here in
   // its place. Each is baked to one mesh per material (same look, far fewer draws); they reflect the room itself (env, below) ──
-  const propUpd = [], propMats = new Set();
+  const propUpd = [], propMats = new Set(), propLights = [];
   // everything that can be picked up and moved in the playground (Arrange), by name. Where things stand: the at(...) list and the
   // room's own build, then ROOM_POS (Laurens's arrangement, pasted from Arrange → Copy positions), then what's kept in this browser
   const ROOM_POS = {}, POS_KEY = 'fwa-room-pos-v1', picks = new Map();   // ROOM_POS: { name: [x, y, z, turn x, y, z] }
@@ -179,8 +179,9 @@ const room = (() => {
   [['monitor', mon], ['speakerL', spL], ['speakerR', spR], ['tower', tw], ['keyboard', kb], ['mouse', mouse], ['lamp', lamp], ['lampHead', shade]].forEach(([id, o]) => pickable(id, o));
   const bake = root => {
     root.updateWorldMatrix(true, true); const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), groups = new Map(), drop = [];
+    const live = o => { for (let p = o; p && p !== root; p = p.parent) if (p.userData.live) return true; return false };   // (what moves stays its own: wax, clock hands)
     root.traverse(o => {
-      if (!o.isMesh || Array.isArray(o.material) || o.children.length) return;
+      if (!o.isMesh || Array.isArray(o.material) || o.children.length || live(o)) return;
       const k = o.material.uuid + (o.castShadow ? 'c' : '') + (o.receiveShadow ? 'r' : ''); let g = groups.get(k); if (!g) groups.set(k, g = { m: o.material, cs: o.castShadow, rs: o.receiveShadow, geos: [] });
       const geo = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
       for (const a of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv'].includes(a)) geo.deleteAttribute(a);
@@ -200,7 +201,7 @@ const room = (() => {
     const load = src => new Promise(ok => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = src });
     const got = await Promise.race([Promise.all(Object.entries(ROOM_IMG).map(async ([k, s]) => [k, await load(s)])), new Promise(r => setTimeout(() => r([]), 5000))]);
     const mk = document.querySelector('#intro .mark path:last-of-type'), list = makeProps(THREE, { RoundedBoxGeometry, img: Object.fromEntries(got.filter(([, im]) => im)), logo: mk && mk.getAttribute('d'), col: lin });
-    const at = (id, ...a) => { const p = list.find(p => p.id === id); if (!p) return; try { const w = put(p.make(), ...a); pickable(id, w); w.traverse(o => { if (o.userData.update) propUpd.push(o.userData.update); if (o.material) [].concat(o.material).forEach(m => propMats.add(m)) }) } catch (e) { console.warn('room prop', id, e) } };
+    const at = (id, ...a) => { const p = list.find(p => p.id === id); if (!p) return; try { const w = put(p.make(), ...a); pickable(id, w); w.traverse(o => { if (o.userData.update) propUpd.push(o.userData.update); if (o.isLight) propLights.push(o); if (o.material) [].concat(o.material).forEach(m => propMats.add(m)) }) } catch (e) { console.warn('room prop', id, e) } };
     const top = D.h, frameY = 1.07;
     at('motd', -.6, frameY, .0125);   // the two certificates, either side of the monitor
     at('sotd', .62, frameY, .0125);
@@ -209,11 +210,17 @@ const room = (() => {
     at('webdesign', -.6, top, .5, .1, flat); at('kesey', -.585, top + .048, .5, -.16, flat);   // the books, one on the other
     at('flash', -.75, top, .095, .3);   // Flash 5, stood at the back
     at('mustang', -.385, top, .62, .5);
-    at('nokia', -.09, top, .615, -.35);
+    at('nokia', .0, top, .62, -.35);
     at('postit', .13, top, .62, .25);
     at('mug', .465, top, .54, .5);
     at('modem', .66, top + .44, .32);   // on the tower
     at('webcam', -.03 + BW / 2 - .045, top + .07 + BH, .33 + .14 + BD / 2, 0, null, 0, true);   // clipped over the monitor's top right corner
+    { const fz = .33 + .14 + BD / 2 + .0004, ix = (SW + .026) / 2; at('noteA', -.03 - ix - .036, top + .07 + .3, fz, 0, null, .07, true); at('noteB', -.03 + ix + .04, top + .07 + .19, fz, 0, null, -.09, true) }   // two Post-its on the bezel, hanging off its edges
+    at('clock', -.03, 1.35, .02);   // over the monitor, on your own time
+    at('lavalamp', .47, top, .2);   // glowing at the back, by the tower
+    at('pencup', -.48, top, .19);
+    at('cdrs', -.17, top, .6, .3);
+    at('gameboy', .27, top, .6, .25);
   })();
 
   // ── light ──
@@ -291,6 +298,7 @@ const room = (() => {
     scrLight.intensity = 3 * scr * (1 + U2.scrOn.value * 2); U2.glow.value = scr * 3; U2.scrBr.value = RL('roomScreenBright', 1.4);
     C.flick.value = RL('crtFlicker', .25); C.roll.value = RL('crtRoll', .3); C.idle.value = RL('crtIdle', .3);
     hemi.intensity = .9 * RL('roomFill', 1);
+    { const lv = RL('roomLava', 1); for (const l of propLights) l.intensity = (l.userData.base ?? 1) * lv }
     { const e = RL('roomPropsEnv', 1); if (e !== st.pe) { st.pe = e; for (const m of propMats) { if (m.userData.ei0 == null) m.userData.ei0 = m.envMapIntensity ?? 1; m.envMapIntensity = m.userData.ei0 * e } } }
     wall.color.copy(lin('#33465f')).multiplyScalar(RL('roomWall', 1)); const wk = RL('roomWood', 1); wood.color.setScalar(wk); woodV.color.copy(lin('#c8c8c8')).multiplyScalar(wk); woodDark.color.copy(lin('#8a8a8a')).multiplyScalar(wk);
     U2.exp.value = RL('roomExposure', 1.3) * st.fade; U2.bloomK.value = RL('roomBloom', .35); U2.vig.value = RL('roomVignette', .55) * (1 - U2.k.value); U2.grain.value = RL('roomGrain', .035);
