@@ -33,7 +33,7 @@ const room = (() => {
   const woodSide = woodTex.clone(); woodSide.needsUpdate = true; woodSide.rotation = Math.PI / 2; woodSide.center.set(.5, .5);
   const noiseTex = (n, lo, hi, rep) => cvTex(n, n, (g, w, h) => { const im = g.createImageData(w, h), d = im.data; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = lo + (hi - lo) * (rnd() * .6 + .4 * (Math.sin(x * .07 + Math.sin(y * .05) * 2) * .5 + .5)), i = (y * w + x) * 4; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255 } g.putImageData(im, 0, 0) }, false, rep);
   const plaster = noiseTex(256, 120, 255, [6, 3]);
-  const wood = new THREE.MeshPhysicalNodeMaterial({ color: lin('#ffffff'), map: woodTex, roughness: .42, clearcoat: .55, clearcoatRoughness: .3 });
+  const wood = new THREE.MeshPhysicalNodeMaterial({ color: lin('#ffffff'), map: woodTex, roughness: .5, clearcoat: .35, clearcoatRoughness: .45 });
   const woodV = new THREE.MeshPhysicalNodeMaterial({ color: lin('#c8c8c8'), map: woodSide, roughness: .5, clearcoat: .35, clearcoatRoughness: .4 });
   const woodDark = new THREE.MeshPhysicalNodeMaterial({ color: lin('#8a8a8a'), map: woodSide, roughness: .55, clearcoat: .25, clearcoatRoughness: .45 });
   const wall = new THREE.MeshStandardNodeMaterial({ color: lin('#33465f'), roughness: .95, bumpMap: plaster, bumpScale: .6 });
@@ -74,7 +74,7 @@ const room = (() => {
   const SW = .355, SH = .266, GA = SW / SH, glassZ = .14 + BD / 2 + .002;
   add(rbox(SW + .026, SH + .028, .01, .006), std('#a99f8a', .6), 0, by + .012, glassZ - .006, mon);
   const gRT = new THREE.RenderTarget(4, 3, { depthBuffer: false, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }); const gT = texture(gRT.texture), FLIP = renderer.backend.isWebGPUBackend === true;   // (WebGPU keeps a render target top row first: read it the other way up)
-  const U2 = { exp: uniform(0), bloomK: uniform(.35), vig: uniform(.55), grain: uniform(.035), time: uniform(0), res: uniform(new THREE.Vector2(1, 1)), scrOn: uniform(0), scrBr: uniform(1), glow: uniform(.35), k: uniform(0), band: uniform(new THREE.Vector4(0, 0, 1, 1)) };
+  const U2 = { exp: uniform(0), bloomK: uniform(.35), vig: uniform(.55), grain: uniform(.035), time: uniform(0), res: uniform(new THREE.Vector2(1, 1)), scrOn: uniform(0), scrBr: uniform(1), glow: uniform(.35), k: uniform(0), G0: uniform(new V3(1, 0, 0)), G1: uniform(new V3(0, 1, 0)), G2: uniform(new V3(0, 0, 1)), ao: uniform(.8) };
   // the monitor from afar: a faint rolling bar and flicker (gone as you reach the glass); the CRT proper is laid over the whole
   // screen as the glass fills it (crtFx below), so nothing in the move itself changes
   const C = { flick: uniform(.25), roll: uniform(.3), idle: uniform(.3) };
@@ -89,6 +89,7 @@ const room = (() => {
     const lit = pic.add(glow).mul(U2.scrOn).add(rollAt(g.y, idle).mul(U2.scrOn)).mul(flickAt(idle));
     return lit.add(vec3(.012, .02, .026).mul(U2.glow)).mul(mix(vig, 1, U2.k));
   })();
+  glassMat.outputNode = vec4(tslOutput.rgb, 0);   // (it marks itself in the picture's alpha: where it shows, nothing in front of it, the galaxy goes straight through)
   const glass = add(new THREE.PlaneGeometry(SW, SH), glassMat, 0, by + .012, glassZ, mon); glass.castShadow = false;
   for (let k = 0; k < 5; k++) add(rbox(.022, .008, .006, .002), beigeD, -.07 + k * .03, .07 + .028, .14 + BD / 2 + .002, mon);   // the adjust buttons
   add(new THREE.CylinderGeometry(.009, .009, .006, 24).rotateX(Math.PI / 2), beigeD, .16, .07 + .028, .14 + BD / 2 + .003, mon);   // power
@@ -170,10 +171,10 @@ const room = (() => {
   const propUpd = [], propMats = new Set(), propLights = [];
   // everything that can be picked up and moved in the playground (Arrange), by name. Where things stand: the at(...) list and the
   // room's own build, then ROOM_POS (Laurens's arrangement, pasted from Arrange → Copy positions), then what's kept in this browser
-  const ROOM_POS = {}, POS_KEY = 'fwa-room-pos-v1', picks = new Map();   // ROOM_POS: { name: [x, y, z, turn x, y, z] }
-  const posOf = o => [o.position.x, o.position.y, o.position.z, o.rotation.x, o.rotation.y, o.rotation.z].map(v => +v.toFixed(4));
+  const ROOM_POS = {"speakerL":[-0.34,0.74,0.38,0,0.1174,0],"speakerR":[0.33,0.74,0.38,0,-0.0702,0],"tower":[0.66,0.74,0.3,0.0002,-0.0637,-0.0007],"keyboard":[-0.1059,0.015,-0.0115,0.045,0,0],"mouse":[0.2651,0.012,-0.02,0,0,0],"lamp":[-0.6243,0.74,0.24,0,0,0],"lampHead":[0.13,0.52,0.03,0.2286,0.0268,0.5278],"motd":[-0.5588,1.07,0.0125,0,0,0],"sotd":[0.5779,0.9971,0.0125,0,0,0],"postcard":[-0.0378,1.2927,0.027,0,0,-0.12],"medal":[-0.517,0.9772,0.004,0,0,0],"webdesign":[-0.6256,0.74,0.5,0,0.1,0],"kesey":[-0.6182,0.788,0.5,0,-0.16,0],"mustang":[-0.3553,0.74,0.5919,0,0.5,0],"nokia":[-0.2083,0.74,0.62,0,-0.35,0],"mug":[0.3723,0.74,0.5522,0,-1.3121,0],"modem":[0.66,1.18,0.32,0,-0.0613,0],"webcam":[0.1005,1.215,0.505,0,0.0875,0],"noteB":[0.1769,1,0.5084,0,0,-0.09],"clock":[0.1461,1.317,0.02,0,0,0],"cdrs":[0.1596,0.74,0.5182,0,0.3,0],"gameboy":[0.4651,0.74,0.5372,0,0.25,0]}, POS_KEY = 'fwa-room-pos-v1', picks = new Map();   // ROOM_POS: { name: [x, y, z, turn x, y, z, (scale x, y, z)] }
+  const posOf = o => [o.position.x, o.position.y, o.position.z, o.rotation.x, o.rotation.y, o.rotation.z, o.scale.x, o.scale.y, o.scale.z].map(v => +v.toFixed(4));
   const pickable = (id, o) => { picks.set(id, o); o.userData.pickId = id; o.userData.home = posOf(o) };
-  const setPos = (o, v) => { o.position.set(v[0], v[1], v[2]); o.rotation.set(v[3], v[4], v[5]) };
+  const setPos = (o, v) => { o.position.set(v[0], v[1], v[2]); o.rotation.set(v[3], v[4], v[5]); if (v.length >= 9) o.scale.set(v[6], v[7], v[8]) };
   const moved = () => Object.fromEntries([...picks].map(([id, o]) => [id, posOf(o)]).filter(([id, v]) => v.some((x, i) => Math.abs(x - picks.get(id).userData.home[i]) > 1e-4)));
   function applyPos() { let kept = {}; try { kept = JSON.parse(localStorage.getItem(POS_KEY) || '{}') || {} } catch (e) { } for (const src of [ROOM_POS, kept]) for (const [id, v] of Object.entries(src)) { const o = picks.get(id); if (o && Array.isArray(v) && v.length >= 6) setPos(o, v) } }
   [['monitor', mon], ['speakerL', spL], ['speakerR', spR], ['tower', tw], ['keyboard', kb], ['mouse', mouse], ['lamp', lamp], ['lampHead', shade]].forEach(([id, o]) => pickable(id, o));
@@ -201,7 +202,7 @@ const room = (() => {
     const load = src => new Promise(ok => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = src });
     const got = await Promise.race([Promise.all(Object.entries(ROOM_IMG).map(async ([k, s]) => [k, await load(s)])), new Promise(r => setTimeout(() => r([]), 5000))]);
     const mk = document.querySelector('#intro .mark path:last-of-type'), list = makeProps(THREE, { RoundedBoxGeometry, img: Object.fromEntries(got.filter(([, im]) => im)), logo: mk && mk.getAttribute('d'), col: lin });
-    const at = (id, ...a) => { const p = list.find(p => p.id === id); if (!p) return; try { const w = put(p.make(), ...a); pickable(id, w); w.traverse(o => { if (o.userData.update) propUpd.push(o.userData.update); if (o.isLight) propLights.push(o); if (o.material) [].concat(o.material).forEach(m => propMats.add(m)) }) } catch (e) { console.warn('room prop', id, e) } };
+    const at = (id, ...a) => { const p = list.find(p => p.id === id); if (!p) return; try { const w = put(p.make(), ...a); pickable(id, w); w.traverse(o => { if (o.userData.update) propUpd.push(o.userData.update); if (o.isLight) { propLights.push(o); if (AO) { o.castShadow = true; o.shadow.mapSize.set(512, 512); o.shadow.bias = -.002; o.shadow.radius = 6; o.shadow.camera.near = .02 } } if (o.material) [].concat(o.material).forEach(m => propMats.add(m)) }) } catch (e) { console.warn('room prop', id, e) } };
     const top = D.h, frameY = 1.07;
     at('motd', -.6, frameY, .0125);   // the two certificates, either side of the monitor
     at('sotd', .62, frameY, .0125);
@@ -234,13 +235,21 @@ const room = (() => {
 
   // ── the picture: tone mapped, bloom, vignette, grain. At the end of the dive it hands over to the galaxy's own picture (k) ──
   const pipe = new THREE.RenderPipeline(renderer); pipe.outputColorTransform = false;
-  const rp = pass(sc, cam, { samples: 4 }), col = rp.getTextureNode('output'), bl = bloom(col, .35, .5, .85);
+  // ambient occlusion (GTAO, from the depth and normals): the soft contact shadows that sit things on the desk and in the room's
+  // corners, so it all reads as one place (not on a phone: too heavy there)
+  const AO = !matchMedia('(pointer: coarse)').matches;
+  const rp = pass(sc, cam, { samples: 4 }); if (AO) rp.setMRT(tslMrt({ output: tslOutput, normal: normalView }));
+  const col = rp.getTextureNode('output'), bl = bloom(col, .35, .5, .85);
+  const aoN = AO ? gtao(rp.getTextureNode('depth'), rp.getTextureNode('normal'), cam) : null; if (aoN) aoN.resolutionScale = .5;
+  const aoT = aoN ? denoise(aoN.getTextureNode(), rp.getTextureNode('depth'), rp.getTextureNode('normal'), cam) : null;   // (smoothed: raw it's a dotted pattern)
   pipe.outputNode = Fn(() => {
-    const q = screenUV.sub(.5), v = float(1).sub(dot(q, q).mul(U2.vig.mul(1.6))).clamp(0, 1);
-    const c = acesFilmicToneMapping(col.rgb.add(bl.rgb.mul(U2.bloomK.div(.35))), U2.exp).mul(v).toVar();
+    const q = screenUV.sub(.5), v = float(1).sub(dot(q, q).mul(U2.vig.mul(1.6))).clamp(0, 1), occ = aoT ? mix(float(1), aoT.r, U2.ao) : float(1);
+    const c = acesFilmicToneMapping(col.rgb.mul(occ).add(bl.rgb.mul(U2.bloomK.div(.35))), U2.exp).mul(v).toVar();
     const n = fract(sin(dot(screenUV.mul(U2.res).add(fract(U2.time.mul(7.13)).mul(91.7)), vec2(12.9898, 78.233))).mul(43758.5453)).sub(.5);
-    const B = U2.band, direct = gT.sample(texUV(vec2(mix(B.x, B.z, screenUV.x), mix(B.y, B.w, screenUV.y)))).rgb;   // the window's part of the glass, full screen: the galaxy exactly as it'll be drawn next
-    return vec4(mix(sRGBTransferOETF(c).add(n.mul(U2.grain)), direct, U2.k), 1);
+    // the glass, wherever it shows: the galaxy's own picture, untouched, the very one the window gets once you're through (so it's one
+    // galaxy all the way in, nothing fading from one to the other)
+    const sp = vec3(screenUV, 1), gu = vec2(dot(U2.G0, sp), dot(U2.G1, sp)).div(dot(U2.G2, sp)), direct = gT.sample(texUV(gu)).rgb, onGlass = col.a.oneMinus().clamp(0, 1).mul(U2.scrOn);
+    return vec4(mix(sRGBTransferOETF(c).add(n.mul(U2.grain)), direct, onGlass), 1);
   })();
 
   // ── the opening's page and the pointer's layer, laid onto the glass ──
@@ -259,7 +268,9 @@ const room = (() => {
   const MOB = matchMedia('(pointer: coarse)').matches, SHEET = matchMedia('(max-width: 760px), (pointer: coarse)');   // a phone or tablet: no pointer of your own, so the 3D one sits on the glass from the start and goes where you tap
   const layers = () => [$('portalLoad'), MOB ? $('shipLayer') : null].filter(Boolean);   // (with a mouse the 3D pointer only takes over once you're through the glass: until then it's your own)
   function place() {
-    const b = bandOf(); st.band = b; U2.band.value.set(b[0], b[1], b[2], b[3]);
+    const b = bandOf(); st.band = b;
+    { const G = [toScreen(0, 0), toScreen(1, 0), toScreen(1, 1), toScreen(0, 1)], W = innerWidth, Hh = innerHeight, gm = homography(1, 1, G.map(([x, y]) => [x / W, y / Hh])).mi;   // the screen → a point on the glass, for the picture
+      U2.G0.value.set(gm[0], gm[1], gm[2]); U2.G1.value.set(gm[3], gm[4], gm[5]); U2.G2.value.set(gm[6], gm[7], gm[8]); crtFx.lay(homography(W, Hh, G).css, Math.hypot(G[1][0] - G[0][0], G[1][1] - G[0][1]), Math.hypot(G[3][0] - G[0][0], G[3][1] - G[0][1])) }   // and the CRT, on the whole glass
     const P = [toScreen(b[0], b[1]), toScreen(b[2], b[1]), toScreen(b[2], b[3]), toScreen(b[0], b[3])], hm = homography(innerWidth, innerHeight, P); st.Mi = hm.mi;
     for (const el of layers()) { el.style.transformOrigin = '0 0'; el.style.transform = hm.css }
     const pl = $('portalLoad'); if (pl) pl.style.opacity = (st.lab && st.lab.p > 1 ? 0 : st.fade).toFixed(3);
@@ -267,24 +278,27 @@ const room = (() => {
   const toWindow = (x, y) => { const m = st.Mi; if (!m) return [x, y]; const w = m[6] * x + m[7] * y + m[8]; return [(m[0] * x + m[1] * y + m[2]) / w, (m[3] * x + m[4] * y + m[5]) / w] };   // a point on screen → where it falls on the opening's page
   const unplace = () => { for (const el of layers()) { el.style.transform = ''; el.style.transformOrigin = '' } const pl = $('portalLoad'); if (pl) pl.style.opacity = '' };
 
-  // ── the CRT over the whole screen: plain layers over every pixel (scan lines, phosphor stripes, dark corners, a rolling bar,
-  // static, flicker, a phosphor punch), so the picture underneath is never touched. a: how much of it (0 = gone) ──
+  // ── the CRT: plain layers (scan lines, phosphor stripes, dark corners, a rolling bar, static, flicker, a phosphor punch) laid onto
+  // the monitor's glass by the same kind of perspective transform, so it's only ever on the monitor, growing with it to fill the
+  // screen as you go in; the picture underneath is never touched. a: how much of it (0 = gone; at rest crtIdle) ──
   const crtFx = (() => {
     const el = document.createElement('div'); el.id = 'crtFx'; el.setAttribute('aria-hidden', 'true'); el.innerHTML = '<i class="cg"></i><i class="cs"></i><i class="cm"></i><i class="cv"></i><i class="cr"></i><i class="cn"></i><i class="cf"></i>'; document.body.appendChild(el);
     const [cg, cs, cm, cv, cr, cn, cf] = el.children;
     { const c = document.createElement('canvas'); c.width = c.height = 160; const g = c.getContext('2d'), im = g.createImageData(160, 160); for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255 } g.putImageData(im, 0, 0); cn.style.backgroundImage = `url(${c.toDataURL()})` }
-    let a = 0, dec = null;
+    let a = 0, dec = null, gw = innerWidth, gh = innerHeight;   // gw, gh: the glass's size on screen
     function draw(now) {
       if (a <= .002) { el.style.display = 'none'; return } el.style.display = 'block';
       el.style.setProperty('--sp', Math.max(2, innerHeight / Math.max(40, RL('crtLines', 260))).toFixed(2) + 'px'); el.style.setProperty('--tp', Math.max(1.5, innerWidth / Math.max(40, RL('crtTriads', 340))).toFixed(2) + 'px');
-      cs.style.opacity = (RL('crtScan', .35) * a).toFixed(3); cm.style.opacity = (RL('crtMask', .35) * a * .55).toFixed(3); cv.style.opacity = Math.min(1, RL('crtVig', .6) * a).toFixed(3);
+      const fineS = sstep(gh / Math.max(40, RL('crtLines', 260)), 2.2, 4), fineM = sstep(gw / Math.max(40, RL('crtTriads', 340)), 2.5, 5);   // (lines finer than ~3 pixels on screen would only shimmer: they come in as the glass grows)
+      cs.style.opacity = (RL('crtScan', .35) * a * fineS).toFixed(3); cm.style.opacity = (RL('crtMask', .35) * a * .55 * fineM).toFixed(3); cv.style.opacity = Math.min(1, RL('crtVig', .6) * a).toFixed(3);
       cn.style.opacity = (RL('crtNoise', .25) * a * .4).toFixed(3); cn.style.backgroundPosition = `${(Math.random() * 160) | 0}px ${(Math.random() * 160) | 0}px`;
       cf.style.opacity = (RL('crtFlicker', .25) * a * Math.random() * .22).toFixed(3);
       cr.style.opacity = Math.min(1, RL('crtRoll', .3) * a * 1.6).toFixed(3); cr.style.transform = `translateY(${(((now * .00022) % 1.3) - .2) * innerHeight}px)`;
       const gl = RL('crtGlow', .5) * a, f = gl > .01 ? `brightness(${(1 + .3 * gl).toFixed(3)}) saturate(${(1 + .45 * gl).toFixed(3)}) contrast(${(1 + .1 * gl).toFixed(3)})` : 'none'; if (cg.dataset.f !== f) { cg.dataset.f = f; cg.style.backdropFilter = cg.style.webkitBackdropFilter = f }
     }
-    const step = now => { if (!dec) return; const x = Math.min(1, (now - dec.t0) / 1000 / dec.out); a = dec.from * (1 - x) * (1 - x); draw(now); if (x < 1) requestAnimationFrame(step); else dec = null };
-    return { set(v) { a = v; dec = null; draw(performance.now()) }, decay(out, from) { dec = { t0: performance.now(), out, from }; requestAnimationFrame(step) } };
+    const step = now => { if (!dec) return; const x = Math.min(1, (now - dec.t0) / 1000 / dec.out); a = dec.from * (1 - x) * (1 - x); draw(now); if (x < 1) requestAnimationFrame(step); else { dec = null; el.style.transform = '' } };
+    el.style.transformOrigin = '0 0';
+    return { set(v) { a = v; dec = null; draw(performance.now()) }, decay(out, from) { dec = { t0: performance.now(), out, from }; requestAnimationFrame(step) }, lay(css, w, h) { el.style.transform = css; gw = w; gh = h } };
   })();
 
   // ── each frame ──
@@ -301,7 +315,7 @@ const room = (() => {
     { const lv = RL('roomLava', 1); for (const l of propLights) l.intensity = (l.userData.base ?? 1) * lv }
     { const e = RL('roomPropsEnv', 1); if (e !== st.pe) { st.pe = e; for (const m of propMats) { if (m.userData.ei0 == null) m.userData.ei0 = m.envMapIntensity ?? 1; m.envMapIntensity = m.userData.ei0 * e } } }
     wall.color.copy(lin('#33465f')).multiplyScalar(RL('roomWall', 1)); const wk = RL('roomWood', 1); wood.color.setScalar(wk); woodV.color.copy(lin('#c8c8c8')).multiplyScalar(wk); woodDark.color.copy(lin('#8a8a8a')).multiplyScalar(wk);
-    U2.exp.value = RL('roomExposure', 1.3) * st.fade; U2.bloomK.value = RL('roomBloom', .35); U2.vig.value = RL('roomVignette', .55) * (1 - U2.k.value); U2.grain.value = RL('roomGrain', .035);
+    U2.exp.value = RL('roomExposure', 1.3) * st.fade; U2.bloomK.value = RL('roomBloom', .35); U2.vig.value = RL('roomVignette', .55); U2.ao.value = RL('roomAO', .8); if (aoN) aoN.radius.value = RL('roomAORadius', .2); sc.environmentIntensity = RL('roomBounce', .35); U2.grain.value = RL('roomGrain', .035);
   }
   function frame(now) {
     const dt = Math.min(.05, Math.max(0, (now - (st.t || now)) / 1000)); st.t = now; U2.time.value = now / 1000;
@@ -315,10 +329,11 @@ const room = (() => {
     const cx = RL('roomCamX', 0);
     cam.fov = RL('roomFov', 36); cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     cam.position.set(cx + st.sway.x * sw * 2, RL('roomCamH', 1.2) - st.sway.y * sw, RL('roomCamZ', 2.45)); st.aim.set(cx * .6, RL('roomAimY', .9), .25); cam.up.set(0, 1, 0); cam.lookAt(st.aim);
-    const peak = RL('crtPeak', 1), cin = Math.min(.99, RL('crtIn', .9)), out = Math.max(.05, RL('crtOut', .7));
+    const peak = RL('crtPeak', 1), cin = Math.min(.99, RL('crtIn', .9)), out = Math.max(.05, RL('crtOut', .7)), rest = RL('crtIdle', .45);
+    if (st.phase !== 'dive' && !st.lab) crtFx.set(rest);   // (the monitor at rest)
     if (st.lab) { labStep(dt); const fade = 1 - sstep(Math.max(0, st.lab.p), .6, 1), sh = SHEET.matches ? innerHeight * .2 * fade : 0, sx = !SHEET.matches && labEl ? (labEl.offsetWidth + 14) / 2 * fade : 0; if (sh > .5 || sx > .5) cam.setViewOffset(innerWidth, innerHeight, sx, sh, innerWidth, innerHeight); else cam.clearViewOffset() }   /* (the playground covers part of the window: on a phone a sheet over the bottom, else a column on the right; the room moves into what's left) */ else if (cam.view && cam.view.enabled) cam.clearViewOffset();   // the CRT playground: the move held wherever you scrub it
     else if (st.phase === 'dive') {   // into the glass, the first part of the one move (see mkRun); the CRT comes over the screen as the glass fills it
-      const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr); posed(s / R.Dr); crtFx.set(peak * sstep(s / R.Dr, cin, 1));
+      const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr); posed(s / R.Dr); crtFx.set(rest + (peak - rest) * sstep(s / R.Dr, cin, 1));
       if (R.s(R.t) >= R.Dr) { finish(); crtFx.decay(out, peak); return }   // the glass fills the window: the galaxy carries on with the same run, the CRT fades off it
     }
     cam.updateMatrixWorld(); aimLamp();
@@ -339,7 +354,7 @@ const room = (() => {
   }
   function posed(p) {
     const w = sstep(p, 0, 1), Dr = st.run.Dr; glassPose(); _p1.copy(_t).addScaledVector(_n, st.d0 * Math.exp(-Dr)); _m4.lookAt(_p1, _t, _u); _q1.setFromRotationMatrix(_m4);
-    _p0.copy(st.dir0).lerp(_n, w).normalize(); cam.position.copy(_t).addScaledVector(_p0, st.d0 * Math.exp(-Dr * p)); cam.quaternion.slerpQuaternions(st.q0, _q1, w); U2.k.value = sstep(p, .8, 1);
+    _p0.copy(st.dir0).lerp(_n, w).normalize(); cam.position.copy(_t).addScaledVector(_p0, st.d0 * Math.exp(-Dr * p)); cam.quaternion.slerpQuaternions(st.q0, _q1, w);
   }
   function finish() {
     st.on = false; st.phase = 'done'; unplace(); if (st.lab) lab(false);
@@ -352,7 +367,7 @@ const room = (() => {
   const _s = new THREE.Vector2();
   function galaxy(fn) {
     if (!st.on) return fn();
-    renderer.getDrawingBufferSize(_s); const w = Math.max(64, Math.min(st.phase === 'post' ? 2560 : 1600, Math.round(_s.x))), h = Math.round(w / GA); if (gRT.width !== w || gRT.height !== h) gRT.setSize(w, h);
+    renderer.getDrawingBufferSize(_s); const big = st.phase === 'ready' || st.phase === 'dive', bw = st.band ? Math.max(.3, st.band[2] - st.band[0]) : 1, w = Math.max(64, Math.min(big ? 3072 : 1600, Math.round(_s.x / (big ? bw : 1)))), h = Math.round(w / GA);   // (ready and in the move: the window's part of the glass at the window's own resolution) if (gRT.width !== w || gRT.height !== h) gRT.setSize(w, h);
     const c = camera;
     const fov = c.fov, asp = c.aspect, A = innerWidth / Math.max(1, innerHeight), t = Math.tan(fov * Math.PI / 360), tR = A >= GA ? t * A / GA : t;
     c.fov = 2 * Math.atan(tR) * 180 / Math.PI; c.aspect = GA; c.updateProjectionMatrix();
@@ -398,7 +413,7 @@ const room = (() => {
   function buildLab() {
     if (labEl) return; const rows = []; LOOK_DEF.forEach(([, rs]) => rs.forEach(r => { if (LAB_KEYS.includes(r[0])) rows.push(r) })); rows.sort((a, b) => LAB_KEYS.indexOf(a[0]) - LAB_KEYS.indexOf(b[0]));
     labEl = document.createElement('div'); labEl.id = 'crtLab';
-    labEl.innerHTML = `<header><b>Room playground</b><button type="button" class="x" aria-label="Close">✕</button></header><div class="cl-arr"><span>Arrange: click anything in the room to move it (the lamp's head turns)</span><div class="cl-btns"><button type="button" class="btn arr">Arrange</button><button type="button" class="btn mv on">Move</button><button type="button" class="btn rt">Turn</button><button type="button" class="btn cpos">Copy positions</button><button type="button" class="btn rst">Reset</button></div><p class="cl-sel"></p></div><div class="cl-scrub"><span>The CRT</span><span>The move: room · glass · through</span><input type="range" min="0" max="1.4" step=".001" value="0"><div class="cl-btns"><button type="button" class="btn play">▶ Play</button><button type="button" class="btn loop">Loop</button><button type="button" class="btn copy">Copy settings</button></div></div><div class="cl-rows"></div><p class="cl-msg"></p>`;
+    labEl.innerHTML = `<header><b>Room playground</b><button type="button" class="x" aria-label="Close">✕</button></header><div class="cl-arr"><span>Arrange: click anything in the room to move, turn or scale it (the lamp's head turns)</span><div class="cl-btns"><button type="button" class="btn arr">Arrange</button><button type="button" class="btn mv on">Move</button><button type="button" class="btn rt">Turn</button><button type="button" class="btn sc">Scale</button><button type="button" class="btn cpos">Copy positions</button><button type="button" class="btn rst">Reset</button></div><p class="cl-sel"></p></div><div class="cl-scrub"><span>The CRT</span><span>The move: room · glass · through</span><input type="range" min="0" max="1.4" step=".001" value="0"><div class="cl-btns"><button type="button" class="btn play">▶ Play</button><button type="button" class="btn loop">Loop</button><button type="button" class="btn copy">Copy settings</button></div></div><div class="cl-rows"></div><p class="cl-msg"></p>`;
     const box = labEl.querySelector('.cl-rows'), scrub = labEl.querySelector('.cl-scrub input'), msg = labEl.querySelector('.cl-msg');
     for (const [k, label, , def, mn, mx, stp] of rows) {
       const w = document.createElement('label'); w.className = 'cl-row'; const dec = stp < .01 ? 3 : stp < 1 ? 2 : 0, v = LOOK[k] ?? def;
@@ -412,15 +427,15 @@ const room = (() => {
     labEl.querySelector('.copy').onclick = async () => { const o = {}; LAB_KEYS.forEach(k => { if (LOOK[k] != null) o[k] = LOOK[k] }); const t = 'FWA FOREVER look settings: ' + JSON.stringify(o); try { await navigator.clipboard.writeText(t); msg.textContent = 'Copied: paste it in the chat' } catch (e) { msg.textContent = t } };
     labEl.querySelector('.x').onclick = () => lab(false);
     labEl.querySelector('.arr').onclick = () => arrange(!(arr && arr.on));
-    const mode = m => { if (!arr || !arr.on) arrange(true); arr.mode = m; labEl.querySelector('.mv').classList.toggle('on', m === 'translate'); labEl.querySelector('.rt').classList.toggle('on', m === 'rotate'); arr.tc.setMode(m) };
-    labEl.querySelector('.mv').onclick = () => mode('translate'); labEl.querySelector('.rt').onclick = () => mode('rotate');
+    const mode = m => { if (!arr || !arr.on) arrange(true); arr.mode = m; labEl.querySelector('.mv').classList.toggle('on', m === 'translate'); labEl.querySelector('.rt').classList.toggle('on', m === 'rotate'); labEl.querySelector('.sc').classList.toggle('on', m === 'scale'); arr.tc.setMode(m) };
+    labEl.querySelector('.mv').onclick = () => mode('translate'); labEl.querySelector('.rt').onclick = () => mode('rotate'); labEl.querySelector('.sc').onclick = () => mode('scale');
     labEl.querySelector('.cpos').onclick = async () => { const t = 'FWA FOREVER room positions: ' + JSON.stringify(moved()); try { await navigator.clipboard.writeText(t); msg.textContent = 'Copied: paste it in the chat' } catch (e) { msg.textContent = t } };
     labEl.querySelector('.rst').onclick = () => { try { localStorage.removeItem(POS_KEY) } catch (e) { } for (const o of picks.values()) setPos(o, o.userData.home); for (const [id, v] of Object.entries(ROOM_POS)) { const o = picks.get(id); if (o) setPos(o, v) } msg.textContent = 'Back to where they were' };
     labEl.scrub = scrub; document.body.appendChild(labEl);
   }
   function lab(on = true) {
     if (on && !st.lab && st.on && st.phase !== 'dive' && st.phase !== 'post') { buildLab(); st.lab = { p: 0, play: false, loop: false, t: 0, tArr: null, prep: false }; labEl.hidden = false; labEl.scrub.value = 0 }
-    else if (!on && st.lab) { st.lab = null; if (labEl) labEl.hidden = true; crtFx.set(0); U2.k.value = 0; arrange(false) }
+    else if (!on && st.lab) { st.lab = null; if (labEl) labEl.hidden = true; crtFx.set(0); arrange(false) }
   }
   // Arrange: an overlay over the room takes the pointer; a click picks the thing under it and the classic gizmo moves it (arrows
   // for x, y, z) or turns it (rings); everything moved is kept in this browser and Copy positions hands it over
@@ -447,17 +462,17 @@ const room = (() => {
   }
   function pick(id) {
     if (!arr) return; const o = id ? picks.get(id) : null; arr.sel = o ? id : null;
-    if (o) { arr.tc.attach(o); const head = id === 'lampHead'; arr.tc.setMode(head ? 'rotate' : arr.mode); arr.tc.setSpace(head ? 'local' : 'world') } else arr.tc.detach();
+    if (o) { arr.tc.attach(o); const head = id === 'lampHead'; arr.tc.setMode(head ? 'rotate' : arr.mode); arr.tc.setSpace(head || arr.mode === 'scale' ? 'local' : 'world') } else arr.tc.detach();
     const p = labEl && labEl.querySelector('.cl-sel'); if (p) p.textContent = o ? 'Selected: ' + id : (arr.on ? 'Click something in the room' : '');
   }
   function labStep(dt) {
-    const L = st.lab, peak = RL('crtPeak', 1), cin = Math.min(.99, RL('crtIn', .9)), out = Math.max(.05, RL('crtOut', .7)); if (!L.prep) { prepRun(); L.prep = true }   // (from where the camera rests)
+    const L = st.lab, peak = RL('crtPeak', 1), cin = Math.min(.99, RL('crtIn', .9)), out = Math.max(.05, RL('crtOut', .7)), rest = RL('crtIdle', .45); if (!L.prep) { prepRun(); L.prep = true }   // (from where the camera rests)
     if (L.play) {   // the real timing: the run up to the glass, then the fade once through
       L.t += dt; const R = st.run, s = R.s(L.t); if (s >= R.Dr && L.tArr == null) L.tArr = L.t;
       L.p = L.tArr == null ? s / R.Dr : 1 + .4 * Math.min(1, (L.t - L.tArr) / out);
       if (L.p >= 1.4) { if (L.loop) { L.t = -.6; L.tArr = null } else L.play = false } labEl.scrub.value = Math.max(0, L.p);
     }
-    const p = Math.max(0, L.p); if (p <= 1) { posed(p); crtFx.set(peak * sstep(p, cin, 1)) } else { posed(1); const x = Math.min(1, (p - 1) / .4); crtFx.set(peak * (1 - x) * (1 - x)); U2.k.value = 1 }
+    const p = Math.max(0, L.p); if (p <= 1) { posed(p); crtFx.set(rest + (peak - rest) * sstep(p, cin, 1)) } else { posed(1); const x = Math.min(1, (p - 1) / .4); crtFx.set(peak * (1 - x) * (1 - x)) }
   }
 
   // build, compile, show: then the galaxy loads behind the glass
@@ -465,12 +480,12 @@ const room = (() => {
   // the FWA logo on the glass, flat on it, near the top: it comes at you with the glass and, once you're through, carries on
   // past you at the same pace (afterGlass, from the opening's move) and is gone
   const logo = (() => { const pl = $('portalLoad'), mk = document.querySelector('#intro .mark'); if (!pl || !mk) return null; const el = document.createElement('div'); el.id = 'rmLogo'; const sv = mk.cloneNode(true); sv.removeAttribute('class'); el.appendChild(sv); pl.appendChild(el); return el })();
-  const logoAt = (m = 1) => { if (!logo) return; const y = RL('roomLogoY', .2) * 100, w = RL('roomLogo', .46) * 100; logo.style.top = (50 + (y - 50) * m).toFixed(3) + '%'; logo.style.width = (w * m).toFixed(3) + '%'; logo.style.opacity = (1 - sstep(m, 1.5, 3)).toFixed(3); logo.style.display = m > 3.2 ? 'none' : '' };   // m: how much nearer than on the glass (scaled about the middle of the view)
+  const logoAt = (m = 1) => { if (!logo) return; const y = RL('roomLogoY', .2) * 100, w = RL('roomLogo', .46) * 100, top = 50 + (y - 50) * m, hPct = w * m * innerWidth / Math.max(1, innerHeight) * 149 / 509; logo.style.top = top.toFixed(3) + '%'; logo.style.width = (w * m).toFixed(3) + '%'; logo.style.opacity = '1'; logo.style.display = top + hPct / 2 < 0 || top - hPct / 2 > 100 || m > 60 ? 'none' : '' };   // m: how much nearer than on the glass (scaled about the middle of the view); it stays whole until it has gone past you, off the screen
   const startP = (async () => {
     cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     await propsP; applyPos();
     // what the props reflect: the room itself, lit, seen from just over the desk (so the gold and chrome have something to show)
-    if (propMats.size) try { apply(); aimLamp(); const env = new THREE.PMREMGenerator(renderer).fromScene(sc, .02, .02, 12, { size: 128, position: new V3(0, D.h + .22, .55) }).texture; for (const m of propMats) if ('envMap' in m) m.envMap = env } catch (e) { console.warn('room env', e) }
+    if (propMats.size) try { apply(); aimLamp(); const env = new THREE.PMREMGenerator(renderer).fromScene(sc, .02, .02, 12, { size: 128, position: new V3(0, D.h + .22, .55) }).texture; for (const m of propMats) if ('envMap' in m) m.envMap = env; sc.environment = env } catch (e) { console.warn('room env', e) }   // (and the room as a whole, a little: its light bouncing round it, roomBounce)
     try { await renderer.compileAsync(sc, cam) } catch (e) { }
     st.on = true; st.phase = 'loading'; document.body.classList.add('room'); if (MOB) document.body.classList.add('roommob'); H0.classList.add('roomlive'); requestAnimationFrame(loop);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // (two frames of it on screen before the heavy loading starts)

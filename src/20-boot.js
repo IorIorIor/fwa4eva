@@ -259,6 +259,9 @@ const intro = {
     this.sx = this.lnD0; this.sa = 0; this.saEnd = Math.acos(b.y); this.sxEnd = Math.log(INTRO_END.length());
     this.svx = Math.max(-6, vAbs != null ? -vAbs : -this.lam() * (this.lnPV - this.lnD0) * Math.max(qv, .02)); this.sva = 0; this.lit = false; this.hud = false;   // exactly the dive's pace as it arrived
     const gap = Math.max(1e-3, this.sx - this.sxEnd); this.sw = Math.max(1.1, Math.min(6, -this.svx / gap));   // its pace: the one at which that speed coasts to a stop right behind the ship (x = gap·e^(−wt): no push, only slowing)
+    { const w = this.sw * 2.2 / Math.max(.3, L.portalSettle ?? 2.2), h = 1 / 120, lg = Math.max(.2, L.portalLetGo ?? 1.4); let x = this.sx, v = this.svx, t = 0;   // how long it'll take to land (the same spring, run ahead), so the pointer can turn into the ship in just the last of it
+      for (; t < 30; t += h) { v += (w * w * (this.sxEnd - x) - 2 * w * v) * h; x += v * h; const u = Math.max(0, Math.min(1, (this.lnD0 - x) / Math.max(1e-6, this.lnD0 - this.sxEnd))); if (Math.pow(1 - u, lg) < .01 && Math.abs(x - this.sxEnd) < .02 && Math.abs(v) < .05) break }
+      this.sT = t }
   },
   settleStep(dt) {   // the camera keeps its heading; it closes in (a spring that only slows) on the point A, which slides over to wherever the ship is
     const L = LOOK, w = this.sw * 2.2 / Math.max(.3, L.portalSettle ?? 2.2), n = Math.max(1, Math.ceil(dt * 120));
@@ -271,7 +274,7 @@ const intro = {
     if (g > 1e-4) { const f = Math.min(1, dt * 14 || 1) * g; this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;
       const qi = _q.copy(camera.quaternion).invert(), dz = -_ia.copy(this.S).sub(camera.position).applyQuaternion(qi).z, ty = Math.tan(camera.fov * Math.PI / 360);
       if (dz > 1e-6) { const tgt = _ib.set(this.mxs * ty * camera.aspect * dz, this.mys * ty * dz, -dz).applyQuaternion(camera.quaternion).add(camera.position), al = 1 - Math.pow(1 - g, Math.max(dt, 0) * 60); this.S.lerp(tgt, al) } }
-    player.pos.copy(this.S); avatar.position.copy(this.S); avatar.quaternion.copy(this.Qf).slerp(player.quat, sstep(u, .05, .85)); flatPtr(1 - sstep(u, .05, .85));   // the pointer becomes the ship as it turns
+    const turn = sstep(this.st, this.sT - Math.max(.1, L.portalTurn ?? 1.5), this.sT); player.pos.copy(this.S); avatar.position.copy(this.S); avatar.quaternion.copy(this.Qf).slerp(player.quat, turn); flatPtr(1 - turn);   // the pointer becomes the ship as it turns, in the last portalTurn seconds before it lands
     emitGlow = quint(sstep(u, .55, .95));
     if (!this.lit && u > .8) { this.lit = true; if (!this.lab) { igniteK = 1; engineLook.burst = 1.5 } }   // ignition as it comes in behind
     if (u > .7) this.reflGo = true;   // the ship's reflections start fading in (over two seconds: about the rest of the move)
