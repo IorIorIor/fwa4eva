@@ -30,8 +30,10 @@ and gives quick visual feedback; keep replies short).
   drawing while the galaxy loads). The opening (`intro.startPortal`) runs on the CRT: the galaxy is rendered into the glass's render
   target (`room.galaxy(fn)` wraps every main render while `room.on`) and `#portalLoad` + `#shipLayer` are laid onto the glass with a CSS
   matrix3d. Start → `room.dive()`: one move (`mkRun`, log distance) into the glass; when the glass fills the window the room goes and
-  the opening takes the move on (`intro.rr`). The CRT is plain CSS layers over the whole screen (`crtFx`), on as the glass fills it and
-  fading off after. CRT: Look → Room: CRT and its playground (`room.lab()`, `#crt-lab`). On touch the 3D pointer sits on the glass and goes where you tap.
+  the opening takes the move on (`intro.rr`). The glass marks itself in the room pass's alpha and the output shows the galaxy's own
+  picture (gT) there untouched, so it's one galaxy all the way in (no crossfade). The CRT is plain CSS layers (`crtFx`) laid onto the
+  glass with the same kind of matrix3d (`crtFx.lay`), at rest `crtIdle`, up to `crtPeak` as the glass fills the window, fading off after.
+  The room has GTAO (not on phones), its own PMREM env as bounce light (`roomBounce`), and the lava lamp's light casts shadows. CRT: Look → Room: CRT and its playground (`room.lab()`, `#crt-lab`). On touch the 3D pointer sits on the glass and goes where you tap.
   Look → Room; `?noroom` (or roomOn 0) skips it.
   The props (books, certificates, postcard, medal, Mustang, Nokia, modem, webcam, Flash box, Post-its, mug, CD-Rs, pen cup, Game Boy,
   lava lamp, wall clock on local time) are `room/props.js`: plain three.js
