@@ -103,9 +103,9 @@ function refreshLabels() {
   labelEls.sort((a, b) => b.pri - a.pri);   // important names claim their space first
   requestAnimationFrame(() => labelEls.forEach(l => { const d = l.e.style.display; l.e.style.display = ''; l.w = l.e.offsetWidth + 6; l.h = l.e.offsetHeight + 4; l.e.style.display = d }));   // one layout read per refresh
 }
-let ringLab = 0; const _bhDir = new V3();
+let ringLab = 0, labT = 0; const _bhDir = new V3();
 function updateLabels() {
-  const W = innerWidth, H = innerHeight, map = S.mode === 'map', boxes = []; _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const now = performance.now(), dt = Math.min(.1, Math.max(0, (now - (labT || now)) / 1000)), W = innerWidth, H = innerHeight, map = S.mode === 'map', boxes = []; labT = now; _vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   const bhD = camera.position.distanceTo(GC), bhR = LOOK.bhLens ? RP * BH.rs : 0, bhA = bhD > bhR ? Math.asin(bhR / bhD) * .9 : 0; _bhDir.copy(GC).sub(camera.position).normalize();   // labels the hole would bend away are hidden
   for (const l of labelEls) {
     let fade = 1; const map = S.mode === 'map' || (l.ruler != null && mapK > .005);   // the ruler's dates fade out with it on the way back to flight
@@ -119,10 +119,13 @@ function updateLabels() {
       for (const b of boxes) if (Math.abs(b[0] - cx) < b[2] + hw && Math.abs(b[1] - cy) < b[3] + hh) { show = false; break }
       if (show) boxes.push([cx, cy, hw, hh]);
     }
-    if (show !== l.shown) { l.shown = show; l.e.style.display = show ? '' : 'none' }
-    if (!show) continue;
-    const op = Math.round((map ? fade * mapK : Math.max(.12, Math.min(1, l.f / camera.position.distanceTo(l.pos)))) * 50) / 50;
-    if (x !== l.x) { l.x = x; l.e.style.left = x + 'px' } if (y !== l.y) { l.y = y; l.e.style.top = y + 'px' } if (op !== l.op) { l.op = op; l.e.style.opacity = op }
+    // every label fades in when it comes and out when it goes (whatever the reason: the view, the clutter, the distance), where it last was
+    l.v = Math.max(0, Math.min(1, (l.v || 0) + (show ? 1 : -1) * dt / .35));
+    const on = l.v > .005; if (on !== l.shown) { l.shown = on; l.e.style.display = on ? '' : 'none' }
+    if (!on) continue;
+    if (show) l.base = map ? fade * mapK : Math.max(.12, Math.min(1, l.f / camera.position.distanceTo(l.pos))); else if (map && l.ruler != null) l.base = Math.min(l.base || 0, fade * mapK);
+    const op = Math.round((l.base || 0) * sstep(l.v, 0, 1) * 50) / 50;
+    if (show && x !== l.x) { l.x = x; l.e.style.left = x + 'px' } if (show && y !== l.y) { l.y = y; l.e.style.top = y + 'px' } if (op !== l.op) { l.op = op; l.e.style.opacity = op }
   }
 }
 

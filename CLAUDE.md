@@ -32,7 +32,8 @@ and gives quick visual feedback; keep replies short).
   matrix3d. Start → `room.dive()`: one move (`mkRun`, log distance) into the glass; when the glass fills the window the room goes and
   the opening takes the move on (`intro.rr`). The glass marks itself in the room pass's alpha and the output shows the galaxy's own
   picture (gT) there untouched, so it's one galaxy all the way in (no crossfade). The CRT is plain CSS layers (`crtFx`) laid onto the
-  glass with the same kind of matrix3d (`crtFx.lay`), at rest `crtIdle`, up to `crtPeak` as the glass fills the window, fading off after.
+  glass with the same kind of matrix3d (`crtFx.lay`), at rest `crtIdle`, up to `crtPeak` as the glass fills the window, fading off after
+  (all of it behind `crtOn`, off for now).
   The room has GTAO (not on phones), its own PMREM env as bounce light (`roomBounce`), and the lava lamp's light casts shadows. CRT: Look → Room: CRT and its playground (`room.lab()`, `#crt-lab`). On touch the 3D pointer sits on the glass and goes where you tap.
   Look → Room; `?noroom` (or roomOn 0) skips it.
   The props (books, certificates, postcard, medal, Mustang, Nokia, modem, webcam, Flash box, Post-its, mug, CD-Rs, pen cup, Game Boy,
