@@ -246,7 +246,7 @@ const intro = {
       const qa = .9, tt = Math.max(0, Math.min(1, (q - qa) / (1 - qa))), G = (1 - qa) * (.5 - tt * tt * tt + tt * tt * tt * tt / 2), ty = Math.tan(camera.fov * Math.PI / 360), dp = Math.exp(this.lnD0 + (this.rr ? 1 : lam) * (this.lnPV - this.lnD0) * G) * Math.tan(LOOK.fov * Math.PI / 360) / ty;   // (with the wide lens it sits nearer, so it stays exactly pointer-sized)
       avatar.position.set(this.mxs * ty * camera.aspect * dp, this.mys * ty * dp, -dp).applyQuaternion(camera.quaternion).add(camera.position); avatar.quaternion.copy(camera.quaternion).multiply(this.relQ); avatar.renderOrder = 5;
       flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab || !!this.rr || room.ptrOn; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on }   // the 3D pointer only from Start (or the first scroll), right where your mouse is
-    if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv, this.rr ? this.rr.vend : null); this.logoS = this.rr ? this.lnPV - this.lnD0 : null; this.rr = null; this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
+    if (crossed && !lab) { P.g.visible = false; this.portalOff && this.portalOff(); this.settleStart(this.qv, this.rr ? this.rr.vend : null); this.logoS = this.rr ? this.lnPV - this.lnD0 : null; this.logoV = this.rr ? this.rr.vend : 0; this.rr = null; this.settleStep(crossed) }   // (and that part of the frame is already the settle: no hitch)   // out the other side: the camera carries on, in to the ship
   },
   lam() { return Math.max(.02, Math.min(.9, LOOK.portalCarry ?? .45)) },
   // after the mark, one movement: the camera carries on closing in at the speed it came through with and settles (springs, no
@@ -267,7 +267,7 @@ const intro = {
     const L = LOOK, w = this.sw * 2.2 / Math.max(.3, L.portalSettle ?? 2.2), n = Math.max(1, Math.ceil(dt * 120));
     for (let i = 0; i < n; i++) { const s = dt / n; this.svx += (w * w * (this.sxEnd - this.sx) - 2 * w * this.svx) * s; this.sx += this.svx * s }
     this.st += dt; const u = Math.max(0, Math.min(1, (this.lnD0 - this.sx) / Math.max(1e-6, this.lnD0 - this.sxEnd)));   // how far in it has come
-    if (this.logoS != null) room.afterGlass(this.logoS + this.lnD0 - this.sx);   // the room's logo keeps coming past at the same pace
+    if (this.logoS != null) room.afterGlass(this.logoS + Math.max(this.lnD0 - this.sx, this.logoV * this.st));   // the room's logo keeps coming at you at the pace you came through with (however the camera slows), so it's past you well before the end
     this.A.copy(this.S).sub(this.C0).multiplyScalar(sstep(u, .05, 1)).add(this.C0);
     this.setFov(.6 + .4 * u); this.camAt(this.A, this.sx, camera.position); camera.quaternion.copy(rig.q); camera.updateMatrixWorld();
     // the ship: under your (smoothed) mouse, letting go of it gradually all the way in, only still once the camera has landed; and it turns from the flat pointer to show you its back
@@ -276,9 +276,9 @@ const intro = {
       const qi = _q.copy(camera.quaternion).invert(), dz = -_ia.copy(this.S).sub(camera.position).applyQuaternion(qi).z, ty = Math.tan(camera.fov * Math.PI / 360);
       if (dz > 1e-6) { const tgt = _ib.set(this.mxs * ty * camera.aspect * dz, this.mys * ty * dz, -dz).applyQuaternion(camera.quaternion).add(camera.position), al = 1 - Math.pow(1 - g, Math.max(dt, 0) * 60); this.S.lerp(tgt, al) } }
     const turn = sstep(this.st, this.sT - Math.max(.1, L.portalTurn ?? 1.5), this.sT); player.pos.copy(this.S); avatar.position.copy(this.S); avatar.quaternion.copy(this.Qf).slerp(player.quat, turn); flatPtr(1 - turn);   // the pointer becomes the ship as it turns, in the last portalTurn seconds before it lands
-    emitGlow = quint(sstep(u, .55, .95));
-    if (!this.lit && u > .8) { this.lit = true; if (!this.lab) { igniteK = 1; engineLook.burst = 1.5 } }   // ignition as it comes in behind
-    if (u > .7) this.reflGo = true;   // the ship's reflections start fading in (over two seconds: about the rest of the move)
+    emitGlow = quint(sstep(turn, .4, 1));
+    if (!this.lit && turn > .85) { this.lit = true; if (!this.lab) { igniteK = 1; engineLook.burst = 1.5 } }   // ignition as it comes in behind
+    if (turn > .5) this.reflGo = true;   // the ship's reflections start fading in (over two seconds: about the rest of the move)
     if (!this.hud && u > .7 && !this.lab) { this.hud = true; document.body.classList.remove('intro'); flickIn(1.2) }
     return g < .01 && Math.abs(this.sx - this.sxEnd) < .02 && Math.abs(this.svx) < .05;   // close enough: the flying camera takes over from exactly here
   },

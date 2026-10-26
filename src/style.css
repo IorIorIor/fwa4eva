@@ -949,7 +949,7 @@ html.roomboot #portalLoad{will-change:transform}
 /* the room: no mark, only the galaxy; and a big Start on the glass (Look → Room: roomBtn, roomBtnY) */
 html.nomark #portalLoad > svg,html.nomark #plTag{display:none}
 html.nomark #plEnter{top:var(--rby,82%);transform:translate(-50%,-50%);font-size:calc(var(--rbs,6.8) * min(13px, .82vw));letter-spacing:.24em;padding:.92em 2.3em .85em 2.55em}   /* (sized to the window, as if it were a page on that screen: the same share of it on any screen) */
-html.nomark #plEnter rect{stroke-width:calc(var(--rbs,6.8) * min(.75px, .047vw))}
+html.nomark #plEnter rect{stroke-width:calc(var(--rbs,6.8) * min(2.2px, .14vw))}   /* (thick enough to see the loading line on the glass) */
 #rmLogo{display:none;position:absolute;left:50%;transform:translate(-50%,-50%);pointer-events:none}
 #portalLoad.pldone > *:not(#rmLogo){visibility:hidden!important}   /* (past the glass: only the room's logo, flying past, until the opening ends) */
 html.nomark #rmLogo{display:block}

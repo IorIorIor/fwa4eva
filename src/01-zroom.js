@@ -248,7 +248,7 @@ const room = (() => {
     const n = fract(sin(dot(screenUV.mul(U2.res).add(fract(U2.time.mul(7.13)).mul(91.7)), vec2(12.9898, 78.233))).mul(43758.5453)).sub(.5);
     // the glass, wherever it shows: the galaxy's own picture, untouched, the very one the window gets once you're through (so it's one
     // galaxy all the way in, nothing fading from one to the other)
-    const sp = vec3(screenUV, 1), gu = vec2(dot(U2.G0, sp), dot(U2.G1, sp)).div(dot(U2.G2, sp)), direct = gT.sample(texUV(gu)).rgb, onGlass = col.a.oneMinus().clamp(0, 1).mul(U2.scrOn);
+    const sp = vec3(screenUV, 1), gu = vec2(dot(U2.G0, sp), dot(U2.G1, sp)).div(dot(U2.G2, sp)), direct = mix(vec3(.004, .004, .035), gT.sample(texUV(gu)).rgb, U2.scrOn), onGlass = col.a.oneMinus().clamp(0, 1);   // (before the galaxy's up: the galaxy's own black)
     return vec4(mix(sRGBTransferOETF(c).add(n.mul(U2.grain)), direct, onGlass), 1);
   })();
 
