@@ -77,7 +77,11 @@ const scenePass = pass(scene, camera, { samples: 4 });
 const sceneTex = scenePass.getTextureNode();
 const bloomPass = bloom(sceneTex.min(1), .45, .4, .72);
 const bloomTex = bloomPass.getTextureNode();
+{ const ub = bloomPass.updateBefore.bind(bloomPass); let lit = true; bloomPass.updateBefore = f => { if (bloomPass.strength.value > 1e-4) { lit = true; return ub(f) } if (!lit) return; lit = false; const r = f.renderer, rt = r.getRenderTarget(); r.setRenderTarget(bloomPass._renderTargetsHorizontal[0]); r.clear(); r.setRenderTarget(rt) } }   // bloom at strength 0 (off in the look): its 12 passes are skipped, after clearing what it last drew
 const trailPass = pass(trailScene, camera, { samples: 4 }), trailTex = trailPass.getTextureNode();
+// a layer with nothing on it (gas or arcs switched off, no trails): its pass is skipped, after one clearing pass
+const idlePass = (pn, sc) => { const ub = pn.updateBefore.bind(pn); let drawn = true; pn.updateBefore = f => { if (sc.children.some(o => o.visible && !o.isLight)) { drawn = true; return ub(f) } if (!drawn) return; drawn = false; const r = f.renderer, rt = r.getRenderTarget(); r.setRenderTarget(pn.renderTarget); r.clear(); r.setRenderTarget(rt) } };
+idlePass(volPass, volScene); idlePass(arcPass, arcScene); idlePass(trailPass, trailScene);
 const finalNode = Fn(() => {
   const vUv = screenUV, uv0 = vec2(vUv).toVar();
   If(PU.sw.add(PU.swP).greaterThan(.001), () => {   // falling in: space twists round the hole and the picture is drawn in toward it
