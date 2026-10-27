@@ -6,7 +6,7 @@
      scene      everything crisp at full resolution, laid over the other three, then bloom and the grade */
 /* (the canvas and the renderer are made first thing, in 01-zroom, so the room can show while all this loads) */
 const shipCanvas = document.createElement('canvas'); shipCanvas.id = 'shipLayer'; shipCanvas.setAttribute('aria-hidden', 'true'); canvas.after(shipCanvas);
-const shipRenderer = new THREE.WebGPURenderer({ canvas: shipCanvas, antialias: true, alpha: true, forceWebGL: QS.has('webgl') });
+const shipRenderer = new THREE.WebGPURenderer({ canvas: shipCanvas, antialias: true, alpha: true, forceWebGL: QS.has('webgl'), device: renderer.backend.isWebGPUBackend ? renderer.backend.device : undefined });   // (one GPU device for both canvases, not a second one of its own)
 await shipRenderer.init();
 renderer.highPrecision = true;   // model-view matrices in 64-bit on the CPU: the ship stays rock steady a million units from home
 const GPU = renderer.backend.isWebGPUBackend === true;
