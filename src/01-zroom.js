@@ -342,7 +342,7 @@ const room = (() => {
     cam.fov = RL('roomFov', 36); cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     cam.position.set(cx + st.sway.x * sw * 2, RL('roomCamH', 1.2) - st.sway.y * sw, RL('roomCamZ', 2.45)); st.aim.set(cx * .6, RL('roomAimY', .9), .25); cam.up.set(0, 1, 0); cam.lookAt(st.aim);
     if (st.desk && !st.lab) {   // on the screen (a moment, deskAutoDelay) the camera goes all the way in; off it, back to your own zoom
-      st.inT = st.deskIn ? st.inT + dt : 0; st.zt = st.deskIn && (st.focus || (RL('deskAuto', 1) && st.inT >= RL('deskAutoDelay', .12))) ? 1 : st.zUser;
+      st.inT = st.deskIn ? st.inT + dt : 0; st.zt = st.deskIn && (st.focus || (RL('deskAuto', 0) && st.inT >= RL('deskAutoDelay', .12))) ? 1 : st.zUser;
       if (mBody && st.mt) { const mx = .01 + (st.mt[0] - .5) * .13, mz = -.01 + (st.mt[1] - .5) * .11, k = Math.min(1, dt * 14); mBody.position.x += (mx - mBody.position.x) * k; mBody.position.z += (mz - mBody.position.z) * k }   // the mouse on its pad, where the desktop's pointer is
     }
     if (st.desk && !st.lab) { st.zc += (st.zt - st.zc) * Math.min(1, dt * RL('deskZoomEase', 5)); if (Math.abs(st.zt - st.zc) < 1e-4) st.zc = st.zt; if (st.zc > 1e-4) { prepRun(); posed(st.zc) } }   // the desk: the wheel (off the monitor) zooms in onto the glass and back out

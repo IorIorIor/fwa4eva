@@ -46,7 +46,7 @@ and gives quick visual feedback; keep replies short).
   `DESK` (01-zroom) is on unless `?galaxy`/`?noroom`/`?test`; 02-desk ends with a never-resolving `await`, so the galaxy's files never load.
   `room.desk(el, 1024, 768)` lays `#desk` on the whole glass (`place()`); off the glass the wheel zooms (`st.zt`, `posed()`), on it
   the OS pointer hides (`html.deskin`) and the desk's own (`.dk-cur`, via `room.toDesk`) takes over. The grid is virtualised (only the
-  rows in view are in the DOM). On the screen the camera goes all the way in (`deskAuto`), off it back to your own wheel zoom (`st.zUser`);
+  rows in view are in the DOM). The camera only zooms by the wheel (`deskAuto` 1 would zoom in on the screen and back to your own wheel zoom (`st.zUser`);
   phones: 640 × 480, a tap on the screen focuses it (`room.deskFocus`), a tap on the room goes back, a swipe zooms. The room redraws at
   `deskRoomFps` while you're in close and nothing moves. The 3D mouse follows the desk's pointer (`room.mouseAt`).
   Windows: `mkWin` (taskbar button each); double-click a winner → `openFWA` (slideshow: its screenshot + the agency's others, details).
