@@ -48,7 +48,10 @@ and gives quick visual feedback; keep replies short).
   the OS pointer hides (`html.deskin`) and the desk's own (`.dk-cur`, via `room.toDesk`) takes over. The grid is virtualised (only the
   rows in view are in the DOM). On the screen the camera goes all the way in (`deskAuto`), off it back to your own wheel zoom (`st.zUser`);
   phones: 640 × 480, a tap on the screen focuses it (`room.deskFocus`), a tap on the room goes back, a swipe zooms. The room redraws at
-  `deskRoomFps` while you're in close and nothing moves. The 3D mouse follows the desk's pointer (`room.mouseAt`). Thumbnails: `public/data/thumbs.png` + `.json` (16 px each), made by `python3 room/build-thumbs.py`.
+  `deskRoomFps` while you're in close and nothing moves. The 3D mouse follows the desk's pointer (`room.mouseAt`).
+  Windows: `mkWin` (taskbar button each); double-click a winner → `openFWA` (slideshow: its screenshot + the agency's others, details).
+  `?hic`: Chrome's HTML-in-Canvas (157+): `#desk` inside `#deskCv` (drawElementImage on paint) → `room.deskCanvas` makes it the glass texture.
+  The single page with `INLINE_DATA=1` also writes `dist-single/sheets/` (screenshots, 100 per sheet): publish them beside it. Thumbnails: `public/data/thumbs.png` + `.json` (16 px each), made by `python3 room/build-thumbs.py`.
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
   field for settings copied from the Ascent toy.
 - Multiplayer: `relay.mjs` (WebSocket at `/ws`, positions only, deals each pilot a distinct hue). On claude.ai the page

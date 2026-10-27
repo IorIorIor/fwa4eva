@@ -20,6 +20,7 @@ mkdirSync(OUT, { recursive: true });
 writeFileSync(join(OUT, 'app.js'), js);
 let page = pageHtml({ inline: out });
 if (process.env.INLINE_DATA) {   // INLINE_DATA=1: the archive and the desk's thumbnails written into the page too (a page with no data/ folder beside it)
+  execSync(`python3 room/build-thumbs.py --sheets ${join(OUT, 'sheets')}`, { cwd: ROOT, stdio: 'inherit' });   // (and the screenshots, packed in sheets beside it: dist-single/sheets)
   const dd = join(ROOT, 'public', 'data'), data = { archive: JSON.parse(readFileSync(join(dd, 'archive.json'), 'utf8')), thumbs: JSON.parse(readFileSync(join(dd, 'thumbs.json'), 'utf8')), atlas: 'data:image/png;base64,' + readFileSync(join(dd, 'thumbs.png')).toString('base64') };
   page = page.replace('<script type="module">', () => `<script>window.__FWA_DATA = ${JSON.stringify(data).replace(/</g, '\\u003c')}</script>\n<script type="module">`);
 }

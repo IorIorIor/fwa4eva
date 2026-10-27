@@ -38,7 +38,7 @@ function normalizeRows(rows) {
     out.push({
       date: new Date(t).toISOString().slice(0, 10), title: String(g('title', 'name', 'site', 'project') || 'Untitled').slice(0, 120), agency: String(g('agency', 'studio', 'credits', 'author', 'by') || 'Unknown').slice(0, 80),
       country: String(g('country', 'location') || '—').slice(0, 40), category: String(g('category', 'categories', 'type', 'tag') || 'Uncategorised').split(/[,;|]/)[0].trim().slice(0, 40) || 'Uncategorised',
-      tech, award: awardOf(g('award', 'level', 'honour', 'honor')), score: (v => v > 10 ? v / 10 : v)(parseFloat(g('score', 'jury', 'juryscore', 'rating', 'points')) || 8), url: /^https?:\/\//i.test(url) ? url : '', shot: stem(g('screenshot', 'image', 'thumbnail', 'shot'))
+      tech, award: awardOf(g('award', 'level', 'honour', 'honor')), score: (v => v > 10 ? v / 10 : v)(parseFloat(g('score', 'jury', 'juryscore', 'rating', 'points')) || 8), url: /^https?:\/\//i.test(url) ? url : '', fwa: (v => /^https?:\/\//i.test(v) ? v : '')(String(g('fwa', 'fwaurl', 'case', 'caseurl') || '')), shot: stem(g('screenshot', 'image', 'thumbnail', 'shot'))
     });
   }
   out.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0); return out;
@@ -108,7 +108,7 @@ if (USING_IMPORT && !REMOTE) {
     const title = (R() < .35 ? 'The ' : '') + TITLE_A[R() * TITLE_A.length | 0] + ' ' + TITLE_B[R() * TITLE_B.length | 0];
     D.push({ i: D.length, t, date: dt.toISOString().slice(0, 10), year: y, title, agency: ag, country: cc, category: cat, tech, award: 'SOTD', score: +(7 + Math.pow(R(), .8) * 2.3).toFixed(2) });
   }
-  if (REMOTE) { const RB = mulberry32(4242); realCats(REMOTE); D.forEach(d => { const r = REMOTE[RB() * REMOTE.length | 0]; Object.assign(d, { title: r.title, agency: r.agency, category: r.category, url: r.url, shot: r.shot, score: r.score, borrowed: true }) }) }
+  if (REMOTE) { const RB = mulberry32(4242); realCats(REMOTE); D.forEach(d => { const r = REMOTE[RB() * REMOTE.length | 0]; Object.assign(d, { title: r.title, agency: r.agency, category: r.category, url: r.url, fwa: r.fwa, shot: r.shot, score: r.score, borrowed: true }) }) }
   const byMonth = new Map(); D.forEach(d => { const k = d.date.slice(0, 7); if (!byMonth.has(k) || byMonth.get(k).score < d.score) byMonth.set(k, d) });
   byMonth.forEach(d => { d.award = 'SOTM'; d.score = Math.min(9.6, +(d.score + .3).toFixed(2)) });
   const byYear = new Map(); byMonth.forEach(d => { if (!byYear.has(d.year) || byYear.get(d.year).score < d.score) byYear.set(d.year, d) });

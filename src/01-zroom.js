@@ -81,7 +81,7 @@ const room = (() => {
   // screen as the glass fills it (crtFx below), so nothing in the move itself changes
   const C = { flick: uniform(.25), roll: uniform(.3), idle: uniform(.3) };
   const h1 = x => fract(sin(x.mul(12.9898)).mul(43758.5453));
-  const texUV = g => FLIP ? g : vec2(g.x, g.y.oneMinus());   // a point on the glass (v from the top) → the picture
+  U2.flipT = uniform(FLIP ? 1 : 0); const texUV = g => mix(vec2(g.x, g.y.oneMinus()), g, U2.flipT);   // a point on the glass (v from the top) → the picture
   const rollAt = (y, amt) => exp(fract(y.sub(U2.time.mul(.23))).sub(.5).mul(9).pow(2).negate()).mul(C.roll).mul(amt).mul(.12);   // a soft brighter band drifting down the screen
   const flickAt = amt => float(1).sub(h1(floor(U2.time.mul(24))).mul(C.flick).mul(amt).mul(.18));
   const glassMat = new THREE.MeshPhysicalNodeMaterial({ color: lin('#0b0f12'), roughness: .12, metalness: 0, clearcoat: 1, clearcoatRoughness: .05 });
@@ -347,9 +347,9 @@ const room = (() => {
     }
     if (st.desk && !st.lab) { st.zc += (st.zt - st.zc) * Math.min(1, dt * RL('deskZoomEase', 5)); if (Math.abs(st.zt - st.zc) < 1e-4) st.zc = st.zt; if (st.zc > 1e-4) { prepRun(); posed(st.zc) } }   // the desk: the wheel (off the monitor) zooms in onto the glass and back out
     const peak = RL('crtPeak', 1), cin = Math.min(.99, RL('crtIn', .9)), out = Math.max(.05, RL('crtOut', .7)), rest = RL('crtIdle', .45);
-    const still = st.desk && st.deskIn && st.zc === st.zt && !st.lab && (!mBody || !st.mt || Math.abs(mBody.position.x - (.01 + (st.mt[0] - .5) * .13)) < 1e-4);   // the desk, in close and nothing moving: the room only needs the odd frame
+    const still = st.desk && st.deskIn && !st.dirty && st.zc === st.zt && !st.lab && (!mBody || !st.mt || Math.abs(mBody.position.x - (.01 + (st.mt[0] - .5) * .13)) < 1e-4);   // the desk, in close and nothing moving: the room only needs the odd frame
     if (still && now - st.lastR < 1000 / Math.max(1, RL('deskRoomFps', 8))) return;
-    st.lastR = now;
+    st.lastR = now; st.dirty = false;
     if (st.phase !== 'dive' && !st.lab) crtFx.set(rest);   // (the monitor at rest)
     if (st.lab) { labStep(dt); const fade = 1 - sstep(Math.max(0, st.lab.p), .6, 1), sh = SHEET.matches ? innerHeight * .2 * fade : 0, sx = !SHEET.matches && labEl ? (labEl.offsetWidth + 14) / 2 * fade : 0; if (sh > .5 || sx > .5) cam.setViewOffset(innerWidth, innerHeight, sx, sh, innerWidth, innerHeight); else cam.clearViewOffset() }   /* (the playground covers part of the window: on a phone a sheet over the bottom, else a column on the right; the room moves into what's left) */ else if (cam.view && cam.view.enabled) cam.clearViewOffset();   // the CRT playground: the move held wherever you scrub it
     else if (st.phase === 'dive') {   // into the glass, the first part of the one move (see mkRun); the CRT comes over the screen as the glass fills it
@@ -526,6 +526,8 @@ const room = (() => {
     skip() { if (st.on) finish(); logoAt(9) },
     desk(el, w, h) { st.desk = el; st.DW = w; st.DH = h; st.phase = 'desk'; const pl = $('portalLoad'); if (pl) pl.style.display = 'none'; place() },   // THE DESK: el is laid on the whole glass from now on (w × h its own size)
     toDesk(x, y) { const m = st.Md; if (!m) return null; const w = m[6] * x + m[7] * y + m[8]; return [(m[0] * x + m[1] * y + m[2]) / w, (m[3] * x + m[4] * y + m[5]) / w] },   // a point on screen → on the desk's page
+    deskCanvas(cv) { const t = new THREE.CanvasTexture(cv); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; gT.value = t; U2.flipT.value = 0; U2.scrOn.value = 1; st.hic = t },   // ?hic: the desktop's canvas is the glass's picture
+    deskPainted() { if (st.hic) { st.hic.needsUpdate = true; st.dirty = true } },
     set deskIn(v) { if (!st.focus) st.deskIn = !!v }, get focused() { return !!st.focus }, deskFocus(v) { st.focus = !!v; st.deskIn = !!v }, mouseAt(u, v) { st.mt = [Math.max(0, Math.min(1, u)), Math.max(0, Math.min(1, v))] }, get zoom() { return st.zc }, set zoomTo(v) { st.zUser = Math.max(0, Math.min(RL('deskZoomMax', 1), v)) },
     afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st }, picks, arrange, pick, U2, gRT, renderer, setAO, aoN, rp,   // (focus: a tap on the screen, touch, holds it in close until a tap on the room)
   };

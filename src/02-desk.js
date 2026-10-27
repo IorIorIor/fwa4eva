@@ -3,7 +3,10 @@
    glass your own pointer gives way to the desktop's (#desk, laid on the whole glass by room.desk, 1024 × 768 of its own).
    On it one window, every FWA by year in a big grid (a 16 px pixel thumbnail from data/thumbs.png, see room/build-thumbs.py,
    with its name and date), and the taskbar: Category, Agency and Search, each opening up from the bar like a Start menu and
-   filtering the grid the way the galaxy's filters do. Double-click a winner to open its site.
+   filtering the grid the way the galaxy's filters do. Double-click a winner (on a phone: tap it twice) for its own window: a
+   slideshow (its screenshot, then the agency's other winners) and everything the archive knows about it.
+   ?hic: Chrome's HTML-in-Canvas (157+): the desktop is drawn into a canvas (drawElementImage) and that is the glass's own
+   picture in WebGL; the canvas itself sits invisibly where the glass is, so its elements still take the clicks.
    Nothing after this file loads: the galaxy never starts. ?galaxy (or ?noroom) for the galaxy as before. */
 if (DESK && room.on) {
   const PHONE = matchMedia('(pointer: coarse)').matches, DW = PHONE ? 640 : 1024, DH = PHONE ? 480 : 768, esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -14,20 +17,42 @@ if (DESK && room.on) {
   const el = document.createElement('div'); el.id = 'desk'; el.style.width = DW + 'px'; el.style.height = DH + 'px';
   el.innerHTML = `
     <div class="dk-icons"><div class="dk-ic"><i class="ic-pc"></i><span>My Computer</span></div><div class="dk-ic"><i class="ic-bin"></i><span>Recycle Bin</span></div><div class="dk-ic"><i class="ic-ie"></i><span>Internet Explorer</span></div></div>
-    <section class="dk-win">
-      <header class="dk-title"><i class="ic-fold"></i><b>FWA Winners</b><span class="dk-tb"><button class="mn" title="Minimize">_</button><button class="mx" title="Maximize">□</button><button class="cl" title="Close">×</button></span></header>
-      <nav class="dk-menu"><span>File</span><span>Edit</span><span>View</span><span>Favorites</span><span>Tools</span><span>Help</span></nav>
-      <div class="dk-addr"><span>Address</span><div>C:\\FWA\\Winners</div></div>
-      <div class="dk-list" tabindex="0"></div>
-      <footer class="dk-status"><span class="dk-n"></span><span>My Computer</span></footer>
-    </section>
+    <div class="dk-wins"></div>
     <div class="dk-pop" data-k="cat" hidden><div class="dk-pl"></div></div>
     <div class="dk-pop" data-k="ag" hidden><label class="dk-in"><input type="text" placeholder="Search agencies" spellcheck="false"></label><div class="dk-pl"></div></div>
     <div class="dk-pop" data-k="q" hidden><label class="dk-in"><input type="text" placeholder="Search anything" spellcheck="false"></label><div class="dk-pl"></div></div>
-    <div class="dk-bar"><button class="dk-btn" data-k="cat"><i class="ic-cat"></i>Category</button><button class="dk-btn" data-k="ag"><i class="ic-ag"></i>Agency</button><button class="dk-btn" data-k="q"><i class="ic-q"></i>Search</button><span class="dk-sep"></span><button class="dk-task on"><i class="ic-fold"></i>FWA Winners</button><span class="dk-tray"><b class="dk-clock"></b></span></div>
+    <div class="dk-bar"><button class="dk-btn" data-k="cat"><i class="ic-cat"></i>Category</button><button class="dk-btn" data-k="ag"><i class="ic-ag"></i>Agency</button><button class="dk-btn" data-k="q"><i class="ic-q"></i>Search</button><span class="dk-sep"></span><span class="dk-tasks"></span><span class="dk-tray"><b class="dk-hic"></b><b class="dk-clock"></b></span></div>
     <svg class="dk-cur" viewBox="0 0 12 19" width="12" height="19"><path d="M.5 .5v15.5l3.6-3.5 2.6 6 2.3-1-2.6-5.8h5.1z" fill="#fff" stroke="#000" stroke-width="1" shape-rendering="crispEdges"/></svg>`;
   document.body.appendChild(el);
-  const $d = s => el.querySelector(s), list = $d('.dk-list'), win = $d('.dk-win'), cur = $d('.dk-cur'), nEl = $d('.dk-n');
+  const $d = s => el.querySelector(s), cur = $d('.dk-cur');
+
+  // windows: drag one by its title, maximise, minimise (and back from its taskbar button), close; the one you touch comes to the front
+  let zTop = 10, drag = null; const wins = [];
+  function mkWin({ title, icon = 'ic-fold', cls = '', box, body, max = false, keep = false }) {
+    const w = document.createElement('section'); w.className = 'dk-win ' + cls;
+    w.innerHTML = `<header class="dk-title"><i class="${icon}"></i><b>${esc(title)}</b><span class="dk-tb"><button class="mn" title="Minimize">_</button><button class="mx" title="Maximize">□</button><button class="cl" title="Close">×</button></span></header>` + body;
+    $d('.dk-wins').appendChild(w); const tb = document.createElement('button'); tb.className = 'dk-task'; tb.innerHTML = `<i class="${icon}"></i><span>${esc(title)}</span>`; $d('.dk-tasks').appendChild(tb);
+    const W = { el: w, tb, box: { ...box }, maxed: max, onLay: null, onClose: null };
+    W.lay = () => { const b = W.maxed ? { x: 0, y: 0, w: DW, h: DH - 30 } : W.box; Object.assign(w.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' }); w.classList.toggle('maxed', W.maxed); if (W.onLay) W.onLay() };
+    W.front = () => { w.style.zIndex = ++zTop; for (const o of wins) { const on = o === W && !o.el.hidden; o.el.classList.toggle('act', on); o.tb.classList.toggle('on', on) } };
+    W.mini = v => { w.hidden = v; if (v) { w.classList.remove('act'); tb.classList.remove('on') } else W.front() };
+    W.close = () => { if (keep) return W.mini(true); w.remove(); tb.remove(); wins.splice(wins.indexOf(W), 1); if (W.onClose) W.onClose() };   // (keep: the winners' window only ever minimises)
+    const hd = w.querySelector('.dk-title');
+    hd.addEventListener('pointerdown', e => { if (e.target.closest('button') || W.maxed) return; const p = room.toDesk(e.clientX, e.clientY); if (p) drag = { W, p, b: { ...W.box } } });
+    hd.addEventListener('dblclick', e => { if (!e.target.closest('button')) { W.maxed = !W.maxed; W.lay() } });
+    w.querySelector('.mx').onclick = () => { W.maxed = !W.maxed; W.lay() }; w.querySelector('.mn').onclick = () => W.mini(true); w.querySelector('.cl').onclick = () => W.close();
+    w.addEventListener('pointerdown', () => { if (!w.classList.contains('act')) W.front() }, true);
+    tb.onclick = () => { if (w.hidden) W.mini(false); else if (w.classList.contains('act')) W.mini(true); else W.front() };
+    wins.push(W); W.lay(); W.front(); return W;
+  }
+  addEventListener('pointerup', () => { drag = null });
+
+  const main = mkWin({ title: 'FWA Winners', keep: true, max: PHONE, box: { x: 96, y: 24, w: 880, h: 640 }, body: `   <!-- (on a phone it starts maximised) -->
+      <nav class="dk-menu"><span>File</span><span>Edit</span><span>View</span><span>Favorites</span><span>Tools</span><span>Help</span></nav>
+      <div class="dk-addr"><span>Address</span><div>C:\\FWA\\Winners</div></div>
+      <div class="dk-list" tabindex="0"></div>
+      <footer class="dk-status"><span class="dk-n"></span><span>My Computer</span></footer>` });
+  const list = main.el.querySelector('.dk-list'), nEl = main.el.querySelector('.dk-n');
 
   // the grid: a section per year (newest first), each winner a pixel thumbnail with its name and date
   const thumb = d => { const k = TH && d.shot != null ? TH.shots[d.shot] : undefined; if (k == null) { let h = 0; for (const c of d.title) h = (h * 31 + c.charCodeAt(0)) | 0; return `<i class="th" style="background:hsl(${(h >>> 0) % 360},45%,52%)"></i>` }
@@ -57,8 +82,42 @@ if (DESK && room.on) {
   let sq = 0; list.addEventListener('scroll', () => { if (!sq) sq = requestAnimationFrame(() => { sq = 0; slice() }) }, { passive: true });
   const scrollToI = i => { const r = rows.find(r => r.ds && r.ds.some(d => d.i === i)); if (r) { list.scrollTop = Math.max(0, r.y - list.clientHeight / 2 + RH / 2); drawn = ''; slice() } };
   if (TH) { el.style.setProperty('--atlas', `url("${window.__FWA_DATA && window.__FWA_DATA.atlas || DATA_BASE + 'thumbs.png'}")`); el.style.setProperty('--asz', `${TH.cols * TH.size * 2}px`) }   // (on the whole desk: the search's results show them too)
-  list.addEventListener('click', e => { const it = e.target.closest('.dk-it'); list.querySelectorAll('.dk-it.sel').forEach(x => x.classList.remove('sel')); sel = it ? +it.dataset.i : -1; if (it) it.classList.add('sel') });
-  list.addEventListener('dblclick', e => { const it = e.target.closest('.dk-it'); if (!it) return; const d = D[+it.dataset.i]; if (d && d.url) open(d.url, '_blank', 'noopener') });
+  list.addEventListener('click', e => { const it = e.target.closest('.dk-it'), was = sel; list.querySelectorAll('.dk-it.sel').forEach(x => x.classList.remove('sel')); sel = it ? +it.dataset.i : -1; if (it) { it.classList.add('sel'); if (ptype === 'touch' && was === sel) openFWA(sel) } });   // (a phone: a second tap opens it)
+  list.addEventListener('dblclick', e => { const it = e.target.closest('.dk-it'); if (it) openFWA(+it.dataset.i) });
+
+  // a winner's own window: a slideshow (its screenshot, then the agency's other winners, each captioned) over all its details
+  const SH = window.__FWA_DATA && window.__FWA_DATA.thumbs && window.__FWA_DATA.thumbs.sheet;   // (the single page: screenshots packed in sheets beside it, see build-thumbs.py)
+  const picCss = d => { const k = TH && d.shot != null ? TH.shots[d.shot] : undefined;
+    if (SH && k != null) { const c = k % SH.per, x = (c % SH.cols) * 100 / (SH.cols - 1), y = Math.floor(c / SH.cols) * 100 / (Math.ceil(SH.per / SH.cols) - 1); return `background-image:url("sheets/s${Math.floor(k / SH.per)}.webp");background-size:${SH.cols * 100}% auto;background-position:${x}% ${y}%` }
+    const u = typeof shotURL === 'function' ? shotURL(d) : null; return u ? `background-image:url("${u}")` : '' };
+  const host = u => { try { return new URL(u).hostname.replace(/^www\./, '') } catch (e) { return u } };
+  const fwaWins = new Map();
+  function openFWA(i) {
+    const d = D[i]; if (!d) return; if (fwaWins.has(i)) { const W = fwaWins.get(i); W.mini(false); return }
+    if (fwaWins.size >= 6) fwaWins.values().next().value.close();   // (six at most: the oldest goes)
+    const seen = new Set([d.shot]), more = []; for (let j = D.length - 1; j >= 0 && more.length < 7; j--) { const o = D[j]; if (o.agency === d.agency && o.shot && !seen.has(o.shot)) { seen.add(o.shot); more.push(o) } }   // (each screenshot once: the days before the archive borrow real winners)
+    const slides = [d, ...more], k0 = fwaWins.size;
+    const rowsT = [['Agency', esc(d.agency)], ['Date', fmtD(d)], ['Award', `<b class="dk-aw" style="--c:${AWARD_COL[d.award] || '#888'}">${AWARD_NAME[d.award] || d.award}</b>`], ['Category', esc(d.category)], ['Score', `${(+d.score).toFixed(2)} / 10`],
+      d.country && d.country !== '—' ? ['Country', esc(d.country)] : null, d.tech && d.tech.length && d.tech[0] !== 'Unknown' ? ['Built with', esc(d.tech.join(', '))] : null, d.url ? ['Site', esc(host(d.url))] : null,
+      ['By the agency', `${AGN.find(a => a[0] === d.agency)?.[1] || 1} winner(s)`]].filter(Boolean);
+    const W = mkWin({ title: d.title, icon: 'ic-ie', cls: 'dk-fw', max: PHONE, box: { x: 150 + k0 * 26, y: 36 + k0 * 22, w: 620, h: 650 }, body: `
+      <div class="dk-fwa">
+        <div class="dk-show"><div class="sl"></div><div class="sl"></div><b class="dk-ph"></b></div>
+        <div class="dk-ctl"><button class="dk-b pv" title="Previous">◀</button><button class="dk-b pp" title="Pause">❚❚</button><button class="dk-b nx" title="Next">▶</button><span class="dk-cnt"></span><span class="dk-cap"></span></div>
+        <div class="dk-info"><h2>${esc(d.title)}</h2><table>${rowsT.map(([k, v]) => `<tr><th>${k}:</th><td>${v}</td></tr>`).join('')}</table>
+          <div class="dk-acts">${d.url ? '<button class="dk-b go">Visit site</button>' : ''}${d.fwa ? '<button class="dk-b fw">View on thefwa.com</button>' : ''}<button class="dk-b ok">Close</button></div></div>
+      </div>
+      <footer class="dk-status"><span>${AWARD_NAME[d.award] || d.award} · ${fmtD(d)}</span><span>Internet</span></footer>` });
+    fwaWins.set(i, W); W.onClose = () => { clearInterval(W.iv); fwaWins.delete(i) };
+    const q = s => W.el.querySelector(s), ls = W.el.querySelectorAll('.sl'); let k = -1, on = 0, play = slides.length > 1;
+    const show = n => { k = (n + slides.length) % slides.length; const o = slides[k], a = ls[on ^ 1], css = picCss(o); a.setAttribute('style', css); q('.dk-ph').textContent = css ? '' : o.title; ls[on].classList.remove('on'); a.classList.add('on'); on ^= 1;
+      q('.dk-cnt').textContent = `${k + 1} / ${slides.length}`; const c = q('.dk-cap'); c.innerHTML = k ? `Also by ${esc(o.agency)}: <u data-i="${o.i}">${esc(o.title)}</u>, ${fmtD(o)}` : 'Screenshot' };
+    show(0); if (!play) q('.pp').disabled = true;
+    W.iv = setInterval(() => { if (play && !W.el.hidden) show(k + 1) }, 3500);
+    q('.pv').onclick = () => show(k - 1); q('.nx').onclick = () => show(k + 1); q('.pp').onclick = () => { play = !play; q('.pp').textContent = play ? '❚❚' : '▶▶'; q('.pp').title = play ? 'Pause' : 'Play' };
+    q('.dk-show').onclick = () => show(k + 1); q('.dk-cap').onclick = e => { const u = e.target.closest('u'); if (u) openFWA(+u.dataset.i) };
+    if (q('.go')) q('.go').onclick = () => open(d.url, '_blank', 'noopener'); if (q('.fw')) q('.fw').onclick = () => open(d.fwa, '_blank', 'noopener'); q('.ok').onclick = () => W.close();
+  }
 
   // the menus up from the taskbar: categories, agencies (with their own search), search anything
   const counts = key => { const m = new Map(); for (const d of D) m.set(d[key], (m.get(d[key]) || 0) + 1); return [...m].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(b[0])) };
@@ -87,14 +146,7 @@ if (DESK && room.on) {
   $d('.dk-pop[data-k="ag"] input').addEventListener('input', () => fill('ag'));
   { const qi = $d('.dk-pop[data-k="q"] input'); let t = 0; qi.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { F.q = qi.value.trim().toLowerCase(); render(); fill('q') }, 120) }); qi.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') popup('q') }) }
 
-  // the window: drag it by its title, maximise, minimise (and back from the taskbar)
-  let box = { x: 96, y: 24, w: 880, h: 640 }, maxed = PHONE, drag = null;   // (on a phone the window starts maximised)
-  const lay = () => { const b = maxed ? { x: 0, y: 0, w: DW, h: DH - 30 } : box, c0 = cols; Object.assign(win.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' }); win.classList.toggle('maxed', maxed); if (Math.max(1, Math.floor((list.clientWidth - 8) / IT)) !== c0) { const st = list.scrollTop; render(); list.scrollTop = st; slice() } };
-  const mini = v => { win.hidden = v; $d('.dk-task').classList.toggle('on', !v) };
-  $d('.dk-title').addEventListener('pointerdown', e => { if (e.target.closest('button') || maxed) return; const p = room.toDesk(e.clientX, e.clientY); if (p) drag = { p, b: { ...box } } });
-  $d('.dk-title').addEventListener('dblclick', e => { if (!e.target.closest('button')) { maxed = !maxed; lay() } });
-  $d('.mx').onclick = () => { maxed = !maxed; lay() }; $d('.mn').onclick = $d('.cl').onclick = () => mini(true); $d('.dk-task').onclick = () => mini(!win.hidden);
-  addEventListener('pointerup', () => { drag = null });
+  main.onLay = () => { if (Math.max(1, Math.floor((list.clientWidth - 8) / IT)) !== cols && rows.length) { const st = list.scrollTop; render(); list.scrollTop = st; slice() } };   // (the grid reflows when the window changes width)
 
   // the desktop's own pointer: yours hides on the glass and this one takes over, wherever on the page you are (checked every frame
   // too: as the camera zooms in, the screen moves under a pointer that holds still); the room's mouse moves on its pad with it
@@ -105,7 +157,7 @@ if (DESK && room.on) {
     if (inn) { cur.style.transform = `translate(${p[0].toFixed(1)}px,${p[1].toFixed(1)}px)`; room.mouseAt(p[0] / DW, p[1] / DH) }
     return p;
   };
-  addEventListener('pointermove', () => { const p = track(); if (drag && p) { box.x = Math.max(-box.w + 80, Math.min(DW - 80, drag.b.x + p[0] - drag.p[0])); box.y = Math.max(0, Math.min(DH - 60, drag.b.y + p[1] - drag.p[1])); lay() } });   // (after the room's own, bubbling)
+  addEventListener('pointermove', () => { const p = track(); if (drag && p) { const B = drag.W.box; B.x = Math.max(-B.w + 80, Math.min(DW - 80, drag.b.x + p[0] - drag.p[0])); B.y = Math.max(0, Math.min(DH - 60, drag.b.y + p[1] - drag.p[1])); drag.W.lay() } });   // (after the room's own, bubbling)
   { const tick = () => { requestAnimationFrame(tick); track() }; requestAnimationFrame(tick) }
 
   // a phone: the first tap on the screen only brings it in close (it fills the window as much as it can); a tap on the room goes back
@@ -117,6 +169,21 @@ if (DESK && room.on) {
   // the clock in the tray: your own time
   const clock = () => { $d('.dk-clock').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }; clock(); setInterval(clock, 10000);
 
-  document.documentElement.classList.add('desk'); room.desk(el, DW, DH); lay(); render();   // (shown first: the grid measures its window)
+  // ?hic: the desktop drawn by the browser into a canvas (HTML-in-Canvas), and that canvas is the glass's picture in WebGL
+  let shown = el;
+  if (QS.has('hic')) {
+    const ok = typeof CanvasRenderingContext2D !== 'undefined' && 'drawElementImage' in CanvasRenderingContext2D.prototype, tag = $d('.dk-hic');
+    if (!ok) { tag.textContent = 'HTML-in-Canvas: not in this browser'; console.warn('HTML-in-Canvas: drawElementImage missing (Chrome 157+, or chrome://flags/#canvas-draw-element)') }
+    else {
+      const R = 2, cv = document.createElement('canvas'); cv.id = 'deskCv'; cv.width = DW * R; cv.height = DH * R; cv.style.width = DW + 'px'; cv.style.height = DH + 'px';
+      cv.setAttribute('content', 'drawable'); cv.setAttribute('layoutsubtree', ''); el.setAttribute('drawable', ''); cv.appendChild(el); document.body.appendChild(cv);   // (both the old and the new names)
+      const g = cv.getContext('2d'); let n = 0, fails = 0;
+      const draw = () => { try { g.setTransform(R, 0, 0, R, 0, 0); g.clearRect(0, 0, DW, DH); g.drawElementImage(el, 0, 0); room.deskPainted(); n++; return true } catch (e) { if (++fails < 4) console.warn('HTML-in-Canvas draw', e); return false } };
+      cv.addEventListener('paint', draw); if (cv.requestPaint) cv.requestPaint();
+      room.deskCanvas(cv); shown = cv; tag.textContent = 'HIC';
+      setTimeout(() => { if (!n) { const loop = () => { if (draw()) requestAnimationFrame(loop); else if (fails > 30) tag.textContent = 'HIC failed' }; loop() } }, 1200);   // (no paint events: draw it every frame instead)
+    }
+  }
+  document.documentElement.classList.add('desk'); room.desk(shown, DW, DH); main.lay(); render();   // (shown first: the grid measures its window)
   await new Promise(() => { });   // and that's all: the galaxy's files never load
 }
