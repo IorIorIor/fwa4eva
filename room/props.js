@@ -487,6 +487,253 @@ export function makeProps(THREE, ctx) {
     const g = new THREE.Group(), m = mesh(geo, new THREE.MeshStandardMaterial({ map: t, roughness: .85, side: THREE.DoubleSide }), 0, 0, .0003, g); m.receiveShadow = false; return g;
   }
 
+
+  // ───────────────────────── THE YEARS: what comes and goes on the desk, 2000–2026 (the time scroll) ─────────────────────────
+  // generic look-alikes, no real logos: computers every 5 years, monitors every 5 in between, phones, mice, music, the software
+  // boxes and the year's guests. Same rules as above: metres, standing on y = 0, the front towards +z.
+  const alu = () => std('#c8cace', .32, 1), aluDark = () => std('#5f6166', .38, 1), gloss = (hex, o = {}) => phys(hex, { roughness: .2, clearcoat: 1, clearcoatRoughness: .08, ...o });
+  const lathe = (pts, m, parent, seg = 64) => mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg), m, 0, 0, 0, parent);
+  const glow = (t, k = .55) => new THREE.MeshStandardMaterial({ map: t, roughness: .18, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: k });
+  const face = (w, h, m, x, y, z, parent) => mesh(new THREE.PlaneGeometry(w, h), m, x, y, z, parent);
+  // a desktop as each era drew it (for the monitors' and laptops' screens)
+  const osShot = (skin, W = 640, H = 400) => tex(W, H, (c, w, h) => {
+    const bg = { classic: ['#3a6ea5', '#3a6ea5'], aqua: ['#2f6db8', '#9fd0ff'], glass: ['#0d2a44', '#1f6f8b'], flat: ['#e9ecef', '#cfd8e3'], soft: ['#6b5bd2', '#f2a7c3'] }[skin];
+    const g = c.createLinearGradient(0, 0, w, h); g.addColorStop(0, bg[0]); g.addColorStop(1, bg[1]); c.fillStyle = g; c.fillRect(0, 0, w, h);
+    const r = skin === 'classic' ? 0 : skin === 'flat' ? 4 : 10, win = (x, y, ww, hh, title) => {
+      c.fillStyle = skin === 'glass' ? 'rgba(20,30,40,.75)' : '#f4f4f2'; c.beginPath(); c.roundRect(x, y, ww, hh, r); c.fill();
+      c.fillStyle = { classic: '#0a246a', aqua: '#4c8fe0', glass: 'rgba(255,255,255,.18)', flat: '#ffffff', soft: '#ffffff' }[skin]; c.beginPath(); c.roundRect(x, y, ww, 22, [r, r, 0, 0]); c.fill();
+      c.fillStyle = skin === 'classic' || skin === 'aqua' ? '#fff' : '#333'; c.font = `bold 13px ${sans}`; c.fillText(title, x + 10, y + 16);
+      for (let i = 0; i < 12; i++) { c.fillStyle = `hsl(${(i * 47) % 360},55%,${skin === 'glass' ? 45 : 60}%)`; c.fillRect(x + 14 + (i % 4) * ((ww - 28) / 4), y + 34 + Math.floor(i / 4) * 52, (ww - 28) / 4 - 10, 40) }
+    };
+    win(w * .14, h * .12, w * .62, h * .66, 'FWA'); win(w * .5, h * .3, w * .38, h * .5, 'Winners');
+    c.fillStyle = { classic: '#d4d0c8', aqua: 'rgba(255,255,255,.55)', glass: 'rgba(0,0,0,.5)', flat: 'rgba(255,255,255,.9)', soft: 'rgba(255,255,255,.45)' }[skin];
+    if (skin === 'classic') c.fillRect(0, h - 22, w, 22); else { c.beginPath(); c.roundRect(w * .3, h - 30, w * .4, 24, 10); c.fill() }
+  });
+
+  // ── computers ──
+  function aluTower() {   // 2005: an aluminium tower, its front and back one sheet of holes, handles cut into the top and the feet
+    const g = new THREE.Group(), W = .206, H = .44, D = .475, m = alu();
+    const grille = tex(256, 512, (c, w, h) => { c.fillStyle = '#b9bbbf'; c.fillRect(0, 0, w, h); c.fillStyle = '#1b1c1f'; for (let y = 6; y < h; y += 9) for (let x = (y / 9 & 1) * 4.5 + 4; x < w; x += 9) { c.beginPath(); c.arc(x, y, 3.2, 0, 7); c.fill() } });
+    const gm = std('#ffffff', .4, .9, { map: grille });
+    const b = box6(rbox(W, H, D, .006), [m, m, m, m, gm, gm]); b.position.y = .035 + H / 2; b.castShadow = b.receiveShadow = true; g.add(b);
+    const handle = () => { const s = rrect(D, .07, .012), h = rrect(D - .07, .04, .01); s.holes.push(new THREE.Path(h.getPoints())); const geo = ext(s, W - .004, .002, 2); geo.rotateY(Math.PI / 2); geo.translate(-(W - .004) / 2, 0, 0); return geo };
+    mesh(handle(), m, 0, .035 + H + .03, 0, g); mesh(handle(), m, 0, .035, 0, g);   // the handles over it and the feet under it, the same cut-out sheet
+    mesh(new THREE.CircleGeometry(.006, 24), std('#e8f2ff', .3, 0, { emissive: col('#cfe4ff'), emissiveIntensity: .6 }), W / 2 - .03, .035 + H - .04, D / 2 + .001, g);   // the power light
+    return g;
+  }
+  function laptopBase(W, D, T, m, keysHex = '#141416') {   // a laptop's lower half: the keys, the trackpad
+    const g = new THREE.Group(); mesh(rbox(W, T, D, .004), m, 0, T / 2, 0, g);
+    const kt = tex(512, 220, (c, w, h) => { c.fillStyle = '#9ea1a6'; c.fillRect(0, 0, w, h); c.fillStyle = keysHex; for (let r = 0; r < 6; r++) for (let k = 0; k < 14; k++) c.fillRect(8 + k * 35.6, 8 + r * 34, 31, r === 0 ? 18 : 30) });
+    face(W * .86, D * .44, std('#ffffff', .6, 0, { map: kt }), 0, T + .0002, -D * .14, g).rotation.x = -Math.PI / 2;
+    face(W * .36, D * .3, std('#b7babf', .35, .8), 0, T + .0002, D * .3, g).rotation.x = -Math.PI / 2;
+    return g;
+  }
+  function laptopOnStand() {   // 2010: an aluminium laptop, open, on a bent aluminium stand
+    const g = new THREE.Group(), m = alu(), W = .325, D = .227, T = .022;
+    { const s = poly([[-.12, 0], [.12, 0], [.1, .006], [-.05, .12], [-.06, .12]]); const geo = ext(s, .005); [-1, 1].forEach(sd => mesh(geo, m, sd * .1, 0, 0, g).rotation.y = Math.PI / 2) }   // the stand's two bent sides
+    const lap = new THREE.Group(); lap.position.set(0, .07, .01); lap.rotation.x = .38; g.add(lap); lap.add(laptopBase(W, D, T, m));
+    const lid = new THREE.Group(); lid.position.set(0, T, -D / 2); lid.rotation.x = -.28; lap.add(lid);
+    mesh(rbox(W, .218, .006, .003), m, 0, .109, -.003, lid); face(W - .012, .206, std('#080808', .1), 0, .109, .0002, lid); face(W - .04, .182, glow(osShot('glass'), .6), 0, .112, .0006, lid);
+    return g;
+  }
+  function smallBox() {   // 2015: a small square silver box
+    const g = new THREE.Group(); mesh(rbox(.197, .036, .197, .022, 5), alu(), 0, .018, 0, g);
+    mesh(new THREE.CircleGeometry(.0028, 16), std('#ffffff', .3, 0, { emissive: col('#ffffff'), emissiveIntensity: .7 }), .085, .018, .0986, g);
+    mesh(new THREE.CylinderGeometry(.09, .09, .002, 48), std('#1a1b1e', .8), 0, .001, 0, g); return g;
+  }
+  function laptopUpright() {   // 2020: a closed space-grey laptop standing in a cradle
+    const g = new THREE.Group(); mesh(rbox(.304, .212, .0156, .004), aluDark(), 0, .016 + .106, 0, g).rotation.z = 0;
+    const c = std('#2b2c30', .5, .6); [-1, 1].forEach(s => mesh(rbox(.11, .04, .012, .004), c, 0, .02, s * .015, g));   // the cradle: two cheeks either side of it
+    mesh(rbox(.12, .006, .05, .002), c, 0, .003, 0, g); return g;
+  }
+  function studioBlock() {   // 2025: an aluminium block, its front ports and the vents round its foot
+    const g = new THREE.Group(); mesh(rbox(.197, .089, .197, .03, 6), alu(), 0, .006 + .0445, 0, g);
+    mesh(new THREE.CylinderGeometry(.088, .088, .006, 64), std('#1b1c1f', .7), 0, .003, 0, g);
+    const port = std('#111214', .6); [-1, 1].forEach(s => mesh(rbox(.009, .0035, .002, .0015), port, -.05 + s * .012, .03, .0986, g)); mesh(new THREE.CircleGeometry(.0028, 16), port, .05, .03, .0987, g); return g;
+  }
+
+  // ── monitors ──
+  function panel({ W, H, bez, D, frame, skin, glare = .1 }) {   // a flat screen: its body, the glass, the picture
+    const g = new THREE.Group(); mesh(rbox(W, H, D, .006), frame, 0, 0, 0, g);
+    face(W - bez * 2, H - bez * 2, phys('#050506', { roughness: glare, clearcoat: 1 }), 0, 0, D / 2 + .0004, g);
+    face(W - bez * 2 - .006, H - bez * 2 - .006, glow(osShot(skin), .5), 0, 0, D / 2 + .0008, g); return g;
+  }
+  function flat15() {   // 2003: a 15-inch grey flat panel on a round foot
+    const g = new THREE.Group(), grey = std('#b9b8b2', .5);
+    lathe([[0, 0], [.1, 0], [.098, .012], [.03, .02], [0, .022]], grey, g); mesh(rbox(.05, .16, .03, .006), grey, 0, .09, -.02, g);
+    const p = panel({ W: .35, H: .29, bez: .026, D: .05, frame: grey, skin: 'classic', glare: .5 }); p.position.y = .19 + .145; g.add(p); return g;
+  }
+  function glossy24() {   // 2008: a 24-inch widescreen, glossy black front, a bent aluminium foot
+    const g = new THREE.Group(), m = alu();
+    { const s = poly([[-.1, 0], [.1, 0], [.1, .008], [-.06, .008], [.02, .3], [.008, .3], [-.075, .008], [-.1, .008]]); const geo = ext(s, .17); geo.translate(0, 0, -.085); mesh(geo, m, 0, 0, -.02, g).rotation.y = Math.PI / 2 }
+    const p = panel({ W: .565, H: .37, bez: .022, D: .045, frame: m, skin: 'aqua', glare: .05 }); p.position.set(0, .4, .02); g.add(p); return g;
+  }
+  function thin27() {   // 2013: a 27-inch, thin aluminium, glass edge to edge
+    const g = new THREE.Group(), m = alu();
+    { const s = poly([[-.11, 0], [.11, 0], [.11, .006], [-.04, .006], [.03, .32], [.015, .32], [-.055, .006], [-.11, .006]]); const geo = ext(s, .19); geo.translate(0, 0, -.095); mesh(geo, m, 0, 0, -.03, g).rotation.y = Math.PI / 2 }
+    const p = panel({ W: .65, H: .49, bez: .016, D: .018, frame: m, skin: 'glass', glare: .04 }); p.position.set(0, .43, 0); g.add(p);
+    mesh(rbox(.65, .07, .018, .004), m, 0, .43 - .245 - .035, 0, g); return g;
+  }
+  function fiveK() {   // 2018: thin bezels, matte black, a slim black stand on a round foot
+    const g = new THREE.Group(), b = std('#18191b', .55, .2);
+    lathe([[0, 0], [.12, 0], [.118, .008], [0, .009]], b, g); mesh(rbox(.03, .3, .02, .006), b, 0, .15, -.03, g);
+    const p = panel({ W: .61, H: .36, bez: .008, D: .03, frame: b, skin: 'flat', glare: .45 }); p.position.y = .36; g.add(p); return g;
+  }
+  function onArm() {   // 2023: a thin display on an arm clamped to the back of the desk
+    const g = new THREE.Group(), m = std('#d9dadc', .35, .7), j = std('#2a2b2e', .5, .3);
+    mesh(rbox(.06, .1, .05, .006), j, 0, .05, -.25, g); mesh(new THREE.CylinderGeometry(.012, .012, .2, 24), m, 0, .2, -.25, g);   // the clamp and its post
+    const a1 = mesh(rbox(.03, .025, .26, .008), m, 0, .3, -.13, g); a1.rotation.x = -.35;   // the arm, angled up and out
+    mesh(new THREE.SphereGeometry(.016, 20, 12), j, 0, .35, -.02, g);
+    const p = panel({ W: .62, H: .36, bez: .007, D: .012, frame: m, skin: 'soft', glare: .3 }); p.position.set(0, .38, .01); g.add(p); return g;
+  }
+
+  // ── phones ──
+  function slabPhone({ W, H, T, r, frame, front = '#060607', skin, island = 0, notch = 0, home = false, bezel = .006 }) {
+    const g = new THREE.Group(), body = ext(rrect(W, H, r), T - .002, .001, 3); body.translate(0, 0, -(T - .002) / 2); mesh(smooth(body), frame, 0, 0, 0, g);
+    const scrH = H - bezel * (home ? 6 : 2), scrW = W - bezel * 2, s = new THREE.ShapeGeometry(rrect(W - .002, H - .002, r * .9), 12); mesh(s, phys(front, { roughness: .05, clearcoat: 1 }), 0, 0, T / 2 + .0001, g);
+    const st = new THREE.ShapeGeometry(rrect(scrW, scrH, Math.max(.0005, r * .8 - bezel)), 12); flatUV(st);
+    const icons = tex(256, Math.round(256 * scrH / scrW), (c, w, h) => { const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, { glossy: '#1a3d7a', flat: '#7fb4e8', soft: '#3a2f6e' }[skin]); gr.addColorStop(1, { glossy: '#000', flat: '#f2c6d8', soft: '#e07b5f' }[skin]); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+      for (let i = 0; i < 20; i++) { c.fillStyle = `hsl(${(i * 53) % 360},${skin === 'flat' ? 70 : 55}%,58%)`; c.beginPath(); c.roundRect(18 + (i % 4) * 58, 40 + Math.floor(i / 4) * 66, 44, 44, skin === 'glossy' ? 9 : 11); c.fill() } });
+    mesh(st, glow(icons, .55), 0, home ? bezel * 1.2 : 0, T / 2 + .0003, g);
+    if (home) mesh(new THREE.RingGeometry(.0042, .0052, 32), std('#3a3a3c', .4), 0, -H / 2 + bezel * 2.4, T / 2 + .0004, g);
+    if (island) mesh(new THREE.ShapeGeometry(rrect(.018, .005, .0025), 8), std('#000', .3), 0, H / 2 - .009, T / 2 + .0006, g);
+    if (notch) mesh(new THREE.ShapeGeometry(rrect(.034, .006, .002, 0, 0), 8), std('#000', .3), 0, H / 2 - .0045, T / 2 + .0006, g);
+    g.rotation.x = -Math.PI / 2; g.position.y = T / 2; const o = new THREE.Group(); o.add(g); return o;
+  }
+  function flipPhone() {   // 2004: a thin metal flip phone, open, lying on the desk
+    const g = new THREE.Group(), m = std('#9aa0aa', .3, .85), W = .053, L = .049, T = .007;
+    const kp = tex(256, 240, (c, w, h) => { c.fillStyle = '#26303a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#7fd4ff'; c.lineWidth = 2; for (let r = 0; r < 4; r++) for (let k = 0; k < 3; k++) { c.strokeRect(20 + k * 76, 70 + r * 42, 64, 32) } c.strokeRect(70, 12, 116, 44) });
+    const low = mesh(rbox(W, T, L, .003), m, 0, T / 2, L / 2 + .003, g); face(W - .006, L - .006, std('#ffffff', .25, .4, { map: kp, emissive: col('#4aa8ff'), emissiveIntensity: .25, emissiveMap: kp }), 0, T / 2 + .0002, 0, low).rotation.x = -Math.PI / 2;
+    mesh(new THREE.CylinderGeometry(.0045, .0045, W, 20), m, 0, .0045, 0, g).rotation.z = Math.PI / 2;
+    const up = new THREE.Group(); up.position.set(0, .0045, 0); up.rotation.x = -.35; g.add(up);
+    mesh(rbox(W, T, L, .003), m, 0, 0, -L / 2 - .003, up); face(.04, .03, glow(osShot('aqua', 256, 192), .5), 0, T / 2 + .0002, -L / 2 - .004, up).rotation.x = -Math.PI / 2;
+    return g;
+  }
+  const touch2007 = () => slabPhone({ W: .061, H: .115, T: .0116, r: .009, frame: std('#c3c5c8', .3, 1), skin: 'glossy', home: true, bezel: .007 });
+  const slab2013 = () => slabPhone({ W: .0586, H: .1238, T: .0076, r: .008, frame: std('#cfd1d4', .3, 1), skin: 'flat', home: true, bezel: .0065 });
+  const edge2018 = () => slabPhone({ W: .0709, H: .1435, T: .0077, r: .011, frame: std('#d8d9db', .15, 1), skin: 'flat', notch: 1, bezel: .0025 });
+  const phone2024 = () => slabPhone({ W: .0716, H: .147, T: .0083, r: .011, frame: std('#8a8781', .35, .9), skin: 'soft', island: 1, bezel: .0018 });
+
+  // ── mice ──
+  function moldedMouse({ L, W, Hh, m, base, wheel = true, ergo = false }) {   // a mouse shell: a squashed half egg, its two buttons parted down the middle
+    const g = new THREE.Group(), sh = mesh(new THREE.SphereGeometry(1, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, base, 0, g); sh.scale.set(W / 2, Hh, L / 2);
+    if (ergo) { sh.rotation.z = -.25; mesh(new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), m, -W / 2, base, .005, g).scale.set(.018, .02, .03) }   // the thumb rest
+    if (base) mesh(new THREE.CylinderGeometry(1, 1, base, 48), std('#c9cbcf', .3, .9), 0, base / 2, 0, g).scale.set(W / 2 * .97, 1, L / 2 * .97);   // (an oval foot, the shell's own outline)
+    if (wheel) mesh(new THREE.CylinderGeometry(.0055, .0055, .005, 24), std('#3b3c40', .5), 0, base + Hh * .86, -L * .2, g).rotation.z = Math.PI / 2;
+    return g;
+  }
+  function optical2003() { const g = moldedMouse({ L: .11, W: .062, Hh: .036, m: phys('#f2f4f6', { roughness: .1, clearcoat: 1, transmission: .25, thickness: .01 }), base: .002, wheel: false }); const l = new THREE.PointLight(0xff2020, .02, .08); l.position.y = .004; g.add(l); mesh(new THREE.CircleGeometry(.012, 24), std('#ff3030', .5, 0, { emissive: col('#ff2020'), emissiveIntensity: 1 }), 0, .0006, 0, g).rotation.x = -Math.PI / 2; return g }
+  const glossy2008 = () => moldedMouse({ L: .108, W: .058, Hh: .03, m: gloss('#f6f6f4'), base: .003 });
+  const touch2012 = () => moldedMouse({ L: .113, W: .057, Hh: .019, m: gloss('#f8f8f8'), base: .004, wheel: false });
+  const ergo2019 = () => moldedMouse({ L: .125, W: .084, Hh: .048, m: std('#3a3c40', .65), base: .002, ergo: true });
+
+  // ── music ──
+  function discman() {   // 2000: a round CD player, the disc seen through its lid, the earphones' lead curling off it
+    const g = new THREE.Group(), s = std('#b9bcc2', .3, .8);
+    lathe([[0, 0], [.068, 0], [.07, .005], [.07, .022], [.066, .028], [0, .028]], s, g);
+    const cd = tex(256, 256, (c, w, h) => { const gr = c.createConicGradient(0, w / 2, h / 2); ['#d7e4ff', '#ffd7f4', '#d7fff1', '#fff6d7', '#d7e4ff'].forEach((x, i) => gr.addColorStop(i / 4, x)); c.fillStyle = gr; c.beginPath(); c.arc(w / 2, h / 2, w / 2, 0, 7); c.fill(); c.fillStyle = '#bbb'; c.beginPath(); c.arc(w / 2, h / 2, 26, 0, 7); c.fill() });
+    mesh(new THREE.CircleGeometry(.06, 48), std('#ffffff', .15, .9, { map: cd }), 0, .0285, 0, g).rotation.x = -Math.PI / 2;
+    mesh(new THREE.CylinderGeometry(.062, .062, .002, 48), phys('#9fb4d8', { roughness: .05, transparent: true, opacity: .3, clearcoat: 1 }), 0, .03, 0, g);
+    const lead = new THREE.CatmullRomCurve3([[.07, .012, 0], [.11, .004, .02], [.14, .004, -.03], [.12, .004, -.08], [.16, .004, -.1]].map(p => new THREE.Vector3(...p))); mesh(new THREE.TubeGeometry(lead, 48, .0012, 6), std('#111', .5), 0, 0, 0, g);
+    return g;
+  }
+  function clickWheel(W = .0615, H = .1025, T = .019, front = gloss('#fbfbfa'), wheelHex = '#e9e9e7', screen = '#9bb0a0') {   // 2002: white front, chrome back, a little screen and the wheel
+    const g = new THREE.Group(); mesh(rbox(W, H, T, .008, 5), std('#d5d7db', .12, 1), 0, 0, -.0008, g); mesh(rbox(W - .001, H - .001, T * .5, .007, 4), front, 0, 0, T * .25, g);
+    const sc = tex(256, 192, (c, w, h) => { c.fillStyle = screen; c.fillRect(0, 0, w, h); c.fillStyle = '#222'; c.font = `bold 22px ${sans}`; c.fillText('Now Playing', 50, 34); c.fillRect(0, 44, w, 2); c.font = `20px ${sans}`; c.fillText('FWA mix', 20, 90); c.fillText('Track 3 of 12', 20, 122); c.fillRect(20, 150, 140, 10) });
+    face(W * .72, W * .54, glow(sc, .2), 0, H * .2, T / 2 + .0002, g);
+    mesh(new THREE.CircleGeometry(W * .38, 48), std(wheelHex, .5), 0, -H * .22, T / 2 + .0003, g); mesh(new THREE.CircleGeometry(W * .14, 32), front, 0, -H * .22, T / 2 + .0006, g);
+    g.rotation.x = -Math.PI / 2; g.position.y = T / 2; const o = new THREE.Group(); o.add(g); return o;
+  }
+  const nano = () => clickWheel(.04, .09, .0065, std('#d0428a', .3, .9), '#f2f2f2', '#121418');
+  function headphones() {   // 2011: over-ear headphones lying on their side
+    const g = new THREE.Group(), m = std('#1b1c1f', .45, .2), pad = std('#2a2a2d', .9);
+    const band = new THREE.TorusGeometry(.085, .007, 12, 48, Math.PI); mesh(band, m, 0, .02, 0, g).rotation.x = -Math.PI / 2;
+    [-1, 1].forEach(s => { const cup = mesh(new THREE.CylinderGeometry(.04, .042, .03, 40), m, s * .085, .022, 0, g); cup.rotation.z = Math.PI / 2; const p = mesh(new THREE.TorusGeometry(.03, .01, 12, 32), pad, s * .07, .022, 0, g); p.rotation.y = Math.PI / 2 });
+    return g;
+  }
+
+  // ── the software boxes: one shape, each year's cover ──
+  function softBox(draw, side) {
+    const W = .19, H = .235, D = .052, f = new THREE.MeshStandardMaterial({ map: tex(760, 940, draw), roughness: .32 }), s = new THREE.MeshStandardMaterial({ map: tex(220, 940, side), roughness: .35 }), plain = std('#e8e8e6', .5);
+    const b = box6(rbox(W, H, D, .0015, 2), [s, s, plain, plain, f, plain]); b.castShadow = b.receiveShadow = true; b.position.y = H / 2; const g = new THREE.Group(); g.add(b); return g;
+  }
+  const sideOf = (bg, ink, name) => (c, w, h) => { c.fillStyle = bg; c.fillRect(0, 0, w, h); c.save(); c.translate(w / 2 + 30, 60); c.rotate(Math.PI / 2); c.fillStyle = ink; c.font = `bold 84px ${sans}`; c.fillText(name, 0, 0); c.restore() };
+  const flashMX = () => softBox((c, w, h) => { c.fillStyle = '#f2f2f0'; c.fillRect(0, 0, w, h); c.fillStyle = '#c4161c'; c.beginPath(); c.arc(w * .62, h * .44, 250, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 26; c.beginPath(); c.arc(w * .62, h * .44, 170, -.4, 3.8); c.stroke();
+    c.fillStyle = '#222'; c.font = `bold 40px ${sans}`; c.fillText('macromedia', 50, 80); c.font = `bold 130px ${sans}`; c.fillText('Flash', 50, h - 210); c.fillStyle = '#c4161c'; c.fillText('MX', 430, h - 210); c.fillStyle = '#555'; c.font = `28px ${sans}`; c.fillText('2002 · Windows · Macintosh', 54, h - 70) }, sideOf('#f2f2f0', '#c4161c', 'Flash MX'));
+  const flash8 = () => softBox((c, w, h) => { const g = c.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#0d0d10'); g.addColorStop(1, '#3a0a10'); c.fillStyle = g; c.fillRect(0, 0, w, h); c.strokeStyle = '#ff3b30'; c.lineWidth = 6; for (let i = 0; i < 14; i++) { c.beginPath(); c.ellipse(w * .55, h * .45, 60 + i * 22, 30 + i * 11, -.5, 0, 7); c.stroke() }
+    c.fillStyle = '#fff'; c.font = `bold 40px ${sans}`; c.fillText('macromedia', 50, 80); c.font = `bold 130px ${sans}`; c.fillText('Flash', 50, h - 210); c.fillStyle = '#ff3b30'; c.fillText('8', 440, h - 210); c.fillStyle = '#aaa'; c.font = `28px ${sans}`; c.fillText('Professional · 2005', 54, h - 70) }, sideOf('#14080a', '#fff', 'Flash 8'));
+  const csBox = (yr, ver, bg) => softBox((c, w, h) => { c.fillStyle = bg; c.fillRect(0, 0, w, h); c.fillStyle = '#d1202a'; c.fillRect(w * .18, h * .2, w * .64, w * .64); c.fillStyle = '#fff'; c.font = `bold 300px ${sans}`; c.fillText('Fl', w * .26, h * .2 + w * .5);
+    c.fillStyle = bg === '#f4f1ea' ? '#222' : '#eee'; c.font = `bold 60px ${sans}`; c.fillText(`Flash ${ver}`, w * .18, h * .82); c.font = `26px ${sans}`; c.fillText(`Professional · ${yr}`, w * .18, h * .87) }, sideOf(bg, '#d1202a', `Flash ${ver}`));
+  const flashCS3 = () => csBox(2007, 'CS3', '#f4f1ea'), flashCS4 = () => csBox(2009, 'CS4', '#1d1d1f');
+
+  // ── guests ──
+  function onlineCDs() {   // 2000–2003: the free-hours CD-ROMs that came in every magazine, piling up
+    const g = new THREE.Group(), cover = (hex, l1, l2) => tex(256, 256, (c, w, h) => { c.fillStyle = hex; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = `bold 34px ${sans}`; c.fillText(l1, 22, 70); c.font = `bold 64px ${sans}`; c.fillText(l2, 22, 150); c.font = `22px ${sans}`; c.fillText('HOURS FREE · CD-ROM', 22, 200) });
+    [['#1b57c4', 'GET ONLINE', '500'], ['#0a8a3a', 'TRY IT NOW', '700'], ['#1b57c4', 'GET ONLINE', '1000'], ['#5a2bb0', 'THE WEB IS', '250']].forEach(([hex, a, b], i) => {
+      const s = mesh(new THREE.BoxGeometry(.125, .004, .125), [plainM, plainM, new THREE.MeshStandardMaterial({ map: cover(hex, a, b), roughness: .5 }), plainM, plainM, plainM], (i - 1.5) * .006, .002 + i * .0042, (i % 2) * .008, g); s.rotation.y = (i - 1.5) * .25 });
+    return g;
+  }
+  const plainM = std('#e6e6e2', .6);
+  function tamagotchi() {   // 2000: an egg on a keyring, a pixel pet on its screen and its three buttons
+    const g = new THREE.Group(), egg = mesh(new THREE.SphereGeometry(1, 40, 24), phys('#ff7fb6', { roughness: .25, clearcoat: .8, transmission: .15, thickness: .01 }), 0, .007, 0, g); egg.scale.set(.021, .007, .025);
+    const pet = tex(96, 96, (c, w, h) => { c.fillStyle = '#b7c49a'; c.fillRect(0, 0, w, h); c.fillStyle = '#1d2412'; ['..####..', '.######.', '##.##.##', '########', '##....##', '.######.', '..#..#..'].forEach((r, y) => [...r].forEach((ch, x) => ch === '#' && c.fillRect(16 + x * 8, 20 + y * 8, 7, 7))) });
+    face(.016, .014, glow(pet, .15), 0, .0141, .002, g).rotation.x = -Math.PI / 2;
+    [-.007, 0, .007].forEach(x => mesh(new THREE.CylinderGeometry(.0018, .0018, .002, 16), std('#ffe14d', .4), x, .013, .014, g));
+    mesh(new THREE.TorusGeometry(.007, .0012, 8, 24), std('#cfcfcf', .2, 1), 0, .003, -.03, g).rotation.x = Math.PI / 2;
+    return g;
+  }
+  function wiiRemote() {   // 2006: the white remote, its pad and buttons, the wrist strap trailing off it
+    const g = new THREE.Group(), w = gloss('#f7f7f5'); mesh(rbox(.036, .0306, .148, .012, 5), w, 0, .0153, 0, g);
+    const t = std('#d9d9d6', .4); mesh(rbox(.016, .003, .016, .002), t, 0, .031, -.05, g); mesh(rbox(.005, .003, .016, .001), t, 0, .0315, -.05, g); mesh(rbox(.016, .003, .005, .001), t, 0, .0315, -.05, g);
+    mesh(new THREE.CylinderGeometry(.0065, .0065, .003, 24), t, 0, .031, -.025, g); [.035, .05].forEach(z => mesh(new THREE.CylinderGeometry(.0035, .0035, .002, 20), t, 0, .031, z, g));
+    [-.009, -.003, .003, .009].forEach(x => mesh(new THREE.BoxGeometry(.003, .0005, .002), std('#3d8bff', .4, 0, { emissive: col('#3d8bff'), emissiveIntensity: .8 }), x, .031, .066, g));
+    const strap = new THREE.CatmullRomCurve3([[0, .01, .074], [.01, .004, .1], [.03, .002, .13], [.0, .002, .16], [-.02, .002, .12], [0, .004, .09]].map(p => new THREE.Vector3(...p)), true); mesh(new THREE.TubeGeometry(strap, 64, .0018, 6, true), std('#1a1a1a', .8), 0, 0, 0, g);
+    return g;
+  }
+  function piInTin() {   // 2012: a tiny green board in a mint tin, the lid open
+    const g = new THREE.Group(), tin = std('#b8bcc2', .3, .9), W = .095, D = .062, H = .02;
+    const tray = new THREE.Shape(rrect(W, D, .01).getPoints()); tray.holes.push(new THREE.Path(rrect(W - .002, D - .002, .009).getPoints())); const wall = ext(tray, H); wall.rotateX(-Math.PI / 2); mesh(wall, tin, 0, 0, 0, g);
+    mesh(new THREE.ShapeGeometry(rrect(W, D, .01), 12), tin, 0, .0005, 0, g).rotation.x = -Math.PI / 2;
+    const lid = new THREE.Group(); lid.position.set(0, H, -D / 2); lid.rotation.x = -1.9; g.add(lid);
+    const lt = tex(256, 168, (c, w, h) => { c.fillStyle = '#e9edf0'; c.fillRect(0, 0, w, h); c.fillStyle = '#c3002f'; c.font = `bold 46px ${sans}`; c.fillText('MINTS', 60, 100); c.font = `18px ${sans}`; c.fillText('curiously small', 70, 130) });
+    const lg = new THREE.ShapeGeometry(rrect(W, D, .01), 12); flatUV(lg); mesh(lg, std('#ffffff', .3, .7, { map: lt }), 0, 0, D / 2, lid).rotation.x = Math.PI / 2;
+    const pcb = new THREE.Group(); pcb.position.y = .006; g.add(pcb); mesh(new THREE.BoxGeometry(.085, .0016, .056), std('#127a3a', .6), 0, 0, 0, pcb);
+    mesh(new THREE.BoxGeometry(.012, .0014, .012), std('#111', .4), -.005, .0015, 0, pcb); mesh(new THREE.BoxGeometry(.016, .012, .014), alu(), .035, .0068, -.012, pcb); mesh(new THREE.BoxGeometry(.016, .012, .014), alu(), .035, .0068, .012, pcb);
+    const led = std('#ff2a2a', .4, 0, { emissive: col('#ff2a2a'), emissiveIntensity: 1 }), led2 = std('#2aff6a', .4, 0, { emissive: col('#2aff6a'), emissiveIntensity: 1 });
+    const l1 = mesh(new THREE.BoxGeometry(.002, .001, .0014), led, -.035, .0014, .022, pcb), l2 = mesh(new THREE.BoxGeometry(.002, .001, .0014), led2, -.031, .0014, .022, pcb);
+    g.userData.update = t => { l2.visible = Math.sin(t * 9) + Math.sin(t * 3.1) > .2 }; return g;
+  }
+  function glassFrame() {   // 2013: a thin titanium band, the little prism in front of one eye, the pod behind the ear
+    const g = new THREE.Group(), ti = std('#9a9da3', .3, 1);
+    const band = new THREE.CatmullRomCurve3([[-.07, .02, -.1], [-.072, .022, -.02], [-.06, .024, .03], [0, .026, .045], [.06, .024, .03], [.072, .022, -.02], [.07, .02, -.1]].map(p => new THREE.Vector3(...p))); mesh(new THREE.TubeGeometry(band, 80, .0018, 8), ti, 0, 0, 0, g);
+    mesh(rbox(.012, .016, .06, .005), std('#e9eaec', .3, .2), .07, .024, -.03, g);
+    mesh(new THREE.BoxGeometry(.01, .01, .014), phys('#d8ecff', { roughness: .02, transmission: .9, thickness: .01, transparent: true, opacity: .6 }), .055, .027, .03, g);
+    [-.018, .018].forEach(x => mesh(new THREE.SphereGeometry(.004, 12, 8), std('#d0d0d0', .5), x, .017, .045, g)); return g;
+  }
+  function smartSpeaker() {   // 2017: a cloth cylinder, the light ring on top waking now and then
+    const g = new THREE.Group(), cloth = tex(256, 256, (c, w, h) => { c.fillStyle = '#3b3d42'; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(255,255,255,.05)'; for (let y = 0; y < h; y += 3) c.fillRect(0, y, w, 1); for (let x = 0; x < w; x += 3) c.fillRect(x, 0, 1, h) }, { rep: [6, 4] });
+    mesh(new THREE.CylinderGeometry(.044, .044, .148, 48), std('#ffffff', .95, 0, { map: cloth }), 0, .074, 0, g);
+    mesh(new THREE.CylinderGeometry(.042, .042, .004, 48), std('#18191b', .4), 0, .15, 0, g);
+    const ringM = std('#1f6dff', .3, 0, { emissive: col('#25c8ff'), emissiveIntensity: 0 }); mesh(new THREE.TorusGeometry(.04, .0025, 8, 64), ringM, 0, .1495, 0, g).rotation.x = Math.PI / 2;
+    g.userData.update = t => { const u = t % 9; ringM.emissiveIntensity = u < 2.5 ? 1.2 * Math.sin(u / 2.5 * Math.PI) : 0 }; return g;
+  }
+  function earbudsCase() {   // 2019: a white case, its lid seam and the little light
+    const g = new THREE.Group(), w = gloss('#fafaf8'); mesh(rbox(.054, .0214, .045, .01, 6), w, 0, .0107, 0, g);
+    mesh(new THREE.BoxGeometry(.0545, .0004, .0455), std('#d6d6d4', .5), 0, .0142, 0, g);
+    mesh(new THREE.CircleGeometry(.0012, 12), std('#7dff8a', .3, 0, { emissive: col('#4dff6a'), emissiveIntensity: 1 }), 0, .009, .0226, g);
+    g.rotation.y = .3; return g;
+  }
+  function sanitiser() {   // 2020: a pump bottle of gel
+    const g = new THREE.Group();
+    lathe([[0, 0], [.03, 0], [.032, .006], [.032, .12], [.026, .135], [.012, .14], [.012, .15], [0, .15]], phys('#d8f0ff', { roughness: .03, transmission: .85, thickness: .02, transparent: true, opacity: .55 }), g);
+    lathe([[0, .004], [.027, .004], [.029, .01], [.029, .09], [0, .09]], phys('#9fd7ff', { roughness: .1, transmission: .6, thickness: .03, transparent: true, opacity: .7 }), g);
+    const w = std('#f4f4f2', .35); lathe([[0, .15], [.014, .15], [.014, .17], [.009, .175], [0, .175]], w, g); mesh(rbox(.04, .01, .014, .004), w, .013, .182, 0, g);
+    mesh(new THREE.CylinderGeometry(.0025, .0025, .03, 12), w, .03, .182, 0, g).rotation.z = Math.PI / 2;
+    const lab = tex(512, 160, (c, ww, h) => { c.fillStyle = '#fff'; c.fillRect(0, 0, ww, h); c.fillStyle = '#0a6fb5'; c.font = `bold 52px ${sans}`; c.fillText('HAND GEL', 40, 80); c.font = `26px ${sans}`; c.fillText('70% alcohol · 2020', 44, 124) });
+    const lm = new THREE.MeshStandardMaterial({ map: lab, roughness: .5, side: THREE.DoubleSide }); mesh(new THREE.CylinderGeometry(.0325, .0325, .045, 48, 1, true, -.9, 1.8), lm, 0, .065, 0, g);
+    return g;
+  }
+
   return [
     { id: 'kesey', name: 'The Kesey Signal', note: 'Rob Ford’s thriller, paperback · 15.2 × 22.7 cm', make: kesey },
     { id: 'webdesign', name: 'Web Design: The Evolution of the Digital World 1990–Today', note: 'Rob Ford, TASCHEN hardcover · 25 × 32 cm', make: webdesign },
@@ -508,5 +755,41 @@ export function makeProps(THREE, ctx) {
     { id: 'clock', name: 'Wall clock', note: 'On your own time · 25 cm', make: clock },
     { id: 'noteA', name: 'Post-it on the monitor', note: 'Pink, stuck to the bezel', make: () => note(['judge', '12 sites', 'by FRI!'], '#ff9fc6', 80) },
     { id: 'noteB', name: 'Post-it on the monitor', note: 'Yellow, stuck to the bezel', make: () => note(['BACKUP', 'the .fla!!'], '#fbe96a', 84) },
+    // the years (the time scroll): computers every 5 years, monitors every 5 in between, phones, mice, music, software, guests
+    { id: 'yComp2005', name: 'Aluminium tower (2005)', note: 'Computer, 2005–2009: one sheet of holes front and back, handles cut in top and foot', make: aluTower },
+    { id: 'yComp2010', name: 'Laptop on a stand (2010)', note: 'Computer, 2010–2014: aluminium, open, on a bent aluminium stand', make: laptopOnStand },
+    { id: 'yComp2015', name: 'Small silver box (2015)', note: 'Computer, 2015–2019 · 19.7 cm square', make: smallBox },
+    { id: 'yComp2020', name: 'Laptop, upright (2020)', note: 'Computer, 2020–2024: closed, space grey, in a cradle', make: laptopUpright },
+    { id: 'yComp2025', name: 'Studio block (2025)', note: 'Computer, 2025–: an aluminium block, vents round its foot', make: studioBlock },
+    { id: 'yMon2003', name: '15-inch flat panel (2003)', note: 'Monitor, 2003–2007: grey plastic on a round foot, the classic desktop on it', make: flat15 },
+    { id: 'yMon2008', name: '24-inch glossy widescreen (2008)', note: 'Monitor, 2008–2012: black glass, a bent aluminium foot', make: glossy24 },
+    { id: 'yMon2013', name: '27-inch thin display (2013)', note: 'Monitor, 2013–2017: aluminium, glass edge to edge', make: thin27 },
+    { id: 'yMon2018', name: '5K, thin bezels (2018)', note: 'Monitor, 2018–2022: matte black on a slim stand', make: fiveK },
+    { id: 'yMon2023', name: 'Display on an arm (2023)', note: 'Monitor, 2023–: clamped to the back of the desk', make: onArm },
+    { id: 'yPhone2004', name: 'Flip phone (2004)', note: 'Phone, 2004–2006: thin metal, open, the blue-lit keys', make: flipPhone },
+    { id: 'yPhone2007', name: 'First touchscreen (2007)', note: 'Phone, 2007–2012: aluminium back, one round button', make: touch2007 },
+    { id: 'yPhone2013', name: 'Bigger slab (2013)', note: 'Phone, 2013–2017: flat icons', make: slab2013 },
+    { id: 'yPhone2018', name: 'Edge to edge (2018)', note: 'Phone, 2018–2023: the notch', make: edge2018 },
+    { id: 'yPhone2024', name: 'Today’s phone (2024)', note: 'Phone, 2024–: the pill at the top', make: phone2024 },
+    { id: 'yMouse2003', name: 'White optical mouse (2003)', note: 'Mouse, 2003–2007: clear shell, the red glow under it', make: optical2003 },
+    { id: 'yMouse2008', name: 'Glossy wireless mouse (2008)', note: 'Mouse, 2008–2011', make: glossy2008 },
+    { id: 'yMouse2012', name: 'Low touch mouse (2012)', note: 'Mouse, 2012–2018: no buttons to see', make: touch2012 },
+    { id: 'yMouse2019', name: 'Ergonomic mouse (2019)', note: 'Mouse, 2019–: graphite, a thumb rest', make: ergo2019 },
+    { id: 'yMusic2000', name: 'CD player (2000)', note: 'Music, 2000–2001: a disc through the lid, the earphones’ lead', make: discman },
+    { id: 'yMusic2002', name: 'Click-wheel player (2002)', note: 'Music, 2002–2005: white front, chrome back', make: () => clickWheel() },
+    { id: 'yMusic2006', name: 'Slim colour player (2006)', note: 'Music, 2006–2010: pink aluminium', make: nano },
+    { id: 'yMusic2011', name: 'Over-ear headphones (2011)', note: 'Music, 2011–', make: headphones },
+    { id: 'yBoxMX', name: 'Macromedia Flash MX', note: 'Software box, 2002–2004', make: flashMX },
+    { id: 'yBox8', name: 'Macromedia Flash 8', note: 'Software box, 2005–2006', make: flash8 },
+    { id: 'yBoxCS3', name: 'Flash CS3', note: 'Software box, 2007–2008', make: flashCS3 },
+    { id: 'yBoxCS4', name: 'Flash CS4', note: 'Software box, 2009–2010 · the last one', make: flashCS4 },
+    { id: 'gOnline', name: 'Free-hours CD-ROMs', note: 'Guest, 2000–2003: the pile grows, then goes in the bin', make: onlineCDs },
+    { id: 'gTamagotchi', name: 'Tamagotchi', note: 'Guest, 2000–2001: a pixel pet on a keyring', make: tamagotchi },
+    { id: 'gWii', name: 'Wii remote', note: 'Guest, 2006–2008: the wrist strap trailing off it', make: wiiRemote },
+    { id: 'gPi', name: 'Raspberry Pi in a mint tin', note: 'Guest, 2012–2014: its LEDs blink', make: piInTin },
+    { id: 'gGlass', name: 'Google Glass', note: 'Guest, 2013–2014: titanium band, the prism', make: glassFrame },
+    { id: 'gSpeaker', name: 'Smart speaker', note: 'Guest, 2017–2021: the light ring wakes now and then', make: smartSpeaker },
+    { id: 'gEarbuds', name: 'Earbuds case', note: 'Guest, 2019–', make: earbudsCase },
+    { id: 'gSanitiser', name: 'Hand sanitiser', note: 'Guest, 2020–2022', make: sanitiser },
   ];
 }
