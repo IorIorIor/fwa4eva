@@ -52,11 +52,11 @@ and gives quick visual feedback; keep replies short).
   Windows: `mkWin` (taskbar button each); double-click a winner → `openFWA` (slideshow: its screenshot + the agency's others, details).
   `?hic`: Chrome's HTML-in-Canvas (157+): `#desk` inside `#deskCv` (drawElementImage on paint) → `room.deskCanvas` makes it the glass texture.
   The single page with `INLINE_DATA=1` also writes `dist-single/sheets/` (screenshots, 100 per sheet): publish them beside it. Thumbnails: `public/data/thumbs.png` + `.json` (16 px each), made by `python3 room/build-thumbs.py`.
-- THE YEARS (branch `the-years`): the time scroll (`src/02-years.js`, on unless `?desk`/`?galaxy`). The wheel (anywhere) is time:
+- THE YEARS (branch `the-years`): the time scroll (`src/02-years.js`, on unless `?desk`/`?galaxy`). The wheel over the screen is time:
   Year (month folders) → Month (a tile a day) → Day (its winner large, neighbours peeking); ←/→ step, Enter in, Esc/↑ out. The skin
   changes every 5 years (`SKINS`, `APPS`). `room.setYear(y)` (01-zroom, `YRS` + `BASE` + `WOOD`): each prop's span of years, built
   when first needed (`prebuildYears` builds ahead); a monitor prop carries `userData.screen` and the desk follows it (`scr`, `onScreen`).
-  Click the monitor to go in close, the room to come out (`tapOut`). The new props are in `room/props.js` (ids `y…`, `g…`).
+  The wheel over the screen is time (one slow step a swipe, every view swipes sideways), over the room it zooms; taps on the screen only press its buttons. Every monitor shows the same screen size. Posters (`p…`) and Post-its (`n…`, on each monitor) per era; desk lamps 2008/2015/2021; the room brightens towards now (`yearsBright`). The new props are in `room/props.js` (ids `y…`, `g…`).
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
   field for settings copied from the Ascent toy.
 - Multiplayer: `relay.mjs` (WebSocket at `/ws`, positions only, deals each pilot a distinct hue). On claude.ai the page

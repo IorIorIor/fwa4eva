@@ -3,7 +3,7 @@
    month folders), a month (a tile per day) or a day (its winner large, the days either side peeking in), and scrolling moves through
    years, months or days at the level you're on. As the date moves the room moves with it (room.setYear): computers every 5 years,
    monitors every 5 in between, phones, mice, music, the software box, the guests, the clutter thinning out, the desk's wood. The
-   screen's skin changes every 5 years and its bar's apps with it. Click the monitor to go in close, the room to come back out.
+   screen's skin changes every 5 years and its bar's apps with it. The wheel over the room (off the screen) zooms; taps on the screen only press its buttons.
    Nothing after this file loads: the galaxy never starts. ?desk for the plain desk, ?galaxy for the galaxy. */
 if (TIMESCROLL && room.on) {
   const PHONE = matchMedia('(pointer: coarse)').matches, DW = PHONE ? 640 : 1024; let DH = Math.round(DW / room.screenAspect);
@@ -46,19 +46,21 @@ if (TIMESCROLL && room.on) {
     const s = skinOf(t); if (s !== skin) { skin = s; el.className = 'yr sk-' + s; $y('.y-dock').innerHTML = APPS[s].map(([c, g]) => `<i style="--c:${c}">${g}</i>`).join('') }
     const y = Y(t), m = M(t), d = byDate.get(iso(t));
     $y('.y-up').disabled = level === 'year'; $y('.y-clock').textContent = `${Dd(t)} ${MON[m]} ${y}`;
+    const old = body.querySelector('.y-view'), view = document.createElement('div'); view.className = 'y-view';
     if (level === 'year') {
       $y('.y-h').textContent = y; $y('.y-sub').textContent = '';
-      body.innerHTML = `<div class="y-folders">${MON.map((n, i) => { const on = monthStart(y, i) <= TEND && Date.UTC(y, i + 1, 0) >= T0, k = on ? winnersIn(y, i) : 0; return `<button class="y-fold${on ? '' : ' off'}${i === m ? ' cur' : ''}" data-m="${i}"${on ? '' : ' disabled'}><i></i><span>${n}</span><small>${on ? k : ''}</small></button>` }).join('')}</div>`;
+      view.innerHTML = `<div class="y-folders">${MON.map((n, i) => { const on = monthStart(y, i) <= TEND && Date.UTC(y, i + 1, 0) >= T0, k = on ? winnersIn(y, i) : 0; return `<button class="y-fold${on ? '' : ' off'}${i === m ? ' cur' : ''}" data-m="${i}"${on ? '' : ' disabled'}><i></i><span>${n}</span><small>${on ? k : ''}</small></button>` }).join('')}</div>`;
     } else if (level === 'month') {
       $y('.y-h').textContent = `${MONL[m]} ${y}`; $y('.y-sub').textContent = '';
       let h = ''; for (let k = 1; k <= daysIn(y, m); k++) { const tt = Date.UTC(y, m, k), w = byDate.get(iso(tt)); if (!w) { h += '<span class="y-tile none"></span>'; continue } h += `<button class="y-tile${match(w) ? '' : ' dim'}${AW[w.award] ? ' aw' : ''}${k === Dd(t) ? ' cur' : ''}" data-t="${tt}"><i style="${picCss(w)}">${AW[w.award] ? `<em>${w.award}</em>` : ''}</i><b>${esc(w.title)}</b><small>${k}</small></button>` }
-      body.innerHTML = `<div class="y-tiles">${h}</div>`;
+      view.innerHTML = `<div class="y-tiles">${h}</div>`;
     } else {
       $y('.y-h').textContent = `${MONL[m]} ${Dd(t)}, ${y}`; $y('.y-sub').textContent = d && AW[d.award] ? AW[d.award] : '';
       const sl = k => { const tt = t + k * DAY, w = tt >= T0 && tt <= TEND ? byDate.get(iso(tt)) : null; return `<div class="y-sl${k ? '' : ' on'}${w && !match(w) ? ' dim' : ''}" data-k="${k}" style="--k:${k};${picCss(w)}"></div>` };
-      body.innerHTML = `<div class="y-car"><div class="y-track">${[-2, -1, 0, 1, 2].map(sl).join('')}</div></div>` + (d ? `<div class="y-card"><b>${esc(d.title)}</b><span>${esc(d.agency)}</span><span>${esc(d.category)} · ${(+d.score).toFixed(1)}</span>${AW[d.award] ? `<em>${AW[d.award]}</em>` : ''}<span class="y-links">${d.url ? '<button class="go">Visit site</button>' : ''}${d.fwa ? '<button class="fwa">On FWA</button>' : ''}</span></div>` : '');
-      if (dir) { const tr = $y('.y-track'); tr.style.transition = 'none'; tr.style.transform = `translateX(${dir * 64}%)`; void tr.offsetWidth; tr.style.transition = ''; tr.style.transform = '' }   // (it slides in from the side it came from)
+      view.innerHTML = `<div class="y-car"><div class="y-track">${[-2, -1, 0, 1, 2].map(sl).join('')}</div></div>` + (d ? `<div class="y-card"><b>${esc(d.title)}</b><span>${esc(d.agency)}</span><span>${esc(d.category)} · ${(+d.score).toFixed(1)}</span>${AW[d.award] ? `<em>${AW[d.award]}</em>` : ''}<span class="y-links">${d.url ? '<button class="go">Visit site</button>' : ''}${d.fwa ? '<button class="fwa">On FWA</button>' : ''}</span></div>` : '');
     }
+    if (old && dir) { old.style.transform = `translateX(${-dir * 100}%)`; old.classList.add('gone'); setTimeout(() => old.remove(), 450); view.style.transition = 'none'; view.style.transform = `translateX(${dir * 100}%)`; body.appendChild(view); void view.offsetWidth; view.style.transition = ''; view.style.transform = '' }   // a step swipes: the old view out to one side, the new one in from the other
+    else { body.innerHTML = ''; body.appendChild(view) }
     room.setYear(yf(t));
   }
   // one step at the level you're on (with a filter on, a day step goes to the next day that matches)
@@ -67,7 +69,7 @@ if (TIMESCROLL && room.on) {
     if (level === 'year') t = clampT(Date.UTC(Y(t) + n, M(t), Math.min(Dd(t), daysIn(Y(t) + n, M(t)))));
     else if (level === 'month') t = addMonths(t, n);
     else { let tt = t; for (let i = 0; i < 4000; i++) { tt += Math.sign(n) * DAY; if (tt < T0 || tt > TEND) { tt = t; break } if (!filtered() || match(byDate.get(iso(tt)))) break } t = tt }
-    if (t !== t0) render(level === 'day' ? Math.sign(n) : 0);
+    if (t !== t0) render(Math.sign(n));
   }
   const into = () => { if (level === 'year') level = 'month'; else if (level === 'month') level = 'day'; render() };
   const up = () => { if (level === 'day') level = 'month'; else if (level === 'month') level = 'year'; render() };
@@ -83,12 +85,12 @@ if (TIMESCROLL && room.on) {
 
   // the wheel (anywhere: on the screen or off it) and a swipe on the screen: time
   let acc = 0, accT = 0;
-  const wheel = e => { const now = performance.now(); if (now - accT > 250) acc = 0; accT = now; acc += (e.deltaMode ? e.deltaY * 33 : e.deltaY) + (e.deltaMode ? 0 : e.deltaX * .5);
-    const per = level === 'day' ? 36 : level === 'month' ? 70 : 110; let n = 0; while (Math.abs(acc) >= per && Math.abs(n) < 6) { n += Math.sign(acc); acc -= Math.sign(acc) * per } if (n) step(n) };
+  let lastStep = 0;
+  const wheel = e => { const now = performance.now(); if (now - accT > 300) acc = 0; accT = now; acc += (e.deltaMode ? e.deltaY * 33 : e.deltaY) + (e.deltaMode ? 0 : e.deltaX * .5);   // slow on purpose: one step a swipe, and never faster than one every 0.42 s
+    const per = level === 'day' ? 110 : level === 'month' ? 140 : 160; if (Math.abs(acc) >= per && now - lastStep > 420) { lastStep = now; const n = Math.sign(acc); acc = 0; step(n) } };
   el.addEventListener('wheel', e => { if (e.target.closest('.y-pop')) return; e.preventDefault(); wheel(e) }, { passive: false });
-  room.onWheel = wheel; room.tapOut = true;
-  { let sy = null; el.addEventListener('touchstart', e => { if (room.focused && e.touches.length === 1) sy = e.touches[0].clientY }, { passive: true });
-    el.addEventListener('touchmove', e => { if (sy == null || e.target.closest('.y-pop')) return; e.preventDefault(); const dy = sy - e.touches[0].clientY; if (Math.abs(dy) > 40) { step(Math.sign(dy)); sy = e.touches[0].clientY } }, { passive: false });
+  { let sy = null; el.addEventListener('touchstart', e => { if (e.touches.length === 1) sy = e.touches[0].clientY }, { passive: true });
+    el.addEventListener('touchmove', e => { if (sy == null || e.target.closest('.y-pop')) return; e.preventDefault(); const dy = sy - e.touches[0].clientY; if (Math.abs(dy) > 70) { step(Math.sign(dy)); sy = e.touches[0].clientY } }, { passive: false });
     el.addEventListener('touchend', () => { sy = null }) }
   addEventListener('keydown', e => { if (e.target.matches && e.target.matches('input,textarea')) return; const k = e.key;
     if (k === 'ArrowLeft') step(-1); else if (k === 'ArrowRight') step(1); else if (k === 'ArrowUp' || k === 'Escape' || k === 'Backspace') up(); else if (k === 'Enter' || k === 'ArrowDown') into(); else return; e.preventDefault() });
@@ -121,11 +123,6 @@ if (TIMESCROLL && room.on) {
     if (ptype !== 'touch') { document.documentElement.classList.toggle('deskin', inn); room.deskIn = inn } cur.style.display = inn ? 'block' : 'none';
     if (inn) { cur.style.transform = `translate(${p[0].toFixed(1)}px,${p[1].toFixed(1)}px)`; room.mouseAt(p[0] / DW, p[1] / DH) } };
   { const tick = () => { requestAnimationFrame(tick); track() }; requestAnimationFrame(tick) }
-  // the first click (or tap) on the monitor only takes you in close; a click on the room takes you back out
-  { let eat = false; el.addEventListener('pointerdown', e => { ptype = e.pointerType; if (!room.focused) { eat = true; room.deskFocus(true) } }, true);
-    el.addEventListener('click', e => { if (eat) { eat = false; e.stopPropagation(); e.preventDefault() } }, true);
-    el.addEventListener('pointerup', e => { if (eat) { e.stopPropagation(); setTimeout(() => { eat = false }, 400) } }, true) }
-
   // the monitor changes shape over the years: the screen's page follows it
   window.__years = { go(day, lv = 'year') { t = clampT(Date.parse(day + 'T00:00:00Z')); level = lv; render() } };   // (for scripted looks)
   room.onScreen = a => { const h = Math.round(DW / a); if (h === DH) return; DH = h; el.style.height = DH + 'px'; room.desk(el, DW, DH) };

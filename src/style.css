@@ -1127,6 +1127,8 @@ html.desk #desk.yr{background:var(--wall);color:var(--ink)}   /* (over the plain
 #desk.yr .y-up{width:24px;height:22px;border-radius:calc(var(--r) / 2);background:var(--btn);color:var(--bfg);font-size:16px;line-height:20px}
 #desk.yr .y-up:disabled{opacity:.3}
 #desk.yr .y-body{position:relative;flex:1;min-height:0;background:var(--pane);overflow:hidden}
+#desk.yr .y-view{position:absolute;inset:0;transition:transform .42s cubic-bezier(.25,.7,.2,1)}   /* (a step swipes the old view out, the new one in) */
+#desk.yr .y-view.gone{pointer-events:none}
 #desk.yr .y-arrows{position:absolute;right:18px;bottom:16px;display:flex;gap:8px;z-index:3}
 #desk.yr .y-arrows button{width:34px;height:34px;border-radius:calc(var(--r) / 1.5);background:#1d1d1f;color:#fff;font-size:22px;line-height:32px}
 #desk.yr.sk-classic .y-arrows button{background:var(--btn);color:#000;border-radius:0;box-shadow:inset -1px -1px #404040,inset 1px 1px #fff}
@@ -1154,7 +1156,6 @@ html.desk #desk.yr{background:var(--wall);color:var(--ink)}   /* (over the plain
 #desk.yr .y-car{position:absolute;inset:26px 0 70px}
 #desk.yr .y-track{position:absolute;inset:0;transition:transform .28s cubic-bezier(.2,.7,.2,1)}
 #desk.yr .y-sl{position:absolute;top:0;bottom:0;left:calc(50% - 31% + var(--k) * 64%);width:62%;background:#bbb center/cover no-repeat;border-radius:calc(var(--r) / 2);box-shadow:0 4px 18px rgba(0,0,0,.25)}
-#desk.yr .y-sl:not(.on){opacity:.75}
 #desk.yr .y-sl.dim{opacity:.2}
 #desk.yr .y-card{position:absolute;left:22px;bottom:22px;width:230px;padding:14px 16px;background:var(--win);color:var(--ink);border:1px solid var(--line);border-radius:calc(var(--r) / 1.5);display:flex;flex-direction:column;gap:3px;box-shadow:0 6px 18px rgba(0,0,0,.2);z-index:2}
 #desk.yr .y-card b{font-size:15px;line-height:1.2}

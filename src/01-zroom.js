@@ -234,22 +234,26 @@ const room = (() => {
   // with the eras. Whichever monitor stands there, its screen is where the desk lies (scr, and onScreen tells the desk its shape) ──
   const YRS = [   // id, from, until, x, y over the desk top, z, turned; { mon } a monitor (its screen), { mouse } in the hand-held mouse's place
     ['yComp2005', 2005, 2010, .66, 0, .3, 0], ['yComp2010', 2010, 2015, .66, 0, .34, -.5], ['yComp2015', 2015, 2020, .62, 0, .3, -.2], ['yComp2020', 2020, 2025, .64, 0, .3, -.3], ['yComp2025', 2025, 1e9, .62, 0, .3, -.2],
-    ['yMon2003', 2003, 2008, -.03, 0, .36, 0, { mon: 1 }], ['yMon2008', 2008, 2013, -.03, 0, .36, 0, { mon: 1 }], ['yMon2013', 2013, 2018, -.03, 0, .34, 0, { mon: 1 }], ['yMon2018', 2018, 2023, -.03, 0, .36, 0, { mon: 1 }], ['yMon2023', 2023, 1e9, -.03, 0, .3, 0, { mon: 1 }],
+    ['yMon2003', 2003, 2008, -.03, 0, .36, 0, { mon: 1, notes: ['n2003a', 'n2003b'] }], ['yMon2008', 2008, 2013, -.03, 0, .36, 0, { mon: 1, notes: ['n2008a', 'n2008b'] }], ['yMon2013', 2013, 2018, -.03, 0, .34, 0, { mon: 1, notes: ['n2013a', 'n2013b'] }], ['yMon2018', 2018, 2023, -.03, 0, .36, 0, { mon: 1, notes: ['n2018a', 'n2018b'] }], ['yMon2023', 2023, 1e9, -.03, 0, .3, 0, { mon: 1, notes: ['n2023a', 'n2023b'] }],
     ['yPhone2004', 2004, 2007, 0, 0, .62, -.35], ['yPhone2007', 2007, 2013, 0, 0, .62, -.35], ['yPhone2013', 2013, 2018, 0, 0, .62, -.35], ['yPhone2018', 2018, 2024, 0, 0, .62, -.35], ['yPhone2024', 2024, 1e9, 0, 0, .62, -.35],
     ['yMouse2003', 2003, 2008, 0, 0, 0, 0, { mouse: 1 }], ['yMouse2008', 2008, 2012, 0, 0, 0, 0, { mouse: 1 }], ['yMouse2012', 2012, 2019, 0, 0, 0, 0, { mouse: 1 }], ['yMouse2019', 2019, 1e9, 0, 0, 0, 0, { mouse: 1 }],
     ['yMusic2000', 2000, 2002, .4, 0, .6, .4], ['yMusic2002', 2002, 2006, .4, 0, .6, .4], ['yMusic2006', 2006, 2011, .4, 0, .6, .4], ['yMusic2011', 2011, 1e9, .42, 0, .55, .3],
     ['yBoxMX', 2002, 2005, -.75, 0, .095, .3], ['yBox8', 2005, 2007, -.75, 0, .095, .3], ['yBoxCS3', 2007, 2009, -.75, 0, .095, .3], ['yBoxCS4', 2009, 2011, -.75, 0, .095, .3],
     ['gOnline', 2000, 2004, -.44, 0, .3, .5], ['gTamagotchi', 2000, 2002, .2, 0, .52, .6], ['gWii', 2006, 2009, .18, 0, .55, .4], ['gPi', 2012, 2015, .42, 0, .43, -.3], ['gGlass', 2013, 2015, -.3, 0, .55, .3],
     ['gSpeaker', 2017, 2022, .36, 0, .24, 0], ['gEarbuds', 2019, 1e9, .15, 0, .58, .3], ['gSanitiser', 2020, 2023, -.42, 0, .22, 0],
+    ['yLamp2008', 2008, 2015, -.64, 0, .24, 0, { raw: 1 }], ['yLamp2015', 2015, 2021, -.64, 0, .24, 0, { raw: 1 }], ['yLamp2021', 2021, 1e9, -.64, 0, .24, 0, { raw: 1 }],   // (their heads where the old shade was: the lamp's light stays put)
+    ...[2000, 2005, 2010, 2015, 2020, 2025].flatMap(y => [[`p${y}a`, y, y === 2025 ? 1e9 : y + 5, -1.02, .93, .012, 0, { abs: 1 }], [`p${y}b`, y, y === 2025 ? 1e9 : y + 5, 1.0, .93, .012, 0, { abs: 1 }]]),   // two posters an era, either side beyond the certificates
   ];
-  const BASE = [['monitor', 2000, 2003], ['tower', 2000, 2005], ['nokia', 2000, 2004], ['flash', 2000, 2002], ['cdrs', 2000, 2011], ['gameboy', 2000, 2006], ['modem', 2000, 2003], ['webcam', 2000, 2003], ['noteA', 2000, 2003], ['noteB', 2000, 2003], ['postit', 2000, 2017], ['speakerL', 2000, 2015], ['speakerR', 2000, 2015], ['pencup', 2000, 2023]];
+  const BASE = [['monitor', 2000, 2003], ['tower', 2000, 2005], ['nokia', 2000, 2004], ['flash', 2000, 2002], ['cdrs', 2000, 2011], ['gameboy', 2000, 2006], ['modem', 2000, 2003], ['webcam', 2000, 2003], ['noteA', 2000, 2003], ['noteB', 2000, 2003], ['postit', 2000, 2017], ['speakerL', 2000, 2015], ['speakerR', 2000, 2015], ['pencup', 2000, 2023], ['lamp', 2000, 2008]];
   const WOOD = [[2000, '#ffffff', '#c8c8c8', '#8a8a8a', 0], [2008, '#ffe9cc', '#f2dfc4', '#bfa98f', 0], [2016, '#bdbab4', '#b3b0aa', '#a29f99', 1], [2022, '#a07a5c', '#8e6c53', '#62493a', 0]];   // dark veneer, light oak, white top, walnut
   function buildYear(e) {
     const [id, , , x, y, z, ry, o = {}] = e; let w = null;
     if (o.mouse) { const p = st.propList.find(p => p.id === id); if (!p) return null; w = p.make(); bake(w); mBody.add(w); w.traverse(m => { if (m.isMesh) m.castShadow = m.receiveShadow = true }) }
-    else w = st.at(id, x, D.h + y, z, ry);
+    else w = o.raw ? st.at(id, x, D.h + y, z, ry, null, 0, true) : st.at(id, x, o.abs ? y : D.h + y, z, ry);
     if (!w) return null; st.built.set(id, w);
     if (o.mon) w.traverse(m => { if (m.userData.screen) w.userData.scr = { o: m.userData.screen.node, w: m.userData.screen.w, h: m.userData.screen.h } });
+    if (o.notes && w.userData.scr) { const n = w.userData.scr.o, sw = w.userData.scr.w / 2, sh = w.userData.scr.h / 2;   // that era's Post-its, stuck to this monitor's bezel, hanging off its edges
+      o.notes.forEach((nid, k) => { const p = st.propList.find(p => p.id === nid); if (!p) return; const q = p.make(); bake(q); q.position.set(k ? sw + .022 : -sw - .03, k ? sh - .13 : sh - .05, n.position.z + .003); q.rotation.z = k ? -.09 : .07; n.parent.add(q) }) }
     w.traverse(m => { if (m.userData.update) propUpd.push(m.userData.update) }); return w;
   }
   function setYear(yf) {
@@ -363,11 +367,12 @@ const room = (() => {
     { const bs = RL('roomBtn', 6.8).toFixed(2), by = (RL('roomBtnY', .82) * 100).toFixed(1) + '%'; if (bs !== st.bs || by !== st.by) { st.bs = bs; st.by = by; H0.style.setProperty('--rbs', bs); H0.style.setProperty('--rby', by) } }   // the Start button's size and place on the glass
     scrLight.intensity = 3 * scr * (1 + (st.desk ? 1 : U2.scrOn.value) * 2); U2.glow.value = scr * 3; U2.scrBr.value = RL('roomScreenBright', 1.4);
     C.flick.value = RL('crtFlicker', .25); C.roll.value = RL('crtRoll', .3); C.idle.value = RL('crtIdle', .3);
-    hemi.intensity = .9 * RL('roomFill', 1);
+    const fut = st.year != null ? Math.max(0, Math.min(1, (st.year - 2000) / 26)) : 0;   // the years: the further on, the brighter the room
+    hemi.intensity = .9 * RL('roomFill', 1) * (1 + fut * RL('yearsBright', 1.6));
     { const lv = RL('roomLava', 1); for (const l of propLights) l.intensity = (l.userData.base ?? 1) * lv }
     { const e = RL('roomPropsEnv', 1); if (e !== st.pe) { st.pe = e; for (const m of propMats) { if (m.userData.ei0 == null) m.userData.ei0 = m.envMapIntensity ?? 1; m.envMapIntensity = m.userData.ei0 * e } } }
     wall.color.copy(lin('#33465f')).multiplyScalar(RL('roomWall', 1)); const wk = RL('roomWood', 1), wt = st.wt; wood.color.copy(wt ? wt[0] : lin('#ffffff')).multiplyScalar(wk); woodV.color.copy(wt ? wt[1] : lin('#c8c8c8')).multiplyScalar(wk); woodDark.color.copy(wt ? wt[2] : lin('#8a8a8a')).multiplyScalar(wk);   // (wt: the years' wood)
-    U2.exp.value = RL('roomExposure', 1.3) * st.fade; U2.bloomK.value = RL('roomBloom', .35); U2.vig.value = RL('roomVignette', .55); U2.ao.value = RL('roomAO', .8); if (aoN) aoN.radius.value = RL('roomAORadius', .2); sc.environmentIntensity = RL('roomBounce', .35); U2.grain.value = RL('roomGrain', .035);
+    U2.exp.value = RL('roomExposure', 1.3) * st.fade * (1 + fut * RL('yearsExposure', .35)); U2.bloomK.value = RL('roomBloom', .35); U2.vig.value = RL('roomVignette', .55); U2.ao.value = RL('roomAO', .8); if (aoN) aoN.radius.value = RL('roomAORadius', .2); sc.environmentIntensity = RL('roomBounce', .35); U2.grain.value = RL('roomGrain', .035);
   }
   function frame(now) {
     const dt = Math.min(.05, Math.max(0, (now - (st.t || now)) / 1000)); st.t = now; U2.time.value = now / 1000;

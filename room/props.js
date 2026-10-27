@@ -553,7 +553,9 @@ export function makeProps(THREE, ctx) {
   }
 
   // ── monitors ──
-  function panel({ W, H, bez, D, frame, skin, glare = .1 }) {   // a flat screen: its body, the glass, the picture
+  const SCR = [.355, .266];   // (every monitor shows the same screen as the CRT's, so the desk on it never changes size)
+  function panel({ bez, D, frame, skin, glare = .1 }) {   // a flat screen: its body, the glass, the picture
+    const W = SCR[0] + bez * 2 + .006, H = SCR[1] + bez * 2 + .006;
     const g = new THREE.Group(); mesh(rbox(W, H, D, .006), frame, 0, 0, 0, g);
     face(W - bez * 2, H - bez * 2, phys('#050506', { roughness: glare, clearcoat: 1 }), 0, 0, D / 2 + .0004, g);
     const pic = face(W - bez * 2 - .006, H - bez * 2 - .006, glow(osShot(skin), .5), 0, 0, D / 2 + .0008, g); pic.userData.live = true;   // (kept its own mesh: the room lays its desk on it)
@@ -562,30 +564,30 @@ export function makeProps(THREE, ctx) {
   function flat15() {   // 2003: a 15-inch grey flat panel on a round foot
     const g = new THREE.Group(), grey = std('#b9b8b2', .5);
     lathe([[0, 0], [.1, 0], [.098, .012], [.03, .02], [0, .022]], grey, g); mesh(rbox(.05, .16, .03, .006), grey, 0, .09, -.02, g);
-    const p = panel({ W: .35, H: .29, bez: .026, D: .05, frame: grey, skin: 'classic', glare: .5 }); p.position.y = .19 + .145; g.add(p); return g;
+    const p = panel({ bez: .026, D: .05, frame: grey, skin: 'classic', glare: .5 }); p.position.y = .3; g.add(p); return g;
   }
   function glossy24() {   // 2008: a 24-inch widescreen, glossy black front, a bent aluminium foot
     const g = new THREE.Group(), m = alu();
     { const s = poly([[-.1, 0], [.1, 0], [.1, .008], [-.06, .008], [.02, .3], [.008, .3], [-.075, .008], [-.1, .008]]); const geo = ext(s, .17); geo.translate(0, 0, -.085); mesh(geo, m, 0, 0, -.02, g).rotation.y = Math.PI / 2 }
-    const p = panel({ W: .565, H: .37, bez: .022, D: .045, frame: m, skin: 'aqua', glare: .05 }); p.position.set(0, .4, .02); g.add(p); return g;
+    const p = panel({ bez: .022, D: .045, frame: m, skin: 'aqua', glare: .05 }); p.position.set(0, .3, .02); g.add(p); return g;
   }
   function thin27() {   // 2013: a 27-inch, thin aluminium, glass edge to edge
     const g = new THREE.Group(), m = alu();
     { const s = poly([[-.11, 0], [.11, 0], [.11, .006], [-.04, .006], [.03, .32], [.015, .32], [-.055, .006], [-.11, .006]]); const geo = ext(s, .19); geo.translate(0, 0, -.095); mesh(geo, m, 0, 0, -.03, g).rotation.y = Math.PI / 2 }
-    const p = panel({ W: .65, H: .49, bez: .016, D: .018, frame: m, skin: 'glass', glare: .04 }); p.position.set(0, .43, 0); g.add(p);
-    mesh(rbox(.65, .07, .018, .004), m, 0, .43 - .245 - .035, 0, g); return g;
+    const p = panel({ bez: .016, D: .018, frame: m, skin: 'glass', glare: .04 }); p.position.set(0, .3, 0); g.add(p);
+    mesh(rbox(.393, .06, .018, .004), m, 0, .3 - .155 - .03, 0, g); return g;
   }
   function fiveK() {   // 2018: thin bezels, matte black, a slim black stand on a round foot
     const g = new THREE.Group(), b = std('#18191b', .55, .2);
     lathe([[0, 0], [.12, 0], [.118, .008], [0, .009]], b, g); mesh(rbox(.03, .3, .02, .006), b, 0, .15, -.03, g);
-    const p = panel({ W: .61, H: .36, bez: .008, D: .03, frame: b, skin: 'flat', glare: .45 }); p.position.y = .36; g.add(p); return g;
+    const p = panel({ bez: .008, D: .03, frame: b, skin: 'flat', glare: .45 }); p.position.y = .3; g.add(p); return g;
   }
   function onArm() {   // 2023: a thin display on an arm clamped to the back of the desk
     const g = new THREE.Group(), m = std('#d9dadc', .35, .7), j = std('#2a2b2e', .5, .3);
     mesh(rbox(.06, .1, .05, .006), j, 0, .05, -.25, g); mesh(new THREE.CylinderGeometry(.012, .012, .2, 24), m, 0, .2, -.25, g);   // the clamp and its post
     const a1 = mesh(rbox(.03, .025, .26, .008), m, 0, .3, -.13, g); a1.rotation.x = -.35;   // the arm, angled up and out
     mesh(new THREE.SphereGeometry(.016, 20, 12), j, 0, .35, -.02, g);
-    const p = panel({ W: .62, H: .36, bez: .007, D: .012, frame: m, skin: 'soft', glare: .3 }); p.position.set(0, .38, .01); g.add(p); return g;
+    const p = panel({ bez: .007, D: .012, frame: m, skin: 'soft', glare: .3 }); p.position.set(0, .31, .01); g.add(p); return g;
   }
 
   // ── phones ──
@@ -735,6 +737,86 @@ export function makeProps(THREE, ctx) {
     return g;
   }
 
+
+
+  // ── desk lamps: each one's head where the 2000 lamp's shade was (13 cm across, 52 cm up), so the room's lamp light comes from it ──
+  const tube = (a, b, r, m, parent) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), o = mesh(new THREE.CylinderGeometry(r, r, A.distanceTo(B), 16), m, 0, 0, 0, parent); o.position.copy(A).add(B).multiplyScalar(.5); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()); return o };
+  const ledM = () => std('#fff6e0', .3, 0, { emissive: col('#fff1d0'), emissiveIntensity: 2.2 });
+  function lamp2008() {   // an aluminium architect's lamp, an LED head
+    const g = new THREE.Group(), m = std('#c9cbcf', .3, .6); lathe([[0, 0], [.075, 0], [.074, .012], [.06, .02], [0, .02]], m, g);
+    tube([0, .02, 0], [-.05, .33, -.01], .0065, m, g); mesh(new THREE.SphereGeometry(.012, 16, 10), m, -.05, .33, -.01, g); tube([-.05, .33, -.01], [.11, .54, .03], .0055, m, g);
+    const h = new THREE.Group(); h.position.set(.13, .53, .03); h.rotation.z = -.35; g.add(h); mesh(rbox(.15, .014, .05, .006), m, 0, 0, 0, h); mesh(new THREE.PlaneGeometry(.12, .03), ledM(), 0, -.0075, 0, h).rotation.x = Math.PI / 2; return g;
+  }
+  function lamp2015() {   // a matte black bar lamp: a post, an arm, a long thin LED head
+    const g = new THREE.Group(), m = std('#1a1b1d', .55, .2); mesh(rbox(.17, .022, .11, .006), m, 0, .011, 0, g);
+    tube([-.04, .022, 0], [-.04, .53, 0], .008, m, g); mesh(new THREE.SphereGeometry(.011, 16, 10), m, -.04, .53, 0, g);
+    const h = new THREE.Group(); h.position.set(.11, .53, .03); h.rotation.y = -.2; g.add(h); mesh(rbox(.32, .012, .028, .005), m, 0, 0, 0, h); mesh(new THREE.PlaneGeometry(.29, .012), ledM(), 0, -.0065, 0, h).rotation.x = Math.PI / 2; return g;
+  }
+  function lamp2021() {   // a white arc lamp, a round flat head
+    const g = new THREE.Group(), m = std('#f2f1ee', .4); lathe([[0, 0], [.07, 0], [.068, .015], [0, .016]], m, g);
+    const arc = new THREE.CatmullRomCurve3([[0, .016, 0], [-.03, .3, 0], [.03, .52, .01], [.12, .56, .03]].map(p => new THREE.Vector3(...p))); mesh(new THREE.TubeGeometry(arc, 48, .006, 10), m, 0, 0, 0, g);
+    const h = new THREE.Group(); h.position.set(.13, .54, .03); h.rotation.z = -.25; g.add(h); mesh(new THREE.CylinderGeometry(.05, .05, .012, 40), m, 0, 0, 0, h); mesh(new THREE.CircleGeometry(.044, 40), ledM(), 0, -.0065, 0, h).rotation.x = Math.PI / 2; return g;
+  }
+
+  // ── the wall over the years: two posters an era (ours, drawn here: homages, no real artwork) and the Post-its on each monitor ──
+  function poster(draw, style) {   // a print, 30 × 42.4 cm: pinned up with four pins (the 2000s), or in a thin frame (black, white, oak)
+    const g = new THREE.Group(), pw = .3, ph = .424, t = tex(600, 848, draw), paper = new THREE.MeshStandardMaterial({ map: t, roughness: .8, side: THREE.DoubleSide });
+    if (style === 'pin') {
+      const geo = new THREE.PlaneGeometry(pw, ph, 8, 12), p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) / pw * 2, y = p.getY(i) / ph * 2; p.setZ(i, Math.max(0, Math.abs(x) * Math.abs(y) - .7) * .03) } geo.computeVertexNormals();   // (the corners lift off the wall a little)
+      const m = mesh(geo, paper, 0, 0, .002, g); m.receiveShadow = true;
+      const pin = std('#d6312a', .35); [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([x, y]) => mesh(new THREE.SphereGeometry(.0045, 12, 8), pin, x * (pw / 2 - .012), y * (ph / 2 - .012), .006, g));
+      g.position.y = ph / 2; const r = new THREE.Group(); r.add(g); return r;
+    }
+    const fw = .012, fd = .02, W = pw + 2 * fw, H = ph + 2 * fw, fm = { black: std('#141416', .4, .5), white: std('#f2f1ee', .45), oak: std('#c79a68', .55) }[style];
+    [[0, H / 2 - fw / 2, W, fw], [0, -H / 2 + fw / 2, W, fw], [-W / 2 + fw / 2, 0, fw, H - 2 * fw], [W / 2 - fw / 2, 0, fw, H - 2 * fw]].forEach(([x, y, w, h]) => mesh(rbox(w, h, fd, .0015, 2), fm, x, y, 0, g));
+    mesh(new THREE.PlaneGeometry(pw, ph), paper, 0, 0, fd / 2 - .006, g); mesh(new THREE.BoxGeometry(pw, ph, .003), std('#3a3530', .9), 0, 0, -fd / 2 + .003, g);
+    const gl = mesh(new THREE.PlaneGeometry(pw, ph), phys('#ffffff', { roughness: .03, transparent: true, opacity: .04, clearcoat: 1 }), 0, 0, fd / 2 - .002, g); gl.castShadow = false;
+    g.position.y = H / 2; const r = new THREE.Group(); r.add(g); return r;
+  }
+  const grain = (c, w, h, a = .06) => { for (let i = 0; i < 9000; i++) { c.fillStyle = `rgba(${rnd() < .5 ? '0,0,0' : '255,255,255'},${a * rnd()})`; c.fillRect(rnd() * w, rnd() * h, 2, 2) } };
+  const big = (c, txt, x, y, size, color, font = sans, weight = 'bold', align = 'left') => { c.fillStyle = color; c.font = `${weight} ${size}px ${font}`; c.textAlign = align; c.fillText(txt, x, y) };
+  const POSTERS = {
+    p2000a: [(c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0b0d1c'); g.addColorStop(1, '#2a1340'); c.fillStyle = g; c.fillRect(0, 0, w, h);   // a Flash conference: chrome type, a lens flare, an orange grid
+      c.strokeStyle = 'rgba(255,140,40,.55)'; c.lineWidth = 2; for (let i = 0; i <= 14; i++) { c.beginPath(); c.moveTo(w / 2, 520); c.lineTo(i * w / 14 * 2 - w / 2, h); c.stroke() } for (let i = 0; i < 9; i++) { const y = 520 + Math.pow(i / 8, 2) * 330; c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke() }
+      const ch = c.createLinearGradient(0, 200, 0, 330); ch.addColorStop(0, '#ffffff'); ch.addColorStop(.48, '#8fa3c8'); ch.addColorStop(.52, '#2a3550'); ch.addColorStop(1, '#d9e4ff'); big(c, 'VECTOR', 300, 270, 120, ch, sans, 'italic 900', 'center'); big(c, 'FWD', 300, 390, 150, ch, sans, 'italic 900', 'center');
+      const fl = c.createRadialGradient(430, 190, 2, 430, 190, 120); fl.addColorStop(0, 'rgba(255,255,255,1)'); fl.addColorStop(.1, 'rgba(255,220,160,.6)'); fl.addColorStop(1, 'rgba(255,150,60,0)'); c.fillStyle = fl; c.fillRect(0, 0, w, h);
+      big(c, 'SAN FRANCISCO · MARCH 2000', 300, 470, 22, '#ffb347', mono, 'normal', 'center'); big(c, '::: www.vectorfwd.com :::', 300, 820, 18, '#8fa3c8', mono, 'normal', 'center') }, 'pin'],
+    p2000b: [(c, w, h) => { c.fillStyle = '#050805'; c.fillRect(0, 0, w, h); big(c, 'Y2K', 300, 330, 230, '#39ff6a', mono, 'bold', 'center');   // the millennium bug: green on black
+      big(c, '00:00:00', 300, 470, 70, '#39ff6a', mono, 'bold', 'center'); big(c, '01.01.2000', 300, 540, 42, '#1f9a3f', mono, 'normal', 'center'); big(c, '> SYSTEM CHECK ... OK', 60, 700, 26, '#39ff6a', mono, 'normal'); big(c, '> PARTY LIKE IT\'S 1999_', 60, 745, 26, '#39ff6a', mono, 'normal') }, 'pin'],
+    p2005a: [(c, w, h) => { c.fillStyle = '#ff5a00'; c.fillRect(0, 0, w, h); c.fillStyle = '#111'; c.fillRect(0, 560, w, 288);   // a graphic-studio poster: blocks, pictograms, a trademark on everything
+      for (let i = 0; i < 6; i++) { c.fillStyle = i % 2 ? '#111' : '#fff'; c.beginPath(); c.arc(90 + i * 84, 150, 30, 0, 7); c.fill() } c.fillStyle = '#111'; c.fillRect(60, 230, 480, 14);
+      big(c, 'SUPA', 50, 380, 150, '#111', sans, '900'); big(c, 'FORM™', 50, 520, 150, '#fff', sans, '900'); big(c, 'SYSTEMS FOR LIVING · 2005', 50, 640, 26, '#ff5a00', mono, 'bold'); big(c, '[ ∴ ] ⌘ ▲ ● ■', 50, 760, 46, '#fff', sans, 'bold') }, 'pin'],
+    p2005b: [(c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#e9f6ff'); g.addColorStop(1, '#bfe3ff'); c.fillStyle = g; c.fillRect(0, 0, w, h);   // web 2.0: a glossy badge, a reflection, BETA
+      const st = (x, y, r) => { c.beginPath(); for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12, rr = i % 2 ? r * .86 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) } c.closePath() }; const b = c.createLinearGradient(0, 200, 0, 440); b.addColorStop(0, '#ffcf3f'); b.addColorStop(1, '#ff7b00'); c.fillStyle = b; st(300, 320, 150); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.ellipse(300, 260, 120, 60, 0, 0, 7); c.fill(); big(c, 'BETA', 300, 350, 92, '#fff', sans, 'bold', 'center');
+      big(c, 'web 2.0', 300, 600, 96, '#2b6cc4', sans, 'bold', 'center'); c.save(); c.globalAlpha = .18; c.scale(1, -1); big(c, 'web 2.0', 300, -690, 96, '#2b6cc4', sans, 'bold', 'center'); c.restore(); big(c, 'now with rounded corners', 300, 770, 26, '#5a86b8', sans, 'normal', 'center') }, 'pin'],
+    p2010a: [(c, w, h) => { c.fillStyle = '#c8102e'; c.fillRect(0, 0, w, h);   // Keep Calm and Carry On (1939, public domain): the crown, white serif capitals
+      c.fillStyle = '#fff'; c.beginPath(); c.moveTo(220, 190); c.lineTo(240, 120); c.lineTo(270, 160); c.lineTo(300, 100); c.lineTo(330, 160); c.lineTo(360, 120); c.lineTo(380, 190); c.closePath(); c.fill(); c.fillRect(220, 195, 160, 22);
+      ['KEEP', 'CALM', 'AND', 'CARRY', 'ON'].forEach((t, i) => big(c, t, 300, 340 + i * (i === 2 ? 95 : 110) - (i > 2 ? 15 : 0), i === 2 ? 56 : 104, '#fff', 'Georgia, "Times New Roman", serif', 'normal', 'center')) }, 'black'],
+    p2010b: [(c, w, h) => { c.fillStyle = '#f2efe8'; c.fillRect(0, 0, w, h); c.strokeStyle = 'rgba(0,0,0,.08)'; for (let x = 0; x <= w; x += 50) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke() }   // a Swiss grid poster
+      c.fillStyle = '#e1251b'; c.beginPath(); c.arc(400, 260, 150, 0, 7); c.fill(); big(c, 'Grid', 40, 640, 210, '#111', '"Helvetica Neue", Helvetica, Arial, sans-serif', 'bold'); big(c, 'Systems in graphic design', 46, 720, 28, '#111', '"Helvetica Neue", Helvetica, Arial, sans-serif', 'normal'); big(c, 'Zürich 2010', 46, 800, 22, '#555', '"Helvetica Neue", Helvetica, Arial, sans-serif', 'normal') }, 'black'],
+    p2015a: [(c, w, h) => { c.fillStyle = '#1abc9c'; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(0,0,0,.15)'; c.beginPath(); c.moveTo(250, 220); c.lineTo(350, 220); c.lineTo(w, 600); c.lineTo(w, h); c.lineTo(500, h); c.lineTo(250, 420); c.closePath(); c.fill();   // flat: one icon, its long shadow
+      c.fillStyle = '#fff'; c.beginPath(); c.moveTo(300, 150); c.quadraticCurveTo(370, 230, 350, 380); c.lineTo(250, 380); c.quadraticCurveTo(230, 230, 300, 150); c.fill(); c.fillRect(270, 380, 60, 30); c.fillStyle = '#1abc9c'; c.beginPath(); c.arc(300, 260, 26, 0, 7); c.fill();
+      big(c, 'SHIP IT', 300, 600, 110, '#fff', sans, 'bold', 'center'); big(c, 'make · test · repeat', 300, 670, 30, 'rgba(255,255,255,.8)', sans, 'normal', 'center') }, 'white'],
+    p2015b: [(c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0d1b3d'); g.addColorStop(1, '#3d1f5c'); c.fillStyle = g; c.fillRect(0, 0, w, h);   // a retro space-travel poster
+      const pl = c.createRadialGradient(240, 300, 20, 300, 360, 260); pl.addColorStop(0, '#fff3d6'); pl.addColorStop(.6, '#e8a05c'); pl.addColorStop(1, '#7a3a2a'); c.fillStyle = pl; c.beginPath(); c.arc(300, 360, 230, 0, 7); c.fill();
+      c.strokeStyle = 'rgba(120,60,40,.5)'; c.lineWidth = 6; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(300, 360, 60 + i * 30, 3.6, 5.6); c.stroke() } c.fillStyle = '#cfe8ff'; c.beginPath(); c.moveTo(0, 700); c.lineTo(160, 600); c.lineTo(260, 660); c.lineTo(400, 590); c.lineTo(w, 690); c.lineTo(w, h); c.lineTo(0, h); c.fill();
+      big(c, 'VISIT', 300, 90, 54, '#ffe2a8', 'Georgia, serif', 'bold', 'center'); big(c, 'EUROPA', 300, 160, 74, '#ffe2a8', 'Georgia, serif', 'bold', 'center'); big(c, 'ICE · SILENCE · NO TRAFFIC', 300, 800, 22, '#0d1b3d', mono, 'bold', 'center') }, 'white'],
+    p2020a: [(c, w, h) => { c.fillStyle = '#f4efe4'; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'multiply';   // risograph: two inks overprinting, the grain
+      c.fillStyle = '#ff48b0'; c.beginPath(); c.arc(240, 330, 190, 0, 7); c.fill(); c.fillStyle = '#0078bf'; c.fillRect(220, 260, 300, 300); c.fillStyle = '#ff48b0'; c.fillRect(60, 620, 480, 70); c.globalCompositeOperation = 'source-over'; grain(c, w, h, .12);
+      big(c, 'SLOW', 60, 780, 92, '#0078bf', sans, '900'); big(c, 'WEB', 340, 780, 92, '#ff48b0', sans, '900') }, 'oak'],
+    p2020b: [(c, w, h) => { const g = c.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#d9d7ff'); g.addColorStop(1, '#ffd9ec'); c.fillStyle = g; c.fillRect(0, 0, w, h);   // a 3D blob, chrome and soft
+      const bl = c.createRadialGradient(240, 300, 20, 300, 380, 230); bl.addColorStop(0, '#ffffff'); bl.addColorStop(.35, '#b9c2ff'); bl.addColorStop(.7, '#7d6bff'); bl.addColorStop(1, '#ff8fc8'); c.fillStyle = bl; c.beginPath(); c.moveTo(300, 150); c.bezierCurveTo(520, 140, 540, 420, 420, 560); c.bezierCurveTo(330, 660, 120, 600, 110, 430); c.bezierCurveTo(100, 260, 160, 160, 300, 150); c.fill();
+      big(c, 'render', 300, 740, 84, '#2b2350', sans, '300', 'center'); big(c, 'ambient occlusion · 2020', 300, 790, 22, '#5a4f8a', mono, 'normal', 'center') }, 'oak'],
+    p2025a: [(c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#2b1d52'); g.addColorStop(.55, '#e07b5f'); g.addColorStop(1, '#f6d6a8'); c.fillStyle = g; c.fillRect(0, 0, w, h);   // an "AI" print: a dreamy desk at dusk, a little too perfect
+      c.fillStyle = 'rgba(255,240,210,.9)'; c.beginPath(); c.arc(300, 470, 70, 0, 7); c.fill(); c.fillStyle = '#1d1534'; c.fillRect(0, 620, w, 228); c.fillStyle = '#2d2350'; c.fillRect(170, 520, 260, 110); c.fillStyle = '#9fd1ff'; c.fillRect(185, 532, 230, 86); grain(c, w, h, .05);
+      big(c, 'prompt: a desk in the year 2000, dusk', 300, 720, 20, 'rgba(255,255,255,.75)', mono, 'normal', 'center'); big(c, 'seed 2000 · steps 26', 300, 750, 16, 'rgba(255,255,255,.5)', mono, 'normal', 'center') }, 'white'],
+    p2025b: [(c, w, h) => { c.fillStyle = '#f2f0eb'; c.fillRect(0, 0, w, h); drawLogo(c, 120, 300, 360, '#151515');   // the last one: 26 years, the mark
+      big(c, '2000 — 2026', 300, 520, 46, '#151515', sans, '300', 'center'); big(c, 'twenty-six years of the web', 300, 570, 24, '#777', sans, 'normal', 'center') }, 'black'],
+  };
+  const NOTES = { n2003a: [['fix IE6', 'bugs!!'], '#fbe96a'], n2003b: [['preloader', 'v2'], '#9fe6ff'], n2008a: [['learn', 'jQuery'], '#ff9fc6'], n2008b: [['iPhone', 'site??'], '#fbe96a'],
+    n2013a: [['make it', 'responsive'], '#c8ff9f'], n2013b: [['flat', 'design?'], '#fbe96a'], n2018a: [['WebGL!!'], '#ff9fc6'], n2018b: [['GDPR', 'banner :('], '#fbe96a'], n2023a: [['prompt', 'better'], '#9fe6ff'], n2023b: [['WebGPU?'], '#fbe96a'] };
+
   return [
     { id: 'kesey', name: 'The Kesey Signal', note: 'Rob Ford’s thriller, paperback · 15.2 × 22.7 cm', make: kesey },
     { id: 'webdesign', name: 'Web Design: The Evolution of the Digital World 1990–Today', note: 'Rob Ford, TASCHEN hardcover · 25 × 32 cm', make: webdesign },
@@ -792,5 +874,10 @@ export function makeProps(THREE, ctx) {
     { id: 'gSpeaker', name: 'Smart speaker', note: 'Guest, 2017–2021: the light ring wakes now and then', make: smartSpeaker },
     { id: 'gEarbuds', name: 'Earbuds case', note: 'Guest, 2019–', make: earbudsCase },
     { id: 'gSanitiser', name: 'Hand sanitiser', note: 'Guest, 2020–2022', make: sanitiser },
+    { id: 'yLamp2008', name: 'Architect\u2019s LED lamp (2008)', note: 'Desk lamp, 2008–2014: aluminium, a slim LED head', make: lamp2008 },
+    { id: 'yLamp2015', name: 'Bar lamp (2015)', note: 'Desk lamp, 2015–2020: matte black, a long thin LED head', make: lamp2015 },
+    { id: 'yLamp2021', name: 'Arc lamp (2021)', note: 'Desk lamp, 2021–: white, a round flat head', make: lamp2021 },
+    ...Object.entries(POSTERS).map(([id, [draw, style]]) => ({ id, name: 'Poster ' + id.slice(1, 5) + ' ' + id.slice(5), note: `Wall, ${id.slice(1, 5)}–${+id.slice(1, 5) + 4}: ${style === 'pin' ? 'pinned up' : 'in a ' + style + ' frame'}`, make: () => poster(draw, style) })),
+    ...Object.entries(NOTES).map(([id, [lines, hex]]) => ({ id, name: 'Post-it: ' + lines.join(' '), note: `On the ${id.slice(1, 5)} monitor`, make: () => note(lines, hex, 84) })),
   ];
 }
