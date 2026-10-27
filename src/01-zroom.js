@@ -12,6 +12,7 @@ const renderer = new THREE.WebGPURenderer({ canvas, antialias: false, forceWebGL
 await renderer.init();
 const RL = (k, d) => { try { const v = LOOK[k]; return v ?? d } catch (e) { return d } };   // a room setting (the settings come later in the load)
 const DESK = document.documentElement.classList.contains('roomboot') && !QS.has('test') && !QS.has('galaxy');   // THE DESK: only the room, and on its monitor a little Windows 2000 desktop with every FWA (02-desk); ?galaxy for the galaxy as before
+const TIMESCROLL = DESK && !QS.has('desk');   // THE YEARS (branch the-years): the time scroll on the desk (02-years); ?desk for the plain desk
 const room = (() => {
   const H0 = document.documentElement, on0 = H0.classList.contains('roomboot') && !QS.has('test');
   const st = { desk: null, zt: 0, zc: 0, zUser: 0, deskIn: false, inT: 0, mt: null, lastR: 0, on: false, phase: 'off', t: 0, fade: 0, sway: new THREE.Vector2(), aim: new V3(), ptr: { x: innerWidth / 2, y: innerHeight / 2, in: false }, dv: 0, M: null, Mi: null, band: [0, 0, 1, 1], onDone: null };
@@ -93,6 +94,7 @@ const room = (() => {
   })();
   glassMat.outputNode = vec4(tslOutput.rgb, 0);   // (it marks itself in the picture's alpha: where it shows, nothing in front of it, the galaxy goes straight through)
   const glass = add(new THREE.PlaneGeometry(SW, SH), glassMat, 0, by + .012, glassZ, mon); glass.castShadow = false;
+  const scr = { o: glass, w: SW, h: SH };   // the screen the desk lies on: the CRT's glass, or (the years) whichever monitor stands there now
   for (let k = 0; k < 5; k++) add(rbox(.022, .008, .006, .002), beigeD, -.07 + k * .03, .07 + .028, .14 + BD / 2 + .002, mon);   // the adjust buttons
   add(new THREE.CylinderGeometry(.009, .009, .006, 24).rotateX(Math.PI / 2), beigeD, .16, .07 + .028, .14 + BD / 2 + .003, mon);   // power
   add(new THREE.SphereGeometry(.0025, 8, 6), std('#2bff6a', .3, 0, { emissive: lin('#2bff6a'), emissiveIntensity: 2 }), .135, .07 + .028, .14 + BD / 2 + .004, mon);   // its green light
@@ -140,7 +142,7 @@ const room = (() => {
   // the mouse on its pad
   const mouse = new THREE.Group(); mouse.position.set(.3, .012, -.02); tray.add(mouse); let mBody = null;   // (mBody: on the desk it follows the desktop's pointer over its pad)
   { add(rbox(.23, .004, .2, .002), std('#3d3644', .95, 0, { map: noiseTex(128, 70, 140, [2, 2]) }), 0, 0, 0, mouse);
-    const ms = add(new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), beigeL, .01, .002, -.01, mouse); ms.scale.set(.032, .03, .055); ms.rotation.y = -.15; mBody = ms }
+    const hold = new THREE.Group(); hold.position.set(.01, .002, -.01); mouse.add(hold); const ms = add(new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), beigeL, 0, 0, 0, hold); ms.scale.set(.032, .03, .055); ms.rotation.y = -.15; mBody = hold; st.mouse0 = ms }   // (the years: later mice go in the same holder)
 
   // ── cables ── (to the back of the desk)
   const cab = (pts, r = .0035, m = std('#2a2826', .6)) => add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new V3(...p))), 48, r, 6), m);
@@ -204,7 +206,8 @@ const room = (() => {
     const load = src => new Promise(ok => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = src });
     const got = await Promise.race([Promise.all(Object.entries(ROOM_IMG).map(async ([k, s]) => [k, await load(s)])), new Promise(r => setTimeout(() => r([]), 5000))]);
     const mk = document.querySelector('#intro .mark path:last-of-type'), list = makeProps(THREE, { RoundedBoxGeometry, img: Object.fromEntries(got.filter(([, im]) => im)), logo: mk && mk.getAttribute('d'), col: lin });
-    const at = (id, ...a) => { const p = list.find(p => p.id === id); if (!p) return; try { const w = put(p.make(), ...a); pickable(id, w); w.traverse(o => { if (o.userData.update) propUpd.push(o.userData.update); if (o.isLight) { propLights.push(o); if (AO) { o.castShadow = true; o.shadow.mapSize.set(512, 512); o.shadow.bias = -.0004; o.shadow.normalBias = .003; o.shadow.radius = 6; o.shadow.camera.near = .02 } } if (o.material) [].concat(o.material).forEach(m => propMats.add(m)) }) } catch (e) { console.warn('room prop', id, e) } };
+    st.propList = list; st.at = (id, ...a) => at(id, ...a);   // (the years build theirs later, when they're needed)
+    const at = (id, ...a) => { const p = list.find(p => p.id === id); if (!p) return; try { const w = put(p.make(), ...a); pickable(id, w); st.built = st.built || new Map(); st.built.set(id, w); w.traverse(o => { if (o.userData.update) propUpd.push(o.userData.update); if (o.isLight) { propLights.push(o); if (AO) { o.castShadow = true; o.shadow.mapSize.set(512, 512); o.shadow.bias = -.0004; o.shadow.normalBias = .003; o.shadow.radius = 6; o.shadow.camera.near = .02 } } if (o.material) [].concat(o.material).forEach(m => propMats.add(m)) }); return w } catch (e) { console.warn('room prop', id, e) } };
     const top = D.h, frameY = 1.07;
     at('motd', -.6, frameY, .0125);   // the two certificates, either side of the monitor
     at('sotd', .62, frameY, .0125);
@@ -225,6 +228,43 @@ const room = (() => {
     at('cdrs', -.17, top, .6, .3);
     at('gameboy', .27, top, .6, .25);
   })();
+
+  // ── THE YEARS (the time scroll): what stands on the desk in each year. The room as built is 2000; each later prop comes in for its
+  // span of years (built the first time it's needed), the 2000 things go when their time is up, and the desk's own wood changes
+  // with the eras. Whichever monitor stands there, its screen is where the desk lies (scr, and onScreen tells the desk its shape) ──
+  const YRS = [   // id, from, until, x, y over the desk top, z, turned; { mon } a monitor (its screen), { mouse } in the hand-held mouse's place
+    ['yComp2005', 2005, 2010, .66, 0, .3, 0], ['yComp2010', 2010, 2015, .66, 0, .34, -.5], ['yComp2015', 2015, 2020, .62, 0, .3, -.2], ['yComp2020', 2020, 2025, .64, 0, .3, -.3], ['yComp2025', 2025, 1e9, .62, 0, .3, -.2],
+    ['yMon2003', 2003, 2008, -.03, 0, .36, 0, { mon: 1 }], ['yMon2008', 2008, 2013, -.03, 0, .36, 0, { mon: 1 }], ['yMon2013', 2013, 2018, -.03, 0, .34, 0, { mon: 1 }], ['yMon2018', 2018, 2023, -.03, 0, .36, 0, { mon: 1 }], ['yMon2023', 2023, 1e9, -.03, 0, .3, 0, { mon: 1 }],
+    ['yPhone2004', 2004, 2007, 0, 0, .62, -.35], ['yPhone2007', 2007, 2013, 0, 0, .62, -.35], ['yPhone2013', 2013, 2018, 0, 0, .62, -.35], ['yPhone2018', 2018, 2024, 0, 0, .62, -.35], ['yPhone2024', 2024, 1e9, 0, 0, .62, -.35],
+    ['yMouse2003', 2003, 2008, 0, 0, 0, 0, { mouse: 1 }], ['yMouse2008', 2008, 2012, 0, 0, 0, 0, { mouse: 1 }], ['yMouse2012', 2012, 2019, 0, 0, 0, 0, { mouse: 1 }], ['yMouse2019', 2019, 1e9, 0, 0, 0, 0, { mouse: 1 }],
+    ['yMusic2000', 2000, 2002, .4, 0, .6, .4], ['yMusic2002', 2002, 2006, .4, 0, .6, .4], ['yMusic2006', 2006, 2011, .4, 0, .6, .4], ['yMusic2011', 2011, 1e9, .42, 0, .55, .3],
+    ['yBoxMX', 2002, 2005, -.75, 0, .095, .3], ['yBox8', 2005, 2007, -.75, 0, .095, .3], ['yBoxCS3', 2007, 2009, -.75, 0, .095, .3], ['yBoxCS4', 2009, 2011, -.75, 0, .095, .3],
+    ['gOnline', 2000, 2004, -.44, 0, .3, .5], ['gTamagotchi', 2000, 2002, .2, 0, .52, .6], ['gWii', 2006, 2009, .18, 0, .55, .4], ['gPi', 2012, 2015, .42, 0, .43, -.3], ['gGlass', 2013, 2015, -.3, 0, .55, .3],
+    ['gSpeaker', 2017, 2022, .36, 0, .24, 0], ['gEarbuds', 2019, 1e9, .15, 0, .58, .3], ['gSanitiser', 2020, 2023, -.42, 0, .22, 0],
+  ];
+  const BASE = [['monitor', 2000, 2003], ['tower', 2000, 2005], ['nokia', 2000, 2004], ['flash', 2000, 2002], ['cdrs', 2000, 2011], ['gameboy', 2000, 2006], ['modem', 2000, 2003], ['webcam', 2000, 2003], ['noteA', 2000, 2003], ['noteB', 2000, 2003], ['postit', 2000, 2017], ['speakerL', 2000, 2015], ['speakerR', 2000, 2015], ['pencup', 2000, 2023]];
+  const WOOD = [[2000, '#ffffff', '#c8c8c8', '#8a8a8a', 0], [2008, '#ffe9cc', '#f2dfc4', '#bfa98f', 0], [2016, '#bdbab4', '#b3b0aa', '#a29f99', 1], [2022, '#a07a5c', '#8e6c53', '#62493a', 0]];   // dark veneer, light oak, white top, walnut
+  function buildYear(e) {
+    const [id, , , x, y, z, ry, o = {}] = e; let w = null;
+    if (o.mouse) { const p = st.propList.find(p => p.id === id); if (!p) return null; w = p.make(); bake(w); mBody.add(w); w.traverse(m => { if (m.isMesh) m.castShadow = m.receiveShadow = true }) }
+    else w = st.at(id, x, D.h + y, z, ry);
+    if (!w) return null; st.built.set(id, w);
+    if (o.mon) w.traverse(m => { if (m.userData.screen) w.userData.scr = { o: m.userData.screen.node, w: m.userData.screen.w, h: m.userData.screen.h } });
+    w.traverse(m => { if (m.userData.update) propUpd.push(m.userData.update) }); return w;
+  }
+  function setYear(yf) {
+    if (!st.propList) return; st.year = yf; let changed = false, monNow = null;
+    for (const [id, a, b] of BASE) { const o = picks.get(id); if (o && o.visible !== (yf >= a && yf < b)) { o.visible = yf >= a && yf < b; changed = true } }
+    if (st.mouse0 && st.mouse0.visible !== yf < 2003) { st.mouse0.visible = yf < 2003; changed = true }
+    for (const e of YRS) { const v = yf >= e[1] && yf < e[2]; let w = st.built.get(e[0]); if (v && !w) w = buildYear(e); if (w && w.visible !== v) { w.visible = v; changed = true } if (v && w && e[7] && e[7].mon) monNow = w }
+    const want = monNow && monNow.userData.scr ? monNow.userData.scr : { o: glass, w: SW, h: SH };
+    if (want.o !== scr.o) { Object.assign(scr, want); st.noCrt = !!monNow; st.dcss = ''; if (st.onScreen) st.onScreen(scr.w / scr.h) }
+    let wd = WOOD[0]; for (const r of WOOD) if (yf >= r[0]) wd = r;
+    if (wd !== st.wd) { st.wd = wd; st.wt = [lin(wd[1]), lin(wd[2]), lin(wd[3])]; const plain = !!wd[4]; if (plain !== !!st.plain) { st.plain = plain; const wh = st.whiteTex || (st.whiteTex = cvTex(4, 4, g => { g.fillStyle = '#fff'; g.fillRect(0, 0, 4, 4) })); wood.map = plain ? wh : woodTex; woodV.map = woodDark.map = plain ? wh : woodSide; for (const m of [wood, woodV, woodDark]) m.needsUpdate = true } }
+    if (changed) { bakeShadows(); st.bakeN = 3 }
+  }
+  // (built ahead, one a frame once the room is idle, so scrolling never waits on one)
+  function prebuildYears() { const todo = YRS.filter(e => !st.built.has(e[0])); const step = () => { const e = todo.shift(); if (!e) return; if (!st.built.has(e[0])) { const w = buildYear(e); if (w) w.visible = st.year != null && st.year >= e[1] && st.year < e[2] } setTimeout(() => requestAnimationFrame(step), 120) }; step() }
 
   // ── light ──
   const spot =new THREE.SpotLight(0xffffff, 1, 6, THREE.MathUtils.degToRad(52), .65, 2);
@@ -260,9 +300,9 @@ const room = (() => {
 
   // ── the opening's page and the pointer's layer, laid onto the glass ──
   // which part of the glass is "the window": the glass is GA wide; the window's own shape sits in its middle, as wide or as tall as it
-  function bandOf() { const A = innerWidth / Math.max(1, innerHeight); return A >= GA ? [0, .5 - GA / A / 2, 1, .5 + GA / A / 2] : [.5 - A / GA / 2, 0, .5 + A / GA / 2, 1] }   // [u0, v0, u1, v1], v from the top
+  function bandOf() { const A = innerWidth / Math.max(1, innerHeight), GA = scr.w / scr.h; return A >= GA ? [0, .5 - GA / A / 2, 1, .5 + GA / A / 2] : [.5 - A / GA / 2, 0, .5 + A / GA / 2, 1] }   // [u0, v0, u1, v1], v from the top
   const _p = new V3();
-  const toScreen = (u, v) => { glass.localToWorld(_p.set((u - .5) * SW, (.5 - v) * SH, 0)).project(cam); return [(_p.x * .5 + .5) * innerWidth, (-_p.y * .5 + .5) * innerHeight] };
+  const toScreen = (u, v) => { scr.o.localToWorld(_p.set((u - .5) * scr.w, (.5 - v) * scr.h, 0)).project(cam); return [(_p.x * .5 + .5) * innerWidth, (-_p.y * .5 + .5) * innerHeight] };
   function homography(w, h, P) {   // the CSS matrix taking the box (0,0)…(w,h) onto the four points P (tl, tr, br, bl), and its inverse
     const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = P, dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3, dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3, den = dx1 * dy2 - dx2 * dy1 || 1e-9;
     const g = (dx3 * dy2 - dx2 * dy3) / den, hh = (dx1 * dy3 - dx3 * dy1) / den, a = x1 - x0 + g * x1, b = x3 - x0 + hh * x3, c = x0, d = y1 - y0 + g * y1, e = y3 - y0 + hh * y3, f = y0;
@@ -326,7 +366,7 @@ const room = (() => {
     hemi.intensity = .9 * RL('roomFill', 1);
     { const lv = RL('roomLava', 1); for (const l of propLights) l.intensity = (l.userData.base ?? 1) * lv }
     { const e = RL('roomPropsEnv', 1); if (e !== st.pe) { st.pe = e; for (const m of propMats) { if (m.userData.ei0 == null) m.userData.ei0 = m.envMapIntensity ?? 1; m.envMapIntensity = m.userData.ei0 * e } } }
-    wall.color.copy(lin('#33465f')).multiplyScalar(RL('roomWall', 1)); const wk = RL('roomWood', 1); wood.color.setScalar(wk); woodV.color.copy(lin('#c8c8c8')).multiplyScalar(wk); woodDark.color.copy(lin('#8a8a8a')).multiplyScalar(wk);
+    wall.color.copy(lin('#33465f')).multiplyScalar(RL('roomWall', 1)); const wk = RL('roomWood', 1), wt = st.wt; wood.color.copy(wt ? wt[0] : lin('#ffffff')).multiplyScalar(wk); woodV.color.copy(wt ? wt[1] : lin('#c8c8c8')).multiplyScalar(wk); woodDark.color.copy(wt ? wt[2] : lin('#8a8a8a')).multiplyScalar(wk);   // (wt: the years' wood)
     U2.exp.value = RL('roomExposure', 1.3) * st.fade; U2.bloomK.value = RL('roomBloom', .35); U2.vig.value = RL('roomVignette', .55); U2.ao.value = RL('roomAO', .8); if (aoN) aoN.radius.value = RL('roomAORadius', .2); sc.environmentIntensity = RL('roomBounce', .35); U2.grain.value = RL('roomGrain', .035);
   }
   function frame(now) {
@@ -350,7 +390,7 @@ const room = (() => {
     const still = st.desk && st.deskIn && !st.dirty && st.zc === st.zt && !st.lab && (!mBody || !st.mt || Math.abs(mBody.position.x - (.01 + (st.mt[0] - .5) * .13)) < 1e-4);   // the desk, in close and nothing moving: the room only needs the odd frame
     if (still && now - st.lastR < 1000 / Math.max(1, RL('deskRoomFps', 8))) return;
     st.lastR = now; st.dirty = false;
-    if (st.phase !== 'dive' && !st.lab) crtFx.set(rest);   // (the monitor at rest)
+    if (st.phase !== 'dive' && !st.lab) crtFx.set(st.noCrt ? 0 : rest);   // (the monitor at rest; the years: only while it's a CRT)
     if (st.lab) { labStep(dt); const fade = 1 - sstep(Math.max(0, st.lab.p), .6, 1), sh = SHEET.matches ? innerHeight * .2 * fade : 0, sx = !SHEET.matches && labEl ? (labEl.offsetWidth + 14) / 2 * fade : 0; if (sh > .5 || sx > .5) cam.setViewOffset(innerWidth, innerHeight, sx, sh, innerWidth, innerHeight); else cam.clearViewOffset() }   /* (the playground covers part of the window: on a phone a sheet over the bottom, else a column on the right; the room moves into what's left) */ else if (cam.view && cam.view.enabled) cam.clearViewOffset();   // the CRT playground: the move held wherever you scrub it
     else if (st.phase === 'dive') {   // into the glass, the first part of the one move (see mkRun); the CRT comes over the screen as the glass fills it
       const R = st.run; R.t += dt; const s = Math.min(R.s(R.t), R.Dr); posed(s / R.Dr); if (RL('roomDynRes', 1)) dynRes(1 - .5 * sstep(s / R.Dr, 0, 1)); crtFx.set(rest + (peak - rest) * sstep(s / R.Dr, cin, 1));
@@ -368,7 +408,7 @@ const room = (() => {
   const loop = now => { if (!st.on) return; requestAnimationFrame(loop); if (st.lt) st.ft = (st.ft || 16) * .9 + Math.min(1000, now - st.lt) * .1; st.lt = now; if (labEl && !labEl.hidden && now - (st.ftT || 0) > 500) { st.ftT = now; labEl.querySelector('.cl-ft').textContent = `Frame ${st.ft.toFixed(1)} ms · ${(1000 / st.ft).toFixed(0)} fps · resolution ${renderer.getPixelRatio()}×` } try { frame(now) } catch (e) { console.error(e) } };   // (st.ft: the frame time, smoothed)
   // the camera at a point p (0 … 1) of the way into the glass: nearer by the run's log distance, turning square onto it
   function prepRun() {
-    st.q0 = cam.quaternion.clone(); glassPose(); const b = bandOf(), d1 = (st.desk ? Math.max(SH, SW / cam.aspect) * RL(MOB ? 'deskFitMob' : 'deskFit', MOB ? 1.01 : 1.06) : (b[3] - b[1]) * SH) / (2 * Math.tan(cam.fov * Math.PI / 360)); st.d0 = cam.position.distanceTo(_t); st.dir0 = cam.position.clone().sub(_t).normalize();   // (the desk: all the way in, the whole glass just fits the window)
+    st.q0 = cam.quaternion.clone(); glassPose(); const b = bandOf(), d1 = (st.desk ? Math.max(scr.h, scr.w / cam.aspect) * RL(MOB ? 'deskFitMob' : 'deskFit', MOB ? 1.01 : 1.06) : (b[3] - b[1]) * SH) / (2 * Math.tan(cam.fov * Math.PI / 360)); st.d0 = cam.position.distanceTo(_t); st.dir0 = cam.position.clone().sub(_t).normalize();   // (the desk: all the way in, the whole glass just fits the window)
     let Dg = 1.8; try { Dg = Math.max(.3, intro.lnPV - intro.lnD0) } catch (e) { }
     st.run = mkRun(Math.max(.2, Math.log(st.d0 / d1)), Dg, Math.max(.6, RL('roomDive', 2.8)));
   }
@@ -398,7 +438,7 @@ const room = (() => {
   // then carries on at one steady pace through the glass and down into the galaxy, and the settle behind your pointer brakes it
   // (intro.settleStart takes over at that pace). Dr: the room's share, Dg: the galaxy's
   function mkRun(Dr, Dg, T) { const a = .45, L = Dr + Dg, k = L / (T * (1 - a / 2)); return { t: 0, Dr, Dg, L, vend: k, s: t => { const u = t / T; return k * T * (u < a ? u * u / (2 * a) : u - a / 2) } } }
-  function glassPose() { glass.updateWorldMatrix(true, false); glass.getWorldPosition(_t); _n.set(0, 0, 1).transformDirection(glass.matrixWorld); _u.set(0, 1, 0).transformDirection(glass.matrixWorld) }
+  function glassPose() { const o = scr.o; o.updateWorldMatrix(true, false); o.getWorldPosition(_t); _n.set(0, 0, 1).transformDirection(o.matrixWorld); _u.set(0, 1, 0).transformDirection(o.matrixWorld) }
   function dive() {
     if (st.phase !== 'ready' || st.lab) return; st.phase = 'dive'; prepRun(); curDpr = dpr0 = renderer.getPixelRatio();   // (the dive steps down from whatever it's drawing at now)
     if (early()) { place(); const [wx, wy] = toWindow(st.ptr.x, st.ptr.y); try { intro.mx = intro.mxs = Math.max(-1, Math.min(1, wx / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(wy / innerHeight * 2 - 1))) } catch (e) { } document.body.classList.add('roomptr'); try { if (!coarse && !lockFailed) requestLock() } catch (e) { } }   // the 3D pointer right where you clicked, on the glass
@@ -408,7 +448,7 @@ const room = (() => {
   // input: in the room nothing reaches the galaxy (no dragging, swiping or scrolling it round); only Start, the panels, and on a phone the taps that move the pointer on the glass
   const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter'), inUI = e => e.target && e.target.closest && e.target.closest('#lookPanel,#crtLab,#rmArr,#desk'), held = () => st.on && st.phase !== 'post';
   // the desk on a phone: a swipe in the room zooms (up: in), a tap on the room (not the screen) goes back out to where you were
-  { let sw = null; addEventListener('pointerdown', e => { if (st.on && st.desk && e.pointerType === 'touch' && !inUI(e)) sw = { y: e.clientY, y0: e.clientY, x0: e.clientX, z: st.zUser } }, true);
+  { let sw = null; addEventListener('pointerdown', e => { if (st.on && st.desk && (e.pointerType === 'touch' || st.tapOut) && !inUI(e)) sw = { y: e.clientY, y0: e.clientY, x0: e.clientX, z: st.zUser } }, true);
     addEventListener('pointermove', e => { if (!sw || e.pointerType !== 'touch') return; st.zUser = Math.max(0, Math.min(RL('deskZoomMax', 1), sw.z + (sw.y0 - e.clientY) / Math.max(200, innerHeight) * 1.6 * RL('deskZoomSpeed', 1))) }, true);
     addEventListener('pointerup', e => { if (!sw) return; if (Math.hypot(e.clientX - sw.x0, e.clientY - sw.y0) < 10 && st.focus) { st.focus = false; st.deskIn = false } sw = null }, true);
     addEventListener('pointercancel', () => { sw = null }, true) }
@@ -422,10 +462,11 @@ const room = (() => {
     if (onBtn(e)) dive();
   }, true);
   ['touchstart', 'touchmove', 'touchend'].forEach(t => addEventListener(t, e => { if (held() && !inUI(e)) { e.stopImmediatePropagation(); if (t === 'touchmove' && e.cancelable) e.preventDefault() } }, { capture: true, passive: false }));
-  addEventListener('wheel', e => { if (!st.on || !st.desk || st.lab || inUI(e)) return; e.preventDefault(); const d = e.deltaMode ? e.deltaY * 33 : e.deltaY; st.zUser = Math.max(0, Math.min(RL('deskZoomMax', 1), st.zUser - d * RL('deskZoomSpeed', 1) * .0012)) }, { capture: true, passive: false });   // the desk: off the monitor the wheel zooms (on it, the desktop scrolls)
+  addEventListener('wheel', e => { if (!st.on || !st.desk || st.lab || inUI(e)) return; e.preventDefault(); if (st.onWheel) return st.onWheel(e);   // (the years: the wheel is time, everywhere)
+  const d = e.deltaMode ? e.deltaY * 33 : e.deltaY; st.zUser = Math.max(0, Math.min(RL('deskZoomMax', 1), st.zUser - d * RL('deskZoomSpeed', 1) * .0012)) }, { capture: true, passive: false });   // the desk: off the monitor the wheel zooms (on it, the desktop scrolls)
   addEventListener('wheel', e => { if (held() && !inUI(e)) e.stopImmediatePropagation() }, { capture: true, passive: true });
   addEventListener('keydown', e => {
-    if (!st.on || (e.target.matches && e.target.matches('input,textarea,select'))) return; const k = e.key;
+    if (!st.on || st.desk || (e.target.matches && e.target.matches('input,textarea,select'))) return; const k = e.key;   // (the desk has keys of its own)
     if (st.phase === 'post') return;
     if (k === 'Enter' || k === ' ' || k === 'ArrowDown') { e.preventDefault(); e.stopImmediatePropagation(); if (st.phase === 'ready') dive() }
     else if (k === 'Escape' && st.lab) { e.stopImmediatePropagation(); lab(false) }
@@ -528,6 +569,7 @@ const room = (() => {
     toDesk(x, y) { const m = st.Md; if (!m) return null; const w = m[6] * x + m[7] * y + m[8]; return [(m[0] * x + m[1] * y + m[2]) / w, (m[3] * x + m[4] * y + m[5]) / w] },   // a point on screen → on the desk's page
     deskCanvas(cv) { const t = new THREE.CanvasTexture(cv); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; gT.value = t; U2.flipT.value = 0; U2.scrOn.value = 1; st.hic = t },   // ?hic: the desktop's canvas is the glass's picture
     deskPainted() { if (st.hic) { st.hic.needsUpdate = true; st.dirty = true } },
+    setYear, prebuildYears, set onScreen(f) { st.onScreen = f }, set onWheel(f) { st.onWheel = f }, set tapOut(v) { st.tapOut = !!v }, get screenAspect() { return scr.w / scr.h },   // THE YEARS
     set deskIn(v) { if (!st.focus) st.deskIn = !!v }, get focused() { return !!st.focus }, deskFocus(v) { st.focus = !!v; st.deskIn = !!v }, mouseAt(u, v) { st.mt = [Math.max(0, Math.min(1, u)), Math.max(0, Math.min(1, v))] }, get zoom() { return st.zc }, set zoomTo(v) { st.zUser = Math.max(0, Math.min(RL('deskZoomMax', 1), v)) },
     afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st }, picks, arrange, pick, U2, gRT, renderer, setAO, aoN, rp,   // (focus: a tap on the screen, touch, holds it in close until a tap on the room)
   };

@@ -8,7 +8,7 @@
    ?hic: Chrome's HTML-in-Canvas (157+): the desktop is drawn into a canvas (drawElementImage) and that is the glass's own
    picture in WebGL; the canvas itself sits invisibly where the glass is, so its elements still take the clicks.
    Nothing after this file loads: the galaxy never starts. ?galaxy (or ?noroom) for the galaxy as before. */
-if (DESK && room.on) {
+if (DESK && !TIMESCROLL && room.on) {
   const PHONE = matchMedia('(pointer: coarse)').matches, DW = PHONE ? 640 : 1024, DH = PHONE ? 480 : 768, esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const fmtD = d => { const [y, m, dd] = d.date.split('-'); return `${+dd} ${MON[+m - 1]} ${y}` };

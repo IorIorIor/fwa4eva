@@ -491,7 +491,7 @@ export function makeProps(THREE, ctx) {
   // ───────────────────────── THE YEARS: what comes and goes on the desk, 2000–2026 (the time scroll) ─────────────────────────
   // generic look-alikes, no real logos: computers every 5 years, monitors every 5 in between, phones, mice, music, the software
   // boxes and the year's guests. Same rules as above: metres, standing on y = 0, the front towards +z.
-  const alu = () => std('#c8cace', .32, 1), aluDark = () => std('#5f6166', .38, 1), gloss = (hex, o = {}) => phys(hex, { roughness: .2, clearcoat: 1, clearcoatRoughness: .08, ...o });
+  const alu = () => std('#d2d4d8', .36, .55), aluDark = () => std('#6a6c71', .4, .55), gloss = (hex, o = {}) => phys(hex, { roughness: .2, clearcoat: 1, clearcoatRoughness: .08, ...o });
   const lathe = (pts, m, parent, seg = 64) => mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg), m, 0, 0, 0, parent);
   const glow = (t, k = .55) => new THREE.MeshStandardMaterial({ map: t, roughness: .18, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: k });
   const face = (w, h, m, x, y, z, parent) => mesh(new THREE.PlaneGeometry(w, h), m, x, y, z, parent);
@@ -556,7 +556,8 @@ export function makeProps(THREE, ctx) {
   function panel({ W, H, bez, D, frame, skin, glare = .1 }) {   // a flat screen: its body, the glass, the picture
     const g = new THREE.Group(); mesh(rbox(W, H, D, .006), frame, 0, 0, 0, g);
     face(W - bez * 2, H - bez * 2, phys('#050506', { roughness: glare, clearcoat: 1 }), 0, 0, D / 2 + .0004, g);
-    face(W - bez * 2 - .006, H - bez * 2 - .006, glow(osShot(skin), .5), 0, 0, D / 2 + .0008, g); return g;
+    const pic = face(W - bez * 2 - .006, H - bez * 2 - .006, glow(osShot(skin), .5), 0, 0, D / 2 + .0008, g); pic.userData.live = true;   // (kept its own mesh: the room lays its desk on it)
+    g.userData.screen = { node: pic, w: W - bez * 2 - .006, h: H - bez * 2 - .006 }; return g;
   }
   function flat15() {   // 2003: a 15-inch grey flat panel on a round foot
     const g = new THREE.Group(), grey = std('#b9b8b2', .5);
@@ -622,7 +623,7 @@ export function makeProps(THREE, ctx) {
     if (wheel) mesh(new THREE.CylinderGeometry(.0055, .0055, .005, 24), std('#3b3c40', .5), 0, base + Hh * .86, -L * .2, g).rotation.z = Math.PI / 2;
     return g;
   }
-  function optical2003() { const g = moldedMouse({ L: .11, W: .062, Hh: .036, m: phys('#f2f4f6', { roughness: .1, clearcoat: 1, transmission: .25, thickness: .01 }), base: .002, wheel: false }); const l = new THREE.PointLight(0xff2020, .02, .08); l.position.y = .004; g.add(l); mesh(new THREE.CircleGeometry(.012, 24), std('#ff3030', .5, 0, { emissive: col('#ff2020'), emissiveIntensity: 1 }), 0, .0006, 0, g).rotation.x = -Math.PI / 2; return g }
+  function optical2003() { const g = moldedMouse({ L: .11, W: .062, Hh: .036, m: phys('#f2f4f6', { roughness: .1, clearcoat: 1, transmission: .25, thickness: .01 }), base: .002, wheel: false }); mesh(new THREE.CircleGeometry(.012, 24), std('#ff3030', .5, 0, { emissive: col('#ff2020'), emissiveIntensity: 1 }), 0, .0006, 0, g).rotation.x = -Math.PI / 2; return g }
   const glossy2008 = () => moldedMouse({ L: .108, W: .058, Hh: .03, m: gloss('#f6f6f4'), base: .003 });
   const touch2012 = () => moldedMouse({ L: .113, W: .057, Hh: .019, m: gloss('#f8f8f8'), base: .004, wheel: false });
   const ergo2019 = () => moldedMouse({ L: .125, W: .084, Hh: .048, m: std('#3a3c40', .65), base: .002, ergo: true });
