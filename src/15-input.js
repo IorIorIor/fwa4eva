@@ -114,6 +114,9 @@ function zoom(dy, x = innerWidth / 2, y = innerHeight / 2) {
   if (P && P.distanceTo(orbit.target) < orbit.dist * 8) orbit.target.sub(P).multiplyScalar(k).add(P);   // the point under the cursor stays put
   orbit.dist = d1;
 }
+addEventListener('wheel', e => {   // on the map the wheel zooms wherever the pointer is (over the winner's card too), except over something that scrolls itself
+  if (e.target === canvas || S.mode !== 'map' || !e.target.closest) return; for (let el = e.target; el && el !== document.body; el = el.parentElement) { if (el.matches('input,textarea,select,#lookPanel,#crtLab')) return; const cs = getComputedStyle(el); if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) return }
+  e.preventDefault(); if (scrollMode.on && scrollMode.zoom < 0) scrollMode.wheel(e); else zoom(e.deltaY, e.clientX, e.clientY) }, { passive: false });
 canvas.addEventListener('wheel', e => { e.preventDefault(); if (scrollMode.on && scrollMode.zoom < 0) { scrollMode.wheel(e); return } if (S.mode === 'map') zoom(e.deltaY, e.clientX, e.clientY); else rig.dist = Math.max(1.2 * SHIP_SC, Math.min(9 * SHIP_SC, rig.dist * Math.exp(e.deltaY * .001))) }, { passive: false });
 ['keydown', 'mousemove', 'pointerdown', 'wheel', 'touchstart'].forEach(t => addEventListener(t, () => { lastInput = performance.now() }, { passive: true }));
 addEventListener('keydown', e => {
