@@ -42,6 +42,11 @@ and gives quick visual feedback; keep replies short).
   (the pictures in `public/room/`, written inline in the single build). Where each stands: the `at(...)` list in 01-zroom, then
   `ROOM_POS`: Laurens arranges the room in the playground (Arrange: click a thing, gizmo moves / turns it; the lamp's head turns) and
   pastes "FWA FOREVER room positions: {...}": merge those into `ROOM_POS` (moved things are also kept in his browser, `fwa-room-pos-v1`).
+- THE DESK (branch `the-desk`, not on `main`): only the room; on its monitor a Windows 2000 desktop (`src/02-desk.js`, after 02-data).
+  `DESK` (01-zroom) is on unless `?galaxy`/`?noroom`/`?test`; 02-desk ends with a never-resolving `await`, so the galaxy's files never load.
+  `room.desk(el, 1024, 768)` lays `#desk` on the whole glass (`place()`); off the glass the wheel zooms (`st.zt`, `posed()`), on it
+  the OS pointer hides (`html.deskin`) and the desk's own (`.dk-cur`, via `room.toDesk`) takes over. The grid is virtualised (only the
+  rows in view are in the DOM). Thumbnails: `public/data/thumbs.png` + `.json` (16 px each), made by `python3 room/build-thumbs.py`.
 - Music: `src/18-ascent.js`, the generative Ascent instrument (no mp3). Its dials are Look rows `a_…`; Look → Music has an import
   field for settings copied from the Ascent toy.
 - Multiplayer: `relay.mjs` (WebSocket at `/ws`, positions only, deals each pilot a distinct hue). On claude.ai the page

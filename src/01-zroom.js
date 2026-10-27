@@ -11,9 +11,10 @@ const canvas = $('gl');
 const renderer = new THREE.WebGPURenderer({ canvas, antialias: false, forceWebGL: QS.has('webgl'), powerPreference: 'high-performance' });   // MSAA lives on the 3D pass only, not the full-screen post
 await renderer.init();
 const RL = (k, d) => { try { const v = LOOK[k]; return v ?? d } catch (e) { return d } };   // a room setting (the settings come later in the load)
+const DESK = document.documentElement.classList.contains('roomboot') && !QS.has('test') && !QS.has('galaxy');   // THE DESK: only the room, and on its monitor a little Windows 2000 desktop with every FWA (02-desk); ?galaxy for the galaxy as before
 const room = (() => {
   const H0 = document.documentElement, on0 = H0.classList.contains('roomboot') && !QS.has('test');
-  const st = { on: false, phase: 'off', t: 0, fade: 0, sway: new THREE.Vector2(), aim: new V3(), ptr: { x: innerWidth / 2, y: innerHeight / 2, in: false }, dv: 0, M: null, Mi: null, band: [0, 0, 1, 1], onDone: null };
+  const st = { desk: null, zt: 0, zc: 0, deskIn: false, on: false, phase: 'off', t: 0, fade: 0, sway: new THREE.Vector2(), aim: new V3(), ptr: { x: innerWidth / 2, y: innerHeight / 2, in: false }, dv: 0, M: null, Mi: null, band: [0, 0, 1, 1], onDone: null };
   if (!on0) { H0.classList.remove('roomboot'); return { on: false, on0: false, diving: false, galaxy: f => f(), galaxyReady() { }, skip() { } } }
   const baseDpr = Math.min(RL('maxDpr', 2), devicePixelRatio || 1); let curDpr = baseDpr, dpr0 = baseDpr; renderer.setPixelRatio(baseDpr); renderer.setSize(innerWidth, innerHeight, false);   // (the look's own resolution cap from the first frame)
   const dynRes = k => { const d = Math.max(.25, Math.round(dpr0 * k * 10) / 10); if (d !== curDpr) { curDpr = d; renderer.setPixelRatio(d) } };   // the resolution, in steps of a tenth (each change reallocates the buffers)
@@ -272,8 +273,13 @@ const room = (() => {
   }
   const MOB = matchMedia('(pointer: coarse)').matches, SHEET = matchMedia('(max-width: 760px), (pointer: coarse)');   // a phone or tablet: no pointer of your own, so the 3D one sits on the glass from the start and goes where you tap
   const early = () => !MOB && !!RL('roomPtrEarly', 0) && st.phase === 'dive';   // (the switch: with a mouse, the 3D pointer takes over right at Start instead of once through the glass)
-  const layers = () => [$('portalLoad'), MOB || early() ? $('shipLayer') : null].filter(Boolean);   // (with a mouse the 3D pointer only takes over once you're through the glass: until then it's your own)
+  const layers = () => st.desk ? [st.desk] : [$('portalLoad'), MOB || early() ? $('shipLayer') : null].filter(Boolean);   // (with a mouse the 3D pointer only takes over once you're through the glass: until then it's your own)
   function place() {
+    if (st.desk) {   // the desk: its whole 1024 × 768 page on the whole glass (and the CRT over it)
+      const G = [toScreen(0, 0), toScreen(1, 0), toScreen(1, 1), toScreen(0, 1)], hd = homography(st.DW, st.DH, G); st.Md = hd.mi;
+      if (hd.css !== st.dcss) { st.dcss = hd.css; st.desk.style.transformOrigin = '0 0'; st.desk.style.transform = hd.css }
+      crtFx.lay(homography(innerWidth, innerHeight, G).css, Math.hypot(G[1][0] - G[0][0], G[1][1] - G[0][1]), Math.hypot(G[3][0] - G[0][0], G[3][1] - G[0][1])); return
+    }
     const b = bandOf(); st.band = b;
     { const G = [toScreen(0, 0), toScreen(1, 0), toScreen(1, 1), toScreen(0, 1)], W = innerWidth, Hh = innerHeight, gm = homography(1, 1, G.map(([x, y]) => [x / W, y / Hh])).mi;   // the screen → a point on the glass, for the picture
       U2.G0.value.set(gm[0], gm[1], gm[2]); U2.G1.value.set(gm[3], gm[4], gm[5]); U2.G2.value.set(gm[6], gm[7], gm[8]); crtFx.lay(homography(W, Hh, G).css, Math.hypot(G[1][0] - G[0][0], G[1][1] - G[0][1]), Math.hypot(G[3][0] - G[0][0], G[3][1] - G[0][1])) }   // and the CRT, on the whole glass
@@ -315,7 +321,7 @@ const room = (() => {
     bulbGlow.color.copy(lc); bulbGlow.intensity = .5 * lmp;
     logoAt(1);
     { const bs = RL('roomBtn', 6.8).toFixed(2), by = (RL('roomBtnY', .82) * 100).toFixed(1) + '%'; if (bs !== st.bs || by !== st.by) { st.bs = bs; st.by = by; H0.style.setProperty('--rbs', bs); H0.style.setProperty('--rby', by) } }   // the Start button's size and place on the glass
-    scrLight.intensity = 3 * scr * (1 + U2.scrOn.value * 2); U2.glow.value = scr * 3; U2.scrBr.value = RL('roomScreenBright', 1.4);
+    scrLight.intensity = 3 * scr * (1 + (st.desk ? 1 : U2.scrOn.value) * 2); U2.glow.value = scr * 3; U2.scrBr.value = RL('roomScreenBright', 1.4);
     C.flick.value = RL('crtFlicker', .25); C.roll.value = RL('crtRoll', .3); C.idle.value = RL('crtIdle', .3);
     hemi.intensity = .9 * RL('roomFill', 1);
     { const lv = RL('roomLava', 1); for (const l of propLights) l.intensity = (l.userData.base ?? 1) * lv }
@@ -326,15 +332,16 @@ const room = (() => {
   function frame(now) {
     const dt = Math.min(.05, Math.max(0, (now - (st.t || now)) / 1000)); st.t = now; U2.time.value = now / 1000;
     if (st.fade < 1) st.fade = Math.min(1, st.fade + dt / Math.max(.05, RL('roomFadeIn', 1.2)));
-    if (st.phase !== 'loading' && U2.scrOn.value < 1) U2.scrOn.value = Math.min(1, U2.scrOn.value + dt / .6);   // (the galaxy's picture warms up on the glass)
+    if (st.phase !== 'loading' && st.phase !== 'desk' && U2.scrOn.value < 1) U2.scrOn.value = Math.min(1, U2.scrOn.value + dt / .6);   // (the galaxy's picture warms up on the glass)
     apply();
     renderer.getDrawingBufferSize(U2.res.value);
     // the camera: in front of the desk, a little above it, swaying a touch with the pointer
     const sw = RL('roomSway', .04), px = st.ptr.in ? st.ptr.x / innerWidth - .5 : 0, py = st.ptr.in ? st.ptr.y / innerHeight - .5 : 0, f = Math.min(1, dt * 3);
-    if (st.phase !== 'dive' && !st.lab) { st.sway.x += (px - st.sway.x) * f; st.sway.y += (py - st.sway.y) * f } else if (st.lab) st.sway.set(0, 0)
+    if (st.phase !== 'dive' && !st.lab && !st.deskIn) { st.sway.x += (px - st.sway.x) * f; st.sway.y += (py - st.sway.y) * f; if (Math.abs(px - st.sway.x) + Math.abs(py - st.sway.y) < 2e-4) st.sway.set(px, py) } else if (st.lab) st.sway.set(0, 0)   // (with the pointer on the desk's screen the room holds still, so what you point at stays put)
     const cx = RL('roomCamX', 0);
     cam.fov = RL('roomFov', 36); cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     cam.position.set(cx + st.sway.x * sw * 2, RL('roomCamH', 1.2) - st.sway.y * sw, RL('roomCamZ', 2.45)); st.aim.set(cx * .6, RL('roomAimY', .9), .25); cam.up.set(0, 1, 0); cam.lookAt(st.aim);
+    if (st.desk && !st.lab) { st.zc += (st.zt - st.zc) * Math.min(1, dt * 7); if (Math.abs(st.zt - st.zc) < 1e-4) st.zc = st.zt; if (st.zc > 1e-4) { prepRun(); posed(st.zc) } }   // the desk: the wheel (off the monitor) zooms in onto the glass and back out
     const peak = RL('crtPeak', 1), cin = Math.min(.99, RL('crtIn', .9)), out = Math.max(.05, RL('crtOut', .7)), rest = RL('crtIdle', .45);
     if (st.phase !== 'dive' && !st.lab) crtFx.set(rest);   // (the monitor at rest)
     if (st.lab) { labStep(dt); const fade = 1 - sstep(Math.max(0, st.lab.p), .6, 1), sh = SHEET.matches ? innerHeight * .2 * fade : 0, sx = !SHEET.matches && labEl ? (labEl.offsetWidth + 14) / 2 * fade : 0; if (sh > .5 || sx > .5) cam.setViewOffset(innerWidth, innerHeight, sx, sh, innerWidth, innerHeight); else cam.clearViewOffset() }   /* (the playground covers part of the window: on a phone a sheet over the bottom, else a column on the right; the room moves into what's left) */ else if (cam.view && cam.view.enabled) cam.clearViewOffset();   // the CRT playground: the move held wherever you scrub it
@@ -354,7 +361,7 @@ const room = (() => {
   const loop = now => { if (!st.on) return; requestAnimationFrame(loop); if (st.lt) st.ft = (st.ft || 16) * .9 + Math.min(1000, now - st.lt) * .1; st.lt = now; if (labEl && !labEl.hidden && now - (st.ftT || 0) > 500) { st.ftT = now; labEl.querySelector('.cl-ft').textContent = `Frame ${st.ft.toFixed(1)} ms · ${(1000 / st.ft).toFixed(0)} fps · resolution ${renderer.getPixelRatio()}×` } try { frame(now) } catch (e) { console.error(e) } };   // (st.ft: the frame time, smoothed)
   // the camera at a point p (0 … 1) of the way into the glass: nearer by the run's log distance, turning square onto it
   function prepRun() {
-    st.q0 = cam.quaternion.clone(); glassPose(); const b = bandOf(), d1 = (b[3] - b[1]) * SH / (2 * Math.tan(cam.fov * Math.PI / 360)); st.d0 = cam.position.distanceTo(_t); st.dir0 = cam.position.clone().sub(_t).normalize();
+    st.q0 = cam.quaternion.clone(); glassPose(); const b = bandOf(), d1 = (st.desk ? Math.max(SH, SW / cam.aspect) * RL('deskFit', 1.06) : (b[3] - b[1]) * SH) / (2 * Math.tan(cam.fov * Math.PI / 360)); st.d0 = cam.position.distanceTo(_t); st.dir0 = cam.position.clone().sub(_t).normalize();   // (the desk: all the way in, the whole glass just fits the window)
     let Dg = 1.8; try { Dg = Math.max(.3, intro.lnPV - intro.lnD0) } catch (e) { }
     st.run = mkRun(Math.max(.2, Math.log(st.d0 / d1)), Dg, Math.max(.6, RL('roomDive', 2.8)));
   }
@@ -392,7 +399,7 @@ const room = (() => {
     st.onDone = () => { try { intro.ready = true; intro.rr = st.run; if (MOB || document.body.classList.contains('roomptr')) { document.body.classList.remove('roomptr'); return } intro.mx = intro.mxs = Math.max(-1, Math.min(1, st.ptr.x / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(st.ptr.y / innerHeight * 2 - 1))); if (!coarse && !lockFailed) { st.lockT = performance.now() + 800; requestLock() } } catch (e) { } };   // the opening carries on the same move from there, and your pointer becomes the 3D one right where it is (the lock still counts as part of the click)
   }
   // input: in the room nothing reaches the galaxy (no dragging, swiping or scrolling it round); only Start, the panels, and on a phone the taps that move the pointer on the glass
-  const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter'), inUI = e => e.target && e.target.closest && e.target.closest('#lookPanel,#crtLab,#rmArr'), held = () => st.on && st.phase !== 'post';
+  const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter'), inUI = e => e.target && e.target.closest && e.target.closest('#lookPanel,#crtLab,#rmArr,#desk'), held = () => st.on && st.phase !== 'post';
   addEventListener('pointermove', e => { if ((st.on || performance.now() < (st.lockT || 0)) && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);
   addEventListener('pointerdown', e => { if (held() && !inUI(e)) { e.stopImmediatePropagation(); if (e.pointerType === 'touch' && (st.phase === 'ready' || st.phase === 'loading')) { const x0 = e.clientX, y0 = e.clientY; clearTimeout(st.lp); st.lpAt = [x0, y0]; st.lp = setTimeout(() => { st.lp = 0; st.lpFired = true; if (st.lab) lab(false); else lab(true) }, 650) } } }, true);   // a long press on the room (touch): the CRT playground, open or shut
   addEventListener('pointermove', e => { if (st.lp && st.lpAt && Math.hypot(e.clientX - st.lpAt[0], e.clientY - st.lpAt[1]) > 12) { clearTimeout(st.lp); st.lp = 0 } }, true);
@@ -403,6 +410,7 @@ const room = (() => {
     if (onBtn(e)) dive();
   }, true);
   ['touchstart', 'touchmove', 'touchend'].forEach(t => addEventListener(t, e => { if (held() && !inUI(e)) { e.stopImmediatePropagation(); if (t === 'touchmove' && e.cancelable) e.preventDefault() } }, { capture: true, passive: false }));
+  addEventListener('wheel', e => { if (!st.on || !st.desk || st.lab || inUI(e)) return; e.preventDefault(); const d = e.deltaMode ? e.deltaY * 33 : e.deltaY; st.zt = Math.max(0, Math.min(RL('deskZoomMax', 1), st.zt - d * RL('deskZoomSpeed', 1) * .0012)) }, { capture: true, passive: false });   // the desk: off the monitor the wheel zooms (on it, the desktop scrolls)
   addEventListener('wheel', e => { if (held() && !inUI(e)) e.stopImmediatePropagation() }, { capture: true, passive: true });
   addEventListener('keydown', e => {
     if (!st.on || (e.target.matches && e.target.matches('input,textarea,select'))) return; const k = e.key;
@@ -502,7 +510,10 @@ const room = (() => {
   return {
     get on() { return st.on }, on0: true, get diving() { return st.phase === 'dive' }, get phase() { return st.phase }, startP, galaxy, dive,
     get warming() { return performance.now() < (st.warmT || 0) }, galaxyReady() { if (st.phase === 'loading') { st.phase = 'ready'; st.warmT = performance.now() + 1500; if (/crt-?lab/.test(location.hash)) lab(true) } }, lab, get ptrOn() { return MOB && (st.phase === 'ready' || st.phase === 'dive') || early() },   // the opening has its galaxy up: the glass shows it and Start works
-    skip() { if (st.on) finish(); logoAt(9) }, afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st }, picks, arrange, pick, U2, gRT, renderer, setAO, aoN, rp,
+    skip() { if (st.on) finish(); logoAt(9) },
+    desk(el, w, h) { st.desk = el; st.DW = w; st.DH = h; st.phase = 'desk'; const pl = $('portalLoad'); if (pl) pl.style.display = 'none'; place() },   // THE DESK: el is laid on the whole glass from now on (w × h its own size)
+    toDesk(x, y) { const m = st.Md; if (!m) return null; const w = m[6] * x + m[7] * y + m[8]; return [(m[0] * x + m[1] * y + m[2]) / w, (m[3] * x + m[4] * y + m[5]) / w] },   // a point on screen → on the desk's page
+    set deskIn(v) { st.deskIn = !!v }, get zoom() { return st.zc }, set zoomTo(v) { st.zt = Math.max(0, Math.min(RL('deskZoomMax', 1), v)) }, afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st }, picks, arrange, pick, U2, gRT, renderer, setAO, aoN, rp,
   };
 })();
 window.__room = room;   // (for scripted looks at it)

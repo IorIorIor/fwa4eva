@@ -16,6 +16,7 @@ await IDB.open();
 const DATA_BASE = (QS.get('data') || 'data/').replace(/\/?$/, '/');   // shipped with the page (the data repo is private, so its own site can't serve it); `npm run data` copies it over from ../fwa4eva-data
 const LOCAL_IMPORT = await IDB.get('kv', 'records');
 const REMOTE = Array.isArray(LOCAL_IMPORT) && LOCAL_IMPORT.length ? null : await (async () => {
+  if (window.__FWA_DATA && window.__FWA_DATA.archive) { const rows = normalizeRows(window.__FWA_DATA.archive); if (rows.length) return rows }   // (written into the page: INLINE_DATA in build.mjs)
   for (const url of [DATA_BASE + 'archive.json']) {
     try { const ac = new AbortController(), to = setTimeout(() => ac.abort(), 8000), r = await fetch(url, { signal: ac.signal }); clearTimeout(to); if (!r.ok) continue; const rows = normalizeRows(await r.json()); if (rows.length) return rows } catch (e) { }
   }

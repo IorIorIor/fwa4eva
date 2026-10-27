@@ -18,7 +18,12 @@ let out = r.outputFiles[0].text;
 for (const spec of ['three/webgpu', 'three']) out = out.replaceAll(`from "${spec}"`, `from "${CDN}/build/three.webgpu.js"`);
 mkdirSync(OUT, { recursive: true });
 writeFileSync(join(OUT, 'app.js'), js);
-writeFileSync(join(OUT, 'index.html'), pageHtml({ inline: out }));
+let page = pageHtml({ inline: out });
+if (process.env.INLINE_DATA) {   // INLINE_DATA=1: the archive and the desk's thumbnails written into the page too (a page with no data/ folder beside it)
+  const dd = join(ROOT, 'public', 'data'), data = { archive: JSON.parse(readFileSync(join(dd, 'archive.json'), 'utf8')), thumbs: JSON.parse(readFileSync(join(dd, 'thumbs.json'), 'utf8')), atlas: 'data:image/png;base64,' + readFileSync(join(dd, 'thumbs.png')).toString('base64') };
+  page = page.replace('<script type="module">', () => `<script>window.__FWA_DATA = ${JSON.stringify(data).replace(/</g, '\\u003c')}</script>\n<script type="module">`);
+}
+writeFileSync(join(OUT, 'index.html'), page);
 for (const f of ['favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'share.png']) { const src = join(ROOT, 'public', f); if (existsSync(src)) copyFileSync(src, join(OUT, f)) }
 execSync('npx eslint --quiet dist-single/app.js', { cwd: ROOT, stdio: 'inherit' });
 console.log(`built dist-single/: ${(js.length / 1024).toFixed(0)} KB of source, lint clean`);

@@ -941,7 +941,7 @@ body.bhg .bhgl{translate:var(--gx,0) var(--gy,0);filter:opacity(var(--go,1));cli
 html.roomboot:not(.roomlive) #portalLoad{visibility:hidden}
 #rmCount{display:none}
 html.roomboot:not(.roomlive) #rmCount{display:block;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font:500 15px/1 "FF Good Pro Cond",var(--mono);letter-spacing:.3em;padding-left:.3em;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.6);z-index:200;pointer-events:none}   /* the countdown before the room */
-body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(#crtLab):not(#crtFx):not(#rmArr):not(script):not(style){visibility:hidden!important}
+body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(#crtLab):not(#crtFx):not(#rmArr):not(#desk):not(script):not(style){visibility:hidden!important}
 html.roomboot #portalLoad{opacity:0}   /* (until the room lays it onto the glass: no full-size flash of it first) */
 #rmArr{position:fixed;inset:0;z-index:80;touch-action:none;cursor:crosshair}#rmArr[hidden]{display:none}
 body.room:not(.roommob):not(.roomptr) #shipLayer{visibility:hidden!important}
@@ -985,3 +985,91 @@ body.room{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 #crtFx .cr{bottom:auto;height:24%;background:linear-gradient(to bottom,transparent,rgba(255,255,255,.08) 50%,transparent)}
 #crtFx .cn{background-repeat:repeat;mix-blend-mode:overlay}
 #crtFx .cf{background:#000}
+
+/* ── THE DESK (02-desk): a Windows 2000 desktop laid on the monitor's glass ── */
+#desk{display:none}
+html.desk #portalLoad,html.desk #rmLogo{display:none!important}
+html.desk #desk{display:block;position:fixed;left:0;top:0;z-index:80;overflow:hidden;background:#3a6ea5;font:11px/1.25 Tahoma,Verdana,"Segoe UI",sans-serif;color:#000;user-select:none;-webkit-user-select:none;--face:#d4d0c8;--up:inset -1px -1px #404040,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #d4d0c8;--dn:inset 1px 1px #404040,inset -1px -1px #fff,inset 2px 2px #808080,inset -2px -2px #d4d0c8;--well:inset 1px 1px #808080,inset -1px -1px #fff,inset 2px 2px #404040,inset -2px -2px #d4d0c8}
+html.deskin,html.deskin *{cursor:none!important}
+#desk .dk-cur{position:absolute;left:0;top:0;z-index:99;pointer-events:none;display:none;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.35))}
+#desk button{font:inherit;color:inherit;border:0;background:none;padding:0;margin:0}
+#desk input{font:inherit;color:#000;background:#fff;border:0;outline:0;box-shadow:var(--well);padding:3px 5px;width:100%;box-sizing:border-box;user-select:text;-webkit-user-select:text}
+/* icons, drawn in CSS: a folder, a computer, a bin, a browser, and the taskbar's little ones */
+#desk i[class^="ic-"]{display:inline-block;flex:none;position:relative}
+#desk .ic-fold{width:16px;height:13px;background:linear-gradient(#ffe68a,#e8b63a);border:1px solid #9a7a1c;border-radius:1px 2px 1px 1px;box-sizing:border-box}
+#desk .ic-fold::before{content:'';position:absolute;left:-1px;top:-3px;width:7px;height:3px;background:#e8b63a;border:1px solid #9a7a1c;border-bottom:0;border-radius:1px 1px 0 0}
+#desk .ic-pc{width:32px;height:26px;background:linear-gradient(#e6eef8,#9fb6cf);border:2px solid #d4d0c8;box-shadow:0 0 0 1px #404040,inset 0 0 0 2px #1c3c78;border-radius:2px}
+#desk .ic-pc::after{content:'';position:absolute;left:4px;right:4px;bottom:-8px;height:4px;background:#d4d0c8;box-shadow:0 0 0 1px #404040}
+#desk .ic-bin{width:24px;height:28px;background:repeating-linear-gradient(90deg,#e8e8e8 0 4px,#b8b8b8 4px 6px);border:1px solid #505050;border-radius:0 0 4px 4px}
+#desk .ic-bin::before{content:'';position:absolute;left:-3px;right:-3px;top:-4px;height:3px;background:#c8c8c8;border:1px solid #505050}
+#desk .ic-ie{width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#9fd8ff,#1f6fd0 70%);box-shadow:inset 0 0 0 1px #10458a}
+#desk .ic-ie::after{content:'e';position:absolute;inset:0;font:italic bold 22px/26px Georgia,serif;color:#fff;text-align:center}
+#desk .ic-cat,#desk .ic-ag,#desk .ic-q{width:16px;height:16px;margin-right:5px}
+#desk .ic-cat{background:linear-gradient(#ffe68a,#e8b63a);border:1px solid #9a7a1c;box-sizing:border-box;width:14px;height:12px;margin-top:2px}
+#desk .ic-ag::before{content:'';position:absolute;left:4px;top:1px;width:7px;height:7px;border-radius:50%;background:#e8b48a;box-shadow:inset 0 0 0 1px #8a5a30}
+#desk .ic-ag::after{content:'';position:absolute;left:2px;top:8px;width:11px;height:7px;border-radius:5px 5px 1px 1px;background:#3a6ea5;box-shadow:inset 0 0 0 1px #1c3c78}
+#desk .ic-q::before{content:'';position:absolute;left:1px;top:1px;width:8px;height:8px;border-radius:50%;border:2px solid #404040;background:#cfe6ff}
+#desk .ic-q::after{content:'';position:absolute;left:10px;top:9px;width:5px;height:2px;background:#404040;transform:rotate(45deg);transform-origin:0 0}
+#desk .dk-icons{position:absolute;left:10px;top:12px;display:flex;flex-direction:column;gap:22px;width:72px}
+#desk .dk-ic{display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;text-align:center;text-shadow:1px 1px 0 #000}
+/* the window */
+#desk .dk-win{position:absolute;display:flex;flex-direction:column;background:var(--face);box-shadow:var(--up);padding:3px;box-sizing:border-box}
+#desk .dk-win[hidden]{display:none}
+#desk .dk-title{display:flex;align-items:center;gap:4px;height:18px;padding:0 2px 0 3px;background:linear-gradient(90deg,#0a246a,#a6caf0);color:#fff;font-weight:bold;flex:none}
+#desk .dk-title b{flex:1;white-space:nowrap;overflow:hidden}
+#desk .dk-tb{display:flex;gap:0}
+#desk .dk-tb button{width:16px;height:14px;background:var(--face);box-shadow:var(--up);color:#000;font:bold 9px/12px Tahoma,sans-serif;text-align:center}
+#desk .dk-tb .cl{margin-left:2px;font-size:12px;line-height:12px}
+#desk .dk-tb button:active{box-shadow:var(--dn)}
+#desk .dk-menu{display:flex;gap:0;padding:2px 0 1px;flex:none;border-bottom:1px solid #808080;box-shadow:0 1px #fff}
+#desk .dk-menu span{padding:1px 7px}
+#desk .dk-addr{display:flex;align-items:center;gap:6px;padding:4px 3px;flex:none;color:#404040}
+#desk .dk-addr div{flex:1;background:#fff;box-shadow:var(--well);padding:2px 5px;color:#000}
+#desk .dk-list{position:relative;flex:1;overflow-y:scroll;background:#fff;box-shadow:var(--well);padding:0;outline:0;overscroll-behavior:contain}
+#desk .dk-list::-webkit-scrollbar{width:16px}
+#desk .dk-list::-webkit-scrollbar-track{background:repeating-conic-gradient(#d4d0c8 0 25%,#fff 0 50%) 0 0/2px 2px}
+#desk .dk-list::-webkit-scrollbar-thumb{background:var(--face);box-shadow:var(--up)}
+#desk .dk-list::-webkit-scrollbar-button:single-button{background:var(--face);box-shadow:var(--up);height:16px;display:block}
+#desk .dk-list h3{height:28px;box-sizing:border-box;margin:0 4px;padding-top:12px;align-items:flex-end;font:bold 11px Tahoma,sans-serif;color:#0a246a;border-bottom:1px solid #a6caf0;padding-bottom:2px;display:flex;justify-content:space-between;align-items:flex-end}
+#desk .dk-list h3 small{font-weight:normal;color:#808080}
+#desk .dk-inner{position:absolute;left:6px;right:2px;top:0}
+#desk .dk-grid{display:grid;grid-template-columns:repeat(auto-fill,92px);height:84px}
+#desk .dk-it{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 4px;height:84px;box-sizing:border-box;text-align:center}
+#desk .th{display:block;width:32px;height:32px;flex:none;background-image:var(--atlas);background-size:var(--asz) auto;image-rendering:pixelated;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+#desk .dk-it b{font-weight:normal;max-width:88px;padding:0 2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+#desk .dk-it small{color:#808080;font-size:10px}
+#desk .dk-it.sel .th{filter:sepia(1) hue-rotate(185deg) saturate(3) brightness(.7)}
+#desk .dk-it.sel b{background:#0a246a;color:#fff;outline:1px dotted #a6caf0}
+#desk .dk-none{padding:14px;color:#808080}
+#desk .dk-status{display:flex;gap:2px;flex:none;padding-top:2px}
+#desk .dk-status span{box-shadow:inset 1px 1px #808080,inset -1px -1px #fff;padding:2px 5px}
+#desk .dk-status span:first-child{flex:1}
+/* the taskbar and its menus */
+#desk .dk-bar{position:absolute;left:0;right:0;bottom:0;height:30px;background:var(--face);box-shadow:inset 0 1px #d4d0c8,inset 0 2px #fff;display:flex;align-items:center;gap:3px;padding:2px 2px 0;box-sizing:border-box}
+#desk .dk-btn,#desk .dk-task{display:flex;align-items:center;height:22px;padding:0 9px 0 5px;box-shadow:var(--up);font-weight:bold;white-space:nowrap}
+#desk .dk-task{font-weight:normal;width:160px;justify-content:flex-start;gap:5px}
+#desk .dk-task.on{box-shadow:var(--dn);background:repeating-conic-gradient(#d4d0c8 0 25%,#fff 0 50%) 0 0/2px 2px;font-weight:bold}
+#desk .dk-btn.dn,#desk .dk-btn:active{box-shadow:var(--dn);padding-top:2px}
+#desk .dk-btn.act::after{content:'';width:5px;height:5px;margin-left:6px;background:#0a246a;border-radius:50%}
+#desk .dk-sep{width:2px;height:22px;box-shadow:inset 1px 0 #808080,inset -1px 0 #fff;margin:0 3px}
+#desk .dk-tray{margin-left:auto;height:22px;display:flex;align-items:center;padding:0 10px;box-shadow:inset 1px 1px #808080,inset -1px -1px #fff}
+#desk .dk-clock{font-weight:normal}
+#desk .dk-pop{position:absolute;bottom:28px;z-index:20;width:250px;max-height:560px;display:flex;flex-direction:column;background:var(--face);box-shadow:var(--up),2px 2px 0 rgba(0,0,0,.4);padding:3px}
+#desk .dk-pop[hidden]{display:none}
+#desk .dk-pop[data-k="q"]{width:340px}
+#desk .dk-in{display:block;padding:2px 2px 4px}
+#desk .dk-pl{overflow-y:auto;flex:1;min-height:0}
+#desk .dk-pl::-webkit-scrollbar{width:16px}
+#desk .dk-pl::-webkit-scrollbar-track{background:repeating-conic-gradient(#d4d0c8 0 25%,#fff 0 50%) 0 0/2px 2px}
+#desk .dk-pl::-webkit-scrollbar-thumb{background:var(--face);box-shadow:var(--up)}
+#desk .dk-pl hr{border:0;border-top:1px solid #808080;border-bottom:1px solid #fff;margin:3px 1px}
+#desk .dk-mi{display:flex;align-items:center;gap:6px;width:100%;padding:3px 6px 3px 4px;text-align:left;box-sizing:border-box}
+#desk .dk-mi>i:first-child:not(.th){width:10px;flex:none;font-style:normal}
+#desk .dk-mi.on>i:first-child:not(.th)::before{content:'✓';font-weight:bold}
+#desk .dk-mi span{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#desk .dk-mi small{color:#808080}
+#desk .dk-mi:hover{background:#0a246a;color:#fff}
+#desk .dk-mi:hover small{color:#a6caf0}
+#desk .dk-mi.hit .th{width:32px;height:32px}
+#desk .dk-mi.hit span small{display:block;margin-top:1px}
+#desk .dk-more{margin:4px 6px;color:#808080}
