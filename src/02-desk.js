@@ -6,7 +6,7 @@
    filtering the grid the way the galaxy's filters do. Double-click a winner to open its site.
    Nothing after this file loads: the galaxy never starts. ?galaxy (or ?noroom) for the galaxy as before. */
 if (DESK && room.on) {
-  const DW = 1024, DH = 768, esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const PHONE = matchMedia('(pointer: coarse)').matches, DW = PHONE ? 640 : 1024, DH = PHONE ? 480 : 768, esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const fmtD = d => { const [y, m, dd] = d.date.split('-'); return `${+dd} ${MON[+m - 1]} ${y}` };
   const TH = window.__FWA_DATA && window.__FWA_DATA.thumbs || await (async () => { try { const r = await fetch(DATA_BASE + 'thumbs.json'); if (r.ok) return await r.json() } catch (e) { } return null })();   // the atlas index (none: plain colour squares)
@@ -14,7 +14,7 @@ if (DESK && room.on) {
   const el = document.createElement('div'); el.id = 'desk'; el.style.width = DW + 'px'; el.style.height = DH + 'px';
   el.innerHTML = `
     <div class="dk-icons"><div class="dk-ic"><i class="ic-pc"></i><span>My Computer</span></div><div class="dk-ic"><i class="ic-bin"></i><span>Recycle Bin</span></div><div class="dk-ic"><i class="ic-ie"></i><span>Internet Explorer</span></div></div>
-    <section class="dk-win" style="left:96px;top:24px;width:880px;height:640px">
+    <section class="dk-win">
       <header class="dk-title"><i class="ic-fold"></i><b>FWA Winners</b><span class="dk-tb"><button class="mn" title="Minimize">_</button><button class="mx" title="Maximize">□</button><button class="cl" title="Close">×</button></span></header>
       <nav class="dk-menu"><span>File</span><span>Edit</span><span>View</span><span>Favorites</span><span>Tools</span><span>Help</span></nav>
       <div class="dk-addr"><span>Address</span><div>C:\\FWA\\Winners</div></div>
@@ -88,7 +88,7 @@ if (DESK && room.on) {
   { const qi = $d('.dk-pop[data-k="q"] input'); let t = 0; qi.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { F.q = qi.value.trim().toLowerCase(); render(); fill('q') }, 120) }); qi.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') popup('q') }) }
 
   // the window: drag it by its title, maximise, minimise (and back from the taskbar)
-  let box = { x: 96, y: 24, w: 880, h: 640 }, maxed = false, drag = null;
+  let box = { x: 96, y: 24, w: 880, h: 640 }, maxed = PHONE, drag = null;   // (on a phone the window starts maximised)
   const lay = () => { const b = maxed ? { x: 0, y: 0, w: DW, h: DH - 30 } : box, c0 = cols; Object.assign(win.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' }); win.classList.toggle('maxed', maxed); if (Math.max(1, Math.floor((list.clientWidth - 8) / IT)) !== c0) { const st = list.scrollTop; render(); list.scrollTop = st; slice() } };
   const mini = v => { win.hidden = v; $d('.dk-task').classList.toggle('on', !v) };
   $d('.dk-title').addEventListener('pointerdown', e => { if (e.target.closest('button') || maxed) return; const p = room.toDesk(e.clientX, e.clientY); if (p) drag = { p, b: { ...box } } });
@@ -96,18 +96,27 @@ if (DESK && room.on) {
   $d('.mx').onclick = () => { maxed = !maxed; lay() }; $d('.mn').onclick = $d('.cl').onclick = () => mini(true); $d('.dk-task').onclick = () => mini(!win.hidden);
   addEventListener('pointerup', () => { drag = null });
 
-  // the desktop's own pointer: yours hides on the glass and this one takes over, wherever on the page you are
-  addEventListener('pointermove', e => {
-    const p = room.toDesk(e.clientX, e.clientY), inn = !!p && p[0] >= 0 && p[1] >= 0 && p[0] <= DW && p[1] <= DH && !document.pointerLockElement && e.pointerType !== 'touch';
-    document.documentElement.classList.toggle('deskin', inn); room.deskIn = inn; cur.style.display = inn ? 'block' : 'none';
-    if (inn) cur.style.transform = `translate(${p[0].toFixed(1)}px,${p[1].toFixed(1)}px)`;
-    if (drag && p) { box.x = Math.max(-box.w + 80, Math.min(DW - 80, drag.b.x + p[0] - drag.p[0])); box.y = Math.max(0, Math.min(DH - 60, drag.b.y + p[1] - drag.p[1])); lay() }
-  }, true);
-  document.addEventListener('pointerleave', () => { document.documentElement.classList.remove('deskin'); room.deskIn = false; cur.style.display = 'none' });
+  // the desktop's own pointer: yours hides on the glass and this one takes over, wherever on the page you are (checked every frame
+  // too: as the camera zooms in, the screen moves under a pointer that holds still); the room's mouse moves on its pad with it
+  let ptype = 'mouse';
+  const track = () => {   // (where the pointer is comes from the room: it keeps moves off the screen to itself)
+    const P = room.st.ptr; ptype = P.type || ptype; const p = P.in ? room.toDesk(P.x, P.y) : null, inn = !!p && p[0] >= 0 && p[1] >= 0 && p[0] <= DW && p[1] <= DH && !document.pointerLockElement && ptype !== 'touch';
+    if (ptype !== 'touch') { document.documentElement.classList.toggle('deskin', inn); room.deskIn = inn } cur.style.display = inn ? 'block' : 'none';
+    if (inn) { cur.style.transform = `translate(${p[0].toFixed(1)}px,${p[1].toFixed(1)}px)`; room.mouseAt(p[0] / DW, p[1] / DH) }
+    return p;
+  };
+  addEventListener('pointermove', () => { const p = track(); if (drag && p) { box.x = Math.max(-box.w + 80, Math.min(DW - 80, drag.b.x + p[0] - drag.p[0])); box.y = Math.max(0, Math.min(DH - 60, drag.b.y + p[1] - drag.p[1])); lay() } });   // (after the room's own, bubbling)
+  { const tick = () => { requestAnimationFrame(tick); track() }; requestAnimationFrame(tick) }
+
+  // a phone: the first tap on the screen only brings it in close (it fills the window as much as it can); a tap on the room goes back
+  { let eat = false; el.addEventListener('pointerdown', e => { ptype = e.pointerType; if (e.pointerType === 'touch' && !room.focused) { eat = true; room.deskFocus(true) } }, true);
+    el.addEventListener('click', e => { if (eat) { eat = false; e.stopPropagation(); e.preventDefault() } }, true);
+    el.addEventListener('pointerup', e => { if (eat && e.pointerType === 'touch') { e.stopPropagation(); setTimeout(() => { eat = false }, 400) } }, true);
+    el.addEventListener('touchmove', e => { if (!room.focused && e.cancelable) e.preventDefault() }, { passive: false }) }   // (and no scrolling the list from afar)
 
   // the clock in the tray: your own time
   const clock = () => { $d('.dk-clock').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }; clock(); setInterval(clock, 10000);
 
-  document.documentElement.classList.add('desk'); room.desk(el, DW, DH); render();   // (shown first: the grid measures its window)
+  document.documentElement.classList.add('desk'); room.desk(el, DW, DH); lay(); render();   // (shown first: the grid measures its window)
   await new Promise(() => { });   // and that's all: the galaxy's files never load
 }
