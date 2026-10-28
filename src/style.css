@@ -935,7 +935,9 @@ html.roomboot:not(.roomlive) #rmCount{display:block;position:fixed;left:50%;top:
 body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(#crtLab):not(#crtFx):not(#rmArr):not(script):not(style){visibility:hidden!important}
 html.roomboot #portalLoad{opacity:0}   /* (until the room lays it onto the glass: no full-size flash of it first) */
 #rmArr{position:fixed;inset:0;z-index:80;touch-action:none;cursor:crosshair}#rmArr[hidden]{display:none}
-body.room:not(.roommob):not(.roomptr) #shipLayer{visibility:hidden!important}
+body.room:not(.roommob):not(.roomptr):not(.roomptr3d) #shipLayer{visibility:hidden!important}
+body.roomptr3d:not(.opening),body.roomptr3d:not(.opening) #gl,body.roomptr3d:not(.opening) #gl.hovering,body.roomptr3d:not(.opening) #portalLoad,body.roomptr3d:not(.opening) #portalLoad *,body.roomptr3d:not(.opening) #intro,body.roomptr3d:not(.opening) #intro *{cursor:var(--roomcur)!important;cursor:var(--roomcur2)!important}   /* (in the room, before the 3D pointer is ready: the system pointer, drawn like it) */
+body.roomptr3d.opening #lookPanel,body.roomptr3d.opening #lookPanel *,body.roomptr3d.opening #crtLab,body.roomptr3d.opening #crtLab *,body.roomptr3d.opening #rmArr{cursor:auto!important}   /* (over the panels: your own pointer, to work them) */
 body.roomptr,body.roomptr *{cursor:none!important}
 html.roomboot #portalLoad{background:transparent!important}
 html.roomboot #portalLoad{will-change:transform}

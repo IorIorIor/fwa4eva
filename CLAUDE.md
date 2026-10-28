@@ -34,7 +34,9 @@ and gives quick visual feedback; keep replies short).
   picture (gT) there untouched, so it's one galaxy all the way in (no crossfade). The CRT is plain CSS layers (`crtFx`) laid onto the
   glass with the same kind of matrix3d (`crtFx.lay`), at rest `crtIdle`, up to `crtPeak` as the glass fills the window, fading off after
   (all of it behind `crtOn`, off for now).
-  The room has GTAO (not on phones), its own PMREM env as bounce light (`roomBounce`), and the lava lamp's light casts shadows. CRT: Look → Room: CRT and its playground (`room.lab()`, `#crt-lab`). On touch the 3D pointer sits on the glass and goes where you tap.
+  The room has GTAO (not on phones), its own PMREM env as bounce light (`roomBounce`), and the lava lamp's light casts shadows. CRT: Look → Room: CRT and its playground (`room.lab()`, `#crt-lab`). On touch the 3D pointer sits on the glass and goes where you tap. With a mouse (`roomPtr3d`, default on) your pointer is the 3D one all through the room: the system pointer drawn like it
+  (`--roomcur`, from the countdown on) until the galaxy is ready, then the ship on its full-window layer under the mouse (tip on the
+  hotspot, `intro.mx/my` set by the room's pointermove); over the Look panel / CRT lab your own pointer comes back.
   Look → Room; `?noroom` (or roomOn 0) skips it.
   The props (books, certificates, postcard, medal, Mustang, Nokia, modem, webcam, Flash box, Post-its, mug, CD-Rs, pen cup, Game Boy,
   lava lamp, wall clock on local time) are `room/props.js`: plain three.js
