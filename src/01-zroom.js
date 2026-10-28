@@ -333,8 +333,14 @@ const room = (() => {
     const sw = RL('roomSway', .04) * (MOB ? RL('roomSwayTouch', 1.6) : 1), px = st.ptr.in ? st.ptr.x / innerWidth - .5 : 0, py = st.ptr.in ? st.ptr.y / innerHeight - .5 : 0, f = Math.min(1, dt * 3);
     if (st.phase !== 'dive' && !st.lab) { st.sway.x += (px - st.sway.x) * f; st.sway.y += (py - st.sway.y) * f } else if (st.lab) st.sway.set(0, 0)
     const cx = RL('roomCamX', 0);
-    cam.fov = RL('roomFov', 36); cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
-    cam.position.set(cx + st.sway.x * sw * 2, RL('roomCamH', 1.2) - st.sway.y * sw, RL('roomCamZ', 2.45)); st.aim.set(cx * .6, RL('roomAimY', .9), .25); cam.up.set(0, 1, 0); cam.lookAt(st.aim);
+    const A = innerWidth / Math.max(1, innerHeight); let fov = RL('roomFov', 36), cz = RL('roomCamZ', 2.45);
+    if (A < 1) {   // portrait (phones): step back and open the lens until the desk fits across, the books on the left to the computer on the right
+      const hw = RL('roomFitW', .85), zMax = RL('roomCamZMax', 3.4), w = Math.min(1, (1 - A) / .45), t = Math.PI / 360;
+      fov += (Math.max(fov, RL('roomFovPortrait', 60)) - fov) * w; const need = .35 + hw / (Math.tan(fov * t) * A);
+      cz = Math.max(cz, Math.min(zMax, need)); if (need > zMax) fov = Math.min(85, 2 * Math.atan(hw / ((zMax - .35) * A)) / t / 2);
+    }
+    cam.fov = fov; cam.aspect = A; cam.updateProjectionMatrix();
+    cam.position.set(cx + st.sway.x * sw * 2, RL('roomCamH', 1.2) - st.sway.y * sw, cz); st.aim.set(cx * .6, RL('roomAimY', .9), .25); cam.up.set(0, 1, 0); cam.lookAt(st.aim);
     const peak = RL('crtPeak', 1), cin = Math.min(.99, RL('crtIn', .9)), out = Math.max(.05, RL('crtOut', .7)), rest = RL('crtIdle', .45);
     if (st.phase !== 'dive' && !st.lab) crtFx.set(rest);   // (the monitor at rest)
     if (st.lab) { labStep(dt); const fade = 1 - sstep(Math.max(0, st.lab.p), .6, 1), sh = SHEET.matches ? innerHeight * .2 * fade : 0, sx = !SHEET.matches && labEl ? (labEl.offsetWidth + 14) / 2 * fade : 0; if (sh > .5 || sx > .5) cam.setViewOffset(innerWidth, innerHeight, sx, sh, innerWidth, innerHeight); else cam.clearViewOffset() }   /* (the playground covers part of the window: on a phone a sheet over the bottom, else a column on the right; the room moves into what's left) */ else if (cam.view && cam.view.enabled) cam.clearViewOffset();   // the CRT playground: the move held wherever you scrub it
