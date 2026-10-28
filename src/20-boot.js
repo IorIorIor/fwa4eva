@@ -135,6 +135,9 @@ const curEl = (() => { const e = document.createElement('img'); e.id = 'introCur
 // the pointer looks like a real one (flat black, white rim, no light on it) until it turns into the ship: k = 1 flat, 0 the ship's own metal
 const SHIP_MAT0 = { m: SHIP_MAT.black.metalness, r: SHIP_MAT.black.roughness, e: SHIP_MAT.black.envMapIntensity ?? 1, we: SHIP_MAT.white.emissiveIntensity };
 function flatPtr(k) { PTR_FLAT = k; SHIP_MAT.black.metalness = SHIP_MAT0.m * (1 - k) }   // the pointer flat (1) or the ship (0): its reflections, gloss and scuffs follow in shipEnv
+// the jump some browsers report as the pointer lock takes hold (a big move, right after it does): not a real move
+let lockAt = -1e9; document.addEventListener('pointerlockchange', () => { lockAt = performance.now() });
+const lockJump = e => { const m = Math.abs(e.movementX) + Math.abs(e.movementY); return m > 400 || (m > 80 && performance.now() - lockAt < 1500) };
 const intro = {
   logoAt: null,
   active: false, t: 0, glow: 0, dur: 8, D0: 10, up0: new V3(), upW: new V3(), ph: 2, lt: 0,
@@ -185,7 +188,7 @@ const intro = {
     const gesture = () => { if (this.heard) return; this.heard = true; setMuted(false); setMusicOff(false); audio() };   // sound needs a click or a key, so the first one starts it
     const go = () => { if (this.lab) { this.lab.toggle(); return } if (!this.ready) return; this.play = 1;   /* (not while it's still loading) */ gesture(); if (!coarse && !lockFailed) requestLock() };
     let down = null;
-    const pmv = e => { if (document.pointerLockElement) { this.mx += e.movementX * 2 / innerWidth; this.my -= e.movementY * 2 / innerHeight } else { this.mx = e.clientX / innerWidth * 2 - 1; this.my = -(e.clientY / innerHeight * 2 - 1) } this.mx = Math.max(-1, Math.min(1, this.mx)); this.my = Math.max(-1, Math.min(1, this.my)) };   // the 3D pointer follows your mouse
+    const pmv = e => { if (document.pointerLockElement) { if (lockJump(e)) return; this.mx += e.movementX * 2 / innerWidth; this.my -= e.movementY * 2 / innerHeight } else { this.mx = e.clientX / innerWidth * 2 - 1; this.my = -(e.clientY / innerHeight * 2 - 1) } this.mx = Math.max(-1, Math.min(1, this.mx)); this.my = Math.max(-1, Math.min(1, this.my)) };   // the 3D pointer follows your mouse
     const off = e => e.target && e.target.closest && e.target.closest('#lookPanel,#portalLab');   // (the lab's own controls)
     const wheel = e => { if (off(e)) return; e.preventDefault(); if (this.lab) { this.lab.wheel(e); return } if (LOOK.portalEnter) return; this.play = 0; this.pqT = Math.max(0, Math.min(1.1, this.pqT + (e.deltaMode ? e.deltaY * 33 : e.deltaY) * .0006 * (LOOK.portalScroll ?? 1))) };
     const pdown = e => { if (off(e)) return; down = { x: e.clientX, y: e.clientY, y0: e.clientY }; gesture() };
@@ -261,7 +264,7 @@ const intro = {
     const gap = Math.max(1e-3, this.lnD0 - this.lnEnd), v0 = Math.max(.05, R ? R.vend : gap / 2), want = Math.max(1.5, L.introDur ?? 5);
     this.swP = Math.max(1.2, Math.min(5, v0 * want / gap)); this.swGap = gap; this.dur = Math.max(1.5, Math.min(9, this.swP * gap / v0));   // the start speed v0 exactly, when the length allows
     this.logoS = 0; this.logoV = R ? R.vend : 0; this.st = 0; this.swOn = true; this.t = 0; this.ph = 2; this.lit = false; this.hud = false; this.reflGo = false;
-    this.at = { x: (this.mx + 1) / 2 * innerWidth + this.tipOff.x, y: (1 - this.my) / 2 * innerHeight + this.tipOff.y }; this.goal = null; this.av.x = this.av.y = 0; this.lockT = performance.now();   // the 3D pointer takes over right where yours is (a mouse moving from here springs it along)
+    this.at = { x: (this.mx + 1) / 2 * innerWidth + this.tipOff.x, y: (1 - this.my) / 2 * innerHeight + this.tipOff.y }; this.goal = null; this.av.x = this.av.y = 0;   // the 3D pointer takes over right where yours is (a mouse moving from here springs it along)
     document.body.classList.add('opening'); avatar.visible = true; this.Qf0 = avatar.quaternion.clone();   // (the pointer as it came through, flat to you)
   },
   swingStep(dt) {
@@ -307,7 +310,7 @@ const intro = {
   at: null, goal: null, av: { x: 0, y: 0 }, tipOff: { x: 0, y: 0 }, cur: null,
   mouse(e) {   // all through the opening the arrow is still your mouse pointer: it moves with the mouse (the pull fades as the camera settles)
     if (!this.at) this.at = { x: innerWidth / 2, y: innerHeight / 2 }; const g = this.goal || (this.goal = { x: this.at.x, y: this.at.y });   // the mouse sets a goal; the arrow springs after it (see update)
-    if (document.pointerLockElement) { if (Math.abs(e.movementX) + Math.abs(e.movementY) > 80 && performance.now() < (this.lockT || 0) + 1000) return; g.x += e.movementX; g.y += e.movementY } else { g.x = e.clientX + this.tipOff.x; g.y = e.clientY + this.tipOff.y }   // (not the jump some browsers report as the lock takes hold)
+    if (document.pointerLockElement) { if (lockJump(e)) return; g.x += e.movementX; g.y += e.movementY } else { g.x = e.clientX + this.tipOff.x; g.y = e.clientY + this.tipOff.y }   // (not the jump some browsers report as the lock takes hold)
     g.x = Math.max(0, Math.min(innerWidth, g.x)); g.y = Math.max(0, Math.min(innerHeight, g.y));
   },
   placeCur() { if (this.at && this.cur) curEl.style.transform = `translate(${(this.at.x - this.tipOff.x - this.cur.hx).toFixed(1)}px,${(this.at.y - this.tipOff.y - this.cur.hy).toFixed(1)}px)` },
