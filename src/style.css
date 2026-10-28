@@ -732,12 +732,10 @@ body.mm-open #logo{z-index:46}   /* the logo stays on top of its menu: tap it ag
 /* phones, on the map: the two tabs along the bottom; with the drawer open they sit on its top edge */
 #mTabs{display:none}
 @media (max-width:760px),(pointer:coarse){
-  body.map #mTabs{display:flex;left:0;right:0;bottom:0;z-index:33;padding:0 12px env(safe-area-inset-bottom,0px);gap:8px;transition:bottom .42s cubic-bezier(.2,.9,.25,1)}
+  body.map #mTabs{display:flex;left:0;right:0;bottom:0;z-index:33;padding:0 12px env(safe-area-inset-bottom,0px);gap:8px}   /* the tabs stay put; the drawer slides out above them */
   #mTabs button{flex:1;height:44px;margin-bottom:12px;background:rgba(14,14,16,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:0;color:rgba(255,255,255,.7);font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;-webkit-tap-highlight-color:transparent}
   #mTabs button.on{background:#fff;color:#000}
-  body.map.mtab-open #mTabs{bottom:62vh}
-  body.map.mtab-open #mTabs button{margin-bottom:8px}
-  body.map.mtab-open #rmPanel{left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;height:62vh;max-height:none;transform:translateY(100%)!important;background:rgba(10,10,12,.96)!important}
+  body.map.mtab-open #rmPanel{left:0!important;right:0!important;top:auto!important;bottom:calc(56px + env(safe-area-inset-bottom,0px))!important;width:auto!important;height:58vh;max-height:none;padding-bottom:0!important;border-radius:0!important;transform:translateY(calc(100% + 80px))!important;background:rgba(10,10,12,.96)!important}
   body.map.mtab-open #rmPanel.in{transform:none!important}
   body.map.mtab-open #rmPanel .rb{display:flex;flex-direction:column;flex:1;min-height:0}
   body.map.mtab-open #rmPanel.p-filters .rb{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr auto}
@@ -978,3 +976,6 @@ body.room{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 #crtFx .cr{bottom:auto;height:24%;background:linear-gradient(to bottom,transparent,rgba(255,255,255,.08) 50%,transparent)}
 #crtFx .cn{background-repeat:repeat;mix-blend-mode:overlay}
 #crtFx .cf{background:#000}
+
+/* phones: text fields at 16px, so iOS Safari doesn't zoom in on them when they're tapped */
+@media (pointer:coarse){input[type=search],input[type=text],input:not([type]),textarea,select{font-size:16px!important}}

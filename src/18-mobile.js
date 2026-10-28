@@ -43,7 +43,7 @@ const mTabs = (() => {
     const b = e.target.closest('button'); if (!b) return; const k = b.dataset.k; buzz(8);
     if (cur === k) { cur = null; sync(); rmenu.close(); return }
     if (cur) { B.classList.add('mtab-swap'); setTimeout(() => B.classList.remove('mtab-swap'), 60) }   // swapping: the drawer stays put, only its content changes
-    cur = k; sync(); rmenu.sub(k);
+    cur = k; sync(); rmenu.sub(k); if (k === 'search') $('navQ').focus();   // (in the tap itself, or iOS won't bring up the keyboard)
   });
   setInterval(() => { if (cur && (!rmenu.panel || S.mode !== 'map')) { if (rmenu.panel) rmenu.close(); cur = null; sync() } }, 150);   // closed some other way (swiped down, ×, back to flying)
   return { get cur() { return cur } };

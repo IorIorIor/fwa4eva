@@ -26,5 +26,5 @@ export function pageHtml({ script, inline } = {}) {
   const tag = inline != null ? `<script type="module">\n${inline}\n</script>` : script;
   for (const [k, v] of [['%%FONT%%', rd('font.css.part').trim()], ['%%STYLE%%', rd('style.css')], ['%%MARKUP%%', rd('markup.tpl')]]) h = h.replace(k, () => v);
   h = h.replace(/<script type="module">\s*%%SCRIPT%%\s*<\/script>/, () => tag);
-  return '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">\n' + h + '\n</html>';
+  return '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">\n' + h + '\n</html>';
 }

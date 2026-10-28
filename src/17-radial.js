@@ -99,7 +99,8 @@ const rmenu = (() => {
   panel.querySelector('.x').onclick = close;
   window.__navPicked = close;
   function searchPanel() {
-    const q = $('navQ'); document.body.classList.remove('nosearch'); setTimeout(() => { close(); q.focus() }, 0);   // search is the bar up top now
+    const q = $('navQ'); if (document.body.classList.contains('mtab-open')) { body.append(q, $('navRes')); return }   // phones, on the map: the search sits in the drawer
+    document.body.classList.remove('nosearch'); setTimeout(() => { close(); q.focus() }, 0);   // search is the bar up top now
   }
   function filterPanel() {
     homes = [...$('panel').querySelectorAll('.grp.keep')].map(g => [g, g.parentNode, g.nextSibling]); homes.forEach(([g]) => body.appendChild(g));
@@ -191,5 +192,5 @@ const recorder = (() => {
   const fB = nav.querySelector('[data-k="filters"]'), sB = nav.querySelector('[data-k="search"]');
   const scB = nav.querySelector('[data-k="scroll"]');
   setInterval(() => { const m = S.mode === 'map'; mapB.textContent = m ? 'Fly' : 'Map'; scB && scB.classList.toggle('on', scrollMode.on); fB.classList.toggle('on', $('panel').classList.contains('open')); sB && sB.classList.toggle('on', m && !document.body.classList.contains('nosearch')) }, 200);
-  { const bar = $('mapSearch'), q = $('navQ'); q.placeholder = 'Search anything'; bar.append(q, $('navRes')); q.addEventListener('focus', () => { rmenu.close(); document.body.classList.add('srch') }); q.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== q) document.body.classList.remove('srch') }, 160)); bar.addEventListener('pointerdown', e => e.stopPropagation()) }   // the search bar up top is the search: you type right there and the results drop down under it
+  { const bar = $('mapSearch'), q = $('navQ'); q.placeholder = 'Search anything'; bar.append(q, $('navRes')); q.addEventListener('focus', () => { if (!q.closest('#rmPanel')) rmenu.close(); document.body.classList.add('srch') }); q.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== q) document.body.classList.remove('srch') }, 160)); bar.addEventListener('pointerdown', e => e.stopPropagation()) }   // the search bar up top is the search: you type right there and the results drop down under it
 })();
