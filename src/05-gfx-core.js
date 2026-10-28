@@ -5,10 +5,9 @@
      hazeScene  the arm haze, accumulated additively and then soft-clipped (a screen blend that can't blow out)
      scene      everything crisp at full resolution, laid over the other three, then bloom and the grade */
 /* (the canvas and the renderer are made first thing, in 01-zroom, so the room can show while all this loads) */
-const ONE_CANVAS = !!(LOOK.oneCanvas ?? 1) && !QS.has('twocanvas');   // the ship drawn on the one canvas (into its own sharp, antialiased layer, laid over the galaxy after the grade), or on a second canvas of its own above the instruments
-const shipCanvas = document.createElement('canvas'); shipCanvas.id = 'shipLayer'; shipCanvas.setAttribute('aria-hidden', 'true'); if (!ONE_CANVAS) canvas.after(shipCanvas);
-const shipRenderer = ONE_CANVAS ? renderer : new THREE.WebGPURenderer({ canvas: shipCanvas, antialias: true, alpha: true, forceWebGL: QS.has('webgl'), device: renderer.backend.isWebGPUBackend ? renderer.backend.device : undefined });   // (one GPU device for both canvases, not a second one of its own)
-if (!ONE_CANVAS) await shipRenderer.init();
+const shipCanvas = document.createElement('canvas'); shipCanvas.id = 'shipLayer'; shipCanvas.setAttribute('aria-hidden', 'true'); canvas.after(shipCanvas);
+const shipRenderer = new THREE.WebGPURenderer({ canvas: shipCanvas, antialias: true, alpha: true, forceWebGL: QS.has('webgl'), device: renderer.backend.isWebGPUBackend ? renderer.backend.device : undefined });   // (one GPU device for both canvases, not a second one of its own)
+await shipRenderer.init();
 renderer.highPrecision = true;   // model-view matrices in 64-bit on the CPU: the ship stays rock steady a million units from home
 const GPU = renderer.backend.isWebGPUBackend === true;
 let DPR = Math.min(LOOK.maxDpr, devicePixelRatio || 1);
@@ -21,28 +20,13 @@ scene.add(new THREE.HemisphereLight(0xb8b0ff, 0x1a1430, 1.1 * Math.PI));   // th
 const sunLight = new THREE.DirectionalLight(0xffffff, .8 * Math.PI); sunLight.position.set(.62, .48, .36); scene.add(sunLight);
 const rimLight = new THREE.DirectionalLight(0x8fa6ff, .9 * Math.PI); rimLight.position.set(-.62, -.3, -.5); scene.add(rimLight);   // cool back light so silhouettes read
 // the ship flies on its own layer: a second, transparent canvas above the instruments, so the pointer is never covered by them
-if (!ONE_CANVAS) { shipRenderer.highPrecision = true; shipRenderer.setPixelRatio(Math.min(3, Math.max(DPR, devicePixelRatio || 1))); shipRenderer.setClearColor(0x000000, 0) }
+shipRenderer.highPrecision = true; shipRenderer.setPixelRatio(Math.min(3, Math.max(DPR, devicePixelRatio || 1))); shipRenderer.setClearColor(0x000000, 0);
 // trails are drawn on their own and added after the colour grade, so a monochrome look never bleaches a pilot's colour
 const trailScene = new THREE.Scene(); trailScene.background = new THREE.Color(0, 0, 0);
 // the long-exposure arcs (the galaxy's rim streaks among them) render on their own and join the background, so the black hole lenses them
 const arcScene = new THREE.Scene(); arcScene.background = new THREE.Color(0, 0, 0);
 loadProg(.3);
 const shipScene = new THREE.Scene(); shipScene.add(new THREE.HemisphereLight(0xb8b0ff, 0x1a1430, 1.1 * Math.PI), sunLight.clone(), rimLight.clone());
-// one canvas: the ship's layer is a render target of its own (4× MSAA, at the ship's own sharper pixel ratio), cleared to
-// nothing; the galaxy's last pass lays it over the graded picture (premultiplied: what it covers shows through its soft
-// edges and glows), so it never goes through the bloom or the grade, just as on a canvas of its own
-const shipPR = () => ONE_CANVAS ? Math.min(LOOK.shipDpr ?? 3, Math.max(DPR, devicePixelRatio || 1)) : shipRenderer.getPixelRatio();
-const shipLayer = ONE_CANVAS ? (() => {
-  const rt = new THREE.RenderTarget(4, 4, { samples: 4, type: THREE.HalfFloatType }), on = uniform(0), tex = texture(rt.texture), _sz = new THREE.Vector2(), _cc = new THREE.Color();
-  const over = (c, uvN) => { const sh = tex.sample(uvN), a = sh.a, rgb = max(sh.rgb, 0), col = mix(sRGBTransferOETF(rgb), sRGBTransferOETF(rgb.div(max(a, 1e-3))).mul(a), step(1e-3, a)); return c.mul(a.mul(on).oneMinus()).add(col.mul(on)) };   // (the ship drawn in linear light, into screen values the way a canvas of its own would: its colour converted before it's weighed by its cover, not after)
-  return { on, over,
-    draw(sc, cam) {   // the ship into its layer, sized to whatever the galaxy is about to be drawn into (the canvas, or the monitor's picture in the room)
-      const tgt = renderer.getRenderTarget(), k = shipPR() / DPR; if (tgt) _sz.set(tgt.width, tgt.height); else renderer.getDrawingBufferSize(_sz);
-      const w = Math.max(1, Math.round(_sz.x * k)), h = Math.max(1, Math.round(_sz.y * k)); if (rt.width !== w || rt.height !== h) rt.setSize(w, h);
-      const ca = renderer.getClearAlpha(); renderer.getClearColor(_cc);
-      renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.render(sc, cam); renderer.setClearColor(_cc, ca); renderer.setRenderTarget(tgt); on.value = 1;
-    } };
-})() : null;
 
 /* uniforms every layer can read */
 const U = {

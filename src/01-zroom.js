@@ -361,7 +361,7 @@ const room = (() => {
   // the camera at a point p (0 … 1) of the way into the glass: nearer by the run's log distance, turning square onto it
   function prepRun() {
     st.q0 = cam.quaternion.clone(); glassPose(); const b = bandOf(), d1 = (b[3] - b[1]) * SH / (2 * Math.tan(cam.fov * Math.PI / 360)); st.d0 = cam.position.distanceTo(_t); st.dir0 = cam.position.clone().sub(_t).normalize();
-    let Dg = 1.8; try { Dg = Math.max(.3, intro.sw ? intro.lnD0 - intro.lnEnd : intro.lnPV - intro.lnD0) } catch (e) { }   // (the swing: its own way in sets the pace)
+    let Dg = 1.8; try { Dg = Math.max(.3, intro.lnPV - intro.lnD0) } catch (e) { }
     st.run = mkRun(Math.max(.2, Math.log(st.d0 / d1)), Dg, Math.max(.6, RL('roomDive', 2.8)));
   }
   function posed(p) {

@@ -112,7 +112,6 @@ const finalNode = Fn(() => {
   If(PU.lv.greaterThan(.001), () => { const o = PU.lv.mul(PU.lv); c.assign(pow(clamp(c.div(max(.02, PU.lv.oneMinus())), 0, 1), vec3(float(1).div(PU.lv.mul(PU.lvMid).add(1)))).mul(o.oneMinus()).add(o)) });   /* levels: the white point drops, the mids lift and the black point rises, all to white at 1 */
   c.addAssign(fract(sin(dot(vUv.mul(vec2(1733, 977)), vec2(12.9898, 78.233)).add(fract(U.now).mul(91.7))).mul(43758.5453)).sub(.5).mul(PU.grain));
   c.mulAssign(PU.void.oneMinus());   // inside the black hole: nothing
-  if (ONE_CANVAS) c.assign(shipLayer.over(clamp(c, 0, 1), vUv));   // the ship, over it all (one canvas)
   return vec4(clamp(c, 0, 1), 1);
 })();
 loadProg(.6);
@@ -122,8 +121,7 @@ const pipeline = new THREE.RenderPipeline(renderer); pipeline.outputColorTransfo
 const paperNode = Fn(() => {
   const c = min(sceneTex.sample(screenUV).rgb, 1), mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), sat = mx.sub(mn).div(mx.max(1e-4));
   const ink = mix(vec3(PU.pInk), c.div(mx.max(1e-4)).mul(.82), smoothstep(.12, .35, sat));   // grey ink; a coloured star prints in its colour
-  const pc = mix(vec3(1), ink, clamp(mx.mul(1.15), 0, 1)); return vec4(ONE_CANVAS ? shipLayer.over(pc, screenUV) : pc, 1);
+  return vec4(mix(vec3(1), ink, clamp(mx.mul(1.15), 0, 1)), 1);
 })();
 const paperPipeline = new THREE.RenderPipeline(renderer); paperPipeline.outputColorTransform = false; paperPipeline.outputNode = paperNode;
-const shipPipe = ONE_CANVAS ? new THREE.RenderPipeline(renderer) : null; if (shipPipe) { shipPipe.outputColorTransform = false; shipPipe.outputNode = vec4(shipLayer.over(vec3(0), screenUV), 1) }   // under the opening's black veil: only the ship, on black
 function setPassScales() { arcPass.setResolutionScale(LOOK.arcs > 0 ? LOOK.arcRes ?? 1 : 1 / 32); volPass.setResolutionScale(LOOK.volumetric ? LOOK.volRes : 1 / 32);   /* (a layer that's switched off still renders: at a postage stamp it costs nothing) */ softPass.setResolutionScale(LOOK.softRes); hazePass.setResolutionScale(LOOK.softRes); U.minSoft.value = 1 / LOOK.softRes }

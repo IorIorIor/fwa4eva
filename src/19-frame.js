@@ -18,8 +18,8 @@ const dayLab = (() => {
 let boostK0 = 0; const shipCam = new THREE.PerspectiveCamera();   // the ship layer's camera: the main one, with a near plane small enough for the tiny ship   // the core glow's strength and size, for its volumetric version
 const _v2 = new THREE.Vector2();
 let shipDrawn = true;   // the ship layer had something on it last frame (else its pass is skipped: one clear, then nothing)
-function resize() { renderer.setSize(innerWidth, innerHeight, false); if (!ONE_CANVAS) shipRenderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.getDrawingBufferSize(_v2); U.res.value.copy(_v2); U.dpr.value = _v2.y / Math.max(1, innerHeight) }
-function setDpr(d, force) { d = Math.max(.25, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); if (!ONE_CANVAS) shipRenderer.setPixelRatio(Math.min(LOOK.shipDpr ?? 3, Math.max(d, devicePixelRatio || 1))); resize() } }   // the ship's own layer draws at full resolution (up to its own cap)
+function resize() { renderer.setSize(innerWidth, innerHeight, false); shipRenderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.getDrawingBufferSize(_v2); U.res.value.copy(_v2); U.dpr.value = _v2.y / Math.max(1, innerHeight) }
+function setDpr(d, force) { d = Math.max(.25, Math.min(3, d)); if (Math.abs(d - DPR) > .01 || force) { DPR = d; renderer.setPixelRatio(d); shipRenderer.setPixelRatio(Math.min(LOOK.shipDpr ?? 3, Math.max(d, devicePixelRatio || 1))); resize() } }   // the ship's own layer draws at full resolution (up to its own cap)
 addEventListener('resize', resize);
 // adaptive resolution: compare frame time with the display's own interval (60, 120, 144 Hz…); step the pixel ratio
 // down when frames run long, back up when there's headroom. Stalls (hidden tab, a shader compiling) don't count.
@@ -220,7 +220,7 @@ function updateTrail(dt, on) {
   }
   const used = Math.max(v, trail.userData.used || 0); for (let k = v; k < used; k++) { trA[k * 2] = trA[k * 2 + 1] = 0; if (v > 0) trPos.copyWithin(k * 6, (v - 1) * 6, v * 6) } trail.userData.used = v;
   trail.geometry.setDrawRange(0, Math.max(0, v - 1) * 6); if (v) ['position', 'aT', 'aC', 'aA'].forEach(n => trail.geometry.attributes[n].needsUpdate = true);
-  const u = trail.u, cd = camera.position.distanceTo(player.pos); u.nearA.value = cd * .12 * L.trNearFade; u.nearB.value = cd * .5 * L.trNearFade; u.core.value = L.trCore; u.hot.value = L.trHot ?? 1; u.hotW.value = (L.trHotW ?? 2) * shipPR(); u.hotT.value = L.trHotTaper ?? 1; u.glow.value = L.trGlow; u.taper.value = L.trTaper; u.shim.value = L.trShimmer;
+  const u = trail.u, cd = camera.position.distanceTo(player.pos); u.nearA.value = cd * .12 * L.trNearFade; u.nearB.value = cd * .5 * L.trNearFade; u.core.value = L.trCore; u.hot.value = L.trHot ?? 1; u.hotW.value = (L.trHotW ?? 2) * shipRenderer.getPixelRatio(); u.hotT.value = L.trHotTaper ?? 1; u.glow.value = L.trGlow; u.taper.value = L.trTaper; u.shim.value = L.trShimmer;
 }
 
 /* the engine: the light in the hole, the glow at its mouth and the flare, all in the trail's colour; brighter while you thrust */
@@ -445,15 +445,7 @@ function tick(now) {
   }
   PU.beta.value = fly ? Math.min(1, beta * L.relativity) + fall.blur : 0; PU.ab.value += ((fly ? Math.min(1.5, player.cruise * .35 + beta * 1.2 + boostK * .8) * L.aberr + fall.ab : 0) - PU.ab.value) * Math.min(1, dt * 4);
   fall.post(dt, rdt);   // the black hole's twist on the picture, the disk's flash, and the sparks
-  updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { if (!(intro.active && veil.visible && veil.material.opacity > .999) || intro.wipe) { intro.wipe = false; { const pp = paperK > .5 ? paperPipeline : pipeline; room.galaxy(() => { if (ONE_CANVAS) drawShip(); pp.render() }) } if (intro.active && intro.ph === 0) intro.pf++ } else if (ONE_CANVAS) { drawShip(); shipPipe.render() }   /* (pf: portal frames really drawn; the black only lifts after a few, so the warm-up's picture never shows) */ if (!ONE_CANVAS) drawShip() } perf.ms = performance.now() - t0;   // under the opening's black veil the galaxy isn't drawn at all
-}
-// the ship's layer, with a camera of its own: the main one, its near plane close enough for the tiny ship
-const shipHid = () => { const c = document.body.classList; return c.contains('splash') || (c.contains('room') && !c.contains('roommob') && !c.contains('roomptr')) };   // (one canvas: what the second canvas's CSS hid)
-function drawShip() {
-  shipCam.copy(camera); const lg = intro.active && (logo3d && logo3d.visible || intro.ph === 0), sd = camera.position.distanceTo(avatar.position); shipCam.near = camera.near * SHIP_SC * (lg ? .01 : .1); shipCam.far = intro.active ? Math.max(sd * 4, shipCam.near * 1e4, lg && logo3d && logo3d.visible ? logo3d.position.distanceTo(camera.position) + logo3d.scale.x * 600 : 0, sStars.far()) : Math.max(2e5, camera.position.distanceTo(player.pos) * 2); shipCam.updateProjectionMatrix();
-  if (bench.noShip) { if (ONE_CANVAS) shipLayer.on.value = 0; return } const any = shipScene.children.some(o => o.visible && !o.isLight);
-  if (ONE_CANVAS) { if (any && !shipHid()) shipLayer.draw(shipScene, shipCam); else shipLayer.on.value = 0; return }
-  if (any || shipDrawn) shipRenderer.render(shipScene, shipCam); shipDrawn = any;
+  updateStats(dt); const t0 = performance.now(); perf.js = t0 - tStart; if (!NORENDER) { if (!(intro.active && veil.visible && veil.material.opacity > .999) || intro.wipe) { intro.wipe = false; { const pp = paperK > .5 ? paperPipeline : pipeline; room.galaxy(() => pp.render()) } if (intro.active && intro.ph === 0) intro.pf++ }   /* (pf: portal frames really drawn; the black only lifts after a few, so the warm-up's picture never shows) */ shipCam.copy(camera); const lg = intro.active && (logo3d && logo3d.visible || intro.ph === 0), sd = camera.position.distanceTo(avatar.position); shipCam.near = camera.near * SHIP_SC * (lg ? .01 : .1); shipCam.far = intro.active ? Math.max(sd * 4, shipCam.near * 1e4, lg && logo3d && logo3d.visible ? logo3d.position.distanceTo(camera.position) + logo3d.scale.x * 600 : 0, sStars.far()) : Math.max(2e5, camera.position.distanceTo(player.pos) * 2); shipCam.updateProjectionMatrix(); if (!bench.noShip) { const any = shipScene.children.some(o => o.visible && !o.isLight); if (any || shipDrawn) shipRenderer.render(shipScene, shipCam); shipDrawn = any } } perf.ms = performance.now() - t0;   // under the opening's black veil the galaxy isn't drawn at all
 }
 let loopErrs = 0;
 function loop(now) { requestAnimationFrame(loop); if (!booted && !introActive) { last = now; return } { const cap = LOOK.fpsCap ?? 0; if (cap > 0 && now - last < 1000 / cap - 2) return }   /* the frame-rate cap: skip display frames until it's time */   // nothing to draw behind the splash: leave the GPU to the loading
