@@ -30,7 +30,9 @@ and gives quick visual feedback; keep replies short).
   drawing while the galaxy loads). The opening (`intro.startPortal`) runs on the CRT: the galaxy is rendered into the glass's render
   target (`room.galaxy(fn)` wraps every main render while `room.on`) and `#portalLoad` + `#shipLayer` are laid onto the glass with a CSS
   matrix3d. Start → `room.dive()`: one move (`mkRun`, log distance) into the glass; when the glass fills the window the room goes and
-  the opening takes the move on (`intro.rr`). The glass marks itself in the room pass's alpha and the output shows the galaxy's own
+  the opening takes the move on (`intro.rr`). With `introSwing` (default) the glass shows the view from straight above your pointer (`intro.pose(0)`,
+  the frame shifted with `setViewOffset` so the pointer sits under the mouse), and through the glass `intro.swingGo` runs one
+  swing round to behind the ship, closing in at the dive's pace (`swP`, `swGap`); off: the portal's run and settle. The glass marks itself in the room pass's alpha and the output shows the galaxy's own
   picture (gT) there untouched, so it's one galaxy all the way in (no crossfade). The CRT is plain CSS layers (`crtFx`) laid onto the
   glass with the same kind of matrix3d (`crtFx.lay`), at rest `crtIdle`, up to `crtPeak` as the glass fills the window, fading off after
   (all of it behind `crtOn`, off for now).
@@ -55,7 +57,9 @@ and gives quick visual feedback; keep replies short).
 - TSL: numbers are fine as node args; `transpose`, `step(edge, x)`; no NaN-prone `smoothstep(a, a, x)`.
 - Camera/ship far from the origin: `renderer.highPrecision = true`; never compute view direction from world
   `cameraPosition` in shaders near the ship (float precision), use `modelViewMatrix` instead.
-- The ship renders on its own transparent canvas above the HUD (`shipRenderer`/`shipScene`); trails render in
+- One canvas (`ONE_CANVAS`, Look `oneCanvas`; `?twocanvas` for the old second canvas): `drawShip()` renders `shipScene` into
+  `shipLayer`'s own MSAA target (at `shipDpr`) before the galaxy, and the pipeline's last pass lays it over the grade
+  (`shipLayer.over`). Never `renderer.render` straight to the canvas after the pipeline: it overwrites the frame. Trails render in
   `trailScene` and are added after the colour grade.
 
 ## Testing
