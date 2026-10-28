@@ -178,7 +178,8 @@ const intro = {
     { const f = GC.clone().sub(this.C0).normalize();   // the heading you'll fly off with, wherever you start (saved spot or not): straight at the galaxy's core. It's the camera's too, all through the opening: the core sits dead centre behind the mark from the first frame, and never moves
       rig.q.copy(lookAtQ(f, Math.abs(f.dot(GAL_UP)) > .99 ? _ix.set(1, 0, 0) : GAL_UP)); rig.quat.copy(rig.q); player.base.copy(rig.q); player.quat.copy(rig.q) }
     this.pose(0); this.P0 = { p: camera.position.clone(), q: camera.quaternion.clone() };   // where the dive ends: just above the ship, which from there looks exactly like a mouse pointer
-    { const qi = this.P0.q.clone().invert(); this.relQ = qi.clone().multiply(player.quat); this.relP = player.pos.clone().sub(this.P0.p).applyQuaternion(qi) }   // the ship as that camera sees it: from now on it IS your pointer, flat, carried in front of the camera
+    { const qi = this.P0.q.clone().invert(); this.relQ = qi.clone().multiply(player.quat); this.relP = player.pos.clone().sub(this.P0.p).applyQuaternion(qi) }
+    { const tl = Math.max(0, Math.min(90, LOOK.introSwingTilt ?? 0)) * Math.PI / 180; this.s0 = this.sw ? new V3(0, Math.sin(tl), Math.cos(tl)) : null }   // the swing starts from here (in the ship's frame): straight behind it, the monitor's view of the core, up to straight above   // the ship as that camera sees it: from now on it IS your pointer, flat, carried in front of the camera
     this.portalView();
     this.pt.g.visible = true; this.portalStep(0);
     const gesture = () => { if (this.heard) return; this.heard = true; setMuted(false); setMusicOff(false); audio() };   // sound needs a click or a key, so the first one starts it
@@ -245,7 +246,7 @@ const intro = {
     // the pointer: the 3D ship, flat, right under your mouse. In the last stretch it starts to come closer, at exactly the pace the
     // camera will carry on closing in at, so past the mark it just keeps growing the same way (G: the rest of a smoothstep's area)
     { const f = Math.min(1, dt * 14 || 1); this.mxs += (this.mx - this.mxs) * f; this.mys += (this.my - this.mys) * f;
-      if (this.sw) { avatar.position.copy(player.pos); avatar.quaternion.copy(player.quat); avatar.renderOrder = 0 }   // (the swing: the ship itself, lying flat under the camera)
+      if (this.sw) { avatar.position.copy(player.pos); avatar.quaternion.copy(camera.quaternion).multiply(this.relQ); avatar.renderOrder = 0 }   // (the swing: the ship itself, turned flat to the camera, so it's your pointer)
       else { const qa = .9, tt = Math.max(0, Math.min(1, (q - qa) / (1 - qa))), G = (1 - qa) * (.5 - tt * tt * tt + tt * tt * tt * tt / 2), ty = Math.tan(camera.fov * Math.PI / 360), dp = Math.exp(this.lnD0 + (this.rr ? 1 : lam) * (this.lnPV - this.lnD0) * G) * Math.tan(LOOK.fov * Math.PI / 360) / ty;   // (with the wide lens it sits nearer, so it stays exactly pointer-sized)
       avatar.position.set(this.mxs * ty * camera.aspect * dp, this.mys * ty * dp, -dp).applyQuaternion(camera.quaternion).add(camera.position); avatar.quaternion.copy(camera.quaternion).multiply(this.relQ); avatar.renderOrder = 5; }
       flatPtr(1); const on = this.play > 0 || this.pq > .002 || lab || !!this.rr || room.ptrOn; if (on !== this.ptrOn) { this.ptrOn = on; document.body.classList.toggle('opening', on) } avatar.visible = on || (room.on && (room.warming || room.diving)) }   // (in the room it's drawn on its hidden layer for a moment once the galaxy's up, and in the move, so it's compiled and there the instant it takes over; not all along: that costs)   // the 3D pointer only from Start (or the first scroll), right where your mouse is
@@ -261,13 +262,13 @@ const intro = {
     this.swP = Math.max(1.2, Math.min(5, v0 * want / gap)); this.swGap = gap; this.dur = Math.max(1.5, Math.min(9, this.swP * gap / v0));   // the start speed v0 exactly, when the length allows
     this.logoS = 0; this.logoV = R ? R.vend : 0; this.st = 0; this.swOn = true; this.t = 0; this.ph = 2; this.lit = false; this.hud = false; this.reflGo = false;
     this.at = { x: (this.mx + 1) / 2 * innerWidth + this.tipOff.x, y: (1 - this.my) / 2 * innerHeight + this.tipOff.y }; this.goal = null; this.av.x = this.av.y = 0; this.lockT = performance.now();   // the 3D pointer takes over right where yours is (a mouse moving from here springs it along)
-    document.body.classList.add('opening'); avatar.visible = true;
+    document.body.classList.add('opening'); avatar.visible = true; this.Qf0 = avatar.quaternion.clone();   // (the pointer as it came through, flat to you)
   },
   swingStep(dt) {
     const L = LOOK; this.st += dt; const lnd = this.lnEnd + this.swGap * Math.pow(1 - Math.min(1, this.t), this.swP);
     if (L.roomDynRes ?? 1) setDpr(Math.round(Math.min(L.maxDpr, devicePixelRatio || 1) * (.5 + .5 * sstep(this.t, 0, .5)) * 10) / 10);   // out of the room at half resolution: back to full by halfway
     room.afterGlass(this.logoS + Math.max(this.lnD0 - lnd, this.logoV * this.st));   // the room's logo keeps coming at you at the dive's pace, so it's past you in a moment
-    flatPtr(1 - sstep(this.t, .45, .85)); if (this.t > .6) this.reflGo = true;   // the flat pointer becomes the ship as it comes round
+    const turn = sstep(this.t, L.introSwingTurn ?? .3, .85); avatar.quaternion.copy(this.Qf0).slerp(player.quat, turn); flatPtr(1 - turn); if (turn > .5) this.reflGo = true;   // the flat pointer turns into the ship, showing you its back, as the camera comes in behind it
   },
   // after the mark, one movement: the camera carries on closing in at the speed it came through with and settles (springs, no
   // fixed timing) into the flying position behind the ship, swinging round from straight above as it slows. The ship keeps
@@ -322,9 +323,10 @@ const intro = {
   pose(t) {   // the camera at a point of the move: from straight overhead round to just above and behind the ship, looking at it until, at the very end, it looks ahead past it
     const ez = this.ez(t), w0 = Math.min(.95, LOOK.introLook ?? .45), w = sstep(ez, w0, 1);   /* turns from the pointer to the view ahead gradually, as part of the one move */   // it keeps the pointer dead centre until it's all but landed, then looks ahead past it
     const b = _ib.copy(INTRO_END).normalize(), ang = Math.acos(b.y), d = this.swOn ? Math.exp(this.lnEnd + this.swGap * Math.pow(1 - Math.min(1, t), this.swP)) : Math.exp(Math.log(this.D0) * (1 - ez) + Math.log(INTRO_END.length()) * ez);   /* (the swing from the room: it closes in at the pace it came through the glass with, slowing all the way to the landing, while it comes round on the usual ease) */
-    camera.position.copy(_ia.set(0, 1, 0).applyAxisAngle(_ix.set(1, 0, 0), ang * ez).multiplyScalar(d)).applyQuaternion(rig.q).add(player.pos);
+    if (this.s0) { const ax = (this._swA ||= new V3()).crossVectors(this.s0, b), sa = ax.length(), an = Math.atan2(sa, this.s0.dot(b)); _ia.copy(this.s0); if (sa > 1e-6) _ia.applyAxisAngle(ax.divideScalar(sa), an * ez); camera.position.copy(_ia.multiplyScalar(d)).applyQuaternion(rig.q).add(player.pos) }   // the swing: from where it starts round to behind and above
+    else camera.position.copy(_ia.set(0, 1, 0).applyAxisAngle(_ix.set(1, 0, 0), ang * ez).multiplyScalar(d)).applyQuaternion(rig.q).add(player.pos);
     const toShip = _ib.copy(player.pos).sub(camera.position).normalize(), fwd = _ix.set(0, 0, -1).applyQuaternion(rig.q), dir = toShip.lerp(fwd, w).normalize();
-    const up = this.upW.copy(this.up0).applyQuaternion(rig.q).lerp(_iu.set(0, 1, 0).applyQuaternion(rig.q), ez).normalize();
+    const up = this.upW.copy(this.s0 ? (this._swU ||= new V3()).set(0, 1, 0).lerp(this.up0, this.s0.y) : this.up0).applyQuaternion(rig.q).lerp(_iu.set(0, 1, 0).applyQuaternion(rig.q), ez).normalize();
     _il.lookAt(_ia.set(0, 0, 0), dir, up); camera.quaternion.setFromRotationMatrix(_il);
     if (this.at) { const on = 1 - 1 / (reduceMotion ? 2.5 : this.dur), k = 1 - sstep(t, .12, on * .95), W = innerWidth, H = innerHeight; if (k > 0) camera.setViewOffset(W, H, -(this.at.x - W / 2) * k, -(this.at.y - H / 2) * k, W, H); else camera.clearViewOffset() }   // the pointer follows your mouse at first, less and less as the camera swings in behind it
     camera.updateMatrixWorld();
