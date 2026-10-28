@@ -278,6 +278,7 @@ const room = (() => {
   if (PTR3D) try {
     const A = [[0, 0], [0, 16.6], [4.2, 12.6], [7.3, 19.2], [9.6, 18.2], [6.6, 11.7], [11.7, 11.7]], pic = sc => { const pad = 2, c = document.createElement('canvas'); c.width = c.height = Math.ceil(26 * sc); const g = c.getContext('2d'); g.scale(sc, sc); g.translate(pad, pad); g.beginPath(); A.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.lineJoin = 'round'; g.strokeStyle = '#fff'; g.lineWidth = 2.2; g.stroke(); g.fillStyle = '#000'; g.fill(); return c.toDataURL() };   // (the default arrow, as cursorPic in 20-boot draws it)
     const k = 21 / 19.2, a1 = pic(k), a2 = pic(k * 2), h = Math.round(2 * k); H0.style.setProperty('--roomcur', `url(${a1}) ${h} ${h}, auto`); H0.style.setProperty('--roomcur2', `-webkit-image-set(url(${a1}) 1x, url(${a2}) 2x) ${h} ${h}, auto`);   // the size the 3D one shows at (about 21 px tall)
+    if (on0) document.body.classList.add('roomptr3d');   // (from the very first moment: the countdown too)
   } catch (e) { }   // (the switch: with a mouse, the 3D pointer takes over right at Start instead of once through the glass)
   const layers = () => [$('portalLoad'), MOB || early() ? $('shipLayer') : null].filter(Boolean);   // (with a mouse the 3D pointer only takes over once you're through the glass: until then it's your own)
   function place() {

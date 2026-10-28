@@ -936,7 +936,7 @@ body.room > *:not(#gl):not(#lookPanel):not(#portalLoad):not(#shipLayer):not(#crt
 html.roomboot #portalLoad{opacity:0}   /* (until the room lays it onto the glass: no full-size flash of it first) */
 #rmArr{position:fixed;inset:0;z-index:80;touch-action:none;cursor:crosshair}#rmArr[hidden]{display:none}
 body.room:not(.roommob):not(.roomptr):not(.roomptr3d) #shipLayer{visibility:hidden!important}
-body.roomptr3d,body.roomptr3d #gl,body.roomptr3d #portalLoad,body.roomptr3d #portalLoad *{cursor:var(--roomcur);cursor:var(--roomcur2)}   /* (in the room, before the 3D pointer is ready: the system pointer, drawn like it) */
+body.roomptr3d,body.roomptr3d #gl,body.roomptr3d #portalLoad,body.roomptr3d #portalLoad *,body.roomptr3d #intro,body.roomptr3d #intro *{cursor:var(--roomcur);cursor:var(--roomcur2)}   /* (in the room, before the 3D pointer is ready: the system pointer, drawn like it) */
 body.roomptr3d.opening #lookPanel,body.roomptr3d.opening #lookPanel *,body.roomptr3d.opening #crtLab,body.roomptr3d.opening #crtLab *,body.roomptr3d.opening #rmArr{cursor:auto!important}   /* (over the panels: your own pointer, to work them) */
 body.roomptr,body.roomptr *{cursor:none!important}
 html.roomboot #portalLoad{background:transparent!important}
