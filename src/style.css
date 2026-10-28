@@ -672,13 +672,7 @@ body.map:has(#rmPanel.p-search:not([hidden])) #rmVeil{opacity:0}
 body.paper{background:#fff}body.paper #labels,body.paper #dayLabels,body.paper #topnav{filter:invert(1) hue-rotate(180deg)}   /* paper: the interface keeps its colours; only the labels on the page (and the white menu text, to stay readable) turn to ink */
 #farText{position:fixed;left:50%;top:30%;transform:translate(-50%,-50%);z-index:19;pointer-events:none;opacity:0;text-align:center;display:flex;flex-direction:column;gap:8px;color:#fff}#farText small{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.6)}#farText b{font-family:"FF Good Pro",var(--body);font-weight:400;font-size:clamp(28px,4vw,52px)}
 body.farside #labels,body.farside #dayLabels{opacity:0;transition:opacity 1s}   /* the far side is quiet: no tags */
-/* phones: Tilt sits over Brake; panels come up from the bottom as sheets you can swipe away */
-#tiltBtn{display:none}
-@media (pointer:coarse){
-  #tiltBtn{display:block;position:fixed;z-index:5;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px));width:52px;height:32px;padding:0;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.06);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background-color .3s ease,color .2s ease}
-  #tiltBtn.on{background:#fff;color:#000;border-color:#fff}
-  #tiltBtn[hidden],body.map #tiltBtn{display:none}
-}
+/* phones: panels come up from the bottom as sheets you can swipe away */
 @media (max-width:760px){
   #panel,#lookPanel{left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;max-height:72vh;border-radius:16px 16px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(14,14,16,.96)!important;border:1px solid rgba(255,255,255,.12)!important;border-bottom:0!important;z-index:30}
   .sheet:not(.open){transform:translateY(60px)}
@@ -706,7 +700,7 @@ body.farside #labels,body.farside #dayLabels{opacity:0;transition:opacity 1s}   
 #tip.mtop .ti a{padding:0 10px 9px;font-size:11px}
 #tip.mtop .tnav{display:none}
 /* the interface always sits over the 3D layers (the ship's canvas, rings and portals included) */
-#logo,#gotPill,#brand,#topnav,#topbar,#nav,#mapSearch,#gauge,#dash,#thrust,#brake,#tiltBtn,#coach,#tourPill,#legend,#arrive{z-index:12}
+#logo,#gotPill,#brand,#topnav,#topbar,#nav,#mapSearch,#gauge,#dash,#thrust,#brake,#coach,#tourPill,#legend,#arrive{z-index:12}
 #tip{z-index:13}
 #tip,#tip *{border-radius:0!important}
 /* touch: Brake and Thrust either side of the speed console, all three the same height */
@@ -734,7 +728,6 @@ body.mm-open #logo{z-index:46}   /* the logo stays on top of its menu: tap it ag
 }
 @media (pointer:coarse){
   #dash{left:max(16px,env(safe-area-inset-left,0px))!important;transform:none!important}
-  #tiltBtn{left:max(16px,env(safe-area-inset-left,0px))!important;bottom:calc(76px + env(safe-area-inset-bottom,0px))!important}
 }
 /* phones, on the map: the two tabs along the bottom; with the drawer open they sit on its top edge */
 #mTabs{display:none}

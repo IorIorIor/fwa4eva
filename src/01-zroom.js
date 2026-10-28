@@ -330,7 +330,7 @@ const room = (() => {
     apply();
     renderer.getDrawingBufferSize(U2.res.value);
     // the camera: in front of the desk, a little above it, swaying a touch with the pointer
-    const sw = RL('roomSway', .04), px = st.ptr.in ? st.ptr.x / innerWidth - .5 : 0, py = st.ptr.in ? st.ptr.y / innerHeight - .5 : 0, f = Math.min(1, dt * 3);
+    const sw = RL('roomSway', .04) * (MOB ? RL('roomSwayTouch', 1.6) : 1), px = st.ptr.in ? st.ptr.x / innerWidth - .5 : 0, py = st.ptr.in ? st.ptr.y / innerHeight - .5 : 0, f = Math.min(1, dt * 3);
     if (st.phase !== 'dive' && !st.lab) { st.sway.x += (px - st.sway.x) * f; st.sway.y += (py - st.sway.y) * f } else if (st.lab) st.sway.set(0, 0)
     const cx = RL('roomCamX', 0);
     cam.fov = RL('roomFov', 36); cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
@@ -394,11 +394,9 @@ const room = (() => {
   // input: in the room nothing reaches the galaxy (no dragging, swiping or scrolling it round); only Start, the panels, and on a phone the taps that move the pointer on the glass
   const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter'), inUI = e => e.target && e.target.closest && e.target.closest('#lookPanel,#crtLab,#rmArr'), held = () => st.on && st.phase !== 'post';
   addEventListener('pointermove', e => { if ((st.on || performance.now() < (st.lockT || 0)) && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);
-  addEventListener('pointerdown', e => { if (held() && !inUI(e)) { e.stopImmediatePropagation(); if (e.pointerType === 'touch' && (st.phase === 'ready' || st.phase === 'loading')) { const x0 = e.clientX, y0 = e.clientY; clearTimeout(st.lp); st.lpAt = [x0, y0]; st.lp = setTimeout(() => { st.lp = 0; st.lpFired = true; if (st.lab) lab(false); else lab(true) }, 650) } } }, true);   // a long press on the room (touch): the CRT playground, open or shut
-  addEventListener('pointermove', e => { if (st.lp && st.lpAt && Math.hypot(e.clientX - st.lpAt[0], e.clientY - st.lpAt[1]) > 12) { clearTimeout(st.lp); st.lp = 0 } }, true);
-  ['pointerup', 'pointercancel'].forEach(t => addEventListener(t, () => { if (st.lp) { clearTimeout(st.lp); st.lp = 0 } }, true));
+  addEventListener('pointerdown', e => { if (e.pointerType === 'touch' && st.on) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);   // (a touch moves the view too, not only a drag)
   addEventListener('pointerup', e => {
-    if (!held() || inUI(e)) return; e.stopImmediatePropagation(); if (st.phase !== 'ready' || st.lab || st.lpFired) { st.lpFired = false; return }
+    if (!held() || inUI(e)) return; e.stopImmediatePropagation(); if (st.phase !== 'ready' || st.lab) return
     if (MOB) { const [wx, wy] = toWindow(e.clientX, e.clientY); if (wx >= 0 && wx <= innerWidth && wy >= 0 && wy <= innerHeight) try { intro.mx = wx / innerWidth * 2 - 1; intro.my = -(wy / innerHeight * 2 - 1) } catch (er) { } }   // a tap on the glass: the pointer glides there
     if (onBtn(e)) dive();
   }, true);
