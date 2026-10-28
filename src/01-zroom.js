@@ -271,15 +271,7 @@ const room = (() => {
     return { css: `matrix3d(${m[0]},${m[3]},0,${m[6]},${m[1]},${m[4]},0,${m[7]},0,0,1,0,${m[2]},${m[5]},0,${m[8]})`, mi };
   }
   const MOB = matchMedia('(pointer: coarse)').matches, SHEET = matchMedia('(max-width: 760px), (pointer: coarse)');   // a phone or tablet: no pointer of your own, so the 3D one sits on the glass from the start and goes where you tap
-  const early = () => !MOB && !!RL('roomPtrEarly', 0) && st.phase === 'dive';
-  // with a mouse, your pointer is the 3D one from the start: until the galaxy (and with it the ship) is loaded, the system pointer
-  // drawn exactly like it (black, a white rim); once it's ready, the 3D pointer itself, under your mouse all over the room
-  const PTR3D = !MOB && !!RL('roomPtr3d', 1);
-  if (PTR3D) try {
-    const A = [[0, 0], [0, 16.6], [4.2, 12.6], [7.3, 19.2], [9.6, 18.2], [6.6, 11.7], [11.7, 11.7]], pic = sc => { const pad = 2, c = document.createElement('canvas'); c.width = c.height = Math.ceil(26 * sc); const g = c.getContext('2d'); g.scale(sc, sc); g.translate(pad, pad); g.beginPath(); A.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.lineJoin = 'round'; g.strokeStyle = '#fff'; g.lineWidth = 2.2; g.stroke(); g.fillStyle = '#000'; g.fill(); return c.toDataURL() };   // (the default arrow, as cursorPic in 20-boot draws it)
-    const k = 21 / 19.2, a1 = pic(k), a2 = pic(k * 2), h = Math.round(2 * k); H0.style.setProperty('--roomcur', `url(${a1}) ${h} ${h}, auto`); H0.style.setProperty('--roomcur2', `-webkit-image-set(url(${a1}) 1x, url(${a2}) 2x) ${h} ${h}, auto`);   // the size the 3D one shows at (about 21 px tall)
-    if (on0) document.body.classList.add('roomptr3d');   // (from the very first moment: the countdown too)
-  } catch (e) { }   // (the switch: with a mouse, the 3D pointer takes over right at Start instead of once through the glass)
+  const early = () => !MOB && !!RL('roomPtrEarly', 0) && st.phase === 'dive';   // (the switch: with a mouse, the 3D pointer takes over right at Start instead of once through the glass)
   const layers = () => [$('portalLoad'), MOB || early() ? $('shipLayer') : null].filter(Boolean);   // (with a mouse the 3D pointer only takes over once you're through the glass: until then it's your own)
   function place() {
     const b = bandOf(); st.band = b;
@@ -378,7 +370,7 @@ const room = (() => {
   }
   function finish() {
     st.on = false; st.phase = 'done'; unplace(); if (st.lab) lab(false);
-    H0.classList.remove('roomboot', 'roomlive'); document.body.classList.remove('room', 'roommob', 'roomptr3d');
+    H0.classList.remove('roomboot', 'roomlive'); document.body.classList.remove('room', 'roommob');
     renderer.shadowMap.enabled = false; const cb = st.onDone; st.onDone = null; if (cb) cb();
     setTimeout(() => { sc.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => m.dispose()) }); gRT.dispose() }, 2000);
   }
@@ -407,8 +399,7 @@ const room = (() => {
   }
   // input: in the room nothing reaches the galaxy (no dragging, swiping or scrolling it round); only Start, the panels, and on a phone the taps that move the pointer on the glass
   const onBtn = e => e.target && e.target.closest && e.target.closest('#plEnter'), inUI = e => e.target && e.target.closest && e.target.closest('#lookPanel,#crtLab,#rmArr'), held = () => st.on && st.phase !== 'post';
-  document.addEventListener('pointerlockchange', () => { st.lockAt = performance.now() });   // (when the lock really takes hold: its jump comes right after)
-  addEventListener('pointermove', e => { const jm = Math.abs(e.movementX) + Math.abs(e.movementY); if (document.pointerLockElement && (jm > 400 || jm > 80 && (st.on || performance.now() < (st.lockT || 0) || performance.now() - (st.lockAt || -1e9) < 1500))) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true; st.ptrUI = !!inUI(e); if (PTR3D && st.on && e.pointerType === 'mouse') try { intro.mx = intro.mxs = Math.max(-1, Math.min(1, e.clientX / innerWidth * 2 - 1)); intro.my = intro.mys = Math.max(-1, Math.min(1, -(e.clientY / innerHeight * 2 - 1))) } catch (er) { } }   /* (the 3D pointer: right under the mouse, no easing after it) */ if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);
+  addEventListener('pointermove', e => { if ((st.on || performance.now() < (st.lockT || 0)) && document.pointerLockElement && Math.abs(e.movementX) + Math.abs(e.movementY) > 80) { e.stopImmediatePropagation(); return }   /* (the jump some browsers report as the lock takes hold: not a real move) */ if (!document.pointerLockElement) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);
   addEventListener('pointerdown', e => { if (e.pointerType === 'touch' && st.on) { st.ptr.x = e.clientX; st.ptr.y = e.clientY; st.ptr.in = true } if (held() && !inUI(e)) e.stopImmediatePropagation() }, true);   // (a touch moves the view too, not only a drag)
   addEventListener('pointerup', e => {
     if (!held() || inUI(e)) return; e.stopImmediatePropagation(); if (st.phase !== 'ready' || st.lab) return
@@ -509,12 +500,12 @@ const room = (() => {
     try { await renderer.compileAsync(sc, cam) } catch (e) { }
     bakeShadows(); st.bakeN = 8;   // (and again over the first few frames, till everything's surely in)
     if (window.__rmCount) await window.__rmCount();   // (the countdown before the room reaches 2000 first)
-    st.on = true; st.phase = 'loading'; document.body.classList.add('room'); if (MOB) document.body.classList.add('roommob'); if (PTR3D) document.body.classList.add('roomptr3d'); H0.classList.add('roomlive'); requestAnimationFrame(loop);
+    st.on = true; st.phase = 'loading'; document.body.classList.add('room'); if (MOB) document.body.classList.add('roommob'); H0.classList.add('roomlive'); requestAnimationFrame(loop);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // (two frames of it on screen before the heavy loading starts)
   })();
   return {
     get on() { return st.on }, on0: true, get diving() { return st.phase === 'dive' }, get phase() { return st.phase }, startP, galaxy, dive,
-    get warming() { return performance.now() < (st.warmT || 0) }, galaxyReady() { if (st.phase === 'loading') { st.phase = 'ready'; st.warmT = performance.now() + 1500; if (/crt-?lab/.test(location.hash)) lab(true) } }, lab, get ptrOn() { return MOB && (st.phase === 'ready' || st.phase === 'dive') || early() || PTR3D && (st.phase === 'dive' || st.phase === 'ready' && st.ptr.in && !st.ptrUI) },   /* (with a mouse: over the room, not over the panels, where the system pointer works them) */   // the opening has its galaxy up: the glass shows it and Start works
+    get warming() { return performance.now() < (st.warmT || 0) }, galaxyReady() { if (st.phase === 'loading') { st.phase = 'ready'; st.warmT = performance.now() + 1500; if (/crt-?lab/.test(location.hash)) lab(true) } }, lab, get ptrOn() { return MOB && (st.phase === 'ready' || st.phase === 'dive') || early() },   // the opening has its galaxy up: the glass shows it and Start works
     skip() { if (st.on) finish(); logoAt(9) }, afterGlass(s) { logoAt(Math.exp(Math.max(0, s))) }, glass, cam, scene: sc, get st() { return st }, picks, arrange, pick, U2, gRT, renderer, setAO, aoN, rp,
   };
 })();
