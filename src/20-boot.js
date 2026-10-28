@@ -222,7 +222,7 @@ const intro = {
     // the dive, in log distance from the ship's spot: slow, then a rush, then easing out, but never to a stop: it arrives still moving
     // in at a share (lam) of its pace, and that is the speed the camera carries on with past the mark (so nothing jumps there)
     const x = Math.pow(q, L.portalAccel ?? 2.2), eC = this.rr ? q : (1 - lam) * (1 - (1 - x) * (1 - x)) + lam * q, lnd = this.lnD0 + (this.lnPV - this.lnD0) * (1 - eC);
-    if (this.sw) { if (Math.abs(camera.fov - LOOK.fov) > 1e-4) { camera.fov = LOOK.fov; camera.updateProjectionMatrix() } this.goal = { x: (this.mx + 1) / 2 * innerWidth + this.tipOff.x, y: (1 - this.my) / 2 * innerHeight + this.tipOff.y }; this.pose(0) }   // the swing: on the glass, the view from straight above your pointer, which sits wherever your mouse (or finger) is
+    if (this.sw) { if (Math.abs(camera.fov - LOOK.fov) > 1e-4) { camera.fov = LOOK.fov; camera.updateProjectionMatrix() } this.goal = { x: (this.mx + 1) / 2 * innerWidth + this.tipOff.x, y: (1 - this.my) / 2 * innerHeight + this.tipOff.y }; if (!room.on) this.at = { ...this.goal }; this.pose(0) }   // the swing: on the glass, the view from straight above your pointer, which sits wherever your mouse (or finger) is
     else { this.setFov(.6 * q); this.camAt(this.C0, lnd, camera.position); camera.quaternion.copy(rig.q); camera.updateMatrixWorld() }   // it only closes in: the galaxy never turns
     const W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), Z0 = this.D0 * .6, wpx = Math.min(W * (L.portalSize ?? .62), H * 2.2), s = wpx / H * 2 * Z0 * th / 509, dep = (L.portalDepth ?? 200) * s;
     const z = -Z0 + (Z0 + dep * 1.05 + Z0 * .02) * eL;   // the mark comes at you, faster and faster, until you're out of the back of its walls
@@ -260,7 +260,7 @@ const intro = {
     const gap = Math.max(1e-3, this.lnD0 - this.lnEnd), v0 = Math.max(.05, R ? R.vend : gap / 2), want = Math.max(1.5, L.introDur ?? 5);
     this.swP = Math.max(1.2, Math.min(5, v0 * want / gap)); this.swGap = gap; this.dur = Math.max(1.5, Math.min(9, this.swP * gap / v0));   // the start speed v0 exactly, when the length allows
     this.logoS = 0; this.logoV = R ? R.vend : 0; this.st = 0; this.swOn = true; this.t = 0; this.ph = 2; this.lit = false; this.hud = false; this.reflGo = false;
-    this.at = { x: (this.mx + 1) / 2 * innerWidth + this.tipOff.x, y: (1 - this.my) / 2 * innerHeight + this.tipOff.y }; this.goal = null; this.av.x = this.av.y = 0;   // the 3D pointer takes over right where yours is (a mouse moving from here springs it along)
+    this.at = { x: (this.mx + 1) / 2 * innerWidth + this.tipOff.x, y: (1 - this.my) / 2 * innerHeight + this.tipOff.y }; this.goal = null; this.av.x = this.av.y = 0; this.lockT = performance.now();   // the 3D pointer takes over right where yours is (a mouse moving from here springs it along)
     document.body.classList.add('opening'); avatar.visible = true;
   },
   swingStep(dt) {
@@ -306,7 +306,7 @@ const intro = {
   at: null, goal: null, av: { x: 0, y: 0 }, tipOff: { x: 0, y: 0 }, cur: null,
   mouse(e) {   // all through the opening the arrow is still your mouse pointer: it moves with the mouse (the pull fades as the camera settles)
     if (!this.at) this.at = { x: innerWidth / 2, y: innerHeight / 2 }; const g = this.goal || (this.goal = { x: this.at.x, y: this.at.y });   // the mouse sets a goal; the arrow springs after it (see update)
-    if (document.pointerLockElement) { g.x += e.movementX; g.y += e.movementY } else { g.x = e.clientX + this.tipOff.x; g.y = e.clientY + this.tipOff.y }
+    if (document.pointerLockElement) { if (Math.abs(e.movementX) + Math.abs(e.movementY) > 80 && performance.now() < (this.lockT || 0) + 1000) return; g.x += e.movementX; g.y += e.movementY } else { g.x = e.clientX + this.tipOff.x; g.y = e.clientY + this.tipOff.y }   // (not the jump some browsers report as the lock takes hold)
     g.x = Math.max(0, Math.min(innerWidth, g.x)); g.y = Math.max(0, Math.min(innerHeight, g.y));
   },
   placeCur() { if (this.at && this.cur) curEl.style.transform = `translate(${(this.at.x - this.tipOff.x - this.cur.hx).toFixed(1)}px,${(this.at.y - this.tipOff.y - this.cur.hy).toFixed(1)}px)` },
