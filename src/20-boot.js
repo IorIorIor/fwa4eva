@@ -265,7 +265,7 @@ const intro = {
     this.swP = Math.max(1.2, Math.min(5, v0 * want / gap)); this.swGap = gap; this.dur = Math.max(1.5, Math.min(9, this.swP * gap / v0));   // the start speed v0 exactly, when the length allows
     this.logoS = 0; this.logoV = R ? R.vend : 0; this.st = 0; this.swOn = true; this.t = 0; this.ph = 2; this.lit = false; this.hud = false; this.reflGo = false;
     this.at = { x: (this.mx + 1) / 2 * innerWidth + this.tipOff.x, y: (1 - this.my) / 2 * innerHeight + this.tipOff.y }; this.goal = null; this.av.x = this.av.y = 0;   // the 3D pointer takes over right where yours is (a mouse moving from here springs it along)
-    document.body.classList.add('opening'); avatar.visible = true; this.Qf0 = avatar.quaternion.clone();   // (the pointer as it came through, flat to you)
+    document.body.classList.add('opening'); avatar.visible = true; this.Qf0 = camera.quaternion.clone().multiply(this.relQ);   // (the pointer as it came through, flat to you)
   },
   swingStep(dt) {
     const L = LOOK; this.st += dt; const lnd = this.lnEnd + this.swGap * Math.pow(1 - Math.min(1, this.t), this.swP);
