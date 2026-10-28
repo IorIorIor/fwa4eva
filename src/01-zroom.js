@@ -314,7 +314,7 @@ const room = (() => {
     spot.color.copy(lc); spot.intensity = 11 * lmp; spot.angle = THREE.MathUtils.degToRad(RL('roomLampCone', 52)); spot.penumbra = RL('roomLampSoft', .65); spot.shadow.radius = RL('roomShadow', 4); { const sig = [spot.angle, spot.penumbra, spot.shadow.radius].join(); if (sig !== st.shSig) { st.shSig = sig; bakeShadows() } }
     bulbGlow.color.copy(lc); bulbGlow.intensity = .5 * lmp;
     logoAt(1);
-    { const bs = RL('roomBtn', 6.8).toFixed(2), by = (RL('roomBtnY', .82) * 100).toFixed(1) + '%'; if (bs !== st.bs || by !== st.by) { st.bs = bs; st.by = by; H0.style.setProperty('--rbs', bs); H0.style.setProperty('--rby', by) } }   // the Start button's size and place on the glass
+    { const bs = (RL('roomBtn', 6.8) * (MOB ? RL('roomPhoneUI', 2.5) : 1)).toFixed(2), by = (RL('roomBtnY', .82) * 100).toFixed(1) + '%'; if (bs !== st.bs || by !== st.by) { st.bs = bs; st.by = by; H0.style.setProperty('--rbs', bs); H0.style.setProperty('--rby', by) } }   // the Start button's size and place on the glass
     scrLight.intensity = 3 * scr * (1 + U2.scrOn.value * 2); U2.glow.value = scr * 3; U2.scrBr.value = RL('roomScreenBright', 1.4);
     C.flick.value = RL('crtFlicker', .25); C.roll.value = RL('crtRoll', .3); C.idle.value = RL('crtIdle', .3);
     hemi.intensity = .9 * RL('roomFill', 1);
@@ -491,7 +491,7 @@ const room = (() => {
   // the FWA logo on the glass, flat on it, near the top: it comes at you with the glass and, once you're through, carries on
   // past you at the same pace (afterGlass, from the opening's move) and is gone
   const logo = (() => { const pl = $('portalLoad'), mk = document.querySelector('#intro .mark'); if (!pl || !mk) return null; const el = document.createElement('div'); el.id = 'rmLogo'; const sv = mk.cloneNode(true); sv.removeAttribute('class'); el.appendChild(sv); pl.appendChild(el); return el })();
-  const logoAt = (m = 1) => { if (!logo) return; const y = RL('roomLogoY', .2) * 100, w = RL('roomLogo', .46) * 100, top = 50 + (y - 50) * m; logo.style.top = top.toFixed(3) + '%'; logo.style.width = (w * m).toFixed(3) + '%'; logo.style.opacity = '1'; logo.style.display = m > 40 ? 'none' : '' };   // m: how much nearer than on the glass (scaled about the middle of the view); it stays whole all the way (the opening takes it away when it ends)
+  const logoAt = (m = 1) => { if (!logo) return; const y = RL('roomLogoY', .2) * 100, w = Math.min(.96, RL('roomLogo', .46) * (MOB ? RL('roomPhoneUI', 2.5) : 1)) * 100, top = 50 + (y - 50) * m; logo.style.top = top.toFixed(3) + '%'; logo.style.width = (w * m).toFixed(3) + '%'; logo.style.opacity = '1'; logo.style.display = m > 40 ? 'none' : '' };   // m: how much nearer than on the glass (scaled about the middle of the view); it stays whole all the way (the opening takes it away when it ends)
   const startP = (async () => {
     cam.aspect = innerWidth / Math.max(1, innerHeight); cam.updateProjectionMatrix();
     await propsP; applyPos();
